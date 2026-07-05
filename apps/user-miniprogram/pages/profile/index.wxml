@@ -1,0 +1,4 @@
+<view class="container">
+  <view class="title">我的</view>
+  <view class="placeholder">登录 / 我的报名 / 商家入驻入口（Phase 1.x 接入）</view>
+</view>

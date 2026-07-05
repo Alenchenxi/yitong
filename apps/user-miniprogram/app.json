@@ -1,0 +1,26 @@
+{
+  "pages": [
+    "pages/confession/index",
+    "pages/treehole/index",
+    "pages/job/index",
+    "pages/profile/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "燚桐",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f6f8"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#ffffff",
+    "list": [
+      { "pagePath": "pages/confession/index", "text": "表白墙" },
+      { "pagePath": "pages/treehole/index", "text": "树洞" },
+      { "pagePath": "pages/job/index", "text": "兼职" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}

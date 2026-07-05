@@ -1,0 +1,4 @@
+<view class="container">
+  <view class="title">树洞</view>
+  <view class="placeholder">匿名动态 + 匹配聊天（Phase 1.5 接入）</view>
+</view>

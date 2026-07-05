@@ -1,0 +1,31 @@
+# deps
+node_modules/
+miniprogram_npm/
+
+# build output
+dist/
+build/
+.next/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# env (禁止提交真实密钥)
+.env
+.env.local
+.env.*.local
+
+# os / ide
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# prisma
+apps/server/prisma/migrations/dev.db*
+
+# mini-program 本地配置
+apps/*-miniprogram/project.private.config.json

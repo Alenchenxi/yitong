@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== 身份 =====
+model User {
+  id        String   @id @default(cuid())
+  openid    String   @unique
+  unionid   String?
+  nickname  String
+  avatarUrl String?  @map("avatar_url")
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  @@map("users")
+}
+enum UserRole {
+  USER
+  MERCHANT
+  ADMIN
+}
+
+model AnonymousProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  anonId    String   @unique @map("anon_id")
+  nickname  String
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("anonymous_profiles")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  @@map("admin_users")
+}
+
+// ===== 表白墙 =====
+model Circle {
+  id    String @id @default(cuid())
+  name  String
+  icon  String?
+  posts Post[]
+  @@map("circles")
+}
+model Post {
+  id        String     @id @default(cuid())
+  circleId  String     @map("circle_id")
+  authorId  String     @map("author_id")
+  content   String
+  images    String[]
+  likeCount Int        @default(0) @map("like_count")
+  status    PostStatus @default(PENDING)
+  createdAt DateTime   @default(now()) @map("created_at")
+  circle    Circle     @relation(fields: [circleId], references: [id])
+  @@index([circleId, createdAt])
+  @@map("posts")
+}
+enum PostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  authorId  String   @map("author_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("comments")
+}
+
+// ===== 树洞（匿名）=====
+model AnonymousPost {
+  id        String     @id @default(cuid())
+  anonId    String     @map("anon_id")
+  content   String
+  images    String[]
+  status    PostStatus @default(PENDING)
+  createdAt DateTime   @default(now()) @map("created_at")
+  @@index([createdAt])
+  @@map("anonymous_posts")
+}
+model ChatMatch {
+  id        String      @id @default(cuid())
+  anonIdA   String      @map("anon_id_a")
+  anonIdB   String      @map("anon_id_b")
+  status    MatchStatus @default(ACTIVE)
+  createdAt DateTime    @default(now()) @map("created_at")
+  @@map("chat_matches")
+}
+enum MatchStatus {
+  ACTIVE
+  CLOSED
+}
+
+// ===== 兼职 =====
+model Merchant {
+  id           String         @id @default(cuid())
+  userId       String         @unique @map("user_id")
+  shopName     String         @map("shop_name")
+  licenseNo    String         @map("license_no")
+  contactPhone String         @map("contact_phone")
+  status       MerchantStatus @default(PENDING)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  jobPosts     JobPost[]
+  @@map("merchants")
+}
+enum MerchantStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model JobPost {
+  id           String        @id @default(cuid())
+  merchantId   String        @map("merchant_id")
+  title        String
+  description  String
+  salary       String
+  location     String
+  duration     JobDuration
+  expireAt     DateTime      @map("expire_at")
+  status       JobPostStatus @default(PENDING)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  merchant     Merchant      @relation(fields: [merchantId], references: [id])
+  applications JobApplication[]
+  @@index([status, expireAt])
+  @@map("job_posts")
+}
+enum JobDuration {
+  D30
+  D90
+}
+enum JobPostStatus {
+  PENDING
+  PUBLISHED
+  TAKEN_DOWN
+  EXPIRED
+}
+
+model JobApplication {
+  id        String    @id @default(cuid())
+  jobPostId String    @map("job_post_id")
+  userId    String    @map("user_id")
+  status    AppStatus @default(PENDING)
+  createdAt DateTime  @default(now()) @map("created_at")
+  jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
+  review    JobReview?
+  @@unique([jobPostId, userId])
+  @@map("job_applications")
+}
+enum AppStatus {
+  PENDING
+  ACCEPTED
+  DONE
+  CANCELLED
+}
+
+model JobReview {
+  id            String         @id @default(cuid())
+  applicationId String         @unique @map("application_id")
+  rating        Int
+  content       String
+  createdAt     DateTime       @default(now()) @map("created_at")
+  application   JobApplication @relation(fields: [applicationId], references: [id])
+  @@map("job_reviews")
+}
+
+// ===== 支付（付费发布）=====
+model PricingConfig {
+  id        String      @id @default(cuid())
+  duration  JobDuration
+  price     Decimal     @db.Decimal(10, 2)
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  @@unique([duration])
+  @@map("pricing_config")
+}
+model PaymentOrder {
+  id         String    @id @default(cuid())
+  merchantId String    @map("merchant_id")
+  jobPostId  String    @map("job_post_id")
+  duration   JobDuration
+  amount     Decimal   @db.Decimal(10, 2)
+  wxPrepayId String?   @map("wx_prepay_id")
+  status     PayStatus @default(PENDING)
+  paidAt     DateTime? @map("paid_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  @@map("payment_orders")
+}
+enum PayStatus {
+  PENDING
+  PAID
+  REFUNDED
+  CLOSED
+}
+
+// ===== 内容审核 =====
+model ModerationRecord {
+  id         String            @id @default(cuid())
+  targetType String            @map("target_type")
+  targetId   String            @map("target_id")
+  reason     String?
+  status     ModerationStatus  @default(PENDING)
+  reviewerId String?           @map("reviewer_id")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  @@map("moderation_records")
+}
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
