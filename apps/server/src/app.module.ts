@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { WxModule } from './common/wx/wx.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { ConfessionModule } from './modules/confession/confession.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { UploadModule } from './modules/upload/upload.module';
@@ -16,6 +17,7 @@ import { UploadModule } from './modules/upload/upload.module';
     AuthModule,
     ModerationModule,
     UploadModule,
+    ConfessionModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
