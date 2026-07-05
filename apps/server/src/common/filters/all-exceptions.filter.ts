@@ -24,14 +24,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const status = isHttp ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
     const resp = isHttp ? (exception.getResponse() as Record<string, unknown>) : undefined;
 
-    const code =
-      typeof resp?.['code'] === 'number' ? (resp['code'] as number) : status * 100;
-    const message =
-      typeof resp?.['message'] === 'string'
-        ? (resp['message'] as string)
+    const rawMsg = resp?.['message'];
+    const message = typeof rawMsg === 'string'
+      ? rawMsg
+      : Array.isArray(rawMsg)
+        ? (rawMsg as string[]).join('; ')
         : isHttp
           ? exception.message
           : '服务繁忙，请稍后重试';
+
+    const code =
+      typeof resp?.['code'] === 'number' ? (resp['code'] as number) : status * 100;
 
     this.logger.error(
       `[${traceId}] ${req.method} ${req.url} ${status} ${message}`,
