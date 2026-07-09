@@ -1,0 +1,31 @@
+.page { padding: 40rpx 24rpx; }
+.header {
+  background: linear-gradient(135deg, #ffb3c1, #ff4d6d);
+  border-radius: 24rpx;
+  padding: 48rpx 32rpx;
+  display: flex;
+  align-items: center;
+  color: #fff;
+  margin-bottom: 32rpx;
+}
+.avatar {
+  width: 120rpx; height: 120rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  margin-right: 24rpx;
+  border: 4rpx solid rgba(255,255,255,0.4);
+}
+.avatar-ph {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48rpx; font-weight: 600;
+}
+.nickname { font-size: 36rpx; font-weight: 600; }
+.menu { background: #fff; border-radius: 16rpx; overflow: hidden; }
+.menu-item {
+  padding: 28rpx 32rpx;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 28rpx; color: #333;
+  border-bottom: 1rpx solid #f4f4f4;
+}
+.menu-item:last-child { border-bottom: none; }
+.arrow { color: #bbb; font-size: 32rpx; }

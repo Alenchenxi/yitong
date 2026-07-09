@@ -1,0 +1,59 @@
+<view class="page">
+  <!-- 圈子选择 -->
+  <view class="row" bindtap="openCirclePicker">
+    <text class="label">圈子</text>
+    <view class="value">
+      <text>{{selectedCircleName}}</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 正文 -->
+  <textarea
+    class="textarea"
+    placeholder="写下你想分享的内容…"
+    value="{{content}}"
+    bindinput="onContentInput"
+    maxlength="{{2000}}"
+    auto-height
+    show-confirm-bar="{{false}}"
+    adjust-position
+  ></textarea>
+
+  <!-- 图片选择 -->
+  <view class="images">
+    <view class="img-box" wx:for="{{images}}" wx:key="*this">
+      <image class="img" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewImage"></image>
+      <view class="img-del" data-idx="{{index}}" catchtap="removeImage">×</view>
+    </view>
+    <view class="img-add" wx:if="{{images.length < 9}}" bindtap="chooseImage">
+      <text class="plus">＋</text>
+      <text class="add-tip">{{images.length}}/9</text>
+    </view>
+  </view>
+
+  <!-- 提交 -->
+  <button
+    class="submit"
+    bindtap="submit"
+    disabled="{{submitting || !content.trim() || !selectedCircleId}}"
+  >{{submitting ? '发布中...' : '发布'}}</button>
+</view>
+
+<!-- 圈子选择弹窗 -->
+<view class="mask" wx:if="{{showCirclePicker}}" bindtap="closeCirclePicker">
+  <view class="picker" catchtap="">
+    <view class="picker-title">选择圈子</view>
+    <scroll-view scroll-y class="picker-list">
+      <view
+        wx:for="{{circles}}"
+        wx:key="id"
+        class="picker-item {{item.id === selectedCircleId ? 'active' : ''}}"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
+        data-icon="{{item.icon}}"
+        bindtap="pickCircle"
+      >{{item.icon ? item.icon + ' ' : ''}}{{item.name}}</view>
+    </scroll-view>
+  </view>
+</view>

@@ -1,0 +1,32 @@
+<view class="card" wx:if="{{post}}" bindtap="onTap">
+  <view class="header">
+    <image wx:if="{{hasAvatar}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
+    <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
+    <view class="meta">
+      <view class="nickname">{{post.authorNickname}}</view>
+      <view class="time">{{timeText}}</view>
+    </view>
+  </view>
+  <view class="content">{{post.content}}</view>
+  <view class="images images-{{imgLayout}}" wx:if="{{imgLayout}}">
+    <image
+      wx:for="{{post.images}}"
+      wx:key="*this"
+      class="img img-{{imgLayout}}"
+      src="{{item}}"
+      mode="aspectFill"
+      data-src="{{item}}"
+      catchtap="previewImage"
+    ></image>
+  </view>
+  <view class="actions">
+    <view class="action" catchtap="onLike">
+      <text class="icon {{post.liked ? 'liked' : ''}}">{{post.liked ? '♥' : '♡'}}</text>
+      <text class="count">{{post.likeCount || ''}}</text>
+    </view>
+    <view class="action" catchtap="onComment">
+      <text class="icon">💬</text>
+      <text class="count">{{post.commentCount || ''}}</text>
+    </view>
+  </view>
+</view>

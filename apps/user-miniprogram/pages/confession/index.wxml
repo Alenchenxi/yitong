@@ -1,4 +1,38 @@
-<view class="container">
-  <view class="title">表白墙</view>
-  <view class="placeholder">圈子 + 发现（Phase 1.2 接入）</view>
+<view class="page">
+  <!-- 顶部横滑圈子 Tab -->
+  <scroll-view class="tabs" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="tab {{activeTab === 'feed' ? 'active' : ''}}" data-id="feed" data-name="发现" bindtap="switchTab">发现</view>
+    <view
+      wx:for="{{circles}}"
+      wx:key="id"
+      class="tab {{activeTab === item.id ? 'active' : ''}}"
+      data-id="{{item.id}}"
+      data-name="{{item.name}}"
+      bindtap="switchTab"
+    >{{item.icon ? item.icon + ' ' : ''}}{{item.name}}</view>
+  </scroll-view>
+
+  <view class="title">{{activeCircleName}}</view>
+
+  <!-- 帖子列表 -->
+  <view class="list" wx:if="{{posts.length > 0}}">
+    <post-card
+      wx:for="{{posts}}"
+      wx:key="id"
+      post="{{item}}"
+      bind:like="onLike"
+    ></post-card>
+    <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
+    <view class="loading-tip" wx:elif="{{!hasMore}}">没有更多了</view>
+  </view>
+
+  <view class="empty" wx:elif="{{!loading}}">
+    <view class="empty-emoji">📭</view>
+    <view class="empty-text">还没有内容，去发第一条吧</view>
+  </view>
+
+  <!-- 悬浮发帖按钮 -->
+  <view class="fab" bindtap="goCreate">
+    <text class="fab-plus">＋</text>
+  </view>
 </view>

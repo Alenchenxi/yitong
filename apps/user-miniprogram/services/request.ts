@@ -12,7 +12,7 @@ interface AppGlobalData {
 // 统一请求封装：注入 token、统一错误提示（与 API 设计规范 §2 对齐）
 export function request<T>(opts: {
   url: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'TRACE' | 'CONNECT';
   data?: Record<string, unknown>;
 }): Promise<T> {
   const app = getApp<{ globalData: AppGlobalData }>();

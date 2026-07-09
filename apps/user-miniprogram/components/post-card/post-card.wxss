@@ -1,0 +1,108 @@
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #eee;
+  margin-right: 16rpx;
+}
+
+.avatar-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ffb3c1, #ff8fa3);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.meta {
+  flex: 1;
+}
+
+.nickname {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #222;
+}
+
+.time {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.content {
+  font-size: 30rpx;
+  line-height: 1.6;
+  color: #222;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.images {
+  display: grid;
+  gap: 8rpx;
+  margin-top: 16rpx;
+}
+
+.images-one { grid-template-columns: 1fr; }
+.images-two { grid-template-columns: repeat(2, 1fr); }
+.images-three { grid-template-columns: repeat(3, 1fr); }
+
+.img {
+  width: 100%;
+  background: #f2f2f2;
+  border-radius: 8rpx;
+}
+
+.img-one {
+  height: 360rpx;
+  width: 540rpx;
+}
+
+.img-two,
+.img-three {
+  height: 200rpx;
+}
+
+.actions {
+  display: flex;
+  gap: 48rpx;
+  margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.icon {
+  font-size: 32rpx;
+  margin-right: 8rpx;
+}
+
+.icon.liked {
+  color: #ff4d6d;
+}
+
+.count {
+  min-width: 32rpx;
+}

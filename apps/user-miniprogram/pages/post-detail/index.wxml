@@ -1,0 +1,65 @@
+<view class="page" wx:if="{{post}}">
+  <!-- 详情头：头像昵称时间 + 正文 + 图 -->
+  <view class="detail-card">
+    <view class="header">
+      <image wx:if="{{post.authorAvatarUrl}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
+      <view wx:else class="avatar avatar-ph">{{post.authorNickname[0]}}</view>
+      <view class="meta">
+        <view class="nickname">{{post.authorNickname}}</view>
+        <view class="time">{{post.timeText}}</view>
+      </view>
+    </view>
+    <view class="content">{{post.content}}</view>
+    <view class="images images-{{post.imgLayout}}" wx:if="{{post.imgLayout}}">
+      <image
+        wx:for="{{post.images}}"
+        wx:key="*this"
+        class="img img-{{post.imgLayout}}"
+        src="{{item}}"
+        mode="aspectFill"
+        data-src="{{item}}"
+        bindtap="previewImage"
+      ></image>
+    </view>
+    <view class="stats">
+      <text>♥ {{post.likeCount}}</text>
+      <text>💬 {{post.commentCount}}</text>
+    </view>
+  </view>
+
+  <view class="comments">
+    <view class="comments-title">评论 ({{total}})</view>
+    <view class="comment" wx:for="{{commentList}}" wx:key="id">
+      <view class="c-avatar">
+        <text class="c-ph">{{item.authorNickname[0]}}</text>
+      </view>
+      <view class="c-main">
+        <view class="c-head">
+          <text class="c-nick">{{item.authorNickname}}</text>
+          <text class="c-time">{{item.timeText}}</text>
+        </view>
+        <view class="c-content">{{item.content}}</view>
+      </view>
+    </view>
+    <view class="tip" wx:if="{{commentList.length === 0 && !loading}}">还没有评论，来说点什么吧</view>
+    <view class="tip" wx:if="{{loading}}">加载中...</view>
+    <view class="tip" wx:elif="{{!hasMore && commentList.length > 0}}">没有更多评论了</view>
+  </view>
+</view>
+
+<view class="bar" wx:if="{{post}}">
+  <input
+    class="input"
+    placeholder="{{focus ? '写下你的评论…' : '说点什么…'}}"
+    value="{{commentText}}"
+    bindinput="onInput"
+    focus="{{focus}}"
+    confirm-type="send"
+    bindconfirm="sendComment"
+    adjust-position
+  />
+  <view class="like-btn {{post.liked ? 'liked' : ''}}" bindtap="onLike">
+    <text>{{post.liked ? '♥' : '♡'}}</text>
+  </view>
+  <button class="send-btn" size="mini" bindtap="sendComment" disabled="{{!commentText || sending}}">发送</button>
+</view>

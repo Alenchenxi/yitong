@@ -1,0 +1,84 @@
+.page {
+  padding: 0 24rpx 120rpx;
+}
+
+.tabs {
+  display: flex;
+  white-space: nowrap;
+  padding: 16rpx 0;
+  position: sticky;
+  top: 0;
+  background: #f5f6f8;
+  z-index: 10;
+}
+
+.tab {
+  display: inline-block;
+  padding: 12rpx 28rpx;
+  margin-right: 16rpx;
+  border-radius: 40rpx;
+  background: #fff;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.tab.active {
+  background: #ff4d6d;
+  color: #fff;
+  font-weight: 600;
+}
+
+.title {
+  font-size: 34rpx;
+  font-weight: 600;
+  margin: 20rpx 4rpx 16rpx;
+}
+
+.list {
+  margin-top: 8rpx;
+}
+
+.loading-tip {
+  text-align: center;
+  color: #999;
+  font-size: 24rpx;
+  padding: 32rpx 0;
+}
+
+.empty {
+  text-align: center;
+  padding-top: 200rpx;
+  color: #999;
+}
+
+.empty-emoji {
+  font-size: 80rpx;
+  margin-bottom: 16rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+}
+
+/* 悬浮发帖按钮 */
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: 160rpx;
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff6b8a, #ff4d6d);
+  box-shadow: 0 8rpx 24rpx rgba(255, 77, 109, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.fab-plus {
+  color: #fff;
+  font-size: 56rpx;
+  line-height: 1;
+  font-weight: 300;
+}

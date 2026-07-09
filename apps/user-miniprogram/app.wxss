@@ -2,16 +2,25 @@ page {
   background: #f5f6f8;
   font-size: 28rpx;
   color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
 }
+
 .container {
   padding: 24rpx;
 }
-.placeholder {
-  color: #999;
-  margin-top: 16rpx;
-}
+
 .title {
   font-size: 36rpx;
   font-weight: 600;
   margin-bottom: 12rpx;
 }
+
+.placeholder {
+  color: #999;
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+/* 通用按钮风格（按钮 class 带 .btn-primary） */
+button::after { border: none; }
