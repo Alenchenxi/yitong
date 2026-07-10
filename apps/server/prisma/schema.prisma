@@ -14,19 +14,30 @@ model User {
   unionid   String?
   nickname  String
   avatarUrl String?  @map("avatar_url")
-  role      UserRole @default(USER)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
   postLikes PostLike[]
   posts     Post[]
   comments  Comment[]
+  userRoles UserRole[]
   @@map("users")
 }
-enum UserRole {
+enum Role {
   USER
   MERCHANT
   ADMIN
+}
+
+// 用户拥有的角色集合（多角色并存）；当前角色由 token 携带，不在此表
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  role      Role     @map("role")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+  @@unique([userId, role])
+  @@map("user_roles")
 }
 
 model AnonymousProfile {
@@ -41,7 +52,8 @@ model AnonymousProfile {
 model AdminUser {
   id           String   @id @default(cuid())
   username     String   @unique
-  passwordHash String   @map("password_hash")
+  passwordHash String?  @map("password_hash")
+  openid       String?  @unique @map("openid")
   createdAt    DateTime @default(now()) @map("created_at")
   @@map("admin_users")
 }

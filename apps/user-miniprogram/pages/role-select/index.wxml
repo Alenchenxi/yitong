@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="logo">燚桐</view>
+  <view class="subtitle">选择角色进入</view>
+
+  <view class="roles">
+    <view
+      class="role-card {{pendingRole === 'user' ? 'pending' : ''}}"
+      data-role="user"
+      bindtap="chooseRole"
+    >
+      <view class="role-emoji">🙋</view>
+      <view class="role-name">普通用户</view>
+      <view class="role-desc">表白墙 · 树洞 · 兼职</view>
+    </view>
+
+    <view
+      class="role-card {{pendingRole === 'merchant' ? 'pending' : ''}}"
+      data-role="merchant"
+      bindtap="chooseRole"
+    >
+      <view class="role-emoji">🏪</view>
+      <view class="role-name">商家</view>
+      <view class="role-desc">入驻 · 发岗 · 报名管理</view>
+    </view>
+
+    <view
+      class="role-card {{pendingRole === 'admin' ? 'pending' : ''}}"
+      data-role="admin"
+      bindtap="chooseRole"
+    >
+      <view class="role-emoji">🛡️</view>
+      <view class="role-name">管理员</view>
+      <view class="role-desc">审核 · 单价 · 封禁</view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">登录中…</view>
+</view>

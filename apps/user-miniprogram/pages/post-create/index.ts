@@ -30,11 +30,7 @@ Page({
 
   async onLoad(options: { circleId?: string }) {
     const app = getApp<AppInstance>();
-    try {
-      await app.waitLogin();
-    } catch {
-      return;
-    }
+    if (!app.requireAuth()) return;
     const circles = await listCircles().catch(() => []);
     let selectedId = options.circleId ?? '';
     let selectedName = '选择圈子';

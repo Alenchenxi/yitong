@@ -5,7 +5,8 @@
     "pages/job/index",
     "pages/profile/index",
     "pages/post-detail/index",
-    "pages/post-create/index"
+    "pages/post-create/index",
+    "pages/role-select/index"
   ],
   "window": {
     "navigationBarTitleText": "燚桐",

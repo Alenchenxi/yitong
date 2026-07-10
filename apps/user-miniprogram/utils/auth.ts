@@ -1,26 +1,67 @@
-// 登录态管理：wx.login → code → /auth/wx-login → token/user 存 storage+globalData
-import type { AppInstance } from '../app';
+// 登录态管理：角色选择登录 / 静默切换角色 / storage 持久化
+
+export interface UserInfo {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+  roles: string[]; // 拥有的角色集合
+}
 
 interface LoginResp {
   accessToken: string;
   refreshToken: string;
-  user: { id: string; nickname: string; avatarUrl: string | null; role: string };
+  user: UserInfo;
+  role: string; // 当前角色
 }
-
-type MeResp = NonNullable<AppInstance['globalData']['user']>;
 
 const STORAGE_KEY = 'yitong_auth';
 
-// 静默登录：已有 token 直接使用；否则 wx.login 换 token
-export async function ensureLogin(app: AppInstance): Promise<MeResp | null> {
-  const cached = wx.getStorageSync(STORAGE_KEY) as { token: string; refreshToken: string; user: MeResp } | '';
+interface AppLike {
+  globalData: {
+    token: string;
+    refreshToken: string;
+    user: UserInfo | null;
+    currentRole: string;
+    apiBase: string;
+  };
+}
+
+// 从 storage 恢复登录态；返回是否有 token
+export function restoreAuth(app: AppLike): boolean {
+  const cached = wx.getStorageSync(STORAGE_KEY) as {
+    token: string;
+    refreshToken: string;
+    user: UserInfo;
+    currentRole: string;
+  } | '';
   if (cached && cached.token) {
     app.globalData.token = cached.token;
     app.globalData.refreshToken = cached.refreshToken;
     app.globalData.user = cached.user;
-    return cached.user;
+    app.globalData.currentRole = cached.currentRole;
+    return true;
   }
+  return false;
+}
 
+function persist(app: AppLike, data: LoginResp) {
+  app.globalData.token = data.accessToken;
+  app.globalData.refreshToken = data.refreshToken;
+  app.globalData.user = data.user;
+  app.globalData.currentRole = data.role;
+  wx.setStorageSync(STORAGE_KEY, {
+    token: data.accessToken,
+    refreshToken: data.refreshToken,
+    user: data.user,
+    currentRole: data.role,
+  });
+}
+
+// 角色选择登录：wx.login -> /auth/wx-login { code, role }
+export function loginWithRole(
+  role: 'user' | 'merchant' | 'admin',
+  app: AppLike,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     wx.login({
       success: async (lr) => {
@@ -30,36 +71,10 @@ export async function ensureLogin(app: AppInstance): Promise<MeResp | null> {
           return;
         }
         try {
-          const resp = await new Promise<LoginResp>((res, rej) => {
-            wx.request({
-              url: `${app.globalData.apiBase}/auth/wx-login`,
-              method: 'POST',
-              data: { code: lr.code, role: 'user' },
-              header: { 'Content-Type': 'application/json' },
-              success: (r) => {
-                const body = r.data as { code: number; data?: LoginResp; message?: string };
-                if (body.code === 0 && body.data) {
-                  res(body.data);
-                } else {
-                  rej(new Error(body.message ?? 'login failed'));
-                }
-              },
-              fail: () => rej(new Error('network')),
-            });
-          });
-          app.globalData.token = resp.accessToken;
-          app.globalData.refreshToken = resp.refreshToken;
-          app.globalData.user = resp.user;
-          wx.setStorageSync(STORAGE_KEY, {
-            token: resp.accessToken,
-            refreshToken: resp.refreshToken,
-            user: resp.user,
-          });
-          // 登录后立即拉一次 me 更新昵称/头像
-          const me = await fetchMe(app);
-          resolve(me);
+          const data = await post<LoginResp>(app, '/auth/wx-login', { code: lr.code, role }, false);
+          persist(app, data);
+          resolve();
         } catch (e) {
-          wx.showToast({ title: '登录失败，请重试', icon: 'none' });
           reject(e);
         }
       },
@@ -68,39 +83,21 @@ export async function ensureLogin(app: AppInstance): Promise<MeResp | null> {
   });
 }
 
-// 拉取 me（个人资料）
-export function fetchMe(app: AppInstance): Promise<MeResp> {
-  return new Promise((resolve, reject) => {
-    wx.request({
-      url: `${app.globalData.apiBase}/auth/me`,
-      method: 'GET',
-      header: { Authorization: `Bearer ${app.globalData.token}` },
-      success: (r) => {
-        const body = r.data as { code: number; data?: MeResp; message?: string };
-        if (body.code === 0 && body.data) {
-          app.globalData.user = body.data;
-          const cached = wx.getStorageSync(STORAGE_KEY);
-          if (cached) {
-            wx.setStorageSync(STORAGE_KEY, { ...cached, user: body.data });
-          }
-          resolve(body.data);
-        } else {
-          // 401 → 清缓存
-          if (r.statusCode === 401) {
-            clearAuth(app);
-          }
-          reject(new Error(body.message ?? 'me failed'));
-        }
-      },
-      fail: () => reject(new Error('network')),
-    });
+// 静默切换角色：POST /auth/switch-role { role }（需当前 token）
+export function switchRole(
+  role: 'user' | 'merchant' | 'admin',
+  app: AppLike,
+): Promise<void> {
+  return post<LoginResp>(app, '/auth/switch-role', { role }, true).then((data) => {
+    persist(app, data);
   });
 }
 
-export function clearAuth(app: AppInstance) {
+export function clearAuth(app: AppLike) {
   app.globalData.token = '';
   app.globalData.refreshToken = '';
   app.globalData.user = null;
+  app.globalData.currentRole = '';
   wx.removeStorageSync(STORAGE_KEY);
 }
 
@@ -121,4 +118,31 @@ export function formatTime(iso: string): string {
   if (sameDay) return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   if (isYest) return `昨天 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// 内部 POST：返回 data；auth=true 带 Bearer
+function post<T>(app: AppLike, url: string, body: unknown, auth: boolean): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const header: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (auth && app.globalData.token) header.Authorization = `Bearer ${app.globalData.token}`;
+    wx.request({
+      url: `${app.globalData.apiBase}${url}`,
+      method: 'POST',
+      data: body as WechatMiniprogram.IAnyObject,
+      header,
+      success: (r) => {
+        const b = r.data as { code: number; data?: T; message?: string };
+        if (b.code === 0 && b.data !== undefined) {
+          resolve(b.data as T);
+        } else {
+          wx.showToast({ title: b.message ?? '请求失败', icon: 'none' });
+          reject(new Error(b.message ?? 'failed'));
+        }
+      },
+      fail: () => {
+        wx.showToast({ title: '网络异常', icon: 'none' });
+        reject(new Error('network'));
+      },
+    });
+  });
 }

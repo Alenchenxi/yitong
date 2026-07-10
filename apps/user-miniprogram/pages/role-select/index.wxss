@@ -1,0 +1,71 @@
+.page {
+  min-height: 100vh;
+  padding: 80rpx 48rpx 48rpx;
+  background: linear-gradient(180deg, #ffeef2 0%, #f5f6f8 40%);
+  box-sizing: border-box;
+}
+
+.logo {
+  font-size: 64rpx;
+  font-weight: 700;
+  color: #ff4d6d;
+  letter-spacing: 8rpx;
+  text-align: center;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 28rpx;
+  margin: 16rpx 0 64rpx;
+}
+
+.roles {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+
+.role-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 36rpx 32rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  transition: transform 0.1s;
+}
+
+.role-card:active {
+  transform: scale(0.98);
+}
+
+.role-card.pending {
+  opacity: 0.6;
+}
+
+.role-emoji {
+  font-size: 56rpx;
+  margin-right: 24rpx;
+  width: 96rpx;
+  text-align: center;
+}
+
+.role-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #222;
+}
+
+.role-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 6rpx;
+}
+
+.loading {
+  text-align: center;
+  color: #999;
+  font-size: 26rpx;
+  margin-top: 40rpx;
+}

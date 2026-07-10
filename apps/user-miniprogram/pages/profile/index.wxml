@@ -2,18 +2,30 @@
   <view class="header">
     <image wx:if="{{user && user.avatarUrl}}" class="avatar" src="{{user.avatarUrl}}" mode="aspectFill"></image>
     <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
-    <view class="nickname">{{user ? user.nickname : '未登录'}}</view>
+    <view class="nick-wrap">
+      <view class="nickname">{{user ? user.nickname : '未登录'}}</view>
+      <view class="role-badge">{{roleText}}</view>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{roleList.length > 0}}">
+    <view class="section-title">切换角色</view>
+    <view class="role-list">
+      <view
+        wx:for="{{roleList}}"
+        wx:key="key"
+        class="role-item {{item.current ? 'current' : ''}}"
+        data-role="{{item.key}}"
+        bindtap="switchRole"
+      >{{item.label}}{{item.current ? ' · 当前' : ''}}</view>
+    </view>
   </view>
 
   <view class="menu">
-    <view class="menu-item" bindtap="goMyPosts">
-      <text>我的表白墙</text><text class="arrow">›</text>
-    </view>
-    <view class="menu-item">
-      <text>我的树洞</text><text class="arrow">›</text>
-    </view>
-    <view class="menu-item">
-      <text>我的兼职</text><text class="arrow">›</text>
-    </view>
+    <view class="menu-item" bindtap="goMyPosts"><text>我的表白墙</text><text class="arrow">›</text></view>
+    <view class="menu-item"><text>我的树洞</text><text class="arrow">›</text></view>
+    <view class="menu-item"><text>我的兼职</text><text class="arrow">›</text></view>
   </view>
+
+  <button class="logout-btn" bindtap="logout">退出登录</button>
 </view>

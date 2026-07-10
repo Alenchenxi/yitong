@@ -24,11 +24,7 @@ Page({
 
   async onShow() {
     const app = getApp<AppInstance>();
-    try {
-      await app.waitLogin();
-    } catch {
-      return;
-    }
+    if (!app.requireAuth()) return;
     // 首次加载：拉圈子 + 发现流
     if (this.data.circles.length === 0) {
       this.loadCircles();

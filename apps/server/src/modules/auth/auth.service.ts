@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { User } from '@prisma/client';
+import { Role, type User } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload, WxSessionResult } from './types';
@@ -9,6 +9,15 @@ import type { WxLoginDto } from './dto/wx-login.dto';
 
 const ACCESS_EXPIRES = '2h';
 const REFRESH_EXPIRES = '7d';
+
+// DTO 小写 role -> Prisma enum Role
+const ROLE_MAP: Record<string, Role> = {
+  user: Role.USER,
+  merchant: Role.MERCHANT,
+  admin: Role.ADMIN,
+};
+
+type RoleKey = 'user' | 'merchant' | 'admin';
 
 @Injectable()
 export class AuthService {
@@ -21,14 +30,10 @@ export class AuthService {
   ) {}
 
   async wxLogin(dto: WxLoginDto) {
-    const creds = this.getWxCreds(dto.role);
-    const wx = await this.code2session(creds.appid, creds.secret, dto.code);
+    const wx = await this.code2session(dto.code);
     if (wx.errcode) {
       throw new BizException(10004, `微信登录失败: ${wx.errmsg ?? '未知错误'}`);
     }
-
-    // dto.role 仅用于选择对应小程序的 AppID/Secret，不写入用户角色；
-    // 用户角色默认 USER，商家身份经 Merchant 表关联表达（见 schema.prisma）
     const user = await this.prisma.user.upsert({
       where: { openid: wx.openid },
       create: {
@@ -42,8 +47,16 @@ export class AuthService {
         ...(dto.avatarUrl ? { avatarUrl: dto.avatarUrl } : {}),
       },
     });
+    const role = await this.ensureRole(user.id, dto.role, wx.openid);
+    return this.issueTokens(user, role);
+  }
 
-    return this.issueTokens(user);
+  // 静默切换角色：已登录用户（uid）切换到 newRole，不需重新 wx.login
+  async switchRole(uid: string, roleKey: RoleKey) {
+    const user = await this.prisma.user.findUnique({ where: { id: uid } });
+    if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
+    const role = await this.ensureRole(uid, roleKey, user.openid);
+    return this.issueTokens(user, role);
   }
 
   async refresh(refreshToken: string) {
@@ -53,64 +66,92 @@ export class AuthService {
     } catch {
       throw new BizException(10002, 'refreshToken 无效', HttpStatus.UNAUTHORIZED);
     }
-    // 仅允许 refresh token 刷新，禁止 access token 互换使用
     if (payload.type !== 'refresh') {
       throw new BizException(10002, 'token 类型不正确', HttpStatus.UNAUTHORIZED);
     }
     const user = await this.prisma.user.findUnique({ where: { id: payload.uid } });
     if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
-    return this.issueTokens(user);
+    // 刷新时沿用原 role
+    return this.issueTokens(user, payload.role as Role);
   }
 
   async getMe(uid: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: uid } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: uid },
+      include: { userRoles: { select: { role: true } } },
+    });
     if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
     return this.toUserVo(user);
   }
 
-  private async issueTokens(user: User) {
-    const base: JwtPayload = { uid: user.id, role: user.role, openid: user.openid };
+  // 校验并确保用户拥有目标角色：管理员需 openid 预设绑定；user/merchant 默认放宽（merchant 生产由 feat/merchant 收紧）
+  private async ensureRole(
+    uid: string,
+    roleKey: RoleKey,
+    openid: string,
+  ): Promise<Role> {
+    const role = ROLE_MAP[roleKey];
+    if (!role) throw new BizException(10004, '角色不合法');
+
+    if (role === Role.ADMIN) {
+      const admin = await this.prisma.adminUser.findFirst({ where: { openid } });
+      if (!admin) {
+        throw new BizException(
+          10003,
+          '该微信号未绑定管理员，无权以管理员身份登录',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
+
+    // 确保 UserRole 存在该角色（幂等）
+    await this.prisma.userRole.upsert({
+      where: { userId_role: { userId: uid, role } },
+      update: {},
+      create: { userId: uid, role },
+    });
+    return role;
+  }
+
+  private async issueTokens(user: User, role: Role) {
+    const base: JwtPayload = { uid: user.id, role, openid: user.openid };
     const [accessToken, refreshToken] = await Promise.all([
       this.jwt.signAsync({ ...base, type: 'access' }, { expiresIn: ACCESS_EXPIRES }),
       this.jwt.signAsync({ ...base, type: 'refresh' }, { expiresIn: REFRESH_EXPIRES }),
     ]);
-    return { accessToken, refreshToken, user: this.toUserVo(user) };
+    return { accessToken, refreshToken, user: await this.toUserVo(user), role };
   }
 
-  private toUserVo(user: User) {
+  private async toUserVo(
+    user: User & { userRoles?: { role: Role }[] },
+  ) {
+    let roles = user.userRoles?.map((r) => r.role) ?? [];
+    if (roles.length === 0) {
+      const found = await this.prisma.userRole.findMany({
+        where: { userId: user.id },
+        select: { role: true },
+      });
+      roles = found.map((r) => r.role);
+    }
     return {
       id: user.id,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
-      role: user.role,
+      roles,
     };
   }
 
-  private getWxCreds(role: 'user' | 'merchant') {
-    if (role === 'merchant') {
-      return {
-        appid: this.config.get<string>('WX_MERCHANT_APPID'),
-        secret: this.config.get<string>('WX_MERCHANT_SECRET'),
-      };
-    }
-    return {
-      appid: this.config.get<string>('WX_USER_APPID'),
-      secret: this.config.get<string>('WX_USER_SECRET'),
-    };
-  }
-
-  // 微信 code2session：开发环境未配置凭证时返回 mock openid，便于本地联调
-  private async code2session(
-    appid: string | undefined,
-    secret: string | undefined,
-    code: string,
-  ): Promise<WxSessionResult> {
+  // 微信 code2session：三端合一为单一个小程序，统一用 WX_USER_APPID/SECRET
+  private async code2session(code: string): Promise<WxSessionResult> {
+    const appid = this.config.get<string>('WX_USER_APPID');
+    const secret = this.config.get<string>('WX_USER_SECRET');
     if (!appid || !secret) {
       if (process.env.NODE_ENV === 'production') {
         throw new BizException(10004, '微信凭证未配置');
       }
       this.logger.warn('WX credentials not set; using mock code2session for dev');
       return {
+        // mock 模式：openid = mock_<code 前8位>；测试管理员用 code='admin' -> 'mock_admin'（匹配种子）
         openid: `mock_${code.slice(0, 8)}`,
         session_key: '',
         unionid: null,

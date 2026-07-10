@@ -58,11 +58,7 @@ Page({
 
   async onShow() {
     const app = getApp<AppInstance>();
-    try {
-      await app.waitLogin();
-    } catch {
-      return;
-    }
+    if (!app.requireAuth()) return;
     if (this.postId && this.data.post) {
       // 返回时刷新点赞/评论数
       this.refreshPost();
