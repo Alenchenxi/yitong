@@ -10,6 +10,7 @@ import { JobModule } from './modules/job/job.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { MerchantModule } from './modules/merchant/merchant.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
+import { PaymentModule } from './modules/payment/payment.module';
 import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { UploadModule } from './modules/upload/upload.module';
     ChatModule,
     MerchantModule,
     JobModule,
+    PaymentModule,
     ConfessionModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],

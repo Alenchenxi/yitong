@@ -21,7 +21,7 @@ export class JobService {
     private readonly moderation: ModerationService,
   ) {}
 
-  // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；dev 自动 PUBLISHED + expireAt（生产等 feat/payment 回调置 PUBLISHED）
+  // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
   async createPost(merchantUid: string, dto: CreateJobPostDto, openid?: string) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant || merchant.status !== MerchantStatus.APPROVED) {
@@ -45,13 +45,7 @@ export class JobService {
       include: { merchant: { select: { shopName: true } } },
     });
 
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.warn('dev mode: auto-publish job post');
-      await this.prisma.jobPost.update({
-        where: { id: post.id },
-        data: { status: JobPostStatus.PUBLISHED },
-      });
-    }
+    // 发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）；此处保持 PENDING 草稿
     return this.toPostVo(await this.refreshPost(post.id));
   }
 

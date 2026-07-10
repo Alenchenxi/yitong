@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { JobDuration, PrismaClient } from '@prisma/client';
 
 // 默认圈子种子数据（幂等：按 name 查重，已存在则跳过）
 const DEFAULT_CIRCLES = [
@@ -38,6 +38,20 @@ async function main() {
     // eslint-disable-next-line no-console
     console.log(`seed: admin openid updated to ${ADMIN_OPENID}`);
   }
+
+  // PricingConfig 默认单价（功能方案价目表：30 天 ¥90，90 天 ¥180；管理员可后台改）
+  const DEFAULT_PRICING: Array<{ duration: JobDuration; price: number }> = [
+    { duration: JobDuration.D30, price: 90 },
+    { duration: JobDuration.D90, price: 180 },
+  ];
+  for (const p of DEFAULT_PRICING) {
+    const exists = await prisma.pricingConfig.findUnique({ where: { duration: p.duration } });
+    if (!exists) {
+      await prisma.pricingConfig.create({ data: { duration: p.duration, price: p.price } });
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.log('seed: pricing config ensured (D30=90, D90=180)');
 }
 
 main()

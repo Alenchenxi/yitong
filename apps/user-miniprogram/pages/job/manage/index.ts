@@ -31,4 +31,9 @@ Page({
     const id = e.currentTarget.dataset.id as string;
     wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
   },
+
+  goPay(e: WechatMiniprogram.TouchEvent) {
+    const { id, dur } = e.currentTarget.dataset as { id: string; dur: string };
+    wx.navigateTo({ url: `/pages/payment/index?jobPostId=${id}&duration=${dur}` });
+  },
 });

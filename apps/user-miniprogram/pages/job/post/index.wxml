@@ -14,5 +14,5 @@
     </view>
   </view>
   <button class="submit" bindtap="submit" disabled="{{submitting}}">{{submitting ? '发布中…' : '发布岗位'}}</button>
-  <view class="hint">开发环境自动发布上线；生产环境需付费发布（feat/payment）</view>
+  <view class="hint">创建为草稿，提交后需付费发布（30/90 天单价由后台配置）</view>
 </view>

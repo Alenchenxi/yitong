@@ -34,15 +34,18 @@ Page({
     }
     this.setData({ submitting: true });
     try {
-      await createJobPost({
+      const post = await createJobPost({
         title: title.trim(),
         description: description.trim(),
         salary: salary.trim(),
         location: location.trim(),
         duration: duration as 'D30' | 'D90',
       });
-      wx.showToast({ title: '发布成功', icon: 'success' });
-      setTimeout(() => wx.navigateBack(), 800);
+      wx.showToast({ title: '创建成功', icon: 'success' });
+      // 创建为草稿，跳付费发布（feat/payment）
+      setTimeout(() => {
+        wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${duration}` });
+      }, 600);
     } catch {
       /* toast */
     } finally {

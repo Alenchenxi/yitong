@@ -1,0 +1,16 @@
+.page { padding: 24rpx; }
+.card { background: #fff; border-radius: 16rpx; padding: 32rpx; margin-bottom: 32rpx; }
+.title { font-size: 34rpx; font-weight: 600; margin-bottom: 20rpx; }
+.row { font-size: 28rpx; color: #555; margin-top: 12rpx; }
+.pay-btn {
+  background: linear-gradient(135deg, #ff6b8a, #ff4d6d) !important;
+  color: #fff !important;
+  border-radius: 48rpx !important;
+  font-size: 30rpx !important;
+}
+.pay-btn[disabled] { background: #ffb3c1 !important; }
+.hint { text-align: center; color: #999; font-size: 22rpx; margin-top: 20rpx; }
+.success { text-align: center; padding-top: 80rpx; }
+.success-emoji { font-size: 96rpx; }
+.success-text { font-size: 30rpx; color: #333; margin: 24rpx 0 40rpx; }
+.back-btn { background: #fff !important; color: #ff4d6d !important; border-radius: 48rpx !important; border: 1rpx solid #ffd0d8 !important; }

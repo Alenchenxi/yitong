@@ -8,4 +8,5 @@
 .status-PUBLISHED { color: #fff; background: #52c41a; }
 .status-EXPIRED, .status-TAKEN_DOWN { color: #999; }
 .dur { font-size: 22rpx; color: #999; margin-top: 8rpx; }
+.pay-btn { margin-top: 16rpx; background: #ff4d6d !important; color: #fff !important; border-radius: 32rpx !important; font-size: 24rpx !important; }
 .empty { text-align: center; color: #999; padding-top: 200rpx; font-size: 28rpx; }
