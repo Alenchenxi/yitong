@@ -21,6 +21,7 @@ model User {
   posts     Post[]
   comments  Comment[]
   userRoles UserRole[]
+  applications JobApplication[]
   @@map("users")
 }
 enum Role {
@@ -212,6 +213,7 @@ model JobApplication {
   status    AppStatus @default(PENDING)
   createdAt DateTime  @default(now()) @map("created_at")
   jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
   review    JobReview?
   @@unique([jobPostId, userId])
   @@map("job_applications")

@@ -6,6 +6,7 @@ import { WxModule } from './common/wx/wx.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ConfessionModule } from './modules/confession/confession.module';
+import { JobModule } from './modules/job/job.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { MerchantModule } from './modules/merchant/merchant.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
@@ -21,6 +22,7 @@ import { UploadModule } from './modules/upload/upload.module';
     UploadModule,
     ChatModule,
     MerchantModule,
+    JobModule,
     ConfessionModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],

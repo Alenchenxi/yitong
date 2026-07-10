@@ -8,7 +8,11 @@
     "pages/post-create/index",
     "pages/role-select/index",
     "pages/merchant/register/index",
-    "pages/merchant/profile/index"
+    "pages/merchant/profile/index",
+    "pages/job/detail/index",
+    "pages/job/post/index",
+    "pages/job/my-applications/index",
+    "pages/job/manage/index"
   ],
   "window": {
     "navigationBarTitleText": "燚桐",

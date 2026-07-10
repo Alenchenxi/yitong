@@ -1,0 +1,23 @@
+<view class="page">
+  <view class="app" wx:for="{{apps}}" wx:key="id">
+    <view class="app-head">
+      <text class="app-title">{{item.jobPostTitle}}</text>
+      <text class="app-status {{item.status}}">{{item.statusText}}</text>
+    </view>
+    <view class="app-time">{{item.createdAt}}</view>
+    <button wx:if="{{item.status === 'DONE'}}" class="review-btn" size="mini" data-id="{{item.id}}" bindtap="openReview">评价</button>
+  </view>
+  <view class="empty" wx:if="{{apps.length === 0}}">暂无报名记录</view>
+</view>
+
+<!-- 评价弹层 -->
+<view class="mask" wx:if="{{reviewAppId}}" bindtap="cancelReview">
+  <view class="picker" catchtap="">
+    <view class="picker-title">评价此次兼职</view>
+    <view class="stars">
+      <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" wx:for-item="n" class="star {{n <= rating ? 'on' : ''}}" data-r="{{n}}" bindtap="pickRating">{{n <= rating ? '★' : '☆'}}</text>
+    </view>
+    <textarea class="review-input" placeholder="说说你的体验…" value="{{reviewContent}}" bindinput="onReviewInput" maxlength="500" show-confirm-bar="{{false}}" />
+    <button class="send-btn" bindtap="submitReview" disabled="{{submitting}}">{{submitting ? '提交中…' : '提交评价'}}</button>
+  </view>
+</view>

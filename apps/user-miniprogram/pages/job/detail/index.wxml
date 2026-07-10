@@ -1,0 +1,35 @@
+<view class="page" wx:if="{{post}}">
+  <view class="title">{{post.title}}</view>
+  <view class="shop">{{post.merchantShopName}}</view>
+  <view class="meta">
+    <text class="salary">{{post.salary}}</text>
+    <text class="loc">{{post.location}} · {{post.duration === 'D90' ? '90天' : '30天'}}</text>
+  </view>
+  <view class="desc">{{post.description}}</view>
+
+  <button wx:if="{{!isMerchantOwner}}" class="apply-btn" bindtap="apply" disabled="{{applying}}">{{applying ? '报名中…' : '立即报名'}}</button>
+
+  <view class="apps" wx:if="{{isMerchantOwner}}">
+    <view class="section-title">报名管理 ({{apps.length}})</view>
+    <view class="app-item" wx:for="{{apps}}" wx:key="id">
+      <view class="app-head">
+        <text class="app-nick">{{item.userNickname}}</text>
+        <text class="app-status">{{item.statusText}}</text>
+      </view>
+      <view class="app-actions">
+        <button wx:if="{{item.status === 'PENDING'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="accept">录用</button>
+        <button wx:if="{{item.status === 'ACCEPTED'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="complete">标记完成</button>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{apps.length === 0}}">暂无报名</view>
+  </view>
+
+  <view class="reviews">
+    <view class="section-title">评价 ({{reviews.length}})</view>
+    <view class="r-item" wx:for="{{reviews}}" wx:key="id">
+      <view class="r-stars">{{'★'.repeat(item.rating)}}</view>
+      <view class="r-content">{{item.content}}</view>
+    </view>
+    <view class="empty" wx:if="{{reviews.length === 0}}">暂无评价</view>
+  </view>
+</view>
