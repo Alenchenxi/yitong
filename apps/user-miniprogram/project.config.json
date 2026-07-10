@@ -1,5 +1,5 @@
 {
-  "description": "燚桐用户端小程序（请在微信开发者工具中替换 appid 为你的用户端小程序 AppID）",
+  "description": "燚桐小程序（三端合一：用户/商家/管理员角色选择）",
   "miniprogramRoot": "./",
   "compileType": "miniprogram",
   "setting": {
@@ -8,7 +8,7 @@
     "postcss": true,
     "minified": false
   },
-  "appid": "touristappid",
-  "projectname": "yitong-user",
+  "appid": "wx6d60329e0114a09a",
+  "projectname": "yitong",
   "libVersion": "2.21.0"
 }
