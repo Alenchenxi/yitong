@@ -135,6 +135,31 @@ enum MatchStatus {
   CLOSED
 }
 
+// ===== 聊天（1v1，通用）=====
+// fromId/toId 为标识符：实名场景用 uid，树洞匿名场景用 anonId（不存 uid，匿名隔离）
+model ChatMessage {
+  id        String   @id @default(cuid())
+  fromId    String   @map("from_id")
+  toId      String   @map("to_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([fromId, toId, createdAt])
+  @@index([toId, createdAt])
+  @@map("chat_messages")
+}
+
+// 会话列表（每用户每对端一行；ownerId/peerId 同 ChatMessage 标识约定）
+model ChatSession {
+  id          String   @id @default(cuid())
+  ownerId     String   @map("owner_id")
+  peerId      String   @map("peer_id")
+  lastMessage String   @map("last_message")
+  lastAt      DateTime @default(now()) @map("last_at")
+  @@unique([ownerId, peerId])
+  @@index([ownerId, lastAt])
+  @@map("chat_sessions")
+}
+
 // ===== 兼职 =====
 model Merchant {
   id           String         @id @default(cuid())
