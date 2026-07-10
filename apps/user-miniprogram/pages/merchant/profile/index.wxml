@@ -1,0 +1,34 @@
+<view class="page" wx:if="{{merchant}}">
+  <view class="card">
+    <view class="shop">{{merchant.shopName}}</view>
+    <view class="status status-{{merchant.status}}">{{statusText}}</view>
+  </view>
+
+  <view class="info">
+    <view class="row" wx:if="{{!editing}}">
+      <text class="label">店铺名称</text><text class="value">{{merchant.shopName}}</text>
+    </view>
+    <view class="row" wx:else>
+      <text class="label">店铺名称</text>
+      <input class="input" value="{{shopName}}" data-field="shopName" bindinput="onInput" />
+    </view>
+
+    <view class="row">
+      <text class="label">营业执照号</text><text class="value">{{merchant.licenseNo}}</text>
+    </view>
+
+    <view class="row" wx:if="{{!editing}}">
+      <text class="label">联系电话</text><text class="value">{{merchant.contactPhone}}</text>
+    </view>
+    <view class="row" wx:else>
+      <text class="label">联系电话</text>
+      <input class="input" type="number" value="{{contactPhone}}" data-field="contactPhone" bindinput="onInput" maxlength="11" />
+    </view>
+  </view>
+
+  <button class="btn" wx:if="{{!editing}}" bindtap="toggleEdit">编辑资料</button>
+  <button class="btn" wx:else bindtap="save" disabled="{{saving}}">{{saving ? '保存中…' : '保存'}}</button>
+
+  <view class="tip" wx:if="{{merchant.status === 'APPROVED'}}">已通过审核，可到「我的-切换角色」切换为商家</view>
+  <view class="tip" wx:elif="{{merchant.status === 'PENDING'}}">审核中，请耐心等待</view>
+</view>

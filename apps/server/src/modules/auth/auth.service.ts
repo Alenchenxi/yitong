@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Role, type User } from '@prisma/client';
+import { MerchantStatus, Role, type User } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload, WxSessionResult } from './types';
@@ -99,6 +99,18 @@ export class AuthService {
         throw new BizException(
           10003,
           '该微信号未绑定管理员，无权以管理员身份登录',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
+
+    if (role === Role.MERCHANT) {
+      // 商家角色需 Merchant 审核通过（入驻由 feat/merchant，审核由 feat/admin）
+      const m = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+      if (!m || m.status !== MerchantStatus.APPROVED) {
+        throw new BizException(
+          60003,
+          '未入驻或商家资质未审核通过，无权以商家身份登录',
           HttpStatus.FORBIDDEN,
         );
       }

@@ -41,6 +41,10 @@ Page({
     wx.showToast({ title: '开发中', icon: 'none' });
   },
 
+  goMerchant() {
+    wx.navigateTo({ url: '/pages/merchant/register/index' });
+  },
+
   async switchRole(e: WechatMiniprogram.TouchEvent) {
     const role = e.currentTarget.dataset.role as 'user' | 'merchant' | 'admin';
     const app = getApp<AppInstance>();

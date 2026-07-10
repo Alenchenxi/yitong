@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ConfessionModule } from './modules/confession/confession.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
+import { MerchantModule } from './modules/merchant/merchant.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { UploadModule } from './modules/upload/upload.module';
 
@@ -19,6 +20,7 @@ import { UploadModule } from './modules/upload/upload.module';
     ModerationModule,
     UploadModule,
     ChatModule,
+    MerchantModule,
     ConfessionModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
