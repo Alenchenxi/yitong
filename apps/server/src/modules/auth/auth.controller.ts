@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpStatus, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { AuthService } from './auth.service';
@@ -14,12 +15,14 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 登录 5/min（API 规范 §8）
   @Post('wx-login')
   async wxLogin(@Body() dto: WxLoginDto) {
     return ok(await this.auth.wxLogin(dto));
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 刷新 5/min
   @Post('refresh')
   async refresh(@Body() dto: RefreshTokenDto) {
     return ok(await this.auth.refresh(dto.refreshToken));

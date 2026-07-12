@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
 import type { AuthenticatedRequest } from '../auth/types';
 import { Public } from '../auth/public.decorator';
@@ -22,6 +23,7 @@ export class TreeholeController {
 
   @Public()
   @UseGuards(AnonGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 匿名发帖 5/min
   @Post('posts')
   async createPost(@Body() dto: CreateAnonPostDto, @Req() req: Request) {
     const anonId = (req as AuthenticatedRequest).user!.uid;
@@ -37,6 +39,7 @@ export class TreeholeController {
 
   @Public()
   @UseGuards(AnonGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 匹配 10/min（API 规范 §8）
   @Post('match')
   async match(@Req() req: Request) {
     const anonId = (req as AuthenticatedRequest).user!.uid;

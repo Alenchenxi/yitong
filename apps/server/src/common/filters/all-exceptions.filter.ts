@@ -41,6 +41,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       exception instanceof Error ? exception.stack : String(exception),
     );
 
+    // 限流 429 -> 业务码 90001 + Retry-After（API 规范 §8）
+    if (status === HttpStatus.TOO_MANY_REQUESTS) {
+      res
+        .status(status)
+        .setHeader('Retry-After', '60')
+        .json({ code: 90001, message: '请求过于频繁，请稍后重试', traceId });
+      return;
+    }
+
     res.status(status).json({ code, message, traceId });
   }
 }

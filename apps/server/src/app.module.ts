@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { WxModule } from './common/wx/wx.module';
@@ -20,6 +21,7 @@ import { UploadModule } from './modules/upload/upload.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), // 全局：每 IP 100 req/min（API 规范 §8）
     PrismaModule,
     WxModule,
     AuthModule,
@@ -33,6 +35,9 @@ import { UploadModule } from './modules/upload/upload.module';
     AdminModule,
     ConfessionModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard }, // 限流先于鉴权
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+  ],
 })
 export class AppModule {}

@@ -1,5 +1,6 @@
 import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { UploadService } from './upload.service';
@@ -14,6 +15,7 @@ const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 export class UploadController {
   constructor(private readonly upload: UploadService) {}
 
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 上传 10/min
   @Post()
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_SIZE } }))
   async uploadFile(@UploadedFile() file: MulterFile | undefined) {

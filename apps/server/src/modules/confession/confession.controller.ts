@@ -8,6 +8,7 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
 import type { AuthenticatedRequest } from '../auth/types';
 import { ConfessionService } from './confession.service';
@@ -26,6 +27,7 @@ export class ConfessionController {
     return ok(await this.confession.listCircles());
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 发帖 5/min（API 规范 §8）
   @Post('circles/:id/posts')
   async createPost(
     @Param('id') id: string,
@@ -64,6 +66,7 @@ export class ConfessionController {
     return ok(await this.confession.toggleLike(uid, id));
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 评论 5/min
   @Post('posts/:id/comments')
   async createComment(
     @Param('id') id: string,
