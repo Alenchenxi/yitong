@@ -5,8 +5,8 @@ export interface JwtPayload {
   uid: string;
   role: string;
   openid: string;
-  /** token 用途：access 用于接口访问，refresh 用于刷新；校验时区分，防止互换 */
-  type?: 'access' | 'refresh';
+  /** token 用途：access 用于接口访问，refresh 用于刷新，anon 用于树洞匿名态；校验时区分，防止互换 */
+  type?: 'access' | 'refresh' | 'anon';
 }
 
 // 携带已认证用户的请求类型

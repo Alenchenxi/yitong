@@ -1,0 +1,4 @@
+.page { padding: 24rpx; }
+.textarea { width: 100%; min-height: 320rpx; background: #fff; border-radius: 16rpx; padding: 24rpx; font-size: 30rpx; line-height: 1.6; box-sizing: border-box; }
+.submit { margin-top: 32rpx; background: linear-gradient(135deg, #6b7fd7, #5566cc) !important; color: #fff !important; border-radius: 48rpx !important; font-size: 30rpx !important; }
+.submit[disabled] { background: #aab4e8 !important; }

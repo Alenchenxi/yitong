@@ -1,0 +1,22 @@
+<view class="page">
+  <block wx:if="{{!matched}}">
+    <view class="center">
+      <view class="emoji">🔮</view>
+      <view class="hint">随机匹配一位陌生人匿名聊天</view>
+      <button class="match-btn" bindtap="startMatch" disabled="{{matching}}">{{matching ? '匹配中…' : '开始匹配'}}</button>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="msgs">
+      <view class="msg {{item.mine ? 'mine' : 'peer'}}" wx:for="{{messages}}" wx:key="index">
+        <text>{{item.content}}</text>
+      </view>
+      <view class="empty-tip" wx:if="{{messages.length === 0}}">对方已连接，打个招呼吧</view>
+    </view>
+    <view class="bar">
+      <input class="input" placeholder="发消息…" value="{{input}}" bindinput="onInput" confirm-type="send" bindconfirm="send" adjust-position />
+      <button class="send-btn" size="mini" bindtap="send">发送</button>
+    </view>
+  </block>
+</view>

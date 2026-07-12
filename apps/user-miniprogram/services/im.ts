@@ -164,6 +164,11 @@ export function sendRoomMessage(roomId: string, content: string) {
   sendRaw({ type: 'room-msg', roomId, content });
 }
 
+// ws-only 1v1 发消息（不落库 HTTP，供树洞匿名聊用；实名岗位聊天用 sendIm 走 HTTP 落库）
+export function sendWsMessage(toId: string, content: string) {
+  sendRaw({ type: 'msg', toId, content });
+}
+
 // HTTP：历史 + 会话 + 换凭证
 export function getImToken(app: AppLike): Promise<ImCredential> {
   return request(app, '/chat/token', undefined, 'POST');

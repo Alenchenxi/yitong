@@ -1,0 +1,12 @@
+.page { padding: 0 24rpx 120rpx; }
+.topbar { display: flex; gap: 16rpx; padding: 16rpx 0; position: sticky; top: 0; background: #f5f6f8; z-index: 10; }
+.action { padding: 12rpx 24rpx; border-radius: 40rpx; background: #fff; font-size: 26rpx; color: #6b7fd7; }
+.list { margin-top: 8rpx; }
+.card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.anon { font-size: 24rpx; color: #6b7fd7; font-weight: 600; }
+.content { font-size: 30rpx; line-height: 1.6; color: #222; margin: 12rpx 0; white-space: pre-wrap; }
+.time { font-size: 22rpx; color: #aaa; }
+.tip { text-align: center; color: #999; font-size: 24rpx; padding: 24rpx 0; }
+.empty { text-align: center; padding-top: 200rpx; color: #999; }
+.empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
+.empty-text { font-size: 28rpx; }

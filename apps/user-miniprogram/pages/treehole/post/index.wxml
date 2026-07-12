@@ -1,0 +1,4 @@
+<view class="page">
+  <textarea class="textarea" placeholder="匿名说点什么…（不会暴露你的身份）" value="{{content}}" bindinput="onInput" maxlength="500" auto-height show-confirm-bar="{{false}}" />
+  <button class="submit" bindtap="submit" disabled="{{submitting}}">{{submitting ? '发布中…' : '匿名发布'}}</button>
+</view>

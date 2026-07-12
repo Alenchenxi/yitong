@@ -13,7 +13,10 @@
     "pages/job/post/index",
     "pages/job/my-applications/index",
     "pages/job/manage/index",
-    "pages/payment/index"
+    "pages/payment/index",
+    "pages/treehole/post/index",
+    "pages/treehole/chat/index",
+    "pages/treehole/party/index"
   ],
   "window": {
     "navigationBarTitleText": "燚桐",

@@ -1,0 +1,10 @@
+.page { min-height: 100vh; display: flex; flex-direction: column; }
+.msgs { flex: 1; padding: 24rpx; overflow-y: auto; }
+.msg { max-width: 75%; padding: 16rpx 24rpx; border-radius: 20rpx; margin-bottom: 16rpx; font-size: 28rpx; line-height: 1.5; word-break: break-word; }
+.msg.mine { background: #6b7fd7; color: #fff; margin-left: auto; }
+.msg.peer { background: #fff; color: #333; }
+.who { display: block; font-size: 20rpx; color: #999; margin-bottom: 4rpx; }
+.empty-tip { text-align: center; color: #999; font-size: 26rpx; padding: 48rpx 0; }
+.bar { display: flex; gap: 16rpx; padding: 16rpx 24rpx; background: #fff; border-top: 1rpx solid #eee; padding-bottom: calc(16rpx + env(safe-area-inset-bottom)); }
+.input { flex: 1; background: #f5f6f8; border-radius: 32rpx; padding: 14rpx 24rpx; font-size: 28rpx; }
+.send-btn { background: #6b7fd7 !important; color: #fff !important; border-radius: 32rpx !important; font-size: 26rpx !important; }
