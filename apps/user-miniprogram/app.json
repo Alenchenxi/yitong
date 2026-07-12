@@ -16,7 +16,8 @@
     "pages/payment/index",
     "pages/treehole/post/index",
     "pages/treehole/chat/index",
-    "pages/treehole/party/index"
+    "pages/treehole/party/index",
+    "pages/admin/index"
   ],
   "window": {
     "navigationBarTitleText": "燚桐",

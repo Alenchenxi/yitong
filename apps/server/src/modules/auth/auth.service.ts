@@ -47,6 +47,10 @@ export class AuthService {
         ...(dto.avatarUrl ? { avatarUrl: dto.avatarUrl } : {}),
       },
     });
+    // 封禁检查（soft delete）
+    if (user.deletedAt) {
+      throw new BizException(10005, '账号已被封禁', HttpStatus.FORBIDDEN);
+    }
     const role = await this.ensureRole(user.id, dto.role, wx.openid);
     return this.issueTokens(user, role);
   }

@@ -12,6 +12,7 @@ import { MerchantModule } from './modules/merchant/merchant.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { TreeholeModule } from './modules/treehole/treehole.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { UploadModule } from './modules/upload/upload.module';
     JobModule,
     PaymentModule,
     TreeholeModule,
+    AdminModule,
     ConfessionModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],

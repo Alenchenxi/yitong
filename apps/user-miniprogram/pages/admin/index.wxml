@@ -1,0 +1,60 @@
+<view class="page">
+  <view class="tabs">
+    <view class="tab {{tab === 'queue' ? 'active' : ''}}" data-tab="queue" bindtap="switchTab">审核队列</view>
+    <view class="tab {{tab === 'pricing' ? 'active' : ''}}" data-tab="pricing" bindtap="switchTab">单价配置</view>
+  </view>
+
+  <block wx:if="{{tab === 'queue' && queue}}">
+    <view class="section-title">商家入驻 ({{queue.merchants.length}})</view>
+    <view class="item" wx:for="{{queue.merchants}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.shopName}}</text>
+        <text class="item-sub">{{item.userNickname}} · {{item.status}}</text>
+      </view>
+      <view class="item-actions">
+        <button wx:if="{{item.status === 'PENDING'}}" size="mini" data-id="{{item.id}}" bindtap="approve">通过</button>
+        <button wx:if="{{item.status === 'PENDING' || item.status === 'APPROVED'}}" size="mini" data-id="{{item.id}}" bindtap="reject">拒绝</button>
+      </view>
+    </view>
+
+    <view class="section-title">表白墙帖子 ({{queue.posts.length}})</view>
+    <view class="item" wx:for="{{queue.posts}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.content}}</text>
+        <text class="item-sub">{{item.authorNickname}} · {{item.circleName}} · {{item.status}}</text>
+      </view>
+      <view class="item-actions">
+        <button wx:if="{{item.status === 'APPROVED'}}" size="mini" data-id="{{item.id}}" bindtap="takedown">下架</button>
+      </view>
+    </view>
+
+    <view class="section-title">树洞帖子 ({{queue.anonPosts.length}})</view>
+    <view class="item" wx:for="{{queue.anonPosts}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.content}}</text>
+        <text class="item-sub">{{item.anonId}} · {{item.status}}</text>
+      </view>
+      <view class="item-actions">
+        <button wx:if="{{item.status === 'APPROVED'}}" size="mini" data-id="{{item.id}}" bindtap="takedownAnon">下架</button>
+      </view>
+    </view>
+  </block>
+
+  <block wx:if="{{tab === 'pricing'}}">
+    <view class="item" wx:for="{{pricing}}" wx:key="duration">
+      <view class="item-main">
+        <text class="item-title">{{item.duration === 'D90' ? '90 天' : '30 天'}}</text>
+        <text class="item-sub">¥{{item.price}}</text>
+      </view>
+      <view class="item-actions">
+        <button wx:if="{{editingDuration !== item.duration}}" size="mini" data-dur="{{item.duration}}" data-price="{{item.price}}" bindtap="startEdit">编辑</button>
+      </view>
+    </view>
+    <view class="edit-row" wx:if="{{editingDuration}}">
+      <text>{{editingDuration === 'D90' ? '90天' : '30天'}} 单价：¥</text>
+      <input class="price-input" type="digit" value="{{editingPrice}}" bindinput="onPriceInput" />
+      <button size="mini" bindtap="savePrice">保存</button>
+      <button size="mini" bindtap="cancelEdit">取消</button>
+    </view>
+  </block>
+</view>

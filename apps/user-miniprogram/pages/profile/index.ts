@@ -45,6 +45,10 @@ Page({
     wx.navigateTo({ url: '/pages/merchant/register/index' });
   },
 
+  goAdmin() {
+    wx.navigateTo({ url: '/pages/admin/index' });
+  },
+
   async switchRole(e: WechatMiniprogram.TouchEvent) {
     const role = e.currentTarget.dataset.role as 'user' | 'merchant' | 'admin';
     const app = getApp<AppInstance>();
