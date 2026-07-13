@@ -41,6 +41,10 @@ Page({
     wx.showToast({ title: '开发中', icon: 'none' });
   },
 
+  goNotifications() {
+    wx.navigateTo({ url: '/pages/notifications/index' });
+  },
+
   goMerchant() {
     wx.navigateTo({ url: '/pages/merchant/register/index' });
   },

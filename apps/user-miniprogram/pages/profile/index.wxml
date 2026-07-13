@@ -22,6 +22,7 @@
   </view>
 
   <view class="menu">
+    <view class="menu-item" bindtap="goNotifications"><text>消息中心</text><text class="arrow">›</text></view>
     <view class="menu-item" bindtap="goMyPosts"><text>我的表白墙</text><text class="arrow">›</text></view>
     <view class="menu-item"><text>我的树洞</text><text class="arrow">›</text></view>
     <view class="menu-item"><text>我的兼职</text><text class="arrow">›</text></view>

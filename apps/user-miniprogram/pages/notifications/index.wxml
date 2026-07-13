@@ -1,0 +1,22 @@
+<view class="page">
+  <view class="topbar" wx:if="{{unreadCount > 0}}">
+    <text class="unread-text">{{unreadCount}} 条未读</text>
+    <view class="read-all" bindtap="readAll">全部已读</view>
+  </view>
+
+  <view class="list">
+    <view class="item {{item.read ? '' : 'unread'}}" wx:for="{{notifications}}" wx:key="id" data-id="{{item.id}}" bindtap="tapNotification">
+      <view class="dot" wx:if="{{!item.read}}"></view>
+      <view class="main">
+        <view class="title">{{item.title}}</view>
+        <view class="content">{{item.content}}</view>
+        <view class="time">{{item.timeText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{notifications.length === 0 && !loading}}">
+    <view class="empty-emoji">📭</view>
+    <view class="empty-text">暂无消息</view>
+  </view>
+</view>

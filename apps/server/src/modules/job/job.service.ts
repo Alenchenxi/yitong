@@ -9,6 +9,7 @@ import {
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { NotificationService, NotificationType } from '../notification/notification.service';
 import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto } from './dto/job.dto';
 
 // 错误码 4xxxx 兼职段（API 规范 §3）：40001 岗位不存在 / 40002 重复报名 / 40003 已下架 / 40004 状态非法流转 / 40005 不能评价
@@ -19,6 +20,7 @@ export class JobService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
+    private readonly notification: NotificationService,
   ) {}
 
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
@@ -88,7 +90,10 @@ export class JobService {
 
   // 用户报名：防重（@@unique），岗位须 PUBLISHED 且未过期
   async apply(uid: string, postId: string) {
-    const post = await this.prisma.jobPost.findUnique({ where: { id: postId } });
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      include: { merchant: { select: { userId: true } } },
+    });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     if (post.status !== JobPostStatus.PUBLISHED) throw new BizException(40003, '岗位已下架');
     if (post.expireAt.getTime() < Date.now()) throw new BizException(40003, '岗位已过期');
@@ -97,6 +102,17 @@ export class JobService {
         data: { jobPostId: postId, userId: uid, status: AppStatus.PENDING },
         include: { jobPost: { select: { title: true } } },
       });
+      // 通知商家有新报名
+      if (post.merchant) {
+        await this.notification.create({
+          userId: post.merchant.userId,
+          type: NotificationType.JOB_APPLY,
+          title: '新报名',
+          content: '有新用户报名了你的岗位',
+          targetType: 'job_post',
+          targetId: postId,
+        });
+      }
       return this.toAppVo(app);
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
@@ -141,6 +157,15 @@ export class JobService {
         throw new BizException(40004, `状态非法流转：${app.status} -> ACCEPTED`, HttpStatus.CONFLICT);
       }
       await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.ACCEPTED } });
+      // 通知报名者已录用
+      await this.notification.create({
+        userId: app.userId,
+        type: NotificationType.JOB_ACCEPT,
+        title: '报名已录用',
+        content: '商家已录用你的报名',
+        targetType: 'application',
+        targetId: appId,
+      });
     } else {
       // complete：商家（拥有岗位）或学生（app.userId）
       const isOwner = await this.ownsPost(uid, app.jobPost.id);
@@ -151,6 +176,15 @@ export class JobService {
         throw new BizException(40004, `状态非法流转：${app.status} -> DONE`, HttpStatus.CONFLICT);
       }
       await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.DONE } });
+      // 通知报名者岗位已完成
+      await this.notification.create({
+        userId: app.userId,
+        type: NotificationType.JOB_COMPLETE,
+        title: '岗位已完成',
+        content: '商家已标记完成，可以去评价',
+        targetType: 'application',
+        targetId: appId,
+      });
     }
     const refreshed = await this.prisma.jobApplication.findUnique({
       where: { id: appId },
