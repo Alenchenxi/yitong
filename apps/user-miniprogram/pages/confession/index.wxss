@@ -2,6 +2,15 @@
   padding: 0 24rpx 120rpx;
 }
 
+.announce-bar {
+  background: #fff8e6;
+  border-radius: 12rpx;
+  padding: 12rpx 20rpx;
+  margin-bottom: 16rpx;
+}
+.announce-swiper { height: 40rpx; }
+.announce-text { font-size: 24rpx; color: #d48806; line-height: 40rpx; }
+
 .tabs {
   display: flex;
   white-space: nowrap;

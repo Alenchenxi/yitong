@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../app';
 import { listCircles, feed, toggleLike, type Circle, type PostVo } from '../../services/confession';
+import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
 
 interface PageData {
   circles: Circle[];
@@ -7,8 +8,9 @@ interface PageData {
   nextCursor: string | null;
   hasMore: boolean;
   loading: boolean;
-  activeTab: 'feed' | string; // 'feed' = 发现，其它为 circleId
+  activeTab: 'feed' | string;
   activeCircleName: string;
+  announcements: AnnouncementVo[];
 }
 
 Page({
@@ -20,19 +22,19 @@ Page({
     loading: false,
     activeTab: 'feed',
     activeCircleName: '发现',
+    announcements: [],
   } as PageData,
 
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    // 首次加载：拉圈子 + 发现流
     if (this.data.circles.length === 0) {
       this.loadCircles();
       this.reloadFeed();
     } else {
-      // 从详情/发帖返回时刷新当前列表（点赞状态可能变）
       this.reloadFeed();
     }
+    listAnnouncements().then((a) => this.setData({ announcements: a })).catch(() => {});
   },
 
   async loadCircles() {

@@ -15,6 +15,7 @@ import { ModerationModule } from './modules/moderation/moderation.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { TreeholeModule } from './modules/treehole/treehole.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AnnouncementModule } from './modules/announcement/announcement.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { UploadModule } from './modules/upload/upload.module';
 
@@ -34,6 +35,7 @@ import { UploadModule } from './modules/upload/upload.module';
     PaymentModule,
     TreeholeModule,
     AdminModule,
+    AnnouncementModule,
     NotificationModule,
     ConfessionModule,
   ],

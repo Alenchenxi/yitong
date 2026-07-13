@@ -1,4 +1,13 @@
 <view class="page">
+  <!-- 公告栏 -->
+  <view class="announce-bar" wx:if="{{announcements.length > 0}}">
+    <swiper class="announce-swiper" autoplay circular interval="4000" vertical>
+      <swiper-item wx:for="{{announcements}}" wx:key="id">
+        <text class="announce-text">📢 {{item.title}}：{{item.content}}</text>
+      </swiper-item>
+    </swiper>
+  </view>
+
   <!-- 顶部横滑圈子 Tab -->
   <scroll-view class="tabs" scroll-x enhanced show-scrollbar="{{false}}">
     <view class="tab {{activeTab === 'feed' ? 'active' : ''}}" data-id="feed" data-name="发现" bindtap="switchTab">发现</view>

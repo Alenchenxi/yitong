@@ -13,8 +13,15 @@ import {
   type PricingVo,
   type DashboardStats,
 } from '../../services/admin';
+import {
+  listAllAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  type AdminAnnouncementVo,
+} from '../../services/announcement';
 
-type Tab = 'queue' | 'pricing' | 'stats';
+type Tab = 'queue' | 'stats' | 'pricing' | 'announce';
 
 Page({
   data: {
@@ -22,9 +29,12 @@ Page({
     queue: null as AdminQueueVo | null,
     pricing: [] as PricingVo[],
     stats: null as DashboardStats | null,
+    announcements: [] as AdminAnnouncementVo[],
     loading: false,
     editingDuration: '',
     editingPrice: '',
+    annTitle: '',
+    annContent: '',
   },
 
   async onShow() {
@@ -42,6 +52,9 @@ Page({
       } else if (this.data.tab === 'pricing') {
         const pricing = await getPricing();
         this.setData({ pricing });
+      } else if (this.data.tab === 'announce') {
+        const announcements = await listAllAnnouncements();
+        this.setData({ announcements });
       } else {
         const stats = await getStats();
         this.setData({ stats });
@@ -165,5 +178,43 @@ Page({
 
   cancelEdit() {
     this.setData({ editingDuration: '', editingPrice: '' });
+  },
+
+  // 公告管理
+  onAnnInput(e: WechatMiniprogram.Input) {
+    const field = e.currentTarget.dataset.field as 'annTitle' | 'annContent';
+    this.setData({ [field]: e.detail.value } as Record<string, string>);
+  },
+
+  async createAnn() {
+    if (!this.data.annTitle.trim() || !this.data.annContent.trim()) {
+      wx.showToast({ title: '请填标题和内容', icon: 'none' });
+      return;
+    }
+    await createAnnouncement({ title: this.data.annTitle.trim(), content: this.data.annContent.trim() });
+    wx.showToast({ title: '已发布', icon: 'success' });
+    this.setData({ annTitle: '', annContent: '' });
+    this.load();
+  },
+
+  async toggleAnn(e: WechatMiniprogram.TouchEvent) {
+    const { id, active } = e.currentTarget.dataset as { id: string; active: boolean };
+    await updateAnnouncement(id, { active: !active });
+    this.load();
+  },
+
+  async deleteAnn(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    wx.showModal({
+      title: '删除公告',
+      content: '确定删除？',
+      success: async (r) => {
+        if (r.confirm) {
+          await deleteAnnouncement(id);
+          wx.showToast({ title: '已删除', icon: 'success' });
+          this.load();
+        }
+      },
+    });
   },
 });
