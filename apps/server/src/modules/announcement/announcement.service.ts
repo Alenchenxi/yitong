@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BizException } from '../../common/exceptions/biz.exception';
 import type { CreateAnnouncementDto } from './dto/announcement.dto';
 import type { UpdateAnnouncementDto } from './dto/announcement.dto';
 
@@ -45,6 +46,8 @@ export class AnnouncementService {
   }
 
   async update(id: string, dto: UpdateAnnouncementDto) {
+    const existing = await this.prisma.announcement.findUnique({ where: { id } });
+    if (!existing) throw new BizException(90005, '公告不存在', HttpStatus.NOT_FOUND);
     const a = await this.prisma.announcement.update({
       where: { id },
       data: {
@@ -57,6 +60,8 @@ export class AnnouncementService {
   }
 
   async delete(id: string) {
+    const existing = await this.prisma.announcement.findUnique({ where: { id } });
+    if (!existing) throw new BizException(90005, '公告不存在', HttpStatus.NOT_FOUND);
     await this.prisma.announcement.delete({ where: { id } });
     return { deleted: true };
   }
