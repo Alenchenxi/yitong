@@ -28,6 +28,13 @@ export class JobController {
     return ok(await this.job.listPosts(uid, q));
   }
 
+  // 推荐（须在 /:id 之前声明，避免被参数路由吞掉）
+  @Get('job-posts/recommend')
+  async recommend(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.recommend(uid));
+  }
+
   @Get('job-posts/:id')
   async detail(@Param('id') id: string) {
     return ok(await this.job.getPost(id));

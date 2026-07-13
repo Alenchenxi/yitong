@@ -54,6 +54,10 @@ export function listJobPosts(cursor?: string, mine = false) {
   return request<JobListResult>({ url: `/job-posts${qs}` });
 }
 
+export function recommendJobs() {
+  return request<JobPostVo[]>({ url: '/job-posts/recommend' });
+}
+
 export function getJobPost(id: string) {
   return request<JobPostVo>({ url: `/job-posts/${id}` });
 }

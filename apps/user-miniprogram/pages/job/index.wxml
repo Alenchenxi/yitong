@@ -7,6 +7,12 @@
     </block>
   </view>
 
+  <!-- 用户角色显示 tab -->
+  <view class="tabs" wx:if="{{!isMerchant}}">
+    <view class="tab {{tab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchTab">推荐</view>
+    <view class="tab {{tab === 'all' ? 'active' : ''}}" data-tab="all" bindtap="switchTab">全部</view>
+  </view>
+
   <view class="list" wx:if="{{posts.length > 0}}">
     <view class="card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view class="title">{{item.title}}</view>
@@ -18,11 +24,11 @@
       <view class="dur">{{item.duration === 'D90' ? '90 天' : '30 天'}}</view>
     </view>
     <view class="tip" wx:if="{{loading}}">加载中...</view>
-    <view class="tip" wx:elif="{{!hasMore}}">没有更多了</view>
+    <view class="tip" wx:elif="{{tab === 'all' && !hasMore}}">没有更多了</view>
   </view>
 
   <view class="empty" wx:elif="{{!loading}}">
     <view class="empty-emoji">💼</view>
-    <view class="empty-text">暂无兼职岗位</view>
+    <view class="empty-text">{{tab === 'recommend' ? '暂无推荐，先去报名几个岗位吧' : '暂无兼职岗位'}}</view>
   </view>
 </view>

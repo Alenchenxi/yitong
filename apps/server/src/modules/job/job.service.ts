@@ -224,6 +224,65 @@ export class JobService {
     return reviews.map((r) => this.toReviewVo(r, r.application.userId));
   }
 
+  // 推荐：基于用户最近报名的 location + 多样性打分；无历史退回按时间倒序 top 20
+  async recommend(uid: string) {
+    const RECENT_LIMIT = 5;
+    const RESULT_LIMIT = 20;
+
+    // 1) 取用户最近 5 个报名（含岗位 location）
+    const recentApps = await this.prisma.jobApplication.findMany({
+      where: { userId: uid },
+      orderBy: { createdAt: 'desc' },
+      take: RECENT_LIMIT,
+      include: { jobPost: { select: { location: true, merchantId: true } } },
+    });
+
+    // 2) 候选池：PUBLISHED 且未过期，按时间倒序，限 100 条（避免全表扫）
+    const candidates = await this.prisma.jobPost.findMany({
+      where: {
+        status: JobPostStatus.PUBLISHED,
+        expireAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: { merchant: { select: { shopName: true } } },
+    });
+
+    // 3) 无报名历史 → 退回按时间倒序 top RESULT_LIMIT
+    if (recentApps.length === 0) {
+      return candidates.slice(0, RESULT_LIMIT).map((p) => this.toPostVo(p));
+    }
+
+    // 4) 打分
+    const recentLocations = new Set(
+      recentApps.map((a) => a.jobPost?.location).filter((l): l is string => !!l),
+    );
+    const recentCities = new Set(
+      recentApps
+        .map((a) => a.jobPost?.location?.split(/[\s,，]/)[0])
+        .filter((c): c is string => !!c && c.length > 0),
+    );
+    const recentMerchants = new Set(
+      recentApps.map((a) => a.jobPost?.merchantId).filter((m): m is string => !!m),
+    );
+
+    const scored = candidates.map((p) => {
+      let score = 0;
+      if (recentLocations.has(p.location)) score += 5;
+      const city = p.location.split(/[\s,，]/)[0];
+      if (city && recentCities.has(city)) score += 3;
+      if (!recentMerchants.has(p.merchantId)) score += 1;
+      return { post: p, score };
+    });
+
+    // 5) 按 score desc + createdAt desc 排序，取 top RESULT_LIMIT
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.post.createdAt.getTime() - a.post.createdAt.getTime();
+    });
+    return scored.slice(0, RESULT_LIMIT).map((s) => this.toPostVo(s.post));
+  }
+
   private async assertOwnsPost(uid: string, postId: string) {
     if (!(await this.ownsPost(uid, postId))) {
       throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);

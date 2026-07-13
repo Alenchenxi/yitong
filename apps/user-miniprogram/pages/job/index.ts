@@ -1,8 +1,11 @@
 import type { AppInstance } from '../../app';
-import { listJobPosts, type JobPostVo } from '../../services/job';
+import { listJobPosts, recommendJobs, type JobPostVo } from '../../services/job';
+
+type Tab = 'recommend' | 'all';
 
 Page({
   data: {
+    tab: 'recommend' as Tab,
     posts: [] as JobPostVo[],
     nextCursor: null as string | null,
     hasMore: true,
@@ -14,13 +17,39 @@ Page({
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const isMerchant = app.globalData.currentRole === 'MERCHANT';
-    this.setData({ isMerchant });
-    if (this.data.posts.length === 0) this.reload();
+    // 商家视角不显示 tab（仅看自己发的岗位）
+    this.setData({ isMerchant, tab: isMerchant ? 'all' : 'recommend' });
+    this.reload();
+  },
+
+  switchTab(e: WechatMiniprogram.TouchEvent) {
+    const t = (e.currentTarget.dataset.tab as Tab) ?? 'recommend';
+    if (t === this.data.tab) return;
+    this.setData({ tab: t });
+    this.reload();
   },
 
   async reload() {
     this.setData({ posts: [], nextCursor: null, hasMore: true });
-    await this.loadMore();
+    if (this.data.tab === 'recommend') {
+      await this.loadRecommend();
+    } else {
+      await this.loadMore();
+    }
+  },
+
+  async loadRecommend() {
+    if (this.data.loading) return;
+    this.setData({ loading: true });
+    try {
+      const list = await recommendJobs();
+      this.setData({ posts: list, hasMore: false, nextCursor: null });
+    } catch {
+      /* toast */
+    } finally {
+      this.setData({ loading: false });
+      wx.stopPullDownRefresh();
+    }
   },
 
   async loadMore() {
@@ -46,7 +75,7 @@ Page({
   },
 
   onReachBottom() {
-    this.loadMore();
+    if (this.data.tab === 'all') this.loadMore();
   },
 
   goDetail(e: WechatMiniprogram.TouchEvent) {
