@@ -8,15 +8,20 @@ import {
   takedownAnonPost,
   getPricing,
   updatePricing,
+  getStats,
   type AdminQueueVo,
   type PricingVo,
+  type DashboardStats,
 } from '../../services/admin';
+
+type Tab = 'queue' | 'pricing' | 'stats';
 
 Page({
   data: {
-    tab: 'queue' as 'queue' | 'pricing',
+    tab: 'queue' as Tab,
     queue: null as AdminQueueVo | null,
     pricing: [] as PricingVo[],
+    stats: null as DashboardStats | null,
     loading: false,
     editingDuration: '',
     editingPrice: '',
@@ -34,9 +39,12 @@ Page({
       if (this.data.tab === 'queue') {
         const queue = await getQueue();
         this.setData({ queue });
-      } else {
+      } else if (this.data.tab === 'pricing') {
         const pricing = await getPricing();
         this.setData({ pricing });
+      } else {
+        const stats = await getStats();
+        this.setData({ stats });
       }
     } catch {
       /* toast */
@@ -46,11 +54,10 @@ Page({
   },
 
   switchTab(e: WechatMiniprogram.TouchEvent) {
-    this.setData({ tab: e.currentTarget.dataset.tab as 'queue' | 'pricing' });
+    this.setData({ tab: e.currentTarget.dataset.tab as Tab });
     this.load();
   },
 
-  // 审核操作：showModal editable 获取理由
   async approve(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
     wx.showModal({

@@ -1,9 +1,11 @@
 <view class="page">
   <view class="tabs">
     <view class="tab {{tab === 'queue' ? 'active' : ''}}" data-tab="queue" bindtap="switchTab">审核队列</view>
-    <view class="tab {{tab === 'pricing' ? 'active' : ''}}" data-tab="pricing" bindtap="switchTab">单价配置</view>
+    <view class="tab {{tab === 'stats' ? 'active' : ''}}" data-tab="stats" bindtap="switchTab">数据看板</view>
+    <view class="tab {{tab === 'pricing' ? 'active' : ''}}" data-tab="pricing" bindtap="switchTab">单价</view>
   </view>
 
+  <!-- 审核队列 -->
   <block wx:if="{{tab === 'queue' && queue}}">
     <view class="section-title">商家入驻 ({{queue.merchants.length}})</view>
     <view class="batch-btn" wx:if="{{queue.merchants.length > 0}}" bindtap="batchApprove">批量通过待审核</view>
@@ -50,6 +52,38 @@
     <view class="empty-tip" wx:if="{{queue.reports.length === 0}}">暂无举报</view>
   </block>
 
+  <!-- 数据看板 -->
+  <block wx:if="{{tab === 'stats' && stats}}">
+    <view class="section-title">总览</view>
+    <view class="stats-grid">
+      <view class="stat-card"><text class="stat-num">{{stats.overview.totalUsers}}</text><text class="stat-label">总用户</text></view>
+      <view class="stat-card"><text class="stat-num">{{stats.overview.totalMerchants}}</text><text class="stat-label">商家</text></view>
+      <view class="stat-card"><text class="stat-num">{{stats.overview.totalPosts}}</text><text class="stat-label">表白墙帖</text></view>
+      <view class="stat-card"><text class="stat-num">{{stats.overview.totalAnonPosts}}</text><text class="stat-label">树洞帖</text></view>
+      <view class="stat-card"><text class="stat-num">{{stats.overview.publishedJobPosts}}</text><text class="stat-label">在招岗位</text></view>
+      <view class="stat-card"><text class="stat-num">{{stats.overview.totalApplications}}</text><text class="stat-label">总报名</text></view>
+    </view>
+
+    <view class="section-title">今日</view>
+    <view class="stats-grid">
+      <view class="stat-card"><text class="stat-num">{{stats.today.newUsers}}</text><text class="stat-label">新用户</text></view>
+      <view class="stat-card"><text class="stat-num">{{stats.today.newPosts}}</text><text class="stat-label">新表白帖</text></view>
+      <view class="stat-card"><text class="stat-num">{{stats.today.newAnonPosts}}</text><text class="stat-label">新树洞帖</text></view>
+      <view class="stat-card"><text class="stat-num">{{stats.today.newApplications}}</text><text class="stat-label">新报名</text></view>
+    </view>
+
+    <view class="section-title">近 7 天趋势</view>
+    <view class="trend-table">
+      <view class="trend-head">
+        <text>日期</text><text>发帖</text><text>报名</text><text>新用户</text>
+      </view>
+      <view class="trend-row" wx:for="{{stats.trend}}" wx:key="date">
+        <text>{{item.date}}</text><text>{{item.posts}}</text><text>{{item.applications}}</text><text>{{item.newUsers}}</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- 单价配置 -->
   <block wx:if="{{tab === 'pricing'}}">
     <view class="item" wx:for="{{pricing}}" wx:key="duration">
       <view class="item-main">

@@ -62,6 +62,30 @@ export function takedownAnonPost(id: string, reason?: string) {
 export function getPricing() {
   return request<PricingVo[]>({ url: '/admin/pricing' });
 }
+
+export interface DashboardStats {
+  overview: {
+    totalUsers: number;
+    totalMerchants: number;
+    totalPosts: number;
+    totalAnonPosts: number;
+    totalJobPosts: number;
+    publishedJobPosts: number;
+    totalApplications: number;
+    totalReviews: number;
+  };
+  today: {
+    newPosts: number;
+    newAnonPosts: number;
+    newApplications: number;
+    newUsers: number;
+  };
+  trend: Array<{ date: string; posts: number; applications: number; newUsers: number }>;
+}
+
+export function getStats() {
+  return request<DashboardStats>({ url: '/admin/stats' });
+}
 export function updatePricing(data: { duration: 'D30' | 'D90'; price: number }) {
   return request({ url: '/admin/pricing', method: 'PUT', data });
 }
