@@ -7,6 +7,10 @@
   </view>
   <view class="desc">{{post.description}}</view>
 
+  <view class="fav-row">
+    <text class="fav-btn {{post.favorited ? 'faved' : ''}}" bindtap="onFavorite">{{post.favorited ? '★' : '☆'}} {{post.favorited ? '已收藏' : '收藏'}}</text>
+  </view>
+
   <button wx:if="{{!isMerchantOwner}}" class="apply-btn" bindtap="apply" disabled="{{applying}}">{{applying ? '报名中…' : '立即报名'}}</button>
 
   <view class="apps" wx:if="{{isMerchantOwner}}">

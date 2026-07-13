@@ -1,0 +1,26 @@
+<view class="page">
+  <view class="tabs">
+    <view class="tab {{tab === 'all' ? 'active' : ''}}" data-tab="all" bindtap="switchTab">全部 ({{total}})</view>
+    <view class="tab {{tab === 'post' ? 'active' : ''}}" data-tab="post" bindtap="switchTab">表白墙</view>
+    <view class="tab {{tab === 'anon_post' ? 'active' : ''}}" data-tab="anon_post" bindtap="switchTab">树洞</view>
+    <view class="tab {{tab === 'job_post' ? 'active' : ''}}" data-tab="job_post" bindtap="switchTab">兼职</view>
+  </view>
+
+  <view class="list" wx:if="{{items.length > 0}}">
+    <view class="item" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" data-type="{{item.targetType}}" bindtap="goTarget">
+      <view class="item-main">
+        <text class="type-tag">{{typeLabel(item.targetType)}}</text>
+        <text class="item-id">id: {{item.targetId}}</text>
+        <text class="item-time">{{item.createdAt}}</text>
+      </view>
+      <view class="item-actions">
+        <button size="mini" type="warn" data-id="{{item.id}}" catchtap="onUnfavorite">取消收藏</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:elif="{{!loading}}">
+    <view class="empty-emoji">⭐</view>
+    <view class="empty-text">暂无收藏</view>
+  </view>
+</view>

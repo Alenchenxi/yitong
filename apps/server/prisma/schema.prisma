@@ -22,6 +22,7 @@ model User {
   comments  Comment[]
   userRoles UserRole[]
   applications JobApplication[]
+  favorites Favorite[]
   @@map("users")
 }
 enum Role {
@@ -198,6 +199,19 @@ model Announcement {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   @@map("announcements")
+}
+
+// ===== 收藏（跨内容类型：表白墙帖 post / 树洞帖 anon_post / 兼职岗位 job_post）=====
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  targetType String   @map("target_type") // 'post' | 'anon_post' | 'job_post'
+  targetId   String   @map("target_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id])
+  @@unique([userId, targetType, targetId])
+  @@index([userId, targetType, createdAt])
+  @@map("favorites")
 }
 
 // ===== 兼职 =====

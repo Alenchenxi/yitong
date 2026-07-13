@@ -25,6 +25,7 @@
       <text>♥ {{post.likeCount}}</text>
       <text>💬 {{post.commentCount}}</text>
       <text class="report-link" bindtap="onReport">举报</text>
+      <text class="fav-link {{post.favorited ? 'faved' : ''}}" bindtap="onFavorite">{{post.favorited ? '★' : '☆'}} 收藏</text>
     </view>
   </view>
 

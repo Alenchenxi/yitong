@@ -45,6 +45,10 @@ Page({
     wx.navigateTo({ url: '/pages/notifications/index' });
   },
 
+  goFavorites() {
+    wx.navigateTo({ url: '/pages/favorites/index' });
+  },
+
   goMerchant() {
     wx.navigateTo({ url: '/pages/merchant/register/index' });
   },

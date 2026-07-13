@@ -43,6 +43,8 @@
   margin-top: 20rpx; padding-top: 16rpx; border-top: 1rpx solid #f0f0f0;
 }
 .report-link { margin-left: auto; color: #ccc; font-size: 22rpx; }
+.fav-link { color: #ccc; font-size: 22rpx; margin-right: 16rpx; }
+.fav-link.faved { color: #ff4d6d; }
 
 .comments {
   background: #fff;

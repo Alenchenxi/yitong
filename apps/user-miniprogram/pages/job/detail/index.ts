@@ -9,6 +9,7 @@ import {
   type JobReviewVo,
   type JobAppVo,
 } from '../../../services/job';
+import { toggleFavorite } from '../../../services/favorite';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '待处理',
@@ -89,6 +90,17 @@ Page({
       /* toast */
     } finally {
       this.setData({ transitioning: '' });
+    }
+  },
+
+  async onFavorite() {
+    if (!this.data.post) return;
+    try {
+      const r = await toggleFavorite({ targetType: 'job_post', targetId: this.data.post.id });
+      this.setData({ 'post.favorited': r.favorited });
+      wx.showToast({ title: r.favorited ? '已收藏' : '已取消', icon: 'success' });
+    } catch {
+      wx.showToast({ title: '操作失败', icon: 'none' });
     }
   },
 });

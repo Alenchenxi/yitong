@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../app';
 import { getPost, listComments, createComment, toggleLike, reportPost, type PostVo, type CommentVo } from '../../services/confession';
+import { toggleFavorite } from '../../services/favorite';
 import { formatTime } from '../../utils/auth';
 
 type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three' };
@@ -171,6 +172,18 @@ Page({
       await toggleLike(p.id);
     } catch {
       this.setData({ 'post.liked': p.liked, 'post.likeCount': p.likeCount });
+    }
+  },
+
+  async onFavorite() {
+    if (!this.data.post) return;
+    const p = this.data.post;
+    try {
+      const r = await toggleFavorite({ targetType: 'post', targetId: p.id });
+      this.setData({ 'post.favorited': r.favorited });
+      wx.showToast({ title: r.favorited ? '已收藏' : '已取消', icon: 'success' });
+    } catch {
+      wx.showToast({ title: '操作失败', icon: 'none' });
     }
   },
 
