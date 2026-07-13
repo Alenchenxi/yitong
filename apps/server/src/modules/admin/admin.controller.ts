@@ -4,6 +4,7 @@ import { ok } from '../../common/dto/api-response';
 import { AdminGuard } from '../auth/admin.guard';
 import type { AuthenticatedRequest } from '../auth/types';
 import { AdminService } from './admin.service';
+import { BatchMerchantDto } from './dto/batch-merchant.dto';
 import { UpdatePricingDto } from './dto/update-pricing.dto';
 
 // 管理员接口：全局 JwtAuthGuard 校验 access token + @UseGuards(AdminGuard) 校验 role=ADMIN
@@ -18,23 +19,37 @@ export class AdminController {
   }
 
   @Post('merchants/:id/approve')
-  async approveMerchant(@Param('id') id: string) {
-    return ok(await this.admin.approveMerchant(id));
+  async approveMerchant(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    const reason = (req.body as { reason?: string })?.reason;
+    return ok(await this.admin.approveMerchant(id, uid, reason));
   }
 
   @Post('merchants/:id/reject')
-  async rejectMerchant(@Param('id') id: string) {
-    return ok(await this.admin.rejectMerchant(id));
+  async rejectMerchant(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    const reason = (req.body as { reason?: string })?.reason;
+    return ok(await this.admin.rejectMerchant(id, uid, reason));
+  }
+
+  @Post('merchants/batch')
+  async batchMerchants(@Body() dto: BatchMerchantDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.batchMerchants(dto.ids, dto.action, uid, dto.reason));
   }
 
   @Post('posts/:id/takedown')
-  async takedownPost(@Param('id') id: string) {
-    return ok(await this.admin.takedownPost(id));
+  async takedownPost(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    const reason = (req.body as { reason?: string })?.reason;
+    return ok(await this.admin.takedownPost(id, uid, reason));
   }
 
   @Post('anon-posts/:id/takedown')
-  async takedownAnonPost(@Param('id') id: string) {
-    return ok(await this.admin.takedownAnonPost(id));
+  async takedownAnonPost(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    const reason = (req.body as { reason?: string })?.reason;
+    return ok(await this.admin.takedownAnonPost(id, uid, reason));
   }
 
   @Get('pricing')

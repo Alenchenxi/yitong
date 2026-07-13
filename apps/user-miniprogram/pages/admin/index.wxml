@@ -6,6 +6,7 @@
 
   <block wx:if="{{tab === 'queue' && queue}}">
     <view class="section-title">商家入驻 ({{queue.merchants.length}})</view>
+    <view class="batch-btn" wx:if="{{queue.merchants.length > 0}}" bindtap="batchApprove">批量通过待审核</view>
     <view class="item" wx:for="{{queue.merchants}}" wx:key="id">
       <view class="item-main">
         <text class="item-title">{{item.shopName}}</text>
@@ -38,6 +39,15 @@
         <button wx:if="{{item.status === 'APPROVED'}}" size="mini" data-id="{{item.id}}" bindtap="takedownAnon">下架</button>
       </view>
     </view>
+
+    <view class="section-title">举报记录 ({{queue.reports.length}})</view>
+    <view class="item" wx:for="{{queue.reports}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.reason}}</text>
+        <text class="item-sub">{{item.targetType}} · {{item.createdAt}}</text>
+      </view>
+    </view>
+    <view class="empty-tip" wx:if="{{queue.reports.length === 0}}">暂无举报</view>
   </block>
 
   <block wx:if="{{tab === 'pricing'}}">

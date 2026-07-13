@@ -3,6 +3,7 @@ import {
   getQueue,
   approveMerchant,
   rejectMerchant,
+  batchMerchants,
   takedownPost,
   takedownAnonPost,
   getPricing,
@@ -49,28 +50,90 @@ Page({
     this.load();
   },
 
+  // 审核操作：showModal editable 获取理由
   async approve(e: WechatMiniprogram.TouchEvent) {
-    await approveMerchant(e.currentTarget.dataset.id as string);
-    wx.showToast({ title: '已通过', icon: 'success' });
-    this.load();
+    const id = e.currentTarget.dataset.id as string;
+    wx.showModal({
+      title: '审核通过',
+      editable: true,
+      placeholderText: '审核理由（可选）',
+      success: async (r) => {
+        if (r.confirm) {
+          await approveMerchant(id, r.content || undefined);
+          wx.showToast({ title: '已通过', icon: 'success' });
+          this.load();
+        }
+      },
+    });
   },
 
   async reject(e: WechatMiniprogram.TouchEvent) {
-    await rejectMerchant(e.currentTarget.dataset.id as string);
-    wx.showToast({ title: '已拒绝', icon: 'success' });
-    this.load();
+    const id = e.currentTarget.dataset.id as string;
+    wx.showModal({
+      title: '审核拒绝',
+      editable: true,
+      placeholderText: '拒绝理由（可选）',
+      success: async (r) => {
+        if (r.confirm) {
+          await rejectMerchant(id, r.content || undefined);
+          wx.showToast({ title: '已拒绝', icon: 'success' });
+          this.load();
+        }
+      },
+    });
+  },
+
+  async batchApprove() {
+    const pendingIds = this.data.queue?.merchants
+      .filter((m) => m.status === 'PENDING')
+      .map((m) => m.id) ?? [];
+    if (pendingIds.length === 0) {
+      wx.showToast({ title: '无待审核商家', icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '批量通过',
+      content: `确定批量通过 ${pendingIds.length} 个待审核商家？`,
+      success: async (r) => {
+        if (r.confirm) {
+          await batchMerchants(pendingIds, 'approve');
+          wx.showToast({ title: '批量通过成功', icon: 'success' });
+          this.load();
+        }
+      },
+    });
   },
 
   async takedown(e: WechatMiniprogram.TouchEvent) {
-    await takedownPost(e.currentTarget.dataset.id as string);
-    wx.showToast({ title: '已下架', icon: 'success' });
-    this.load();
+    const id = e.currentTarget.dataset.id as string;
+    wx.showModal({
+      title: '下架帖子',
+      editable: true,
+      placeholderText: '下架理由（可选）',
+      success: async (r) => {
+        if (r.confirm) {
+          await takedownPost(id, r.content || undefined);
+          wx.showToast({ title: '已下架', icon: 'success' });
+          this.load();
+        }
+      },
+    });
   },
 
   async takedownAnon(e: WechatMiniprogram.TouchEvent) {
-    await takedownAnonPost(e.currentTarget.dataset.id as string);
-    wx.showToast({ title: '已下架', icon: 'success' });
-    this.load();
+    const id = e.currentTarget.dataset.id as string;
+    wx.showModal({
+      title: '下架匿名帖',
+      editable: true,
+      placeholderText: '下架理由（可选）',
+      success: async (r) => {
+        if (r.confirm) {
+          await takedownAnonPost(id, r.content || undefined);
+          wx.showToast({ title: '已下架', icon: 'success' });
+          this.load();
+        }
+      },
+    });
   },
 
   startEdit(e: WechatMiniprogram.TouchEvent) {
