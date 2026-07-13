@@ -1,0 +1,8 @@
+.page { padding: 24rpx; }
+.item { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.head { display: flex; justify-content: space-between; align-items: center; }
+.job { font-size: 28rpx; font-weight: 600; color: #222; flex: 1; }
+.stars { color: #ffb400; font-size: 24rpx; }
+.content { font-size: 28rpx; color: #555; margin: 12rpx 0; line-height: 1.5; }
+.meta { font-size: 22rpx; color: #aaa; }
+.empty { text-align: center; padding-top: 200rpx; color: #999; font-size: 28rpx; }

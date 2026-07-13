@@ -57,6 +57,65 @@ export class MerchantService {
     return this.toVo(updated);
   }
 
+  // 商家评价列表（跨所有岗位）
+  async getMerchantReviews(uid: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+
+    const posts = await this.prisma.jobPost.findMany({
+      where: { merchantId: merchant.id },
+      select: { id: true, title: true },
+    });
+    const postMap = new Map(posts.map((p) => [p.id, p.title]));
+    if (posts.length === 0) return [];
+
+    const reviews = await this.prisma.jobReview.findMany({
+      where: { application: { jobPostId: { in: posts.map((p) => p.id) } } },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        application: {
+          select: { userId: true, user: { select: { nickname: true } }, jobPostId: true },
+        },
+      },
+    });
+    return reviews.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      content: r.content,
+      createdAt: r.createdAt.toISOString(),
+      jobPostTitle: postMap.get(r.application.jobPostId) ?? '',
+      reviewerNickname: r.application.user?.nickname ?? '',
+    }));
+  }
+
+  // 商家订单记录（付费发布历史）
+  async getMerchantOrders(uid: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+
+    const [orders, posts] = await Promise.all([
+      this.prisma.paymentOrder.findMany({
+        where: { merchantId: merchant.id },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.jobPost.findMany({
+        where: { merchantId: merchant.id },
+        select: { id: true, title: true },
+      }),
+    ]);
+    const postMap = new Map(posts.map((p) => [p.id, p.title]));
+    return orders.map((o) => ({
+      id: o.id,
+      jobPostId: o.jobPostId,
+      jobPostTitle: postMap.get(o.jobPostId) ?? '',
+      duration: o.duration,
+      amount: o.amount.toString(),
+      status: o.status,
+      paidAt: o.paidAt?.toISOString() ?? null,
+      createdAt: o.createdAt.toISOString(),
+    }));
+  }
+
   // 审核通过 helper：置 APPROVED + 给用户加 MERCHANT 角色。供 feat/admin 调用。
   async approveInternal(uid: string) {
     const m = await this.prisma.merchant.findUnique({ where: { userId: uid } });

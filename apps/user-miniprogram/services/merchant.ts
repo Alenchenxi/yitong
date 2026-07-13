@@ -25,3 +25,31 @@ export function getMerchantProfile() {
 export function updateMerchantProfile(data: { shopName?: string; contactPhone?: string }) {
   return request<MerchantVo>({ url: '/merchant/profile', method: 'PUT', data });
 }
+
+export interface MerchantReviewVo {
+  id: string;
+  rating: number;
+  content: string;
+  createdAt: string;
+  jobPostTitle: string;
+  reviewerNickname: string;
+}
+
+export interface MerchantOrderVo {
+  id: string;
+  jobPostId: string;
+  jobPostTitle: string;
+  duration: 'D30' | 'D90';
+  amount: string;
+  status: 'PENDING' | 'PAID' | 'REFUNDED' | 'CLOSED';
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export function getMerchantReviews() {
+  return request<MerchantReviewVo[]>({ url: '/merchant/reviews' });
+}
+
+export function getMerchantOrders() {
+  return request<MerchantOrderVo[]>({ url: '/merchant/orders' });
+}

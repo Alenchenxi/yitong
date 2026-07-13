@@ -27,4 +27,16 @@ export class MerchantController {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.merchant.updateProfile(uid, dto));
   }
+
+  @Get('reviews')
+  async reviews(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.merchant.getMerchantReviews(uid));
+  }
+
+  @Get('orders')
+  async orders(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.merchant.getMerchantOrders(uid));
+  }
 }

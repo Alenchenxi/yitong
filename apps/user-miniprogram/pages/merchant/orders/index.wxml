@@ -1,0 +1,14 @@
+<view class="page">
+  <view class="item" wx:for="{{orders}}" wx:key="id">
+    <view class="head">
+      <text class="job">{{item.jobPostTitle}}</text>
+      <text class="amount">¥{{item.amount}}</text>
+    </view>
+    <view class="meta">
+      <text>{{item.duration === 'D90' ? '90天' : '30天'}}</text>
+      <text class="status status-{{item.status}}">{{item.statusText}}</text>
+    </view>
+    <view class="time">{{item.createdAt}}</view>
+  </view>
+  <view class="empty" wx:if="{{orders.length === 0 && !loading}}">暂无订单</view>
+</view>

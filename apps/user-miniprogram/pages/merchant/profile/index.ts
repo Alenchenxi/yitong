@@ -67,4 +67,12 @@ Page({
       this.setData({ saving: false });
     }
   },
+
+  goReviews() {
+    wx.navigateTo({ url: '/pages/merchant/reviews/index' });
+  },
+
+  goOrders() {
+    wx.navigateTo({ url: '/pages/merchant/orders/index' });
+  },
 });

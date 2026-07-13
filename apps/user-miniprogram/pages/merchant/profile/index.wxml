@@ -31,4 +31,9 @@
 
   <view class="tip" wx:if="{{merchant.status === 'APPROVED'}}">已通过审核，可到「我的-切换角色」切换为商家</view>
   <view class="tip" wx:elif="{{merchant.status === 'PENDING'}}">审核中，请耐心等待</view>
+
+  <view class="extra-actions" wx:if="{{merchant.status === 'APPROVED'}}">
+    <view class="action-btn" bindtap="goReviews">评价管理</view>
+    <view class="action-btn" bindtap="goOrders">订单记录</view>
+  </view>
 </view>
