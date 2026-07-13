@@ -120,8 +120,21 @@ model AnonymousPost {
   images    String[]
   status    PostStatus @default(PENDING)
   createdAt DateTime   @default(now()) @map("created_at")
+  likeCount Int        @default(0) @map("like_count")
+  likes    AnonPostLike[]
   @@index([createdAt])
   @@map("anonymous_posts")
+}
+
+// 树洞匿名帖点赞（postId+anonId 唯一，支持去重/取消）
+model AnonPostLike {
+  id        String         @id @default(cuid())
+  postId    String         @map("post_id")
+  anonId    String         @map("anon_id")
+  createdAt DateTime       @default(now()) @map("created_at")
+  post      AnonymousPost  @relation(fields: [postId], references: [id])
+  @@unique([postId, anonId])
+  @@map("anon_post_likes")
 }
 model ChatMatch {
   id        String      @id @default(cuid())

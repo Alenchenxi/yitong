@@ -3,6 +3,7 @@ import {
   hasAnonToken,
   getAnonymousToken,
   listPosts,
+  toggleAnonPostLike,
   type AnonPostVo,
 } from '../../services/treehole';
 import { formatTime } from '../../utils/auth';
@@ -72,5 +73,26 @@ Page({
   },
   goParty() {
     wx.navigateTo({ url: '/pages/treehole/party/index' });
+  },
+
+  async onLike(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    const idx = this.data.posts.findIndex((p) => p.id === id);
+    if (idx < 0) return;
+    const post = this.data.posts[idx];
+    const nextLiked = !post.liked;
+    const nextCount = post.likeCount + (nextLiked ? 1 : -1);
+    this.setData({
+      [`posts[${idx}].liked`]: nextLiked,
+      [`posts[${idx}].likeCount`]: Math.max(0, nextCount),
+    });
+    try {
+      await toggleAnonPostLike(id);
+    } catch {
+      this.setData({
+        [`posts[${idx}].liked`]: post.liked,
+        [`posts[${idx}].likeCount`]: post.likeCount,
+      });
+    }
   },
 });

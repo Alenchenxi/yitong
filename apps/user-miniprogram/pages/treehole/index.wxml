@@ -1,4 +1,27 @@
-<view class="container">
-  <view class="title">树洞</view>
-  <view class="placeholder">匿名动态 + 匹配聊天（Phase 1.5 接入）</view>
+<view class="page">
+  <view class="topbar">
+    <view class="action" bindtap="goPost">发动态</view>
+    <view class="action" bindtap="goMatch">随机匹配</view>
+    <view class="action" bindtap="goParty">派对房</view>
+  </view>
+
+  <view class="list" wx:if="{{posts.length > 0}}">
+    <view class="card" wx:for="{{posts}}" wx:key="id">
+      <view class="anon">🌙 {{item.anonShort}}</view>
+      <view class="content">{{item.content}}</view>
+      <view class="row">
+        <text class="time">{{item.timeText}}</text>
+        <view class="like {{item.liked ? 'liked' : ''}}" data-id="{{item.id}}" catchtap="onLike">
+          {{item.liked ? '♥' : '♡'}} {{item.likeCount || ''}}
+        </view>
+      </view>
+    </view>
+    <view class="tip" wx:if="{{loading}}">加载中...</view>
+    <view class="tip" wx:elif="{{!hasMore}}">没有更多了</view>
+  </view>
+
+  <view class="empty" wx:elif="{{!loading}}">
+    <view class="empty-emoji">🌙</view>
+    <view class="empty-text">树洞空空的，说点什么吧</view>
+  </view>
 </view>

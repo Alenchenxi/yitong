@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma, PostStatus } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -185,6 +185,20 @@ export class ConfessionService {
       this.prisma.comment.count({ where: { postId } }),
     ]);
     return { list: list.map((c) => this.toCommentVo(c)), total, page, pageSize };
+  }
+
+  // 举报帖子 -> 创建 ModerationRecord（管理员在审核队列可见）
+  async reportPost(uid: string, postId: string, reason?: string) {
+    const post = await this.prisma.post.findUnique({ where: { id: postId } });
+    if (!post) throw new BizException(20003, '帖子不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'post',
+        targetId: postId,
+        reason: reason ?? '用户举报',
+      },
+    });
+    return { reported: true };
   }
 
   private async queryPosts(

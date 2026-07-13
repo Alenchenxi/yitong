@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../app';
-import { getPost, listComments, createComment, toggleLike, type PostVo, type CommentVo } from '../../services/confession';
+import { getPost, listComments, createComment, toggleLike, reportPost, type PostVo, type CommentVo } from '../../services/confession';
 import { formatTime } from '../../utils/auth';
 
 type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three' };
@@ -172,5 +172,22 @@ Page({
     } catch {
       this.setData({ 'post.liked': p.liked, 'post.likeCount': p.likeCount });
     }
+  },
+
+  onReport() {
+    wx.showModal({
+      title: '举报',
+      content: '确定举报此帖子？',
+      success: async (r) => {
+        if (r.confirm) {
+          try {
+            await reportPost(this.postId);
+            wx.showToast({ title: '已举报', icon: 'success' });
+          } catch {
+            /* toast */
+          }
+        }
+      },
+    });
   },
 });

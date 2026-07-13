@@ -24,6 +24,7 @@
     <view class="stats">
       <text>♥ {{post.likeCount}}</text>
       <text>💬 {{post.commentCount}}</text>
+      <text class="report-link" bindtap="onReport">举报</text>
     </view>
   </view>
 

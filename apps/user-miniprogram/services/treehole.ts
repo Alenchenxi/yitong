@@ -5,6 +5,8 @@ export interface AnonPostVo {
   anonId: string;
   content: string;
   images: string[];
+  likeCount: number;
+  liked: boolean;
   createdAt: string;
 }
 
@@ -113,6 +115,10 @@ export function createPost(data: { content: string; images?: string[] }): Promis
 
 export function matchAnon(): Promise<MatchResp> {
   return anonRequest({ url: '/treehole/match', method: 'POST' });
+}
+
+export function toggleAnonPostLike(postId: string): Promise<{ liked: boolean; likeCount: number }> {
+  return anonRequest({ url: `/treehole/posts/${postId}/like`, method: 'POST' });
 }
 
 export function joinParty(): Promise<PartyResp> {

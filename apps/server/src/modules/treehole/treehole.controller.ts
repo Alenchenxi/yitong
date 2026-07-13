@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
@@ -33,8 +33,18 @@ export class TreeholeController {
   @Public()
   @UseGuards(AnonGuard)
   @Get('posts')
-  async listPosts(@Query('cursor') cursor?: string, @Query('limit') limit?: string) {
-    return ok(await this.treehole.listPosts(cursor, limit ? Number(limit) : undefined));
+  async listPosts(@Query('cursor') cursor?: string, @Query('limit') limit?: string, @Req() req?: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listPosts(anonId, cursor, limit ? Number(limit) : undefined));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('posts/:id/like')
+  async toggleLike(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.toggleAnonPostLike(anonId, id));
   }
 
   @Public()

@@ -16,6 +16,7 @@ import { CommentsQueryDto } from './dto/comments-query.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { FeedQueryDto } from './dto/feed-query.dto';
+import { ReportDto } from './dto/report.dto';
 
 // 路由无统一前缀：/circles 与 /posts 直挂 /api/v1（与 API 规范 §6.2 对齐）
 @Controller()
@@ -64,6 +65,12 @@ export class ConfessionController {
   async like(@Param('id') id: string, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.confession.toggleLike(uid, id));
+  }
+
+  @Post('posts/:id/report')
+  async report(@Param('id') id: string, @Body() dto: ReportDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.reportPost(uid, id, dto.reason));
   }
 
   @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 评论 5/min

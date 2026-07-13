@@ -85,6 +85,10 @@ export function toggleLike(postId: string) {
   return request<LikeResult>({ url: `/posts/${postId}/like`, method: 'POST' });
 }
 
+export function reportPost(postId: string, reason?: string) {
+  return request({ url: `/posts/${postId}/report`, method: 'POST', data: { reason } });
+}
+
 // 评论
 export function createComment(postId: string, content: string) {
   return request<CommentVo>({

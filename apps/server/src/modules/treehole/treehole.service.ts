@@ -59,7 +59,7 @@ export class TreeholeService {
     return this.toVo(post);
   }
 
-  async listPosts(cursor?: string, limit = 20) {
+  async listPosts(anonId: string, cursor?: string, limit = 20) {
     const where: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED };
     if (cursor) {
       const t = new Date(cursor);
@@ -69,6 +69,7 @@ export class TreeholeService {
       where,
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
+      include: { likes: { where: { anonId }, select: { id: true }, take: 1 } },
     });
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
@@ -97,8 +98,28 @@ export class TreeholeService {
   // 派对房：返回房间号 + IM 凭证（客户端 ws join roomId 群聊）
   async joinParty(anonId: string) {
     const imCredential = await this.im.getImCredential(anonId);
-    // MVP：固定一个公共派对房；P1 可扩展多房/主题房
     return { roomId: 'treehole-party-main', imCredential };
+  }
+
+  // 匿名点赞 toggle（去重/取消）
+  async toggleAnonPostLike(anonId: string, postId: string) {
+    const post = await this.prisma.anonymousPost.findUnique({ where: { id: postId } });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    const existing = await this.prisma.anonPostLike.findUnique({
+      where: { postId_anonId: { postId, anonId } },
+    });
+    if (existing) {
+      await this.prisma.$transaction([
+        this.prisma.anonPostLike.delete({ where: { id: existing.id } }),
+        this.prisma.anonymousPost.update({ where: { id: postId }, data: { likeCount: { decrement: 1 } } }),
+      ]);
+      return { liked: false, likeCount: Math.max(0, post.likeCount - 1) };
+    }
+    await this.prisma.$transaction([
+      this.prisma.anonPostLike.create({ data: { postId, anonId } }),
+      this.prisma.anonymousPost.update({ where: { id: postId }, data: { likeCount: { increment: 1 } } }),
+    ]);
+    return { liked: true, likeCount: post.likeCount + 1 };
   }
 
   private randomNickname(): string {
@@ -113,13 +134,17 @@ export class TreeholeService {
     content: string;
     images: string[];
     status: PostStatus;
+    likeCount: number;
     createdAt: Date;
+    likes?: { id: string }[];
   }) {
     return {
       id: p.id,
       anonId: p.anonId,
       content: p.content,
       images: p.images,
+      likeCount: p.likeCount,
+      liked: (p.likes?.length ?? 0) > 0,
       createdAt: p.createdAt.toISOString(),
     };
   }
