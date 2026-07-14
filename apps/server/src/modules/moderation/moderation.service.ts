@@ -22,6 +22,9 @@ export class ModerationService {
   async checkText(content: string, openid?: string): Promise<void> {
     if (!content) return;
     if (this.wxToken.isMock()) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new BizException(90003, '微信凭证未配置，内容安全不可用');
+      }
       this.logger.warn('moderation: WX credentials not set; skip text check (dev mock)');
       return;
     }
@@ -60,6 +63,9 @@ export class ModerationService {
   async checkImage(imageUrl: string): Promise<void> {
     if (!imageUrl) return;
     if (this.wxToken.isMock()) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new BizException(90003, '微信凭证未配置，内容安全不可用');
+      }
       this.logger.warn('moderation: WX credentials not set; skip image check (dev mock)');
       return;
     }

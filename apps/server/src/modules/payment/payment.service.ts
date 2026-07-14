@@ -4,7 +4,6 @@ import {
   JobDuration,
   JobPostStatus,
   PayStatus,
-  Prisma,
 } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -38,6 +37,11 @@ export class PaymentService {
     const pricing = await this.prisma.pricingConfig.findUnique({ where: { duration: dto.duration } });
     if (!pricing) throw new BizException(50004, '该档位单价未配置', HttpStatus.CONFLICT);
 
+    if (process.env.NODE_ENV === 'production') {
+      this.assertWxPayReady();
+      throw new BizException(90003, '微信支付真实下单未接入，拒绝发布岗位', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     const order = await this.prisma.paymentOrder.create({
       data: {
         merchantId: merchant.id,
@@ -48,23 +52,8 @@ export class PaymentService {
       },
     });
 
-    if (process.env.NODE_ENV !== 'production') {
-      // dev：mock 支付完成，直接发布
-      this.logger.warn('dev mode: mock pay & publish');
-      await this.fulfillOrder(order.id);
-      const refreshed = await this.prisma.paymentOrder.findUnique({ where: { id: order.id } });
-      return {
-        orderId: order.id,
-        amount: refreshed!.amount.toString(),
-        status: refreshed!.status,
-        jobPostId: post.id,
-        jobPostStatus: JobPostStatus.PUBLISHED,
-      };
-    }
-
-    // TODO(prod): 调微信支付 V3 JSAPI 下单，存 wxPrepayId，返回 wxPayParams 供小程序拉起支付
-    // 当前未配商户证书，回退 mock（生产前必须实现真实下单）
-    this.logger.warn('WX Pay credentials not set; falling back to mock publish');
+    // dev：mock 支付完成，直接发布
+    this.logger.warn('dev mode: mock pay & publish');
     await this.fulfillOrder(order.id);
     const refreshed = await this.prisma.paymentOrder.findUnique({ where: { id: order.id } });
     return {
@@ -98,6 +87,10 @@ export class PaymentService {
   // 微信支付回调（prod）：验签 -> fulfillOrder。dev 不触发。
   // 真实验签需解析 V3 回调 header + 证书验签，待商户证书配置后实现；当前按 orderId 直达（仅适合 dev）。
   async notify(body: unknown) {
+    if (process.env.NODE_ENV === 'production') {
+      this.assertWxPayReady();
+      throw new BizException(90003, '微信支付回调验签未接入，拒绝处理回调', HttpStatus.SERVICE_UNAVAILABLE);
+    }
     // TODO(prod): 用 WX_PAY_API_V3_KEY 解密 resource，校验签名，取 out_trade_no
     const data = body as { outTradeNo?: string; orderId?: string };
     const orderId = data.outTradeNo ?? data.orderId ?? '';
@@ -132,5 +125,19 @@ export class PaymentService {
       paidAt: order.paidAt?.toISOString() ?? null,
       createdAt: order.createdAt.toISOString(),
     };
+  }
+
+  private assertWxPayReady() {
+    const required = [
+      'WX_PAY_MCH_ID',
+      'WX_PAY_API_V3_KEY',
+      'WX_PAY_CERT_SERIAL',
+      'WX_PAY_PRIVATE_KEY_PATH',
+      'WX_PAY_NOTIFY_URL',
+    ];
+    const missing = required.filter((key) => !this.config.get<string>(key));
+    if (missing.length > 0) {
+      throw new BizException(90003, `微信支付凭证未配置：${missing.join(', ')}`, HttpStatus.SERVICE_UNAVAILABLE);
+    }
   }
 }

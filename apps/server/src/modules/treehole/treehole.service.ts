@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { MatchStatus, PostStatus, Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
@@ -31,10 +32,12 @@ export class TreeholeService {
       profile = await this.prisma.anonymousProfile.create({
         data: {
           userId: uid,
-          anonId: `anon_${uid.slice(-6)}_${Date.now().toString(36)}`,
+          anonId: this.generateAnonId(),
           nickname: this.randomNickname(),
         },
       });
+    } else if (this.isLegacyUnsafeAnonId(uid, profile.anonId)) {
+      profile = await this.rotateUnsafeAnonId(profile.id, profile.anonId);
     }
     const anonToken = await this.jwt.signAsync(
       { anonId: profile.anonId, type: 'anon' },
@@ -126,6 +129,34 @@ export class TreeholeService {
     const a = NICK_A[Math.floor(Math.random() * NICK_A.length)];
     const b = NICK_B[Math.floor(Math.random() * NICK_B.length)];
     return `${a}${b}`;
+  }
+
+  private generateAnonId(): string {
+    return `anon_${randomUUID().replace(/-/g, '')}`;
+  }
+
+  private isLegacyUnsafeAnonId(uid: string, anonId: string): boolean {
+    return anonId.startsWith(`anon_${uid.slice(-6)}_`);
+  }
+
+  private async rotateUnsafeAnonId(profileId: string, oldAnonId: string) {
+    const nextAnonId = this.generateAnonId();
+    const profile = await this.prisma.$transaction(async (tx) => {
+      await tx.anonymousPost.updateMany({ where: { anonId: oldAnonId }, data: { anonId: nextAnonId } });
+      await tx.anonPostLike.updateMany({ where: { anonId: oldAnonId }, data: { anonId: nextAnonId } });
+      await tx.chatMatch.updateMany({ where: { anonIdA: oldAnonId }, data: { anonIdA: nextAnonId } });
+      await tx.chatMatch.updateMany({ where: { anonIdB: oldAnonId }, data: { anonIdB: nextAnonId } });
+      await tx.chatMessage.updateMany({ where: { fromId: oldAnonId }, data: { fromId: nextAnonId } });
+      await tx.chatMessage.updateMany({ where: { toId: oldAnonId }, data: { toId: nextAnonId } });
+      await tx.chatSession.updateMany({ where: { ownerId: oldAnonId }, data: { ownerId: nextAnonId } });
+      await tx.chatSession.updateMany({ where: { peerId: oldAnonId }, data: { peerId: nextAnonId } });
+      return tx.anonymousProfile.update({
+        where: { id: profileId },
+        data: { anonId: nextAnonId },
+      });
+    });
+    this.logger.warn(`rotated legacy unsafe anonId for profile ${profileId}`);
+    return profile;
   }
 
   private toVo(p: {
