@@ -2,6 +2,8 @@
   <view class="logo">燚桐</view>
   <view class="subtitle">选择角色进入</view>
 
+  <view class="referral-tip" wx:if="{{referralTip}}">🎁 {{referralTip}}</view>
+
   <view class="roles">
     <view
       class="role-card {{pendingRole === 'user' ? 'pending' : ''}}"

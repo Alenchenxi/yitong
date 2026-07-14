@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="card code-card" wx:if="{{!loading}}">
+    <view class="label">我的邀请码</view>
+    <view class="code">{{code || '生成中...'}}</view>
+    <view class="hint">好友注册时输入此码，即记为你邀请</view>
+    <button class="copy-btn" bindtap="onCopyCode">复制邀请码</button>
+    <button class="share-btn" open-type="share">分享给好友</button>
+  </view>
+
+  <view class="card stats-card">
+    <view class="stats-num">{{inviteCount}}</view>
+    <view class="stats-label">已邀请人数</view>
+  </view>
+
+  <view class="card list-card" wx:if="{{records.length > 0}}">
+    <view class="list-title">邀请记录</view>
+    <view class="record" wx:for="{{records}}" wx:key="refereeId">
+      <view class="r-avatar">
+        <image wx:if="{{item.refereeAvatarUrl}}" class="avatar" src="{{item.refereeAvatarUrl}}" mode="aspectFill"></image>
+        <view wx:else class="avatar avatar-ph">{{item.refereeNickname[0] || '?'}}</view>
+      </view>
+      <view class="r-main">
+        <view class="r-nick">{{item.refereeNickname}}</view>
+        <view class="r-time">{{item.createdAt}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:elif="{{!loading && inviteCount === 0}}">
+    <view class="empty-emoji">🎁</view>
+    <view class="empty-text">还没有邀请记录，快去分享吧</view>
+  </view>
+</view>

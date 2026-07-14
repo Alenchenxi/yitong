@@ -21,7 +21,8 @@
     "pages/treehole/party/index",
     "pages/admin/index",
     "pages/notifications/index",
-    "pages/favorites/index"
+    "pages/favorites/index",
+    "pages/referral/index"
   ],
   "window": {
     "navigationBarTitleText": "燚桐",

@@ -49,6 +49,10 @@ Page({
     wx.navigateTo({ url: '/pages/favorites/index' });
   },
 
+  goReferral() {
+    wx.navigateTo({ url: '/pages/referral/index' });
+  },
+
   goMerchant() {
     wx.navigateTo({ url: '/pages/merchant/register/index' });
   },

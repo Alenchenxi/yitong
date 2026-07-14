@@ -16,4 +16,9 @@ export class WxLoginDto {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
+
+  /** 邀请码（分享拉新）：仅新用户首次注册生效 */
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }

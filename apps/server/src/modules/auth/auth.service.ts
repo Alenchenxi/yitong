@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { MerchantStatus, Role, type User } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ReferralService } from '../referral/referral.service';
 import type { JwtPayload, WxSessionResult } from './types';
 import type { WxLoginDto } from './dto/wx-login.dto';
 
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly referral: ReferralService,
   ) {}
 
   async wxLogin(dto: WxLoginDto) {
@@ -34,6 +36,9 @@ export class AuthService {
     if (wx.errcode) {
       throw new BizException(10004, `微信登录失败: ${wx.errmsg ?? '未知错误'}`);
     }
+    // 先判断是否新用户（用于邀请码关联；老用户不重复记邀请）
+    const existed = await this.prisma.user.findUnique({ where: { openid: wx.openid }, select: { id: true } });
+    const isNew = !existed;
     const user = await this.prisma.user.upsert({
       where: { openid: wx.openid },
       create: {
@@ -50,6 +55,10 @@ export class AuthService {
     // 封禁检查（soft delete）
     if (user.deletedAt) {
       throw new BizException(10005, '账号已被封禁', HttpStatus.FORBIDDEN);
+    }
+    // 新用户且带邀请码 -> 建立邀请关联（异步不阻断登录）
+    if (isNew && dto.referralCode) {
+      await this.referral.onUserRegistered(user.id, dto.referralCode).catch((e) => this.logger.error(`referral onUserRegistered failed: ${e}`));
     }
     const role = await this.ensureRole(user.id, dto.role, wx.openid);
     return this.issueTokens(user, role);

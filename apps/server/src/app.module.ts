@@ -18,6 +18,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AnnouncementModule } from './modules/announcement/announcement.module';
 import { FavoriteModule } from './modules/favorite/favorite.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { ReferralModule } from './modules/referral/referral.module';
 import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
@@ -39,6 +40,7 @@ import { UploadModule } from './modules/upload/upload.module';
     AnnouncementModule,
     FavoriteModule,
     NotificationModule,
+    ReferralModule,
     ConfessionModule,
   ],
   providers: [

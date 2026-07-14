@@ -57,10 +57,12 @@ function persist(app: AppLike, data: LoginResp) {
   });
 }
 
-// 角色选择登录：wx.login -> /auth/wx-login { code, role }
+// 角色选择登录：wx.login -> /auth/wx-login { code, role, referralCode? }
+// referralCode 仅首次新用户注册生效（分享拉新落地）
 export function loginWithRole(
   role: 'user' | 'merchant' | 'admin',
   app: AppLike,
+  referralCode?: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     wx.login({
@@ -71,7 +73,7 @@ export function loginWithRole(
           return;
         }
         try {
-          const data = await post<LoginResp>(app, '/auth/wx-login', { code: lr.code, role }, false);
+          const data = await post<LoginResp>(app, '/auth/wx-login', { code: lr.code, role, referralCode }, false);
           persist(app, data);
           resolve();
         } catch (e) {

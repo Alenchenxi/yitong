@@ -1,7 +1,22 @@
 import type { AppInstance } from '../../app';
 
 Page({
-  data: { loading: false, pendingRole: '' },
+  data: {
+    loading: false,
+    pendingRole: '',
+    referralCode: '',
+    referralTip: '',
+  },
+
+  onLoad(options: { referralCode?: string }) {
+    // 分享落地：携带 referralCode（仅对新用户首次注册生效）
+    if (options?.referralCode) {
+      this.setData({
+        referralCode: options.referralCode,
+        referralTip: `你通过邀请码 ${options.referralCode} 进入`,
+      });
+    }
+  },
 
   async chooseRole(e: WechatMiniprogram.TouchEvent) {
     const role = e.currentTarget.dataset.role as 'user' | 'merchant' | 'admin';
@@ -9,7 +24,7 @@ Page({
     this.setData({ loading: true, pendingRole: role });
     const app = getApp<AppInstance>();
     try {
-      await app.loginWithRole(role);
+      await app.loginWithRole(role, this.data.referralCode || undefined);
       wx.switchTab({ url: '/pages/confession/index' });
     } catch {
       // toast 已在 loginWithRole 内

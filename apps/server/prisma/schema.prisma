@@ -23,6 +23,9 @@ model User {
   userRoles UserRole[]
   applications JobApplication[]
   favorites Favorite[]
+  referralCode ReferralCode?
+  referralsGiven ReferralRecord[] @relation("ReferrerRel")
+  referralGot    ReferralRecord? @relation("RefereeRel")
   @@map("users")
 }
 enum Role {
@@ -212,6 +215,29 @@ model Favorite {
   @@unique([userId, targetType, targetId])
   @@index([userId, targetType, createdAt])
   @@map("favorites")
+}
+
+// ===== 分享拉新 =====
+// 每个用户唯一邀请码；记录谁邀请了谁（每个被邀请人只能被记录一次）
+model ReferralCode {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  code      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+  @@map("referral_codes")
+}
+
+model ReferralRecord {
+  id           String   @id @default(cuid())
+  referrerId   String   @map("referrer_id")
+  refereeId    String   @unique @map("referee_id")
+  referralCode String   @map("referral_code")
+  createdAt    DateTime @default(now()) @map("created_at")
+  referrer     User     @relation("ReferrerRel", fields: [referrerId], references: [id])
+  referee      User     @relation("RefereeRel", fields: [refereeId], references: [id])
+  @@index([referrerId, createdAt])
+  @@map("referral_records")
 }
 
 // ===== 兼职 =====

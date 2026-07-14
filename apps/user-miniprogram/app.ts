@@ -23,8 +23,8 @@ App({
     }
   },
 
-  async loginWithRole(role: 'user' | 'merchant' | 'admin') {
-    await loginWithRoleUtil(role, this);
+  async loginWithRole(role: 'user' | 'merchant' | 'admin', referralCode?: string) {
+    await loginWithRoleUtil(role, this, referralCode);
     this.globalData.loginReady = true;
   },
 
@@ -55,7 +55,7 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
     apiBase: string;
     loginReady: boolean;
   };
-  loginWithRole: (role: 'user' | 'merchant' | 'admin') => Promise<void>;
+  loginWithRole: (role: 'user' | 'merchant' | 'admin', referralCode?: string) => Promise<void>;
   switchRole: (role: 'user' | 'merchant' | 'admin') => Promise<void>;
   logout: () => void;
   requireAuth: () => boolean;
