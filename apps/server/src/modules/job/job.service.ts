@@ -29,7 +29,12 @@ export class JobService {
     if (!merchant || merchant.status !== MerchantStatus.APPROVED) {
       throw new BizException(60003, '商家资质未审核通过，不能发岗', HttpStatus.FORBIDDEN);
     }
-    await this.moderation.checkText(dto.description, openid);
+    await Promise.all([
+      this.moderation.checkText(dto.title, openid),
+      this.moderation.checkText(dto.description, openid),
+      this.moderation.checkText(dto.salary, openid),
+      this.moderation.checkText(dto.location, openid),
+    ]);
 
     const days = dto.duration === JobDuration.D90 ? 90 : 30;
     const expireAt = new Date(Date.now() + days * 86_400_000);

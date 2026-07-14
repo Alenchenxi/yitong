@@ -1,8 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { MatchStatus } from '@prisma/client';
 import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
+import { PrismaService } from '../../prisma/prisma.service';
 
 interface WsLoginPayload {
   identifier: string;
@@ -41,6 +43,7 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly config: ConfigService,
     private readonly jwt: JwtService,
+    private readonly prisma: PrismaService,
   ) {}
 
   onModuleInit() {
@@ -80,7 +83,7 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
         this.send(ws, { type: 'pong' });
         break;
       case 'msg':
-        this.handleMsg(ws, m);
+        void this.handleMsg(ws, m);
         break;
       case 'join':
         this.handleJoin(ws, m);
@@ -117,9 +120,21 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
     this.send(ws, { type: 'login_ok', loginUserId: identifier });
   }
 
-  private handleMsg(ws: WebSocket, m: ClientMsg) {
+  private async handleMsg(ws: WebSocket, m: ClientMsg) {
     const from = this.meta.get(ws)?.identifier ?? '';
     if (!from || !m.toId || m.content == null) return;
+    let allowed = false;
+    try {
+      allowed = await this.canSendDirectMessage(from, m.toId);
+    } catch (e) {
+      this.logger.error(`direct message auth check failed: ${(e as Error).message}`);
+      this.send(ws, { type: 'msg_failed', toId: m.toId, reason: 'auth_check_failed' });
+      return;
+    }
+    if (!allowed) {
+      this.send(ws, { type: 'msg_failed', toId: m.toId, reason: 'not_matched' });
+      return;
+    }
     const ts = Date.now();
     this.forward(m.toId, { type: 'msg', fromId: from, toId: m.toId, content: m.content, ts });
     // 回执给发送方（已转发）
@@ -199,6 +214,28 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
   private setAlive(ws: WebSocket, v: boolean) {
     const mt = this.meta.get(ws);
     if (mt) mt.alive = v;
+  }
+
+  private async canSendDirectMessage(from: string, to: string): Promise<boolean> {
+    const fromAnon = this.isAnonIdentifier(from);
+    const toAnon = this.isAnonIdentifier(to);
+    if (!fromAnon && !toAnon) return true;
+    if (!fromAnon || !toAnon) return false;
+    const match = await this.prisma.chatMatch.findFirst({
+      where: {
+        status: MatchStatus.ACTIVE,
+        OR: [
+          { anonIdA: from, anonIdB: to },
+          { anonIdA: to, anonIdB: from },
+        ],
+      },
+      select: { id: true },
+    });
+    return !!match;
+  }
+
+  private isAnonIdentifier(id: string): boolean {
+    return id.startsWith('anon_');
   }
 
   private checkHeartbeat() {

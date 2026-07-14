@@ -109,6 +109,10 @@ export function listPosts(cursor?: string): Promise<{ list: AnonPostVo[]; nextCu
   return anonRequest({ url: `/treehole/posts${qs}`, method: 'GET' });
 }
 
+export function getPost(id: string): Promise<AnonPostVo> {
+  return anonRequest({ url: `/treehole/posts/${id}`, method: 'GET' });
+}
+
 export function createPost(data: { content: string; images?: string[] }): Promise<AnonPostVo> {
   return anonRequest({ url: '/treehole/posts', method: 'POST', data });
 }

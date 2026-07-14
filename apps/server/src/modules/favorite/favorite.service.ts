@@ -18,13 +18,30 @@ export class FavoriteService {
       where: { userId_targetType_targetId: { userId: uid, targetType, targetId } },
     });
     if (existing) {
-      await this.prisma.favorite.delete({ where: { id: existing.id } });
-      return { favorited: false };
+      try {
+        await this.prisma.favorite.delete({ where: { id: existing.id } });
+      } catch (e) {
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025')) throw e;
+      }
+      const current = await this.prisma.favorite.findUnique({
+        where: { userId_targetType_targetId: { userId: uid, targetType, targetId } },
+        select: { id: true },
+      });
+      return { favorited: !!current, id: current?.id };
     }
-    const f = await this.prisma.favorite.create({
-      data: { userId: uid, targetType, targetId },
-    });
-    return { favorited: true, id: f.id };
+    try {
+      const f = await this.prisma.favorite.create({
+        data: { userId: uid, targetType, targetId },
+      });
+      return { favorited: true, id: f.id };
+    } catch (e) {
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
+      const current = await this.prisma.favorite.findUnique({
+        where: { userId_targetType_targetId: { userId: uid, targetType, targetId } },
+        select: { id: true },
+      });
+      return { favorited: !!current, id: current?.id };
+    }
   }
 
   // 列表：可按 targetType 过滤；page/pageSize 分页

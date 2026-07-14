@@ -1,0 +1,19 @@
+<view class="page">
+  <view wx:if="{{post}}" class="card">
+    <view class="anon">树洞 {{post.anonShort}}</view>
+    <view class="content">{{post.content}}</view>
+    <view wx:if="{{post.images.length > 0}}" class="images">
+      <image wx:for="{{post.images}}" wx:key="*this" class="image" src="{{item}}" mode="aspectFill" />
+    </view>
+    <view class="row">
+      <text class="time">{{post.timeText}}</text>
+      <view class="like {{post.liked ? 'liked' : ''}}" catchtap="onLike">
+        {{post.liked ? '已赞' : '点赞'}} {{post.likeCount || ''}}
+      </view>
+    </view>
+  </view>
+
+  <view wx:elif="{{!loading}}" class="empty">
+    <view class="empty-title">帖子不存在或已下架</view>
+  </view>
+</view>

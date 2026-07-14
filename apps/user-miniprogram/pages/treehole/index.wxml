@@ -6,7 +6,7 @@
   </view>
 
   <view class="list" wx:if="{{posts.length > 0}}">
-    <view class="card" wx:for="{{posts}}" wx:key="id">
+    <view class="card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view class="anon">🌙 {{item.anonShort}}</view>
       <view class="content">{{item.content}}</view>
       <view class="row">

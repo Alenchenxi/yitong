@@ -18,8 +18,8 @@ export class FavoriteController {
   @Get()
   async list(@Query() q: ListFavoritesQueryDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
-    const page = Number((req.query.page as string) ?? '1') || 1;
-    const pageSize = Math.min(50, Number((req.query.pageSize as string) ?? '20') || 20);
+    const page = parsePositiveInt(req.query.page as string | undefined, 1, 1, 10_000);
+    const pageSize = parsePositiveInt(req.query.pageSize as string | undefined, 20, 1, 50);
     return ok(await this.favorite.list(uid, { targetType: q.targetType, page, pageSize }));
   }
 
@@ -28,4 +28,10 @@ export class FavoriteController {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.favorite.delete(uid, id));
   }
+}
+
+function parsePositiveInt(raw: string | undefined, fallback: number, min: number, max: number) {
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
 }

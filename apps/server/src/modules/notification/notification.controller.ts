@@ -20,8 +20,8 @@ export class NotificationController {
       await this.notification.list(
         uid,
         unreadOnly === '1',
-        page ? Number(page) : 1,
-        pageSize ? Number(pageSize) : 20,
+        parsePositiveInt(page, 1, 1, 10_000),
+        parsePositiveInt(pageSize, 20, 1, 50),
       ),
     );
   }
@@ -37,4 +37,10 @@ export class NotificationController {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.notification.markAllRead(uid));
   }
+}
+
+function parsePositiveInt(raw: string | undefined, fallback: number, min: number, max: number) {
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
 }

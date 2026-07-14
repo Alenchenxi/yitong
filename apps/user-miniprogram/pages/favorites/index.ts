@@ -62,7 +62,7 @@ Page({
     } else if (type === 'job_post') {
       wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
     } else if (type === 'anon_post') {
-      wx.navigateTo({ url: `/pages/treehole/post/index?id=${id}` });
+      wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
     }
   },
 

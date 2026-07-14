@@ -7,7 +7,7 @@
   </view>
 
   <view class="list" wx:if="{{items.length > 0}}">
-    <view class="item" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" data-type="{{item.targetType}}" bindtap="goTarget">
+    <view class="item" wx:for="{{items}}" wx:key="id" data-id="{{item.targetId}}" data-type="{{item.targetType}}" bindtap="goTarget">
       <view class="item-main">
         <text class="type-tag">{{typeLabel(item.targetType)}}</text>
         <text class="item-id">id: {{item.targetId}}</text>

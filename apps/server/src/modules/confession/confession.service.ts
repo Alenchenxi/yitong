@@ -159,34 +159,50 @@ export class ConfessionService {
       where: { postId_userId: { postId, userId: uid } },
     });
     if (existing) {
-      await this.prisma.$transaction([
-        this.prisma.postLike.delete({ where: { id: existing.id } }),
-        this.prisma.post.update({
-          where: { id: postId },
-          data: { likeCount: { decrement: 1 } },
-        }),
-      ]);
+      try {
+        await this.prisma.$transaction([
+          this.prisma.postLike.delete({ where: { id: existing.id } }),
+          this.prisma.post.update({
+            where: { id: postId },
+            data: { likeCount: { decrement: 1 } },
+          }),
+        ]);
+      } catch (e) {
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025')) throw e;
+      }
       const after = await this.prisma.post.findUnique({
         where: { id: postId },
         select: { likeCount: true },
       });
+      const liked = await this.prisma.postLike.findUnique({
+        where: { postId_userId: { postId, userId: uid } },
+        select: { id: true },
+      });
       invalidateFeedCache();
-      return { liked: false, likeCount: Math.max(0, after?.likeCount ?? 0) };
+      return { liked: !!liked, likeCount: Math.max(0, after?.likeCount ?? 0) };
     }
 
-    await this.prisma.$transaction([
-      this.prisma.postLike.create({ data: { postId, userId: uid } }),
-      this.prisma.post.update({
-        where: { id: postId },
-        data: { likeCount: { increment: 1 } },
-      }),
-    ]);
+    try {
+      await this.prisma.$transaction([
+        this.prisma.postLike.create({ data: { postId, userId: uid } }),
+        this.prisma.post.update({
+          where: { id: postId },
+          data: { likeCount: { increment: 1 } },
+        }),
+      ]);
+    } catch (e) {
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
+    }
     const after = await this.prisma.post.findUnique({
       where: { id: postId },
       select: { likeCount: true },
     });
+    const liked = await this.prisma.postLike.findUnique({
+      where: { postId_userId: { postId, userId: uid } },
+      select: { id: true },
+    });
     invalidateFeedCache();
-    return { liked: true, likeCount: after?.likeCount ?? 0 };
+    return { liked: !!liked, likeCount: after?.likeCount ?? 0 };
   }
 
   async createComment(

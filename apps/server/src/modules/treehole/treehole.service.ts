@@ -81,6 +81,15 @@ export class TreeholeService {
     return { list: slice.map((p) => this.toVo(p)), nextCursor, hasMore };
   }
 
+  async getPost(anonId: string, id: string) {
+    const post = await this.prisma.anonymousPost.findFirst({
+      where: { id, status: PostStatus.APPROVED },
+      include: { likes: { where: { anonId }, select: { id: true }, take: 1 } },
+    });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    return this.toVo(post);
+  }
+
   // 1v1 随机匹配：内存队列撮合 -> ChatMatch + IM 凭证（anonId 作 loginUserId）
   async match(anonId: string) {
     while (this.matchQueue.length > 0) {
@@ -112,17 +121,35 @@ export class TreeholeService {
       where: { postId_anonId: { postId, anonId } },
     });
     if (existing) {
-      await this.prisma.$transaction([
-        this.prisma.anonPostLike.delete({ where: { id: existing.id } }),
-        this.prisma.anonymousPost.update({ where: { id: postId }, data: { likeCount: { decrement: 1 } } }),
-      ]);
-      return { liked: false, likeCount: Math.max(0, post.likeCount - 1) };
+      try {
+        await this.prisma.$transaction([
+          this.prisma.anonPostLike.delete({ where: { id: existing.id } }),
+          this.prisma.anonymousPost.update({ where: { id: postId }, data: { likeCount: { decrement: 1 } } }),
+        ]);
+      } catch (e) {
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025')) throw e;
+      }
+      const after = await this.prisma.anonymousPost.findUnique({ where: { id: postId }, select: { likeCount: true } });
+      const liked = await this.prisma.anonPostLike.findUnique({
+        where: { postId_anonId: { postId, anonId } },
+        select: { id: true },
+      });
+      return { liked: !!liked, likeCount: Math.max(0, after?.likeCount ?? post.likeCount - 1) };
     }
-    await this.prisma.$transaction([
-      this.prisma.anonPostLike.create({ data: { postId, anonId } }),
-      this.prisma.anonymousPost.update({ where: { id: postId }, data: { likeCount: { increment: 1 } } }),
-    ]);
-    return { liked: true, likeCount: post.likeCount + 1 };
+    try {
+      await this.prisma.$transaction([
+        this.prisma.anonPostLike.create({ data: { postId, anonId } }),
+        this.prisma.anonymousPost.update({ where: { id: postId }, data: { likeCount: { increment: 1 } } }),
+      ]);
+    } catch (e) {
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
+    }
+    const after = await this.prisma.anonymousPost.findUnique({ where: { id: postId }, select: { likeCount: true } });
+    const liked = await this.prisma.anonPostLike.findUnique({
+      where: { postId_anonId: { postId, anonId } },
+      select: { id: true },
+    });
+    return { liked: !!liked, likeCount: after?.likeCount ?? post.likeCount + 1 };
   }
 
   private randomNickname(): string {

@@ -35,7 +35,15 @@ export class TreeholeController {
   @Get('posts')
   async listPosts(@Query('cursor') cursor?: string, @Query('limit') limit?: string, @Req() req?: Request) {
     const anonId = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.treehole.listPosts(anonId, cursor, limit ? Number(limit) : undefined));
+    return ok(await this.treehole.listPosts(anonId, cursor, parsePositiveInt(limit, 20, 1, 50)));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('posts/:id')
+  async getPost(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.getPost(anonId, id));
   }
 
   @Public()
@@ -63,4 +71,10 @@ export class TreeholeController {
     const anonId = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.treehole.joinParty(anonId));
   }
+}
+
+function parsePositiveInt(raw: string | undefined, fallback: number, min: number, max: number) {
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
 }

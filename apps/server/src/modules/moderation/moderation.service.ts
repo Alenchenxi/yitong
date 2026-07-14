@@ -42,11 +42,11 @@ export class ModerationService {
     } catch {
       // 内容安全接口故障时「失败放行 + 告警」，避免微信侧抖动导致全员无法发帖；
       // 生产化后可改为可配置 fail-open/fail-closed（见后续待做）。
-      this.logger.error('msgSecCheck request failed; fail-open');
+      this.handleCheckUnavailable('msgSecCheck request failed');
       return;
     }
     if (!res.ok) {
-      this.logger.error(`msgSecCheck HTTP ${res.status}; fail-open`);
+      this.handleCheckUnavailable(`msgSecCheck HTTP ${res.status}`);
       return;
     }
     const data = (await res.json()) as SecCheckResp;
@@ -80,11 +80,11 @@ export class ModerationService {
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
-      this.logger.error('imgSecCheck request failed; fail-open');
+      this.handleCheckUnavailable('imgSecCheck request failed');
       return;
     }
     if (!res.ok) {
-      this.logger.error(`imgSecCheck HTTP ${res.status}; fail-open`);
+      this.handleCheckUnavailable(`imgSecCheck HTTP ${res.status}`);
       return;
     }
     const data = (await res.json()) as SecCheckResp;
@@ -95,5 +95,13 @@ export class ModerationService {
     if (suggest === 'review') {
       this.logger.warn(`imgSecCheck review (label=${data.result?.label}); 需人工复审`);
     }
+  }
+
+  private handleCheckUnavailable(reason: string): void {
+    if (process.env.NODE_ENV === 'production') {
+      this.logger.error(`${reason}; fail-closed`);
+      throw new BizException(90003, '内容安全服务不可用，请稍后重试');
+    }
+    this.logger.error(`${reason}; fail-open in non-production`);
   }
 }

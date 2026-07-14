@@ -17,6 +17,7 @@
     "pages/job/manage/index",
     "pages/payment/index",
     "pages/treehole/post/index",
+    "pages/treehole/detail/index",
     "pages/treehole/chat/index",
     "pages/treehole/party/index",
     "pages/admin/index",

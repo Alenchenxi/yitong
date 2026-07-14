@@ -74,6 +74,10 @@ Page({
   goParty() {
     wx.navigateTo({ url: '/pages/treehole/party/index' });
   },
+  goDetail(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    if (id) wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
+  },
 
   async onLike(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
