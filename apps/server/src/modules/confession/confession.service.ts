@@ -24,21 +24,43 @@ function postInclude(uid: string) {
 }
 type PostWithAuthor = Prisma.PostGetPayload<{ include: ReturnType<typeof postInclude> }>;
 
-// 游标 = base64url(createdAtIso | id)，用于 (createdAt DESC, id DESC) 的稳定分页
+// 首页发现流缓存：5 分钟 TTL，减少高并发下重复查询
+interface CacheEntry {
+  data: FeedResult;
+  expiresAt: number;
+}
+const feedCache = new Map<string, CacheEntry>();
+const FEED_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function invalidateFeedCache() {
+  feedCache.clear();
+}
+
+function feedCacheKey(uid: string, limit: number): string {
+  return `${uid}:${limit}`;
+}
+
+// 游标 = base64url JSON { t: createdAtIso, id }，用于 (createdAt DESC, id DESC) 的稳定分页
 function encodeCursor(createdAt: Date, id: string): string {
-  return Buffer.from(`${createdAt.toISOString()}|${id}`, 'utf8').toString('base64url');
+  const payload = JSON.stringify({ t: createdAt.toISOString(), id });
+  return Buffer.from(payload, 'utf8').toString('base64url');
 }
 
 function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
   try {
     const raw = Buffer.from(cursor, 'base64url').toString('utf8');
     const sep = raw.indexOf('|');
-    if (sep < 0) return null;
-    const iso = raw.slice(0, sep);
-    const id = raw.slice(sep + 1);
-    const createdAt = new Date(iso);
-    if (Number.isNaN(createdAt.getTime()) || !id) return null;
-    return { createdAt, id };
+    if (sep > 0) {
+      const createdAt = new Date(raw.slice(0, sep));
+      const id = raw.slice(sep + 1);
+      if (Number.isNaN(createdAt.getTime()) || !id) return null;
+      return { createdAt, id };
+    }
+    const parsed = JSON.parse(raw) as { t?: string; id?: string };
+    if (!parsed.t || !parsed.id) return null;
+    const createdAt = new Date(parsed.t);
+    if (Number.isNaN(createdAt.getTime())) return null;
+    return { createdAt, id: parsed.id };
   } catch {
     return null;
   }
@@ -56,6 +78,10 @@ export class ConfessionService {
       orderBy: { name: 'asc' },
       select: { id: true, name: true, icon: true },
     });
+  }
+
+  invalidateFeedCache() {
+    invalidateFeedCache();
   }
 
   async createPost(
@@ -84,11 +110,23 @@ export class ConfessionService {
       },
       include: postInclude(uid),
     });
+    invalidateFeedCache();
     return this.toPostVo(post);
   }
 
   async feed(uid: string, query: FeedQueryDto): Promise<FeedResult> {
-    return this.queryPosts(uid, query, undefined);
+    const limit = query.limit ?? 20;
+    const cacheKey = feedCacheKey(uid, limit);
+    // 仅首页（无 cursor）发现流走 5 分钟内存缓存；按用户分桶，避免 liked 状态串用
+    if (!query.cursor && limit <= 20) {
+      const cached = feedCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) return cached.data;
+    }
+    const result = await this.queryPosts(uid, query, undefined);
+    if (!query.cursor && limit <= 20) {
+      feedCache.set(cacheKey, { data: result, expiresAt: Date.now() + FEED_CACHE_TTL_MS });
+    }
+    return result;
   }
 
   async listCirclePosts(
@@ -132,6 +170,7 @@ export class ConfessionService {
         where: { id: postId },
         select: { likeCount: true },
       });
+      invalidateFeedCache();
       return { liked: false, likeCount: Math.max(0, after?.likeCount ?? 0) };
     }
 
@@ -146,6 +185,7 @@ export class ConfessionService {
       where: { id: postId },
       select: { likeCount: true },
     });
+    invalidateFeedCache();
     return { liked: true, likeCount: after?.likeCount ?? 0 };
   }
 
@@ -166,6 +206,7 @@ export class ConfessionService {
       data: { postId, authorId: uid, content: dto.content },
       include: { author: { select: { id: true, nickname: true, avatarUrl: true } } },
     });
+    invalidateFeedCache();
     return this.toCommentVo(comment);
   }
 

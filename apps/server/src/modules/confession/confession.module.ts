@@ -5,5 +5,6 @@ import { ConfessionService } from './confession.service';
 @Module({
   controllers: [ConfessionController],
   providers: [ConfessionService],
+  exports: [ConfessionService],
 })
 export class ConfessionModule {}

@@ -84,7 +84,8 @@ model Post {
   author    User       @relation(fields: [authorId], references: [id])
   postLikes PostLike[]
   comments  Comment[]
-  @@index([circleId, createdAt])
+  @@index([circleId, status, createdAt])
+  @@index([status, createdAt])
   @@map("posts")
 }
 enum PostStatus {
@@ -272,6 +273,7 @@ model JobPost {
   merchant     Merchant      @relation(fields: [merchantId], references: [id])
   applications JobApplication[]
   @@index([status, expireAt])
+  @@index([status, createdAt])
   @@map("job_posts")
 }
 enum JobDuration {

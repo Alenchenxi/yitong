@@ -84,6 +84,7 @@ export class DashboardService {
         ), 0) AS new_users
       FROM generate_series(${since}::date, CURRENT_DATE, '1 day') AS d
       ORDER BY d
+      LIMIT 7
     `;
     return rows.map((r) => ({
       date: r.date,

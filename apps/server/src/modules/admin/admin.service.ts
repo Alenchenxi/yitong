@@ -2,11 +2,15 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { MerchantStatus, PostStatus, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ConfessionService } from '../confession/confession.service';
 import type { UpdatePricingDto } from './dto/update-pricing.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly confession: ConfessionService,
+  ) {}
 
   // 审核队列：待审核商家 + 近期帖子（含已发布，管理员可下架）
   async getQueue() {
@@ -104,6 +108,7 @@ export class AdminService {
     const p = await this.prisma.post.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
     await this.prisma.post.update({ where: { id }, data: { status: PostStatus.REJECTED } });
+    this.confession.invalidateFeedCache();
     await this.prisma.moderationRecord.create({
       data: { targetType: 'post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
     });

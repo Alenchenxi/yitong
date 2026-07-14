@@ -53,7 +53,7 @@ export class JobService {
 
   // 岗位列表：mine=1 商家自己的（含草稿）；否则 PUBLISHED 且未过期
   async listPosts(uid: string, q: JobListQueryDto) {
-    const limit = q.limit ?? 20;
+    const limit = Math.min(50, q.limit ?? 20);
     const where: Prisma.JobPostWhereInput = {};
     if (q.mine === 1) {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });

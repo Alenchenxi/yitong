@@ -36,7 +36,7 @@ export class JobListQueryDto {
   @IsInt()
   @Min(1)
   @Max(50)
-  limit?: number;
+  limit?: number = 20;
 
   /** mine=1 时返回当前商家自己的岗位（含草稿），需商家角色 */
   @IsOptional()
