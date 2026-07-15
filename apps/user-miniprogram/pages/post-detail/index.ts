@@ -1,9 +1,9 @@
 import type { AppInstance } from '../../app';
 import { getPost, listComments, createComment, toggleLike, reportPost, type PostVo, type CommentVo } from '../../services/confession';
-import { toggleFavorite } from '../../services/favorite';
+import { checkFavorite, toggleFavorite } from '../../services/favorite';
 import { formatTime } from '../../utils/auth';
 
-type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three' };
+type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three'; favorited?: boolean };
 
 interface PageData {
   post: PostVoView | null;
@@ -26,8 +26,8 @@ function calcImgLayout(n: number): '' | 'one' | 'two' | 'three' {
   return 'three';
 }
 
-function toPostView(p: PostVo): PostVoView {
-  return { ...p, timeText: formatTime(p.createdAt), imgLayout: calcImgLayout(p.images.length) };
+function toPostView(p: PostVo, favorited?: boolean): PostVoView {
+  return { ...p, favorited, timeText: formatTime(p.createdAt), imgLayout: calcImgLayout(p.images.length) };
 }
 
 Page({
@@ -75,8 +75,9 @@ Page({
         getPost(this.postId),
         listComments(this.postId, 1, this.data.pageSize),
       ]);
+      const favorite = await checkFavorite('post', this.postId).catch(() => null);
       this.setData({
-        post: toPostView(post),
+        post: toPostView(post, favorite?.favorited ?? false),
         comments: commentsResp.list,
         commentList: commentsResp.list.map((c) => ({ ...c, timeText: formatTime(c.createdAt) })),
         total: commentsResp.total,
@@ -93,7 +94,8 @@ Page({
   async refreshPost() {
     try {
       const p = await getPost(this.postId);
-      this.setData({ post: toPostView(p) });
+      const favorite = await checkFavorite('post', this.postId).catch(() => null);
+      this.setData({ post: toPostView(p, favorite?.favorited ?? this.data.post?.favorited ?? false) });
     } catch {
       // ignore
     }

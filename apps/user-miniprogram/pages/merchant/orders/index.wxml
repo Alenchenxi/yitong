@@ -8,7 +8,9 @@
       <text>{{item.duration === 'D90' ? '90天' : '30天'}}</text>
       <text class="status status-{{item.status}}">{{item.statusText}}</text>
     </view>
+    <view class="refund-reason" wx:if="{{item.refundReason}}">{{item.refundReason}}</view>
     <view class="time">{{item.createdAt}}</view>
+    <button wx:if="{{item.status === 'PAID'}}" class="refund" size="mini" data-id="{{item.id}}" catchtap="onRefund">退款</button>
   </view>
   <view class="empty" wx:if="{{orders.length === 0 && !loading}}">暂无订单</view>
 </view>

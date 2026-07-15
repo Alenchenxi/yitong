@@ -1,5 +1,5 @@
-// IM 管理器（自建 ws 版）：wx.connectSocket 直连后端 ChatGateway + 心跳 + 断线重连。
-// 协议：JSON 帧。login 鉴权 -> msg(1v1) / join/leave/room-msg(房间) / ping。
+// IM manager: wx.connectSocket -> ChatGateway with login handshake, heartbeat,
+// exponential reconnect, and a small pending-send queue.
 
 export interface ImCredential {
   loginUserId: string;
@@ -28,6 +28,7 @@ export interface WsMessage {
   roomId?: string;
   content?: string;
   ts?: number;
+  reason?: string;
   [k: string]: unknown;
 }
 
@@ -35,11 +36,23 @@ interface AppLike {
   globalData: { token: string; apiBase: string };
 }
 
+type PendingFrame = Record<string, unknown>;
+type ImStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'closed';
+
+const HEARTBEAT_MS = 20_000;
+const MAX_RECONNECT_MS = 30_000;
+const MAX_PENDING = 50;
+
 let socket: WechatMiniprogram.SocketTask | null = null;
 let cred: ImCredential | null = null;
+let status: ImStatus = 'idle';
 let loggedIn = false;
+let manualClose = false;
+let suppressCloseReconnect = false;
+let reconnectAttempts = 0;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingFrames: PendingFrame[] = [];
 let onMessageCb: ((m: WsMessage) => void) | null = null;
 let onRoomMessageCb: ((m: WsMessage) => void) | null = null;
 let onEventCb: ((m: WsMessage) => void) | null = null;
@@ -56,17 +69,25 @@ export function onWsEvent(cb: (m: WsMessage) => void) {
 export function isLoggedIn() {
   return loggedIn;
 }
+export function getImStatus() {
+  return status;
+}
 
-// 连接 ChatGateway
 export function connectIm(c: ImCredential): Promise<void> {
   cred = c;
+  manualClose = false;
+  clearReconnectTimer();
+  closeActiveSocket(true);
+  status = reconnectAttempts > 0 ? 'reconnecting' : 'connecting';
   loggedIn = false;
+  emitEvent({ type: 'status', status });
+
   return new Promise((resolve, reject) => {
+    let settled = false;
     socket = wx.connectSocket({ url: c.wsUrl });
     socket.onOpen(() => {
-      sendRaw({ type: 'login', loginUserId: c.loginUserId, loginToken: c.loginToken });
+      sendImmediate({ type: 'login', loginUserId: c.loginUserId, loginToken: c.loginToken }, false);
       startHeartbeat();
-      resolve();
     });
     socket.onMessage((data) => {
       let m: WsMessage;
@@ -75,14 +96,31 @@ export function connectIm(c: ImCredential): Promise<void> {
       } catch {
         return;
       }
+      if (m.type === 'login_ok' && !settled) {
+        settled = true;
+        resolve();
+      }
+      if (m.type === 'login_failed' && !settled) {
+        settled = true;
+        reject(new Error(String(m.reason ?? 'login_failed')));
+      }
       handleMessage(m);
     });
     socket.onClose(() => {
-      stopHeartbeat();
-      loggedIn = false;
-      scheduleReconnect();
+      cleanupConnection();
+      if (suppressCloseReconnect) {
+        suppressCloseReconnect = false;
+        return;
+      }
+      if (!manualClose) scheduleReconnect();
     });
-    socket.onError((err) => reject(err));
+    socket.onError((err) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+      if (!manualClose) scheduleReconnect();
+    });
   });
 }
 
@@ -90,11 +128,17 @@ function handleMessage(m: WsMessage) {
   switch (m.type) {
     case 'login_ok':
       loggedIn = true;
-      onEventCb?.(m);
+      status = 'connected';
+      reconnectAttempts = 0;
+      emitEvent(m);
+      emitEvent({ type: 'status', status });
+      flushPendingFrames();
       break;
     case 'login_failed':
       loggedIn = false;
-      onEventCb?.(m);
+      emitEvent(m);
+      closeActiveSocket(false);
+      scheduleReconnect();
       break;
     case 'msg':
       onMessageCb?.(m);
@@ -103,22 +147,52 @@ function handleMessage(m: WsMessage) {
       onRoomMessageCb?.(m);
       break;
     case 'joined':
+    case 'join_failed':
     case 'left':
     case 'room_event':
     case 'msg_sent':
+    case 'msg_failed':
     case 'pong':
-      onEventCb?.(m);
+      emitEvent(m);
       break;
   }
 }
 
-function sendRaw(obj: Record<string, unknown>) {
-  socket?.send({ data: JSON.stringify(obj), fail: () => {} });
+function emitEvent(m: WsMessage) {
+  onEventCb?.(m);
+}
+
+function enqueueOrSend(obj: PendingFrame) {
+  if (loggedIn) {
+    sendImmediate(obj);
+    return;
+  }
+  pendingFrames.push(obj);
+  if (pendingFrames.length > MAX_PENDING) pendingFrames = pendingFrames.slice(-MAX_PENDING);
+}
+
+function flushPendingFrames() {
+  const frames = pendingFrames;
+  pendingFrames = [];
+  for (const frame of frames) sendImmediate(frame);
+}
+
+function sendImmediate(obj: PendingFrame, queueOnFail = true) {
+  socket?.send({ data: JSON.stringify(obj), fail: () => {
+    if (queueOnFail) queueFrame(obj);
+  } });
+}
+
+function queueFrame(obj: PendingFrame) {
+  pendingFrames.push(obj);
+  if (pendingFrames.length > MAX_PENDING) pendingFrames = pendingFrames.slice(-MAX_PENDING);
 }
 
 function startHeartbeat() {
   stopHeartbeat();
-  heartbeatTimer = setInterval(() => sendRaw({ type: 'ping' }), 20_000);
+  heartbeatTimer = setInterval(() => {
+    if (loggedIn) sendImmediate({ type: 'ping' }, false);
+  }, HEARTBEAT_MS);
 }
 function stopHeartbeat() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -126,50 +200,75 @@ function stopHeartbeat() {
 }
 
 function scheduleReconnect() {
-  if (!cred) return;
-  if (reconnectTimer) clearTimeout(reconnectTimer);
+  if (!cred || manualClose) return;
+  clearReconnectTimer();
+  status = 'reconnecting';
+  loggedIn = false;
+  stopHeartbeat();
+  emitEvent({ type: 'status', status });
+  reconnectAttempts += 1;
+  const delay = Math.min(MAX_RECONNECT_MS, 1000 * 2 ** Math.min(5, reconnectAttempts - 1));
   reconnectTimer = setTimeout(() => {
-    if (cred) connectIm(cred).catch(() => {});
-  }, 3000);
+    if (cred && !manualClose) connectIm(cred).catch(() => scheduleReconnect());
+  }, delay);
+}
+
+function clearReconnectTimer() {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+}
+
+function cleanupConnection() {
+  stopHeartbeat();
+  loggedIn = false;
+  socket = null;
+}
+
+function closeActiveSocket(suppressReconnect: boolean) {
+  stopHeartbeat();
+  loggedIn = false;
+  const current = socket;
+  socket = null;
+  if (current) {
+    suppressCloseReconnect = suppressReconnect;
+    current.close({});
+  }
 }
 
 export function closeIm() {
-  if (reconnectTimer) clearTimeout(reconnectTimer);
-  stopHeartbeat();
-  socket?.close({});
-  socket = null;
+  manualClose = true;
+  clearReconnectTimer();
+  closeActiveSocket(true);
   cred = null;
-  loggedIn = false;
+  pendingFrames = [];
+  status = 'closed';
+  emitEvent({ type: 'status', status });
 }
 
-// 1v1 发消息：HTTP 落库 + ws 实时转发
 export async function sendIm(
   app: AppLike,
   peerId: string,
   content: string,
 ): Promise<MessageVo> {
   const msg = await request<MessageVo>(app, '/chat/messages', { peerId, content }, 'POST');
-  sendRaw({ type: 'msg', toId: peerId, content });
+  enqueueOrSend({ type: 'msg', toId: peerId, content });
   return msg;
 }
 
-// 房间原语
 export function joinRoom(roomId: string) {
-  sendRaw({ type: 'join', roomId });
+  enqueueOrSend({ type: 'join', roomId });
 }
 export function leaveRoom(roomId: string) {
-  sendRaw({ type: 'leave', roomId });
+  enqueueOrSend({ type: 'leave', roomId });
 }
 export function sendRoomMessage(roomId: string, content: string) {
-  sendRaw({ type: 'room-msg', roomId, content });
+  enqueueOrSend({ type: 'room-msg', roomId, content });
 }
 
-// ws-only 1v1 发消息（不落库 HTTP，供树洞匿名聊用；实名岗位聊天用 sendIm 走 HTTP 落库）
 export function sendWsMessage(toId: string, content: string) {
-  sendRaw({ type: 'msg', toId, content });
+  enqueueOrSend({ type: 'msg', toId, content });
 }
 
-// HTTP：历史 + 会话 + 换凭证
 export function getImToken(app: AppLike): Promise<ImCredential> {
   return request(app, '/chat/token', undefined, 'POST');
 }

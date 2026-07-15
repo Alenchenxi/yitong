@@ -47,6 +47,21 @@ Page({
         unreadCount: Math.max(0, this.data.unreadCount - 1),
       });
     }
+    if (item?.targetType && item.targetId) {
+      this.goTarget(item.targetType, item.targetId);
+    }
+  },
+
+  goTarget(targetType: string, targetId: string) {
+    if (targetType === 'post') {
+      wx.navigateTo({ url: `/pages/post-detail/index?id=${targetId}` });
+    } else if (targetType === 'anon_post' || targetType === 'anon-post') {
+      wx.navigateTo({ url: `/pages/treehole/detail/index?id=${targetId}` });
+    } else if (targetType === 'job_post') {
+      wx.navigateTo({ url: `/pages/job/detail/index?id=${targetId}` });
+    } else if (targetType === 'application') {
+      wx.navigateTo({ url: '/pages/job/my-applications/index' });
+    }
   },
 
   async readAll() {

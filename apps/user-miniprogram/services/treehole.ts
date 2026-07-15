@@ -34,6 +34,14 @@ export interface PartyResp {
   imCredential: ImCredential;
 }
 
+export interface AnonMessageVo {
+  id: string;
+  fromId: string;
+  toId: string;
+  content: string;
+  createdAt: string;
+}
+
 let anonToken = '';
 let anonId = '';
 
@@ -127,4 +135,16 @@ export function toggleAnonPostLike(postId: string): Promise<{ liked: boolean; li
 
 export function joinParty(): Promise<PartyResp> {
   return anonRequest({ url: '/treehole/party/join', method: 'POST' });
+}
+
+export function sendAnonMessage(peerAnonId: string, content: string): Promise<AnonMessageVo> {
+  return anonRequest({ url: '/treehole/messages', method: 'POST', data: { peerAnonId, content } });
+}
+
+export function listAnonMessages(
+  peerAnonId: string,
+  cursor?: string,
+): Promise<{ list: AnonMessageVo[]; nextCursor: string | null; hasMore: boolean }> {
+  const qs = `?peerAnonId=${encodeURIComponent(peerAnonId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+  return anonRequest({ url: `/treehole/messages${qs}`, method: 'GET' });
 }

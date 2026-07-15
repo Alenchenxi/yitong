@@ -23,6 +23,12 @@ export class FavoriteController {
     return ok(await this.favorite.list(uid, { targetType: q.targetType, page, pageSize }));
   }
 
+  @Get('check')
+  async check(@Query() q: ToggleFavoriteDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.favorite.check(uid, q.targetType, q.targetId));
+  }
+
   @Delete(':id')
   async delete(@Param('id') id: string, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;

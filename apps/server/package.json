@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "anon:rotate-legacy": "ts-node prisma/scripts/rotate-legacy-anon-ids.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

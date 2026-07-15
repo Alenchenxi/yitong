@@ -44,7 +44,7 @@ export class ChatController {
   async list(@Query() q: ChatQueryDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user?.uid;
     if (!uid) throw new BizException(10001, '未登录', HttpStatus.UNAUTHORIZED);
-    return ok(await this.chat.listMessages(uid, q.peerId, q.cursor, q.limit ?? 50));
+    return ok(await this.chat.listMessages(uid, q.peerId, q.cursor, clampLimit(q.limit, 50, 1, 100)));
   }
 
   @Get('sessions')
@@ -53,4 +53,10 @@ export class ChatController {
     if (!uid) throw new BizException(10001, '未登录', HttpStatus.UNAUTHORIZED);
     return ok(await this.chat.listSessions(uid));
   }
+}
+
+function clampLimit(raw: number | undefined, fallback: number, min: number, max: number) {
+  const n = raw;
+  if (!Number.isInteger(n)) return fallback;
+  return Math.min(max, Math.max(min, n as number));
 }

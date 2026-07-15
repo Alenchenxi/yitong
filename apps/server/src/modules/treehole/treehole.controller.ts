@@ -71,6 +71,27 @@ export class TreeholeController {
     const anonId = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.treehole.joinParty(anonId));
   }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('messages')
+  async sendMessage(@Body() dto: { peerAnonId?: string; content?: string }, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.sendMessage(anonId, dto.peerAnonId ?? '', dto.content ?? ''));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('messages')
+  async listMessages(
+    @Query('peerAnonId') peerAnonId: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+    @Req() req?: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listMessages(anonId, peerAnonId, cursor, parsePositiveInt(limit, 50, 1, 100)));
+  }
 }
 
 function parsePositiveInt(raw: string | undefined, fallback: number, min: number, max: number) {

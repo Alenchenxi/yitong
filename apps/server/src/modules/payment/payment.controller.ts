@@ -4,7 +4,7 @@ import { ok } from '../../common/dto/api-response';
 import { Public } from '../auth/public.decorator';
 import type { AuthenticatedRequest } from '../auth/types';
 import { PaymentService } from './payment.service';
-import { PublishJobDto } from './dto/payment.dto';
+import { PublishJobDto, RefundPaymentDto } from './dto/payment.dto';
 
 @Controller('payments')
 export class PaymentController {
@@ -36,5 +36,11 @@ export class PaymentController {
   async getOrder(@Param('orderId') orderId: string, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.payment.getOrder(uid, orderId));
+  }
+
+  @Post(':orderId/refund')
+  async refund(@Param('orderId') orderId: string, @Body() dto: RefundPaymentDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.payment.refundOrder(uid, orderId, dto.reason));
   }
 }

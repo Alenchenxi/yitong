@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../../app';
-import { hasAnonToken, getAnonymousToken, matchAnon, getAnonId, type MatchResp } from '../../../services/treehole';
+import { hasAnonToken, getAnonymousToken, matchAnon, getAnonId, sendAnonMessage, type MatchResp } from '../../../services/treehole';
 import { connectIm, onMessage, sendWsMessage, type WsMessage } from '../../../services/im';
 
 interface Msg { fromId: string; content: string; mine: boolean }
@@ -45,13 +45,19 @@ Page({
 
   onInput(e: WechatMiniprogram.Input) { this.setData({ input: e.detail.value }); },
 
-  send() {
+  async send() {
     const c = this.data.input.trim();
     if (!c || !this.data.peerAnonId) return;
-    sendWsMessage(this.data.peerAnonId, c);
-    this.setData({
-      messages: [...this.data.messages, { fromId: getAnonId(), content: c, mine: true }],
-      input: '',
-    });
+    const peerAnonId = this.data.peerAnonId;
+    try {
+      await sendAnonMessage(peerAnonId, c);
+      sendWsMessage(peerAnonId, c);
+      this.setData({
+        messages: [...this.data.messages, { fromId: getAnonId(), content: c, mine: true }],
+        input: '',
+      });
+    } catch {
+      wx.showToast({ title: '发送失败', icon: 'none' });
+    }
   },
 });

@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma, type ChatMessage } from '@prisma/client';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { MatchStatus, Prisma, type ChatMessage } from '@prisma/client';
+import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface MessageVo {
@@ -30,6 +31,9 @@ export class ChatService {
 
   // 发消息：存 ChatMessage + 双向更新 ChatSession（双方都能看到）
   async sendMessage(fromId: string, toId: string, content: string): Promise<MessageVo> {
+    if (!(await this.canSendDirectMessage(fromId, toId))) {
+      throw new BizException(30003, '匿名会话未匹配，不能发送消息', HttpStatus.FORBIDDEN);
+    }
     const msg = await this.prisma.$transaction(async (tx) => {
       const m = await tx.chatMessage.create({ data: { fromId, toId, content } });
       await tx.chatSession.upsert({
@@ -98,5 +102,27 @@ export class ChatService {
       content: m.content,
       createdAt: m.createdAt.toISOString(),
     };
+  }
+
+  private async canSendDirectMessage(from: string, to: string): Promise<boolean> {
+    const fromAnon = this.isAnonIdentifier(from);
+    const toAnon = this.isAnonIdentifier(to);
+    if (!fromAnon && !toAnon) return true;
+    if (!fromAnon || !toAnon) return false;
+    const match = await this.prisma.chatMatch.findFirst({
+      where: {
+        status: MatchStatus.ACTIVE,
+        OR: [
+          { anonIdA: from, anonIdB: to },
+          { anonIdA: to, anonIdB: from },
+        ],
+      },
+      select: { id: true },
+    });
+    return !!match;
+  }
+
+  private isAnonIdentifier(id: string): boolean {
+    return id.startsWith('anon_');
   }
 }

@@ -43,6 +43,8 @@ export interface MerchantOrderVo {
   amount: string;
   status: 'PENDING' | 'PAID' | 'REFUNDED' | 'CLOSED';
   paidAt: string | null;
+  refundedAt: string | null;
+  refundReason: string | null;
   createdAt: string;
 }
 

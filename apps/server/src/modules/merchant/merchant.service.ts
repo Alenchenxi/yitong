@@ -112,6 +112,8 @@ export class MerchantService {
       amount: o.amount.toString(),
       status: o.status,
       paidAt: o.paidAt?.toISOString() ?? null,
+      refundedAt: o.refundedAt?.toISOString() ?? null,
+      refundReason: o.refundReason,
       createdAt: o.createdAt.toISOString(),
     }));
   }

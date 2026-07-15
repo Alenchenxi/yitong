@@ -9,7 +9,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { PublishJobDto } from './dto/payment.dto';
 
-// 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置
+// 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
@@ -108,6 +108,44 @@ export class PaymentService {
     return { orderId, status: PayStatus.PAID };
   }
 
+  async refundOrder(merchantUid: string, orderId: string, reason?: string) {
+    const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
+    if (!order) throw new BizException(50001, '订单不存在', HttpStatus.NOT_FOUND);
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
+    if (!merchant || order.merchantId !== merchant.id) {
+      throw new BizException(10003, '无权操作该订单', HttpStatus.FORBIDDEN);
+    }
+    if (order.status === PayStatus.REFUNDED) {
+      return this.toOrderVo(order);
+    }
+    if (order.status !== PayStatus.PAID) {
+      throw new BizException(50005, '只有已支付订单可以退款', HttpStatus.CONFLICT);
+    }
+    if (process.env.NODE_ENV === 'production') {
+      this.assertWxPayReady();
+      throw new BizException(90003, '微信支付真实退款未接入，拒绝标记已退款', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    const refundedAt = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const o = await tx.paymentOrder.update({
+        where: { id: orderId },
+        data: {
+          status: PayStatus.REFUNDED,
+          refundedAt,
+          refundReason: reason ?? '商家申请退款',
+        },
+      });
+      await tx.jobPost.updateMany({
+        where: { id: order.jobPostId, status: JobPostStatus.PUBLISHED },
+        data: { status: JobPostStatus.TAKEN_DOWN },
+      });
+      return o;
+    });
+    this.logger.warn(`dev mode: mock refund order ${orderId}`);
+    return this.toOrderVo(updated);
+  }
+
   // 查询订单状态
   async getOrder(merchantUid: string, orderId: string) {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
@@ -116,15 +154,7 @@ export class PaymentService {
     if (!merchant || order.merchantId !== merchant.id) {
       throw new BizException(10003, '无权查看该订单', HttpStatus.FORBIDDEN);
     }
-    return {
-      orderId: order.id,
-      jobPostId: order.jobPostId,
-      duration: order.duration,
-      amount: order.amount.toString(),
-      status: order.status,
-      paidAt: order.paidAt?.toISOString() ?? null,
-      createdAt: order.createdAt.toISOString(),
-    };
+    return this.toOrderVo(order);
   }
 
   private assertWxPayReady() {
@@ -139,5 +169,29 @@ export class PaymentService {
     if (missing.length > 0) {
       throw new BizException(90003, `微信支付凭证未配置：${missing.join(', ')}`, HttpStatus.SERVICE_UNAVAILABLE);
     }
+  }
+
+  private toOrderVo(order: {
+    id: string;
+    jobPostId: string;
+    duration: JobDuration;
+    amount: { toString(): string };
+    status: PayStatus;
+    paidAt: Date | null;
+    refundedAt: Date | null;
+    refundReason: string | null;
+    createdAt: Date;
+  }) {
+    return {
+      orderId: order.id,
+      jobPostId: order.jobPostId,
+      duration: order.duration,
+      amount: order.amount.toString(),
+      status: order.status,
+      paidAt: order.paidAt?.toISOString() ?? null,
+      refundedAt: order.refundedAt?.toISOString() ?? null,
+      refundReason: order.refundReason,
+      createdAt: order.createdAt.toISOString(),
+    };
   }
 }

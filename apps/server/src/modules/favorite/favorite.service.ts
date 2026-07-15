@@ -63,6 +63,14 @@ export class FavoriteService {
     return { list: items, total, page: opts.page, pageSize: opts.pageSize };
   }
 
+  async check(uid: string, targetType: FavoriteTargetType, targetId: string) {
+    const favorite = await this.prisma.favorite.findUnique({
+      where: { userId_targetType_targetId: { userId: uid, targetType, targetId } },
+      select: { id: true },
+    });
+    return { favorited: !!favorite, id: favorite?.id };
+  }
+
   async delete(uid: string, id: string) {
     const f = await this.prisma.favorite.findUnique({ where: { id } });
     if (!f) throw new BizException(70003, '收藏不存在', HttpStatus.NOT_FOUND);

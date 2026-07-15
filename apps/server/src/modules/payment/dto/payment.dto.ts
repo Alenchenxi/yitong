@@ -1,4 +1,4 @@
-import { IsIn, IsString, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class PublishJobDto {
   @IsString()
@@ -7,4 +7,11 @@ export class PublishJobDto {
 
   @IsIn(['D30', 'D90'])
   duration!: 'D30' | 'D90';
+}
+
+export class RefundPaymentDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reason?: string;
 }

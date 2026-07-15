@@ -9,7 +9,7 @@ import {
   type JobReviewVo,
   type JobAppVo,
 } from '../../../services/job';
-import { toggleFavorite } from '../../../services/favorite';
+import { checkFavorite, toggleFavorite } from '../../../services/favorite';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '待处理',
@@ -20,7 +20,7 @@ const STATUS_TEXT: Record<string, string> = {
 
 Page({
   data: {
-    post: null as JobPostVo | null,
+    post: null as (JobPostVo & { favorited?: boolean }) | null,
     reviews: [] as JobReviewVo[],
     apps: [] as Array<JobAppVo & { statusText: string }>,
     isMerchantOwner: false,
@@ -47,7 +47,8 @@ Page({
     try {
       const post = await getJobPost(this.postId);
       const reviews = await listPostReviews(this.postId).catch(() => []);
-      this.setData({ post, reviews });
+      const favorite = await checkFavorite('job_post', this.postId).catch(() => null);
+      this.setData({ post: { ...post, favorited: favorite?.favorited ?? false }, reviews });
       const app = getApp<AppInstance>();
       if (app.globalData.currentRole === 'MERCHANT') {
         try {

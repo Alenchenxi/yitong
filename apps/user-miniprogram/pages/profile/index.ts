@@ -1,4 +1,5 @@
 import type { AppInstance } from '../../app';
+import { listNotifications } from '../../services/notification';
 
 interface RoleItem {
   key: 'user' | 'merchant' | 'admin';
@@ -20,9 +21,10 @@ Page({
     currentRole: '',
     roleText: '',
     roleList: [] as RoleItem[],
+    unreadCount: 0,
   },
 
-  onShow() {
+  async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const u = app.globalData.user;
@@ -35,6 +37,12 @@ Page({
       roleText: roleLabel(currentRole),
       roleList: roles.map((r) => ({ key: roleKey(r), label: roleLabel(r), current: r === currentRole })),
     });
+    try {
+      const resp = await listNotifications(false, 1);
+      this.setData({ unreadCount: resp.unreadCount });
+    } catch {
+      this.setData({ unreadCount: 0 });
+    }
   },
 
   goMyPosts() {

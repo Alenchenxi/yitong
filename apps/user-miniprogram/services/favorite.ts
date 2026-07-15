@@ -30,6 +30,12 @@ export function listFavorites(targetType?: FavoriteTargetType, page = 1, pageSiz
   return request<FavoriteListResult>({ url: `/favorites${qs}` });
 }
 
+export function checkFavorite(targetType: FavoriteTargetType, targetId: string) {
+  return request<{ favorited: boolean; id?: string }>({
+    url: `/favorites/check?targetType=${targetType}&targetId=${encodeURIComponent(targetId)}`,
+  });
+}
+
 export function deleteFavorite(id: string) {
   return request<{ deleted: boolean }>({ url: `/favorites/${id}`, method: 'DELETE' });
 }

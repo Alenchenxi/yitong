@@ -55,6 +55,19 @@
   border-bottom: 1rpx solid #f4f4f4;
 }
 .menu-item:last-child { border-bottom: none; }
+.badge {
+  min-width: 32rpx;
+  height: 32rpx;
+  line-height: 32rpx;
+  padding: 0 10rpx;
+  border-radius: 18rpx;
+  background: #ff4d6d;
+  color: #fff;
+  font-size: 22rpx;
+  text-align: center;
+  margin-left: auto;
+  margin-right: 18rpx;
+}
 .arrow { color: #bbb; font-size: 32rpx; }
 
 .logout-btn {

@@ -144,6 +144,10 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
   private handleJoin(ws: WebSocket, m: ClientMsg) {
     const id = this.meta.get(ws)?.identifier ?? '';
     if (!id || !m.roomId) return;
+    if (!this.canJoinRoom(m.roomId)) {
+      this.send(ws, { type: 'join_failed', roomId: m.roomId, reason: 'invalid_room' });
+      return;
+    }
     if (!this.rooms.has(m.roomId)) this.rooms.set(m.roomId, new Set());
     this.rooms.get(m.roomId)!.add(id);
     this.send(ws, { type: 'joined', roomId: m.roomId });
@@ -161,6 +165,7 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
   private handleRoomMsg(ws: WebSocket, m: ClientMsg) {
     const id = this.meta.get(ws)?.identifier ?? '';
     if (!id || !m.roomId || m.content == null) return;
+    if (!this.canJoinRoom(m.roomId)) return;
     if (!this.rooms.get(m.roomId)?.has(id)) return; // 未加入房间不能发
     this.broadcastRoom(
       m.roomId,
@@ -236,6 +241,10 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
 
   private isAnonIdentifier(id: string): boolean {
     return id.startsWith('anon_');
+  }
+
+  private canJoinRoom(roomId: string): boolean {
+    return roomId === 'treehole-party-main';
   }
 
   private checkHeartbeat() {

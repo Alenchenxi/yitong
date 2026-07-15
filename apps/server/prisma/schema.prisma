@@ -334,6 +334,8 @@ model PaymentOrder {
   wxPrepayId String?   @map("wx_prepay_id")
   status     PayStatus @default(PENDING)
   paidAt     DateTime? @map("paid_at")
+  refundedAt DateTime? @map("refunded_at")
+  refundReason String? @map("refund_reason")
   createdAt  DateTime  @default(now()) @map("created_at")
   @@map("payment_orders")
 }

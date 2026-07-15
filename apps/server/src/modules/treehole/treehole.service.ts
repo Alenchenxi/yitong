@@ -6,6 +6,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { ImService } from '../chat/im.service';
+import { ChatService } from '../chat/chat.service';
 import type { CreateAnonPostDto } from './dto/create-anon-post.dto';
 
 // 错误码 3xxxx 树洞段（API §3）：30001 匿名态失效 / 30002 匹配无可用对象
@@ -23,6 +24,7 @@ export class TreeholeService {
     private readonly jwt: JwtService,
     private readonly moderation: ModerationService,
     private readonly im: ImService,
+    private readonly chat: ChatService,
   ) {}
 
   // 换匿名 token：find/create AnonymousProfile（userId->anonId，后台可追溯），签 anonToken（含 anonId，不含 uid）
@@ -92,9 +94,19 @@ export class TreeholeService {
 
   // 1v1 随机匹配：内存队列撮合 -> ChatMatch + IM 凭证（anonId 作 loginUserId）
   async match(anonId: string) {
+    this.removeFromMatchQueue(anonId);
+    const active = await this.findActiveMatch(anonId);
+    if (active) {
+      const peerAnonId = active.anonIdA === anonId ? active.anonIdB : active.anonIdA;
+      const imCredential = await this.im.getImCredential(anonId);
+      return { matchId: active.id, peerAnonId, imCredential, waiting: false };
+    }
     while (this.matchQueue.length > 0) {
       const peer = this.matchQueue.shift()!;
       if (peer !== anonId) {
+        this.removeFromMatchQueue(peer);
+        const peerActive = await this.findActiveMatch(peer);
+        if (peerActive) continue;
         const m = await this.prisma.chatMatch.create({
           data: { anonIdA: peer, anonIdB: anonId, status: MatchStatus.ACTIVE },
         });
@@ -111,6 +123,18 @@ export class TreeholeService {
   async joinParty(anonId: string) {
     const imCredential = await this.im.getImCredential(anonId);
     return { roomId: 'treehole-party-main', imCredential };
+  }
+
+  async sendMessage(anonId: string, peerAnonId: string, content: string) {
+    if (!peerAnonId || !content.trim()) {
+      throw new BizException(30004, '消息内容无效', HttpStatus.BAD_REQUEST);
+    }
+    return this.chat.sendMessage(anonId, peerAnonId, content);
+  }
+
+  async listMessages(anonId: string, peerAnonId: string, cursor?: string, limit = 50) {
+    if (!peerAnonId) throw new BizException(30004, '消息对象无效', HttpStatus.BAD_REQUEST);
+    return this.chat.listMessages(anonId, peerAnonId, cursor, limit);
   }
 
   // 匿名点赞 toggle（去重/取消）
@@ -160,6 +184,23 @@ export class TreeholeService {
 
   private generateAnonId(): string {
     return `anon_${randomUUID().replace(/-/g, '')}`;
+  }
+
+  private removeFromMatchQueue(anonId: string): void {
+    for (let i = this.matchQueue.length - 1; i >= 0; i -= 1) {
+      if (this.matchQueue[i] === anonId) this.matchQueue.splice(i, 1);
+    }
+  }
+
+  private findActiveMatch(anonId: string) {
+    return this.prisma.chatMatch.findFirst({
+      where: {
+        status: MatchStatus.ACTIVE,
+        OR: [{ anonIdA: anonId }, { anonIdB: anonId }],
+      },
+      select: { id: true, anonIdA: true, anonIdB: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   private isLegacyUnsafeAnonId(uid: string, anonId: string): boolean {
