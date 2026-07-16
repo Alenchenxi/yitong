@@ -8,6 +8,11 @@ import { NotificationService } from './notification.service';
 export class NotificationController {
   constructor(private readonly notification: NotificationService) {}
 
+  @Get('subscribe-templates')
+  async subscribeTemplates() {
+    return ok(this.notification.getSubscribeTemplates());
+  }
+
   @Get()
   async list(
     @Query('unreadOnly') unreadOnly?: string,

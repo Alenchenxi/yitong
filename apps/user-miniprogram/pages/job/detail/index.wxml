@@ -15,6 +15,7 @@
 
   <view class="apps" wx:if="{{isMerchantOwner}}">
     <view class="section-title">报名管理 ({{apps.length}})</view>
+    <button class="subscribe-btn" size="mini" bindtap="subscribeJobApply" disabled="{{subscribingApply}}">{{subscribingApply ? '订阅中...' : '订阅报名提醒'}}</button>
     <view class="app-item" wx:for="{{apps}}" wx:key="id">
       <view class="app-head">
         <text class="app-nick">{{item.userNickname}}</text>

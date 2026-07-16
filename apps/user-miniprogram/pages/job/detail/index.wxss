@@ -13,6 +13,13 @@
   margin: 16rpx 0 32rpx;
 }
 .apply-btn[disabled] { background: #ffb3c1 !important; }
+.subscribe-btn {
+  margin: 0 0 16rpx;
+  border-radius: 32rpx !important;
+  color: #1677ff !important;
+  border: 1rpx solid #1677ff !important;
+  background: #fff !important;
+}
 .fav-row { display: flex; justify-content: flex-end; margin: 16rpx 0 8rpx; }
 .fav-btn { color: #999; font-size: 28rpx; padding: 8rpx 16rpx; }
 .fav-btn.faved { color: #ff4d6d; }

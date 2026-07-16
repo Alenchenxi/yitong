@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { WxSubscribeMessageService } from '../../common/wx/wx-subscribe-message.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface NotificationVo {
@@ -23,7 +24,12 @@ export const NotificationType = {
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(NotificationService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wxSubscribe: WxSubscribeMessageService,
+  ) {}
 
   // 内部调用：创建通知（供其他 service 注入使用）
   async create(params: {
@@ -34,7 +40,7 @@ export class NotificationService {
     targetType?: string;
     targetId?: string;
   }) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId: params.userId,
         type: params.type,
@@ -44,6 +50,14 @@ export class NotificationService {
         targetId: params.targetId ?? null,
       },
     });
+    void this.trySendSubscribeMessage(notification).catch((e: unknown) => {
+      this.logger.warn(`subscribe message skipped: ${e instanceof Error ? e.message : String(e)}`);
+    });
+    return notification;
+  }
+
+  getSubscribeTemplates() {
+    return this.wxSubscribe.getTemplates();
   }
 
   // 列表（分页 + 未读数）
@@ -108,5 +122,30 @@ export class NotificationService {
       read: n.read,
       createdAt: n.createdAt.toISOString(),
     };
+  }
+
+  private async trySendSubscribeMessage(n: {
+    userId: string;
+    type: string;
+    title: string;
+    content: string;
+    targetType: string | null;
+    targetId: string | null;
+    createdAt: Date;
+  }) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: n.userId },
+      select: { openid: true },
+    });
+    if (!user?.openid) return;
+    await this.wxSubscribe.sendForNotification({
+      openid: user.openid,
+      type: n.type,
+      title: n.title,
+      content: n.content,
+      targetType: n.targetType,
+      targetId: n.targetId,
+      createdAt: n.createdAt,
+    });
   }
 }

@@ -10,6 +10,7 @@ import {
   type JobAppVo,
 } from '../../../services/job';
 import { checkFavorite, toggleFavorite } from '../../../services/favorite';
+import { requestJobApplySubscribe, requestJobStatusSubscribe } from '../../../services/subscribe-message';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '待处理',
@@ -26,6 +27,7 @@ Page({
     isMerchantOwner: false,
     applying: false,
     transitioning: '',
+    subscribingApply: false,
   },
   postId: '',
 
@@ -70,12 +72,24 @@ Page({
     if (this.data.applying) return;
     this.setData({ applying: true });
     try {
+      await requestJobStatusSubscribe();
       await applyJob(this.postId);
       wx.showToast({ title: '报名成功', icon: 'success' });
     } catch {
       /* 40002 重复报名 toast 已弹 */
     } finally {
       this.setData({ applying: false });
+    }
+  },
+
+  async subscribeJobApply() {
+    if (this.data.subscribingApply) return;
+    this.setData({ subscribingApply: true });
+    try {
+      const accepted = await requestJobApplySubscribe();
+      wx.showToast({ title: accepted ? '已订阅报名提醒' : '未开启订阅', icon: 'none' });
+    } finally {
+      this.setData({ subscribingApply: false });
     }
   },
 
