@@ -39,10 +39,10 @@
     "selectedColor": "#ff4d6d",
     "backgroundColor": "#ffffff",
     "list": [
-      { "pagePath": "pages/confession/index", "text": "表白墙" },
-      { "pagePath": "pages/treehole/index", "text": "树洞" },
-      { "pagePath": "pages/job/index", "text": "兼职" },
-      { "pagePath": "pages/profile/index", "text": "我的" }
+      { "pagePath": "pages/confession/index", "text": "表白墙", "iconPath": "assets/tabbar/confession.png", "selectedIconPath": "assets/tabbar/confession-active.png" },
+      { "pagePath": "pages/treehole/index", "text": "树洞", "iconPath": "assets/tabbar/treehole.png", "selectedIconPath": "assets/tabbar/treehole-active.png" },
+      { "pagePath": "pages/job/index", "text": "兼职", "iconPath": "assets/tabbar/job.png", "selectedIconPath": "assets/tabbar/job-active.png" },
+      { "pagePath": "pages/profile/index", "text": "我的", "iconPath": "assets/tabbar/profile.png", "selectedIconPath": "assets/tabbar/profile-active.png" }
     ]
   },
   "sitemapLocation": "sitemap.json"

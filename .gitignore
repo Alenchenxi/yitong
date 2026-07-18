@@ -32,3 +32,5 @@ project.private.config.json
 
 # 微信开发者工具 TS 编译产物（.ts 同名 .js，不提交）
 apps/*-miniprogram/**/*.js
+# 但手写工具脚本（scripts/）需提交
+!apps/*-miniprogram/scripts/**/*.js
