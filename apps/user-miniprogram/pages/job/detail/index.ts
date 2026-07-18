@@ -22,7 +22,7 @@ const STATUS_TEXT: Record<string, string> = {
 Page({
   data: {
     post: null as (JobPostVo & { favorited?: boolean }) | null,
-    reviews: [] as JobReviewVo[],
+    reviews: [] as Array<JobReviewVo & { stars: string }>,
     apps: [] as Array<JobAppVo & { statusText: string }>,
     isMerchantOwner: false,
     applying: false,
@@ -50,7 +50,10 @@ Page({
       const post = await getJobPost(this.postId);
       const reviews = await listPostReviews(this.postId).catch(() => []);
       const favorite = await checkFavorite('job_post', this.postId).catch(() => null);
-      this.setData({ post: { ...post, favorited: favorite?.favorited ?? false }, reviews });
+      this.setData({
+        post: { ...post, favorited: favorite?.favorited ?? false },
+        reviews: reviews.map((r) => ({ ...r, stars: '★'.repeat(r.rating) })),
+      });
       const app = getApp<AppInstance>();
       if (app.globalData.currentRole === 'MERCHANT') {
         try {

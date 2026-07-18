@@ -2,7 +2,7 @@
   <view class="item" wx:for="{{reviews}}" wx:key="id">
     <view class="head">
       <text class="job">{{item.jobPostTitle}}</text>
-      <text class="stars">{{'★'.repeat(item.rating)}}</text>
+      <text class="stars">{{item.stars}}</text>
     </view>
     <view class="content">{{item.content}}</view>
     <view class="meta">{{item.reviewerNickname}} · {{item.createdAt}}</view>

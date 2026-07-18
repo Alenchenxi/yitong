@@ -1,12 +1,12 @@
 {
   "pages": [
+    "pages/role-select/index",
     "pages/confession/index",
     "pages/treehole/index",
     "pages/job/index",
     "pages/profile/index",
     "pages/post-detail/index",
     "pages/post-create/index",
-    "pages/role-select/index",
     "pages/merchant/register/index",
     "pages/merchant/profile/index",
     "pages/merchant/reviews/index",

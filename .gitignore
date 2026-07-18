@@ -27,5 +27,8 @@ Thumbs.db
 # prisma
 apps/server/prisma/migrations/dev.db*
 
-# mini-program 本地配置
-apps/*-miniprogram/project.private.config.json
+# mini-program 本地配置（开发者工具私有配置，不提交）
+project.private.config.json
+
+# 微信开发者工具 TS 编译产物（.ts 同名 .js，不提交）
+apps/*-miniprogram/**/*.js

@@ -17,9 +17,12 @@ App({
   },
 
   onLaunch() {
-    // 从 storage 恢复登录态；无 token 则等角色选择页显式登录
+    // 从 storage 恢复登录态；无 token 则跳角色选择页（启动页即角色选择，双重保险）
     if (restoreAuth(this)) {
       this.globalData.loginReady = true;
+    } else {
+      // 启动页若不是 role-select（如开发者工具直接打开某 tab 页），强制回到角色选择
+      wx.reLaunch({ url: '/pages/role-select/index' });
     }
   },
 
