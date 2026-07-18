@@ -104,3 +104,8 @@ export function listComments(postId: string, page = 1, pageSize = 20) {
     url: `/posts/${postId}/comments?page=${page}&pageSize=${pageSize}`,
   });
 }
+
+// 我的表白墙（当前用户发的帖）
+export function listMyPosts() {
+  return request<{ list: PostVo[] }>({ url: '/posts/mine' });
+}

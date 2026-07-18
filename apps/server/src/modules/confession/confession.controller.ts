@@ -55,6 +55,12 @@ export class ConfessionController {
     return ok(await this.confession.feed(uid, q));
   }
 
+  @Get('posts/mine')
+  async myPosts(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.listMyPosts(uid));
+  }
+
   @Get('posts/:id')
   async getPost(@Param('id') id: string, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;

@@ -139,6 +139,17 @@ export class ConfessionService {
     return this.queryPosts(uid, query, circleId);
   }
 
+  // 我的表白墙：当前用户发的帖（全部状态，含已下架）
+  async listMyPosts(uid: string): Promise<{ list: PostVo[] }> {
+    const posts = await this.prisma.post.findMany({
+      where: { authorId: uid },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: postInclude(uid),
+    });
+    return { list: posts.map((p) => this.toPostVo(p)) };
+  }
+
   async getPost(uid: string, id: string): Promise<PostVo> {
     const post = await this.prisma.post.findFirst({
       where: { id, status: PostStatus.APPROVED },

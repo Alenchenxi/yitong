@@ -1,3 +1,5 @@
+import { request } from './request';
+
 // 树洞匿名接口：用 anonToken 鉴权（独立于 user access token）
 
 export interface AnonPostVo {
@@ -147,4 +149,9 @@ export function listAnonMessages(
 ): Promise<{ list: AnonMessageVo[]; nextCursor: string | null; hasMore: boolean }> {
   const qs = `?peerAnonId=${encodeURIComponent(peerAnonId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
   return anonRequest({ url: `/treehole/messages${qs}`, method: 'GET' });
+}
+
+// 我的匿名帖（用 user access token，非 anon）
+export function listMyAnonPosts() {
+  return request<{ list: AnonPostVo[] }>({ url: '/treehole/posts/mine' });
 }

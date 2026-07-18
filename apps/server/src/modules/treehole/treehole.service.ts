@@ -83,6 +83,18 @@ export class TreeholeService {
     return { list: slice.map((p) => this.toVo(p)), nextCursor, hasMore };
   }
 
+  // 我的匿名帖：按 userId -> anonId 查（用 access token，非 anon）
+  async listMyAnonPosts(uid: string) {
+    const profile = await this.prisma.anonymousProfile.findUnique({ where: { userId: uid } });
+    if (!profile) return { list: [] };
+    const posts = await this.prisma.anonymousPost.findMany({
+      where: { anonId: profile.anonId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    return { list: posts.map((p) => this.toVo(p)) };
+  }
+
   async getPost(anonId: string, id: string) {
     const post = await this.prisma.anonymousPost.findFirst({
       where: { id, status: PostStatus.APPROVED },

@@ -23,7 +23,9 @@
     "pages/admin/index",
     "pages/notifications/index",
     "pages/favorites/index",
-    "pages/referral/index"
+    "pages/referral/index",
+    "pages/my-posts/index",
+    "pages/my-anon-posts/index"
   ],
   "window": {
     "navigationBarTitleText": "燚桐",

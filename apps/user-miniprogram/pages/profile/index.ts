@@ -46,7 +46,15 @@ Page({
   },
 
   goMyPosts() {
-    wx.showToast({ title: '开发中', icon: 'none' });
+    wx.navigateTo({ url: '/pages/my-posts/index' });
+  },
+
+  goMyTreehole() {
+    wx.navigateTo({ url: '/pages/my-anon-posts/index' });
+  },
+
+  goMyJobs() {
+    wx.navigateTo({ url: '/pages/job/my-applications/index' });
   },
 
   goNotifications() {

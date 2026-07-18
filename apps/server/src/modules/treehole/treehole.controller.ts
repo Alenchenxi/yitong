@@ -38,6 +38,13 @@ export class TreeholeController {
     return ok(await this.treehole.listPosts(anonId, cursor, parsePositiveInt(limit, 20, 1, 50)));
   }
 
+  // 我的匿名帖：用 access token（非 anon），按 userId -> anonId 查
+  @Get('posts/mine')
+  async myPosts(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listMyAnonPosts(uid));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Get('posts/:id')
