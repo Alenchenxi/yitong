@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ReferralService } from '../referral/referral.service';
 import type { JwtPayload, WxSessionResult } from './types';
 import type { WxLoginDto } from './dto/wx-login.dto';
+import type { UpdateAccountDto } from './dto/update-account.dto';
 
 const ACCESS_EXPIRES = '2h';
 const REFRESH_EXPIRES = '7d';
@@ -95,6 +96,33 @@ export class AuthService {
     });
     if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
     return this.toUserVo(user);
+  }
+
+  // 账号资料：昵称 / 性别 / 生日 / 头像
+  async getAccount(uid: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: uid },
+      select: { id: true, nickname: true, avatarUrl: true, gender: true, birthday: true },
+    });
+    if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
+    return user;
+  }
+
+  async updateAccount(uid: string, dto: UpdateAccountDto) {
+    return this.prisma.user.update({
+      where: { id: uid },
+      data: {
+        ...(dto.nickname !== undefined ? { nickname: dto.nickname } : {}),
+        ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
+        ...(dto.birthday !== undefined ? { birthday: dto.birthday } : {}),
+      },
+      select: { id: true, nickname: true, avatarUrl: true, gender: true, birthday: true },
+    });
+  }
+
+  // 注销账号：soft delete（deletedAt），重新登录会被拒（10005）
+  async deleteAccount(uid: string) {
+    await this.prisma.user.update({ where: { id: uid }, data: { deletedAt: new Date() } });
   }
 
   // 校验并确保用户拥有目标角色：管理员需 openid 预设绑定；user/merchant 默认放宽（merchant 生产由 feat/merchant 收紧）

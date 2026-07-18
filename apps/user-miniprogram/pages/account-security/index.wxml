@@ -1,0 +1,50 @@
+<view class="page">
+  <view class="section">
+    <view class="section-title">个人信息</view>
+    <view class="row">
+      <text class="label">昵称</text>
+      <input class="input" value="{{nickname}}" bindinput="onNickname" placeholder="输入昵称" />
+    </view>
+    <view class="row">
+      <text class="label">性别</text>
+      <picker bindchange="onGenderChange" value="{{genderIndex}}" range="{{genderLabels}}">
+        <view class="value">{{genderIndex >= 0 ? genderLabels[genderIndex] : '未设置'}}</view>
+      </picker>
+    </view>
+    <view class="row">
+      <text class="label">生日</text>
+      <picker mode="date" bindchange="onBirthdayChange" value="{{birthday}}">
+        <view class="value">{{birthday || '未设置'}}</view>
+      </picker>
+    </view>
+    <button class="save-btn" bindtap="save" disabled="{{saving}}">{{saving ? '保存中...' : '保存'}}</button>
+  </view>
+
+  <view class="section">
+    <view class="section-title">安全设置</view>
+    <view class="row" bindtap="onChangePassword">
+      <text class="label">修改密码</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="row" bindtap="openCancel">
+      <text class="label danger">注销账号</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+</view>
+
+<view class="cancel-mask" wx:if="{{showCancel}}">
+  <view class="cancel-notice">
+    <view class="notice-title">注销账号须知</view>
+    <view class="notice-body">注销后您的账号将无法登录，且：
+1. 您发布的表白墙/树洞帖子将保留（匿名展示）；
+2. 您的收藏、邀请记录将被保留；
+3. 账号信息将被标记注销，无法恢复。
+
+请确认您已了解上述影响。</view>
+  </view>
+  <view class="cancel-actions">
+    <button class="cancel-btn" bindtap="confirmCancel">申请注销</button>
+    <button class="cancel-btn secondary" bindtap="closeCancel">再想想</button>
+  </view>
+</view>

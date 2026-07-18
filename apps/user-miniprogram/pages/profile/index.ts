@@ -73,6 +73,10 @@ Page({
     wx.navigateTo({ url: '/pages/merchant/register/index' });
   },
 
+  goAccountSecurity() {
+    wx.navigateTo({ url: '/pages/account-security/index' });
+  },
+
   goAdmin() {
     wx.navigateTo({ url: '/pages/admin/index' });
   },

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpStatus, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpStatus, Post, Put, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
@@ -6,6 +6,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { AuthService } from './auth.service';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { SwitchRoleDto } from './dto/switch-role.dto';
+import { UpdateAccountDto } from './dto/update-account.dto';
 import { WxLoginDto } from './dto/wx-login.dto';
 import { Public } from './public.decorator';
 import type { AuthenticatedRequest } from './types';
@@ -41,5 +42,26 @@ export class AuthController {
     const uid = (req as AuthenticatedRequest).user?.uid;
     if (!uid) throw new BizException(10001, '未登录', HttpStatus.UNAUTHORIZED);
     return ok(await this.auth.switchRole(uid, dto.role));
+  }
+
+  // 账号资料：昵称 / 性别 / 生日
+  @Get('account')
+  async getAccount(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.auth.getAccount(uid));
+  }
+
+  @Put('account')
+  async updateAccount(@Body() dto: UpdateAccountDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.auth.updateAccount(uid, dto));
+  }
+
+  // 注销账号（soft delete）
+  @Delete('account')
+  async deleteAccount(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    await this.auth.deleteAccount(uid);
+    return ok({ deleted: true });
   }
 }

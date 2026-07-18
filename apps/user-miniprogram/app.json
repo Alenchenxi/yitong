@@ -25,7 +25,8 @@
     "pages/favorites/index",
     "pages/referral/index",
     "pages/my-posts/index",
-    "pages/my-anon-posts/index"
+    "pages/my-anon-posts/index",
+    "pages/account-security/index"
   ],
   "window": {
     "navigationBarTitleText": "燚桐",

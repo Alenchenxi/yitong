@@ -14,6 +14,8 @@ model User {
   unionid   String?
   nickname  String
   avatarUrl String?  @map("avatar_url")
+  gender    String?  // 性别：male / female / other
+  birthday  String?  // 生日：YYYY-MM-DD
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
