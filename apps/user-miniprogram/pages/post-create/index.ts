@@ -7,6 +7,7 @@ interface PageData {
   selectedCircleId: string;
   selectedCircleName: string;
   content: string;
+  hasContent: boolean; // content.trim() 预计算（WXML 不支持 .trim()）
   images: string[]; // 本地路径（选中后/上传中）
   uploading: boolean;
   submitting: boolean;
@@ -22,6 +23,7 @@ Page({
     selectedCircleId: '',
     selectedCircleName: '选择圈子',
     content: '',
+    hasContent: false,
     images: [],
     uploading: false,
     submitting: false,
@@ -68,7 +70,8 @@ Page({
   },
 
   onContentInput(e: WechatMiniprogram.Input) {
-    this.setData({ content: e.detail.value });
+    const v = e.detail.value;
+    this.setData({ content: v, hasContent: v.trim().length > 0 });
   },
 
   chooseImage() {

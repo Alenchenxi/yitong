@@ -36,7 +36,7 @@
   <button
     class="submit"
     bindtap="submit"
-    disabled="{{submitting || !content.trim() || !selectedCircleId}}"
+    disabled="{{submitting || !hasContent || !selectedCircleId}}"
   >{{submitting ? '发布中...' : '发布'}}</button>
 </view>
 

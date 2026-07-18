@@ -24,8 +24,16 @@ Page({
   async startMatch() {
     if (this.data.matching) return;
     this.setData({ matching: true });
+    wx.showLoading({ title: '正在为您匹配...', mask: true });
     try {
-      const r: MatchResp = await matchAnon();
+      // waiting 时轮询重试（单用户测试或对方尚未入队时，自己会先入队等待）
+      let r: MatchResp = await matchAnon();
+      let retries = 0;
+      while (r.waiting && retries < 5) {
+        await new Promise((res) => setTimeout(res, 3000));
+        r = await matchAnon();
+        retries += 1;
+      }
       if (r.waiting) {
         wx.showToast({ title: '暂无可用对象，稍后再试', icon: 'none' });
       } else if (r.imCredential && r.peerAnonId) {
@@ -40,7 +48,7 @@ Page({
         await connectIm(r.imCredential);
         wx.showToast({ title: '匹配成功', icon: 'success' });
       }
-    } catch {} finally { this.setData({ matching: false }); }
+    } catch {} finally { this.setData({ matching: false }); wx.hideLoading(); }
   },
 
   onInput(e: WechatMiniprogram.Input) { this.setData({ input: e.detail.value }); },
