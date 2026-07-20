@@ -38,7 +38,7 @@
   </view>
 
   <view class="comments">
-    <view class="comments-title">评论 ({{total}})</view>
+    <view class="comments-title">评论 ({{post.commentCount}})</view>
     <view class="comment" wx:for="{{commentList}}" wx:key="id">
       <view class="c-avatar">
         <text class="c-ph">{{item.authorNickname[0]}}</text>
@@ -49,6 +49,19 @@
           <text class="c-time">{{item.timeText}}</text>
         </view>
         <view class="c-content">{{item.content}}</view>
+        <view class="c-actions">
+          <text class="c-reply" data-parent-id="{{item.id}}" data-nickname="{{item.authorNickname}}" catchtap="startReply">回复</text>
+        </view>
+        <view class="replies" wx:if="{{item.replies.length}}">
+          <view class="reply" wx:for="{{item.replies}}" wx:for-item="r" wx:key="id">
+            <view class="reply-main">
+              <text class="r-nick">{{r.authorNickname}}</text>
+              <text class="r-reply-to" wx:if="{{r.replyToNickname}}"> 回复 {{r.replyToNickname}}</text>
+              <text class="r-content">：{{r.content}}</text>
+            </view>
+            <text class="c-reply r-reply" data-parent-id="{{item.id}}" data-reply-to-id="{{r.id}}" data-nickname="{{r.authorNickname}}" catchtap="startReply">回复</text>
+          </view>
+        </view>
       </view>
     </view>
     <view class="tip" wx:if="{{commentList.length === 0 && !loading}}">还没有评论，来说点什么吧</view>
@@ -58,18 +71,24 @@
 </view>
 
 <view class="bar" wx:if="{{post}}">
-  <input
-    class="input"
-    placeholder="{{focus ? '写下你的评论…' : '说点什么…'}}"
-    value="{{commentText}}"
-    bindinput="onInput"
-    focus="{{focus}}"
-    confirm-type="send"
-    bindconfirm="sendComment"
-    adjust-position
-  />
-  <view class="like-btn {{post.liked ? 'liked' : ''}}" bindtap="onLike">
-    <text>{{post.liked ? '♥' : '♡'}}</text>
+  <view class="reply-bar" wx:if="{{reply}}">
+    <text class="reply-hint">回复 {{reply.nickname}}</text>
+    <text class="reply-cancel" catchtap="cancelReply">×</text>
   </view>
-  <button class="send-btn" size="mini" bindtap="sendComment" disabled="{{!commentText || sending}}">发送</button>
+  <view class="bar-row">
+    <input
+      class="input"
+      placeholder="{{reply ? '回复 ' + reply.nickname + '…' : (focus ? '写下你的评论…' : '说点什么…')}}"
+      value="{{commentText}}"
+      bindinput="onInput"
+      focus="{{focus}}"
+      confirm-type="send"
+      bindconfirm="sendComment"
+      adjust-position
+    />
+    <view class="like-btn {{post.liked ? 'liked' : ''}}" bindtap="onLike">
+      <text>{{post.liked ? '♥' : '♡'}}</text>
+    </view>
+    <button class="send-btn" size="mini" bindtap="sendComment" disabled="{{!commentText || sending}}">发送</button>
+  </view>
 </view>

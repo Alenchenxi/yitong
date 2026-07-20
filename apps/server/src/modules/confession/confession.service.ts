@@ -24,6 +24,19 @@ function postInclude(uid: string) {
 }
 type PostWithAuthor = Prisma.PostGetPayload<{ include: ReturnType<typeof postInclude> }>;
 
+// P0-10 评论 include：author + replyToUser（被回复用户昵称，用于"回复@user"展示）
+const commentAuthorSelect = { id: true, nickname: true, avatarUrl: true } as const;
+const replyToUserSelect = { select: { nickname: true } } as const;
+// 顶级评论 include：author + replyToUser + replies（按时间升序，含 author + replyToUser）
+const topLevelCommentInclude = {
+  author: { select: commentAuthorSelect },
+  replyToUser: replyToUserSelect,
+  replies: {
+    orderBy: { createdAt: 'asc' },
+    include: { author: { select: commentAuthorSelect }, replyToUser: replyToUserSelect },
+  },
+} as const;
+
 // 首页发现流缓存：5 分钟 TTL，减少高并发下重复查询
 interface CacheEntry {
   data: FeedResult;
@@ -257,9 +270,33 @@ export class ConfessionService {
     if (!post) throw new BizException(20003, '帖子不存在');
 
     await this.moderation.checkText(dto.content, openid);
+
+    // P0-10 回复：parentId 必须指向同帖顶级评论；replyToId 指向被回复的具体评论/回复（取其 author 存 replyToUserId）
+    let parentId: string | null = null;
+    let replyToUserId: string | null = null;
+    if (dto.parentId) {
+      const parent = await this.prisma.comment.findFirst({
+        where: { id: dto.parentId, postId },
+        select: { id: true, parentId: true, authorId: true },
+      });
+      if (!parent) throw new BizException(20005, '评论不存在');
+      if (parent.parentId !== null) throw new BizException(20005, '只能回复顶级评论');
+      parentId = parent.id;
+      const replyToId = dto.replyToId ?? parent.id;
+      const replyTarget = await this.prisma.comment.findFirst({
+        where: { id: replyToId, postId },
+        select: { authorId: true },
+      });
+      if (!replyTarget) throw new BizException(20005, '被回复的评论不存在');
+      replyToUserId = replyTarget.authorId;
+    }
+
     const comment = await this.prisma.comment.create({
-      data: { postId, authorId: uid, content: dto.content },
-      include: { author: { select: { id: true, nickname: true, avatarUrl: true } } },
+      data: { postId, authorId: uid, content: dto.content, parentId, replyToUserId },
+      include: {
+        author: { select: commentAuthorSelect },
+        replyToUser: replyToUserSelect,
+      },
     });
     invalidateFeedCache();
     return this.toCommentVo(comment);
@@ -270,17 +307,25 @@ export class ConfessionService {
     page: number,
     pageSize: number,
   ): Promise<PageResult<CommentVo>> {
-    const [list, total] = await Promise.all([
+    // P0-10：顶级评论分页（parentId 为空），每条带 replies（时间升序）；total = 顶级评论数（分页用）
+    const [topLevel, total] = await Promise.all([
       this.prisma.comment.findMany({
-        where: { postId },
+        where: { postId, parentId: null },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { author: { select: { id: true, nickname: true, avatarUrl: true } } },
+        include: topLevelCommentInclude,
       }),
-      this.prisma.comment.count({ where: { postId } }),
+      this.prisma.comment.count({ where: { postId, parentId: null } }),
     ]);
-    return { list: list.map((c) => this.toCommentVo(c)), total, page, pageSize };
+    return {
+      list: topLevel.map((c) =>
+        this.toCommentVo(c, c.replies.map((r) => this.toCommentVo(r))),
+      ),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   // 举报帖子 -> 创建 ModerationRecord（管理员在审核队列可见）
@@ -392,9 +437,17 @@ export class ConfessionService {
   }
 
   private toCommentVo(
-    comment: Prisma.CommentGetPayload<{
-      include: { author: { select: { id: true; nickname: true; avatarUrl: true } } };
-    }>,
+    comment: {
+      id: string;
+      postId: string;
+      authorId: string;
+      content: string;
+      parentId: string | null;
+      createdAt: Date;
+      author: { nickname: string; avatarUrl: string | null };
+      replyToUser: { nickname: string } | null;
+    },
+    replies: CommentVo[] = [],
   ): CommentVo {
     return {
       id: comment.id,
@@ -403,6 +456,9 @@ export class ConfessionService {
       authorNickname: comment.author.nickname,
       authorAvatarUrl: comment.author.avatarUrl,
       content: comment.content,
+      parentId: comment.parentId,
+      replyToNickname: comment.replyToUser?.nickname ?? null,
+      replies,
       createdAt: comment.createdAt.toISOString(),
     };
   }

@@ -149,6 +149,39 @@
   word-break: break-word;
 }
 
+.c-actions { margin-top: 8rpx; }
+.c-reply {
+  display: inline-block;
+  font-size: 22rpx;
+  color: #86909C;
+  padding: 4rpx 0;
+}
+
+/* P0-10 子回复 */
+.replies {
+  margin-top: 12rpx;
+  padding: 12rpx 16rpx;
+  background: #F7F8FA;
+  border-radius: 8rpx;
+}
+.reply {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 6rpx 0;
+}
+.reply-main {
+  flex: 1;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #4E5969;
+  word-break: break-word;
+}
+.r-nick { color: #1D2129; font-weight: 500; }
+.r-reply-to { color: #86909C; }
+.r-content { color: #4E5969; }
+.r-reply { flex-shrink: 0; margin-left: 16rpx; }
+
 .tip {
   text-align: center;
   color: #999;
@@ -163,12 +196,27 @@
   right: 0;
   bottom: 0;
   background: #fff;
-  padding: 16rpx 24rpx;
+  padding: 12rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  border-top: 1rpx solid #eee;
+  padding-bottom: calc(12rpx + env(safe-area-inset-bottom));
+}
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 24rpx;
+  color: #86909C;
+}
+.reply-cancel { font-size: 32rpx; color: #C9CDD4; padding: 0 8rpx; }
+
+.bar-row {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  border-top: 1rpx solid #eee;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 }
 
 .input {

@@ -41,6 +41,9 @@ export interface CommentVo {
   authorNickname: string;
   authorAvatarUrl: string | null;
   content: string;
+  parentId: string | null; // P0-10 所属顶级评论；null=顶级评论
+  replyToNickname: string | null; // P0-10 被回复用户昵称（"回复@user"）
+  replies: CommentVo[]; // P0-10 子回复（顶级评论按时间升序，回复为空）
   createdAt: string;
 }
 
@@ -110,12 +113,20 @@ export function reportPost(postId: string, reason?: string) {
   return request({ url: `/posts/${postId}/report`, method: 'POST', data: { reason } });
 }
 
-// 评论
-export function createComment(postId: string, content: string) {
+// 评论（P0-10：opts.parentId 回复顶级评论；opts.replyToId 回复具体评论/回复）
+export function createComment(
+  postId: string,
+  content: string,
+  opts?: { parentId?: string; replyToId?: string },
+) {
   return request<CommentVo>({
     url: `/posts/${postId}/comments`,
     method: 'POST',
-    data: { content },
+    data: {
+      content,
+      parentId: opts?.parentId,
+      replyToId: opts?.replyToId,
+    },
   });
 }
 

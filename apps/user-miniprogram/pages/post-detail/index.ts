@@ -6,18 +6,39 @@ import { formatTime } from '../../utils/auth';
 
 type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three'; favorited?: boolean; following?: boolean };
 
+interface CommentView {
+  id: string;
+  postId: string;
+  authorId: string;
+  authorNickname: string;
+  authorAvatarUrl: string | null;
+  content: string;
+  parentId: string | null;
+  replyToNickname: string | null;
+  replies: CommentView[];
+  createdAt: string;
+  timeText: string;
+}
+
+// P0-10 回复态：parentId=顶级评论；replyToId=被回复的具体评论（回复顶级评论作者时 undefined）；nickname=展示用
+interface ReplyState {
+  parentId: string;
+  replyToId?: string;
+  nickname: string;
+}
+
 interface PageData {
   post: PostVoView | null;
-  comments: CommentVo[];
+  commentList: CommentView[];
   page: number;
   pageSize: number;
-  total: number;
+  total: number; // 顶级评论数（分页用）
   hasMore: boolean;
   loading: boolean;
   commentText: string;
   sending: boolean;
-  commentList: Array<CommentVo & { timeText: string }>;
   focus: boolean;
+  reply: ReplyState | null;
 }
 
 function calcImgLayout(n: number): '' | 'one' | 'two' | 'three' {
@@ -31,10 +52,17 @@ function toPostView(p: PostVo, favorited?: boolean): PostVoView {
   return { ...p, favorited, timeText: formatTime(p.createdAt), imgLayout: calcImgLayout(p.images.length) };
 }
 
+function toCommentView(c: CommentVo): CommentView {
+  return {
+    ...c,
+    timeText: formatTime(c.createdAt),
+    replies: (c.replies ?? []).map((r) => toCommentView(r)),
+  };
+}
+
 Page({
   data: {
     post: null,
-    comments: [],
     commentList: [],
     page: 1,
     pageSize: 20,
@@ -44,7 +72,10 @@ Page({
     commentText: '',
     sending: false,
     focus: false,
+    reply: null,
   } as PageData,
+
+  postId: '',
 
   onLoad(options: { id?: string; focus?: string }) {
     if (!options?.id) {
@@ -67,8 +98,6 @@ Page({
     }
   },
 
-  postId: '',
-
   async load() {
     this.setData({ loading: true });
     try {
@@ -79,8 +108,7 @@ Page({
       const favorite = await checkFavorite('post', this.postId).catch(() => null);
       this.setData({
         post: toPostView(post, favorite?.favorited ?? false),
-        comments: commentsResp.list,
-        commentList: commentsResp.list.map((c) => ({ ...c, timeText: formatTime(c.createdAt) })),
+        commentList: commentsResp.list.map(toCommentView),
         total: commentsResp.total,
         page: 1,
         hasMore: commentsResp.list.length < commentsResp.total,
@@ -114,15 +142,12 @@ Page({
     try {
       const nextPage = this.data.page + 1;
       const resp = await listComments(this.postId, nextPage, this.data.pageSize);
+      const newViews = resp.list.map(toCommentView);
       this.setData({
-        comments: [...this.data.comments, ...resp.list],
-        commentList: [
-          ...this.data.commentList,
-          ...resp.list.map((c) => ({ ...c, timeText: formatTime(c.createdAt) })),
-        ],
+        commentList: [...this.data.commentList, ...newViews],
         page: nextPage,
         total: resp.total,
-        hasMore: this.data.comments.length + resp.list.length < resp.total,
+        hasMore: this.data.commentList.length + newViews.length < resp.total,
       });
     } catch {
       // ignore
@@ -139,21 +164,53 @@ Page({
     this.setData({ commentText: e.detail.value });
   },
 
+  // P0-10 回复：点"回复"设回复态（parentId=顶级评论；回复某条回复时带 replyToId）
+  startReply(e: WechatMiniprogram.TouchEvent) {
+    const { parentId, replyToId, nickname } = e.currentTarget.dataset as {
+      parentId: string;
+      replyToId?: string;
+      nickname: string;
+    };
+    this.setData({ reply: { parentId, replyToId, nickname }, focus: true });
+  },
+  cancelReply() {
+    this.setData({ reply: null });
+  },
+
   async sendComment() {
     const text = this.data.commentText.trim();
     if (!text || this.data.sending) return;
+    const reply = this.data.reply;
     this.setData({ sending: true });
     try {
-      const c = await createComment(this.postId, text);
-      const newList = [{ ...c, timeText: formatTime(c.createdAt) }, ...this.data.commentList];
-      const post = this.data.post;
-      this.setData({
-        commentList: newList,
-        comments: [c, ...this.data.comments],
-        total: this.data.total + 1,
-        commentText: '',
-        post: post ? { ...post, commentCount: post.commentCount + 1 } : post,
+      const c = await createComment(this.postId, text, {
+        parentId: reply?.parentId,
+        replyToId: reply?.replyToId,
       });
+      const view = toCommentView(c);
+      const post = this.data.post;
+      if (reply) {
+        // 回复：追加到对应顶级评论的 replies
+        const list = this.data.commentList.map((item) =>
+          item.id === reply.parentId
+            ? { ...item, replies: [...item.replies, view] }
+            : item,
+        );
+        this.setData({
+          commentList: list,
+          commentText: '',
+          reply: null,
+          post: post ? { ...post, commentCount: post.commentCount + 1 } : post,
+        });
+      } else {
+        // 顶级评论：prepend
+        this.setData({
+          commentList: [view, ...this.data.commentList],
+          total: this.data.total + 1,
+          commentText: '',
+          post: post ? { ...post, commentCount: post.commentCount + 1 } : post,
+        });
+      }
       wx.showToast({ title: '评论成功', icon: 'success' });
     } catch {
       // toast

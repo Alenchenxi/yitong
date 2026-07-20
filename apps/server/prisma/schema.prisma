@@ -22,6 +22,7 @@ model User {
   postLikes PostLike[]
   posts     Post[]
   comments  Comment[]
+  commentReplyTos Comment[] @relation("CommentReplyTo")
   userRoles UserRole[]
   applications JobApplication[]
   favorites Favorite[]
@@ -104,13 +105,19 @@ enum PostStatus {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  postId    String   @map("post_id")
-  authorId  String   @map("author_id")
-  content   String
-  createdAt DateTime @default(now()) @map("created_at")
-  post      Post     @relation(fields: [postId], references: [id])
-  author    User     @relation(fields: [authorId], references: [id])
+  id            String   @id @default(cuid())
+  postId        String   @map("post_id")
+  authorId      String   @map("author_id")
+  content       String
+  parentId      String?  @map("parent_id")         // 所属顶级评论（thread root）；null=顶级评论
+  replyToUserId String?  @map("reply_to_user_id")  // 被回复用户（denormalized，用于"回复@user"展示）；回复顶级评论时=null
+  createdAt     DateTime @default(now()) @map("created_at")
+  post          Post     @relation(fields: [postId], references: [id])
+  author        User     @relation(fields: [authorId], references: [id])
+  replyToUser   User?    @relation("CommentReplyTo", fields: [replyToUserId], references: [id])
+  parent        Comment?  @relation("CommentThread", fields: [parentId], references: [id])
+  replies       Comment[] @relation("CommentThread")
+  @@index([postId, parentId, createdAt])
   @@map("comments")
 }
 

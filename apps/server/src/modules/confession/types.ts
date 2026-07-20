@@ -25,6 +25,9 @@ export interface CommentVo {
   authorNickname: string;
   authorAvatarUrl: string | null;
   content: string;
+  parentId: string | null; // P0-10 所属顶级评论；null=顶级评论
+  replyToNickname: string | null; // P0-10 被回复用户昵称（"回复@user"展示）；null=回复顶级评论作者或顶级评论本身
+  replies: CommentVo[]; // P0-10 子回复（顶级评论按时间升序填充，回复为空数组）
   createdAt: string;
 }
 
