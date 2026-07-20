@@ -1,5 +1,14 @@
 <view class="page">
-  <!-- 公告栏 -->
+  <!-- 顶部搜索 + 发布 -->
+  <view class="topbar">
+    <view class="search-box" bindtap="goSearch">
+      <text class="search-icon">🔍</text>
+      <text class="search-ph">搜索帖子/用户</text>
+    </view>
+    <view class="publish-btn" bindtap="goCreate">发布</view>
+  </view>
+
+  <!-- 公告栏（运营位） -->
   <view class="announce-bar" wx:if="{{announcements.length > 0}}">
     <swiper class="announce-swiper" autoplay circular interval="4000" vertical>
       <swiper-item wx:for="{{announcements}}" wx:key="id">
@@ -8,39 +17,27 @@
     </swiper>
   </view>
 
-  <!-- 顶部横滑圈子 Tab -->
-  <scroll-view class="tabs" scroll-x enhanced show-scrollbar="{{false}}">
-    <view class="tab {{activeTab === 'feed' ? 'active' : ''}}" data-id="feed" data-name="发现" bindtap="switchTab">发现</view>
-    <view
-      wx:for="{{circles}}"
-      wx:key="id"
-      class="tab {{activeTab === item.id ? 'active' : ''}}"
-      data-id="{{item.id}}"
-      data-name="{{item.name}}"
-      bindtap="switchTab"
-    >{{item.icon ? item.icon + ' ' : ''}}{{item.name}}</view>
-  </scroll-view>
+  <!-- 主 tab：推荐/最新/热门/关注 -->
+  <view class="main-tabs">
+    <view class="main-tab {{activeMainTab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchMainTab">推荐</view>
+    <view class="main-tab {{activeMainTab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchMainTab">最新</view>
+    <view class="main-tab {{activeMainTab === 'hot' ? 'active' : ''}}" data-tab="hot" bindtap="switchMainTab">热门</view>
+    <view class="main-tab {{activeMainTab === 'follow' ? 'active' : ''}}" data-tab="follow" bindtap="switchMainTab">关注</view>
+  </view>
 
-  <view class="title">{{activeCircleName}}</view>
-
-  <!-- 帖子列表 -->
+  <!-- 帖子流 -->
   <view class="list" wx:if="{{posts.length > 0}}">
-    <post-card
-      wx:for="{{posts}}"
-      wx:key="id"
-      post="{{item}}"
-      bind:like="onLike"
-    ></post-card>
+    <post-card wx:for="{{posts}}" wx:key="id" post="{{item}}" bind:like="onLike"></post-card>
     <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
     <view class="loading-tip" wx:elif="{{!hasMore}}">没有更多了</view>
   </view>
 
-  <view class="empty" wx:elif="{{!loading}}">
-    <view class="empty-emoji">📭</view>
-    <view class="empty-text">还没有内容，去发第一条吧</view>
+  <view class="yt-empty" wx:elif="{{!loading}}">
+    <view class="yt-empty-emoji">📭</view>
+    <view class="yt-empty-text">还没有内容，去发第一条吧</view>
   </view>
 
-  <!-- 悬浮发帖按钮 -->
+  <!-- 悬浮发帖 -->
   <view class="fab" bindtap="goCreate">
     <text class="fab-plus">＋</text>
   </view>
