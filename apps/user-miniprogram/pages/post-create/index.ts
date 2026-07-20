@@ -128,7 +128,7 @@ Page({
       if (this.data.images.length > 0) {
         this.setData({ uploading: true });
         wx.showLoading({ title: '上传图片...', mask: true });
-        urls = await uploadImages(this.data.images);
+        urls = await uploadImages(this.data.images, 'posts');
         this.setData({ uploading: false });
         wx.showLoading({ title: '发布中...', mask: true });
       }

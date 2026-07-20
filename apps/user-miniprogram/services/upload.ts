@@ -1,13 +1,13 @@
-import { request } from './request';
+export type UploadType = 'common' | 'posts' | 'anon' | 'avatars' | 'merchant';
 
-// 图片上传：wx.chooseMedia 拿到本地路径 → wx.uploadFile 传 /uploads → 返回 {url}
+// 图片上传：wx.chooseMedia 拿到本地路径 -> wx.uploadFile 传 /uploads?type=xxx -> 返回 {url}
 // 注意：uploadFile 不能复用 request 封装（它走 multipart/form-data 而非 JSON），
 // 故直接用 wx.uploadFile 并手动注入 Authorization。
-export function uploadImage(localPath: string): Promise<string> {
+export function uploadImage(localPath: string, type: UploadType = 'common'): Promise<string> {
   const app = getApp<{ globalData: { apiBase: string; token: string } }>();
   return new Promise((resolve, reject) => {
     wx.uploadFile({
-      url: `${app.globalData.apiBase}/uploads`,
+      url: `${app.globalData.apiBase}/uploads?type=${type}`,
       filePath: localPath,
       name: 'file',
       header: {
@@ -40,11 +40,11 @@ export function uploadImage(localPath: string): Promise<string> {
 }
 
 // 批量上传（顺序，上传中展示 loading）
-export async function uploadImages(localPaths: string[]): Promise<string[]> {
+export async function uploadImages(localPaths: string[], type: UploadType = 'common'): Promise<string[]> {
   const urls: string[] = [];
   for (const p of localPaths) {
     // eslint-disable-next-line no-await-in-loop
-    const url = await uploadImage(p);
+    const url = await uploadImage(p, type);
     urls.push(url);
   }
   return urls;
