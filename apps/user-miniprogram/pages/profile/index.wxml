@@ -1,14 +1,16 @@
 <view class="page">
-  <view class="header">
+  <!-- 身份卡 -->
+  <view class="profile-card">
     <image wx:if="{{user && user.avatarUrl}}" class="avatar" src="{{user.avatarUrl}}" mode="aspectFill"></image>
     <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
-    <view class="nick-wrap">
+    <view class="info">
       <view class="nickname">{{user ? user.nickname : '未登录'}}</view>
-      <view class="role-badge">{{roleText}}</view>
+      <view class="role-badge yt-tag-accent">{{roleText}}</view>
     </view>
   </view>
 
-  <view class="section" wx:if="{{roleList.length > 0}}">
+  <!-- 切换角色 -->
+  <view class="section yt-card" wx:if="{{roleList.length > 0}}">
     <view class="section-title">切换角色</view>
     <view class="role-list">
       <view
@@ -21,13 +23,21 @@
     </view>
   </view>
 
-  <view class="menu">
-    <view class="menu-item" bindtap="goNotifications"><text>消息中心</text><text wx:if="{{unreadCount > 0}}" class="badge">{{unreadCount}}</text><text class="arrow">›</text></view>
-    <view class="menu-item" bindtap="goFavorites"><text>我的收藏</text><text class="arrow">›</text></view>
-    <view class="menu-item" bindtap="goReferral"><text>邀请好友</text><text class="arrow">›</text></view>
+  <!-- 我的内容 -->
+  <view class="section yt-card">
+    <view class="section-title">我的内容</view>
     <view class="menu-item" bindtap="goMyPosts"><text>我的表白墙</text><text class="arrow">›</text></view>
     <view class="menu-item" bindtap="goMyTreehole"><text>我的树洞</text><text class="arrow">›</text></view>
     <view class="menu-item" bindtap="goMyJobs"><text>我的兼职</text><text class="arrow">›</text></view>
+    <view class="menu-item" bindtap="goFavorites"><text>我的收藏</text><text class="arrow">›</text></view>
+  </view>
+
+  <!-- 账号 -->
+  <view class="section yt-card">
+    <view class="section-title">账号</view>
+    <view class="menu-item" bindtap="goNotifications"><text>消息中心</text><text wx:if="{{unreadCount > 0}}" class="badge">{{unreadCount}}</text><text class="arrow">›</text></view>
+    <view class="menu-item" bindtap="goReferral"><text>邀请好友</text><text class="arrow">›</text></view>
+    <view class="menu-item" bindtap="goResume"><text>我的简历</text><text class="arrow">›</text></view>
     <view class="menu-item" bindtap="goAccountSecurity"><text>账号与安全</text><text class="arrow">›</text></view>
     <view class="menu-item" wx:if="{{currentRole === 'ADMIN'}}" bindtap="goAdmin"><text>管理后台</text><text class="arrow">›</text></view>
   </view>

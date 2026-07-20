@@ -77,6 +77,10 @@ Page({
     wx.navigateTo({ url: '/pages/account-security/index' });
   },
 
+  goResume() {
+    wx.showToast({ title: '简历开发中', icon: 'none' });
+  },
+
   goAdmin() {
     wx.navigateTo({ url: '/pages/admin/index' });
   },
