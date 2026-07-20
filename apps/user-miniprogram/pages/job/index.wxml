@@ -1,34 +1,43 @@
 <view class="page">
+  <!-- 顶部搜索 + 商家入口 -->
   <view class="topbar">
+    <view class="search-box" bindtap="goSearch">
+      <text class="search-icon">🔍</text>
+      <text class="search-ph">搜索兼职岗位</text>
+    </view>
     <view class="action" bindtap="goMyApps">我的报名</view>
     <block wx:if="{{isMerchant}}">
-      <view class="action" bindtap="goPost">发布岗位</view>
-      <view class="action" bindtap="goManage">管理报名</view>
+      <view class="action" bindtap="goPost">发布</view>
+      <view class="action" bindtap="goManage">管理</view>
     </block>
   </view>
 
-  <!-- 用户角色显示 tab -->
-  <view class="tabs" wx:if="{{!isMerchant}}">
-    <view class="tab {{tab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchTab">推荐</view>
-    <view class="tab {{tab === 'all' ? 'active' : ''}}" data-tab="all" bindtap="switchTab">全部</view>
+  <!-- tab：推荐/最新/急招 -->
+  <view class="main-tabs" wx:if="{{!isMerchant}}">
+    <view class="main-tab {{tab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchTab">推荐</view>
+    <view class="main-tab {{tab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchTab">最新</view>
+    <view class="main-tab {{tab === 'urgent' ? 'active' : ''}}" data-tab="urgent" bindtap="switchTab">急招</view>
   </view>
 
+  <!-- 岗位列表 -->
   <view class="list" wx:if="{{posts.length > 0}}">
-    <view class="card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
-      <view class="title">{{item.title}}</view>
+    <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+      <view class="card-head">
+        <text class="title">{{item.title}}</text>
+        <text class="salary">{{item.salary}}</text>
+      </view>
       <view class="shop">{{item.merchantShopName}}</view>
       <view class="meta">
-        <text class="salary">{{item.salary}}</text>
-        <text class="loc">📍 {{item.location}}</text>
+        <text class="meta-item">📍 {{item.location}}</text>
+        <text class="meta-item">⏱ {{item.duration === 'D90' ? '90天' : '30天'}}</text>
       </view>
-      <view class="dur">{{item.duration === 'D90' ? '90 天' : '30 天'}}</view>
     </view>
     <view class="tip" wx:if="{{loading}}">加载中...</view>
-    <view class="tip" wx:elif="{{tab === 'all' && !hasMore}}">没有更多了</view>
+    <view class="tip" wx:elif="{{!hasMore}}">没有更多了</view>
   </view>
 
-  <view class="empty" wx:elif="{{!loading}}">
-    <view class="empty-emoji">💼</view>
-    <view class="empty-text">{{tab === 'recommend' ? '暂无推荐，先去报名几个岗位吧' : '暂无兼职岗位'}}</view>
+  <view class="yt-empty" wx:elif="{{!loading}}">
+    <view class="yt-empty-emoji">💼</view>
+    <view class="yt-empty-text">{{tab === 'recommend' ? '暂无推荐，先去报名几个岗位吧' : '暂无兼职岗位'}}</view>
   </view>
 </view>

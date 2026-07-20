@@ -1,7 +1,7 @@
 import type { AppInstance } from '../../app';
 import { listJobPosts, recommendJobs, type JobPostVo } from '../../services/job';
 
-type Tab = 'recommend' | 'all';
+type Tab = 'recommend' | 'latest' | 'urgent';
 
 Page({
   data: {
@@ -18,7 +18,7 @@ Page({
     if (!app.requireAuth()) return;
     const isMerchant = app.globalData.currentRole === 'MERCHANT';
     // 商家视角不显示 tab（仅看自己发的岗位）
-    this.setData({ isMerchant, tab: isMerchant ? 'all' : 'recommend' });
+    this.setData({ isMerchant, tab: isMerchant ? 'latest' : 'recommend' });
     this.reload();
   },
 
@@ -34,6 +34,7 @@ Page({
     if (this.data.tab === 'recommend') {
       await this.loadRecommend();
     } else {
+      // latest / urgent 当前都用 listJobPosts（P0-17 加结构化字段后区分急招）
       await this.loadMore();
     }
   },
@@ -75,22 +76,22 @@ Page({
   },
 
   onReachBottom() {
-    if (this.data.tab === 'all') this.loadMore();
+    if (this.data.tab !== 'recommend') this.loadMore();
   },
 
+  goSearch() {
+    wx.showToast({ title: '搜索开发中', icon: 'none' });
+  },
   goDetail(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
     wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
   },
-
   goPost() {
     wx.navigateTo({ url: '/pages/job/post/index' });
   },
-
   goManage() {
     wx.navigateTo({ url: '/pages/job/manage/index' });
   },
-
   goMyApps() {
     wx.navigateTo({ url: '/pages/job/my-applications/index' });
   },

@@ -1,18 +1,60 @@
 .page { padding: 0 24rpx 120rpx; }
-.topbar { display: flex; gap: 16rpx; padding: 16rpx 0; position: sticky; top: 0; background: #f5f6f8; z-index: 10; }
-.action { padding: 12rpx 24rpx; border-radius: 40rpx; background: #fff; font-size: 26rpx; color: #ff4d6d; }
-.tabs { display: flex; gap: 12rpx; margin: 8rpx 0 16rpx; }
-.tab { padding: 10rpx 28rpx; border-radius: 40rpx; background: #fff; font-size: 26rpx; color: #666; }
-.tab.active { background: #ff4d6d; color: #fff; font-weight: 600; }
+
+/* 顶部搜索 + 商家入口 */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 0;
+  position: sticky;
+  top: 0;
+  background: var(--yt-bg);
+  z-index: 10;
+}
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  background: var(--yt-card);
+  border: 1rpx solid var(--yt-border);
+  border-radius: 999rpx;
+  padding: 12rpx 24rpx;
+}
+.search-icon { font-size: 24rpx; }
+.search-ph { font-size: 26rpx; color: var(--yt-text-sub); }
+.action {
+  padding: 12rpx 20rpx;
+  border-radius: 999rpx;
+  background: var(--yt-card);
+  border: 1rpx solid var(--yt-border);
+  font-size: 24rpx;
+  color: var(--yt-text-body);
+}
+
+/* tab */
+.main-tabs { display: flex; gap: 40rpx; padding: 16rpx 0; }
+.main-tab { font-size: 28rpx; color: var(--yt-text-sub); padding: 8rpx 0; position: relative; }
+.main-tab.active { color: var(--yt-text-main); font-weight: 600; }
+.main-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 32rpx;
+  height: 4rpx;
+  background: var(--yt-primary);
+  border-radius: 2rpx;
+}
+
+/* 岗位卡片 */
 .list { margin-top: 8rpx; }
-.card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
-.title { font-size: 32rpx; font-weight: 600; color: #222; }
-.shop { font-size: 24rpx; color: #888; margin-top: 8rpx; }
-.meta { display: flex; justify-content: space-between; margin-top: 16rpx; }
-.salary { color: #ff4d6d; font-size: 30rpx; font-weight: 600; }
-.loc { color: #666; font-size: 24rpx; }
-.dur { font-size: 22rpx; color: #999; margin-top: 8rpx; }
-.tip { text-align: center; color: #999; font-size: 24rpx; padding: 24rpx 0; }
-.empty { text-align: center; padding-top: 200rpx; color: #999; }
-.empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
-.empty-text { font-size: 28rpx; }
+.card { margin-bottom: 20rpx; }
+.card-head { display: flex; justify-content: space-between; align-items: center; }
+.title { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); flex: 1; }
+.salary { color: var(--yt-primary-dark); font-size: 30rpx; font-weight: 700; }
+.shop { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 8rpx; }
+.meta { display: flex; gap: 24rpx; margin-top: 16rpx; }
+.meta-item { font-size: 24rpx; color: var(--yt-text-body); }
+.tip { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 24rpx 0; }
