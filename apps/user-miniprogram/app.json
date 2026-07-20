@@ -35,8 +35,8 @@
     "backgroundColor": "#f5f6f8"
   },
   "tabBar": {
-    "color": "#999999",
-    "selectedColor": "#ff4d6d",
+    "color": "#86909C",
+    "selectedColor": "#1D2129",
     "backgroundColor": "#ffffff",
     "list": [
       { "pagePath": "pages/confession/index", "text": "表白墙", "iconPath": "assets/tabbar/confession.png", "selectedIconPath": "assets/tabbar/confession-active.png" },

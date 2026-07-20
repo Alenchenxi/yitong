@@ -1,26 +1,119 @@
+/* 燚桐全局样式 - 对齐 docs/UI设计规范.md
+ * 品牌黄 #F9C801 为唯一主色；三端统一，不做频道专属色。
+ * 页面用 .yt-card/.yt-btn-primary/.yt-tag 等通用类，避免零散样式。
+ */
 page {
-  background: #f5f6f8;
+  /* 品牌色 */
+  --yt-primary: #F9C801;
+  --yt-primary-dark: #C59A00;
+  --yt-primary-light: #FFF7D1;
+  --yt-primary-lighter: #FFFBEA;
+  /* 中性色 */
+  --yt-bg: #F6F7FB;
+  --yt-card: #FFFFFF;
+  --yt-text-main: #1D2129;
+  --yt-text-body: #4E5969;
+  --yt-text-sub: #86909C;
+  --yt-text-weak: #C9CDD4;
+  --yt-border: #E5E6EB;
+  --yt-mask: rgba(0, 0, 0, 0.45);
+  /* 状态色 */
+  --yt-success: #00B42A;
+  --yt-info: #2F80ED;
+  --yt-warning: #FFB020;
+  --yt-danger: #F53F3F;
+  --yt-disabled-bg: #F2F3F5;
+  --yt-disabled-text: #C9CDD4;
+
+  background: var(--yt-bg);
   font-size: 28rpx;
-  color: #333;
+  color: var(--yt-text-body);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
 }
 
-.container {
-  padding: 24rpx;
-}
-
-.title {
-  font-size: 36rpx;
-  font-weight: 600;
-  margin-bottom: 12rpx;
-}
-
-.placeholder {
-  color: #999;
-  margin-top: 16rpx;
-  font-size: 28rpx;
-  line-height: 1.6;
-}
-
-/* 通用按钮风格（按钮 class 带 .btn-primary） */
+/* 去按钮默认边框 */
 button::after { border: none; }
+
+/* 文字层级 */
+.yt-text-main { color: var(--yt-text-main); }
+.yt-text-body { color: var(--yt-text-body); }
+.yt-text-sub { color: var(--yt-text-sub); }
+.yt-text-weak { color: var(--yt-text-weak); }
+.yt-title { font-size: 36rpx; font-weight: 600; color: var(--yt-text-main); }
+.yt-section-title { font-size: 32rpx; font-weight: 600; color: var(--yt-text-main); margin-bottom: 16rpx; }
+
+/* 卡片：白底 16rpx 圆角 + 边框 */
+.yt-card {
+  background: var(--yt-card);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  border: 1rpx solid var(--yt-border);
+}
+
+/* 按钮：主按钮品牌黄 + 深色文字（黄底不用白字） */
+.yt-btn-primary {
+  background: var(--yt-primary) !important;
+  color: var(--yt-text-main) !important;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+}
+.yt-btn-secondary {
+  background: var(--yt-card) !important;
+  color: var(--yt-text-main) !important;
+  font-size: 28rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 12rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+}
+.yt-btn-danger {
+  background: var(--yt-danger) !important;
+  color: #FFFFFF !important;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+}
+.yt-btn[disabled] { opacity: 0.5; }
+
+/* 标签：普通灰底 / 重点浅黄底 */
+.yt-tag {
+  background: var(--yt-disabled-bg);
+  color: var(--yt-text-body);
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  display: inline-block;
+}
+.yt-tag-accent {
+  background: var(--yt-primary-light);
+  color: var(--yt-text-main);
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  display: inline-block;
+}
+
+/* 间距辅助 */
+.yt-page { padding: 24rpx; }
+.yt-gap-8 { height: 8rpx; }
+.yt-gap-12 { height: 12rpx; }
+.yt-gap-16 { height: 16rpx; }
+.yt-gap-20 { height: 20rpx; }
+.yt-gap-24 { height: 24rpx; }
+
+/* 空状态 */
+.yt-empty { text-align: center; padding-top: 200rpx; color: var(--yt-text-sub); }
+.yt-empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
+.yt-empty-text { font-size: 28rpx; }
+
+/* 底部固定按钮区（安全区） */
+.yt-footer-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: var(--yt-card);
+  border-top: 1rpx solid var(--yt-border);
+}
