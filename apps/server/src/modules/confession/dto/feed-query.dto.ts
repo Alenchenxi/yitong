@@ -1,7 +1,9 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
-// 游标分页：cursor 为上一页末尾条目的游标（base64url JSON），limit 1-50
+export type FeedSort = 'latest' | 'hot' | 'recommend';
+
+// 游标分页：cursor 为上一页末尾条目的游标（base64url JSON），limit 1-50，sort 排序
 export class FeedQueryDto {
   @IsOptional()
   @IsString()
@@ -13,4 +15,8 @@ export class FeedQueryDto {
   @Min(1)
   @Max(50)
   limit?: number = 20;
+
+  @IsOptional()
+  @IsIn(['latest', 'hot', 'recommend'])
+  sort?: FeedSort = 'latest';
 }

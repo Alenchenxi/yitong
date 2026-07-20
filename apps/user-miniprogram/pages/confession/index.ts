@@ -39,7 +39,8 @@ Page({
     if (this.data.loading || !this.data.hasMore) return;
     this.setData({ loading: true });
     try {
-      const resp = await feed(this.data.nextCursor ?? undefined, 20);
+      const sort = this.data.activeMainTab === 'follow' ? 'latest' : this.data.activeMainTab;
+      const resp = await feed(this.data.nextCursor ?? undefined, 20, sort as 'latest' | 'hot' | 'recommend');
       this.setData({
         posts: [...this.data.posts, ...resp.list],
         nextCursor: resp.nextCursor,
@@ -65,7 +66,12 @@ Page({
     const tab = (e.currentTarget.dataset.tab as MainTab) ?? 'recommend';
     if (tab === this.data.activeMainTab) return;
     this.setData({ activeMainTab: tab });
-    // P0-07/08 将按 tab 区分数据源；当前统一用 feed 时间流
+    if (tab === 'follow') {
+      // P0-08 关注流：需关注关系表
+      wx.showToast({ title: '关注功能开发中', icon: 'none' });
+      this.setData({ posts: [] });
+      return;
+    }
     this.reloadFeed();
   },
 

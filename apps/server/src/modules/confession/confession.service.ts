@@ -36,8 +36,8 @@ function invalidateFeedCache() {
   feedCache.clear();
 }
 
-function feedCacheKey(uid: string, limit: number): string {
-  return `${uid}:${limit}`;
+function feedCacheKey(uid: string, limit: number, sort: string): string {
+  return `${uid}:${limit}:${sort}`;
 }
 
 // 游标 = base64url JSON { t: createdAtIso, id }，用于 (createdAt DESC, id DESC) 的稳定分页
@@ -116,13 +116,16 @@ export class ConfessionService {
 
   async feed(uid: string, query: FeedQueryDto): Promise<FeedResult> {
     const limit = query.limit ?? 20;
-    const cacheKey = feedCacheKey(uid, limit);
-    // 仅首页（无 cursor）发现流走 5 分钟内存缓存；按用户分桶，避免 liked 状态串用
+    const sort = query.sort ?? 'latest';
+    const cacheKey = feedCacheKey(uid, limit, sort);
+    // 仅首页（无 cursor）发现流走 5 分钟内存缓存；按用户+sort 分桶，避免 liked 状态串用
     if (!query.cursor && limit <= 20) {
       const cached = feedCache.get(cacheKey);
       if (cached && cached.expiresAt > Date.now()) return cached.data;
     }
-    const result = await this.queryPosts(uid, query, undefined);
+    const result = sort === 'latest'
+      ? await this.queryPosts(uid, query, undefined)
+      : await this.queryHotPosts(uid, query, undefined, sort);
     if (!query.cursor && limit <= 20) {
       feedCache.set(cacheKey, { data: result, expiresAt: Date.now() + FEED_CACHE_TTL_MS });
     }
@@ -299,6 +302,26 @@ export class ConfessionService {
     const nextCursor = hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
 
     return { list: slice.map((p) => this.toPostVo(p)), nextCursor, hasMore };
+  }
+
+  // 热度排序（hot/recommend）：按点赞/评论数排序，首页 take limit，不分页
+  private async queryHotPosts(
+    uid: string,
+    query: FeedQueryDto,
+    circleId: string | undefined,
+    sort: 'hot' | 'recommend',
+  ): Promise<FeedResult> {
+    const limit = query.limit ?? 20;
+    const posts = await this.prisma.post.findMany({
+      where: { status: PostStatus.APPROVED, ...(circleId ? { circleId } : {}) },
+      orderBy:
+        sort === 'hot'
+          ? [{ likeCount: 'desc' }, { commentCount: 'desc' }, { createdAt: 'desc' }]
+          : [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+      include: postInclude(uid),
+    });
+    return { list: posts.map((p) => this.toPostVo(p)), nextCursor: null, hasMore: false };
   }
 
   private toPostVo(post: PostWithAuthor): PostVo {

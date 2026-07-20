@@ -69,9 +69,9 @@ export function listCirclePosts(circleId: string, cursor?: string, limit = 20) {
   return request<FeedResult>({ url: `/circles/${circleId}/posts${qs}` });
 }
 
-// 发现流
-export function feed(cursor?: string, limit = 20) {
-  const qs = `?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+// 发现流（sort: latest 最新 / hot 热门 / recommend 推荐）
+export function feed(cursor?: string, limit = 20, sort?: 'latest' | 'hot' | 'recommend') {
+  const qs = `?limit=${limit}${sort ? `&sort=${sort}` : ''}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
   return request<FeedResult>({ url: `/posts/feed${qs}` });
 }
 
