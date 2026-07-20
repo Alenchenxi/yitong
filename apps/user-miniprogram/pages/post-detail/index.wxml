@@ -8,6 +8,7 @@
         <view class="nickname">{{post.authorNickname}}</view>
         <view class="time">{{post.timeText}}</view>
       </view>
+      <view class="follow-btn {{post.following ? 'followed' : ''}}" catchtap="onFollow">{{post.following ? '已关注' : '关注'}}</view>
     </view>
     <view class="content">{{post.content}}</view>
     <view class="images images-{{post.imgLayout}}" wx:if="{{post.imgLayout}}">

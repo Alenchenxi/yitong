@@ -17,6 +17,7 @@ import { TreeholeModule } from './modules/treehole/treehole.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AnnouncementModule } from './modules/announcement/announcement.module';
 import { FavoriteModule } from './modules/favorite/favorite.module';
+import { FollowModule } from './modules/follow/follow.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { UploadModule } from './modules/upload/upload.module';
@@ -39,6 +40,7 @@ import { UploadModule } from './modules/upload/upload.module';
     AdminModule,
     AnnouncementModule,
     FavoriteModule,
+    FollowModule,
     NotificationModule,
     ReferralModule,
     ConfessionModule,

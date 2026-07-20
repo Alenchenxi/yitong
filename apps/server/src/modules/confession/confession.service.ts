@@ -125,7 +125,9 @@ export class ConfessionService {
     }
     const result = sort === 'latest'
       ? await this.queryPosts(uid, query, undefined)
-      : await this.queryHotPosts(uid, query, undefined, sort);
+      : sort === 'follow'
+        ? await this.queryFollowPosts(uid, query)
+        : await this.queryHotPosts(uid, query, undefined, sort);
     if (!query.cursor && limit <= 20) {
       feedCache.set(cacheKey, { data: result, expiresAt: Date.now() + FEED_CACHE_TTL_MS });
     }
@@ -318,6 +320,24 @@ export class ConfessionService {
         sort === 'hot'
           ? [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }]
           : [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+      include: postInclude(uid),
+    });
+    return { list: posts.map((p) => this.toPostVo(p)), nextCursor: null, hasMore: false };
+  }
+
+  // 关注流：只看关注作者的最新帖
+  private async queryFollowPosts(uid: string, query: FeedQueryDto): Promise<FeedResult> {
+    const limit = query.limit ?? 20;
+    const follows = await this.prisma.follow.findMany({
+      where: { followerId: uid },
+      select: { followeeId: true },
+    });
+    const followeeIds = follows.map((f) => f.followeeId);
+    if (followeeIds.length === 0) return { list: [], nextCursor: null, hasMore: false };
+    const posts = await this.prisma.post.findMany({
+      where: { status: PostStatus.APPROVED, authorId: { in: followeeIds } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
       include: postInclude(uid),
     });

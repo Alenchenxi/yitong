@@ -1,9 +1,10 @@
 import type { AppInstance } from '../../app';
 import { getPost, listComments, createComment, toggleLike, reportPost, type PostVo, type CommentVo } from '../../services/confession';
 import { checkFavorite, toggleFavorite } from '../../services/favorite';
+import { toggleFollow } from '../../services/follow';
 import { formatTime } from '../../utils/auth';
 
-type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three'; favorited?: boolean };
+type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three'; favorited?: boolean; following?: boolean };
 
 interface PageData {
   post: PostVoView | null;
@@ -186,6 +187,17 @@ Page({
       wx.showToast({ title: r.favorited ? '已收藏' : '已取消', icon: 'success' });
     } catch {
       wx.showToast({ title: '操作失败', icon: 'none' });
+    }
+  },
+
+  async onFollow() {
+    if (!this.data.post) return;
+    try {
+      const r = await toggleFollow(this.data.post.authorId);
+      this.setData({ 'post.following': r.following });
+      wx.showToast({ title: r.following ? '已关注' : '已取关', icon: 'none' });
+    } catch {
+      /* toast */
     }
   },
 
