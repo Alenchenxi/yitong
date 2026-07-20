@@ -8,28 +8,74 @@
     </view>
   </view>
 
-  <!-- 正文 -->
-  <textarea
-    class="textarea"
-    placeholder="写下你想分享的内容…"
-    value="{{content}}"
-    bindinput="onContentInput"
-    maxlength="{{2000}}"
-    auto-height
-    show-confirm-bar="{{false}}"
-    adjust-position
-  ></textarea>
+  <!-- 正文 + 表情入口 -->
+  <view class="textarea-wrap">
+    <textarea
+      class="textarea"
+      placeholder="{{isAnonymous ? '匿名写下你想分享的内容…' : '写下你想分享的内容…'}}"
+      value="{{content}}"
+      bindinput="onContentInput"
+      maxlength="{{2000}}"
+      auto-height
+      show-confirm-bar="{{false}}"
+      adjust-position
+    ></textarea>
+    <view class="emoji-toggle {{showEmoji ? 'active' : ''}}" catchtap="toggleEmoji">😊</view>
+  </view>
 
-  <!-- 图片选择 -->
-  <view class="images">
+  <!-- 表情面板 -->
+  <view class="emoji-panel" wx:if="{{showEmoji}}">
+    <view
+      class="emoji-item"
+      wx:for="{{emojis}}"
+      wx:key="*this"
+      data-emoji="{{item}}"
+      bindtap="insertEmoji"
+    >{{item}}</view>
+  </view>
+
+  <!-- 媒体：图片或视频（互斥） -->
+  <view class="images" wx:if="{{!video}}">
     <view class="img-box" wx:for="{{images}}" wx:key="*this">
       <image class="img" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewImage"></image>
       <view class="img-del" data-idx="{{index}}" catchtap="removeImage">×</view>
     </view>
     <view class="img-add" wx:if="{{images.length < 9}}" bindtap="chooseImage">
       <text class="plus">＋</text>
-      <text class="add-tip">{{images.length}}/9</text>
+      <text class="add-tip">图片</text>
     </view>
+    <view class="img-add" wx:if="{{images.length === 0}}" bindtap="chooseVideo">
+      <text class="plus">▶</text>
+      <text class="add-tip">视频</text>
+    </view>
+  </view>
+
+  <view class="video-box" wx:if="{{video}}">
+    <video class="video" src="{{video.localPath}}" poster="{{video.coverLocalPath}}" object-fit="cover" controls></video>
+    <view class="img-del video-del" catchtap="removeVideo">×</view>
+  </view>
+
+  <!-- 标签 -->
+  <view class="section">
+    <view class="section-title">标签 <text class="section-tip">{{tagCount}}/{{5}}</text></view>
+    <view class="tags">
+      <view
+        class="tag {{item.selected ? 'tag-on' : ''}}"
+        wx:for="{{tags}}"
+        wx:key="name"
+        data-name="{{item.name}}"
+        bindtap="toggleTag"
+      >{{item.name}}</view>
+    </view>
+  </view>
+
+  <!-- 匿名 -->
+  <view class="row">
+    <view class="anon-label">
+      <text class="label">匿名发布</text>
+      <text class="anon-tip">{{isAnonymous ? '将隐藏真实身份' : '默认显示昵称'}}</text>
+    </view>
+    <switch checked="{{isAnonymous}}" bindchange="toggleAnonymous" color="#F9C801" />
   </view>
 
   <!-- 提交 -->
@@ -37,7 +83,7 @@
     class="submit"
     bindtap="submit"
     disabled="{{submitting || !hasContent || !selectedCircleId}}"
-  >{{submitting ? '发布中...' : '发布'}}</button>
+  >{{submitting ? '发布中...' : (isAnonymous ? '匿名发布' : '发布')}}</button>
 </view>
 
 <!-- 圈子选择弹窗 -->

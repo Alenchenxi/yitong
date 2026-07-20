@@ -1,6 +1,11 @@
 import type { AppInstance } from '../../app';
 import { listCircles, createPost, type Circle } from '../../services/confession';
-import { uploadImages } from '../../services/upload';
+import { uploadImages, uploadImage, uploadVideo } from '../../services/upload';
+
+interface TagItem {
+  name: string;
+  selected: boolean;
+}
 
 interface PageData {
   circles: Circle[];
@@ -12,10 +17,24 @@ interface PageData {
   uploading: boolean;
   submitting: boolean;
   showCirclePicker: boolean;
+  tags: TagItem[]; // P0-09 标签（预设 + 选中态，WXML 不支持 indexOf 故预计算）
+  tagCount: number; // 已选标签数
+  isAnonymous: boolean; // P0-09 匿名/实名
+  showEmoji: boolean; // P0-09 表情面板
+  emojis: string[];
+  video: { localPath: string; coverLocalPath: string; duration: number } | null; // P0-09 视频（与图片互斥）
 }
 
 const MAX_IMAGES = 9;
 const MAX_CONTENT = 2000;
+const MAX_TAGS = 5;
+// 预设标签（P2 运营化时迁到后台配置）
+const PRESET_TAGS = ['表白', '暗恋', '单身', '求脱单', '情感', '吐槽', '求助', '日常', '征友', '回忆'];
+const EMOJIS = [
+  '😀', '😁', '😂', '🤣', '😊', '😍', '🥰', '😘', '😋', '🤔',
+  '😴', '😭', '😡', '🥺', '😎', '🤩', '🥳', '😔', '❤️', '💔',
+  '💕', '🌹', '👍', '👎', '🙏', '💪', '🎉', '🎂', '🎁', '✨',
+];
 
 Page({
   data: {
@@ -28,7 +47,15 @@ Page({
     uploading: false,
     submitting: false,
     showCirclePicker: false,
+    tags: PRESET_TAGS.map((name) => ({ name, selected: false })),
+    tagCount: 0,
+    isAnonymous: false,
+    showEmoji: false,
+    emojis: EMOJIS,
+    video: null,
   } as PageData,
+
+  cursor: 0,
 
   async onLoad(options: { circleId?: string }) {
     const app = getApp<AppInstance>();
@@ -71,10 +98,52 @@ Page({
 
   onContentInput(e: WechatMiniprogram.Input) {
     const v = e.detail.value;
+    this.cursor = (e.detail as { cursor?: number }).cursor ?? v.length;
     this.setData({ content: v, hasContent: v.trim().length > 0 });
   },
 
+  // 表情面板
+  toggleEmoji() {
+    this.setData({ showEmoji: !this.data.showEmoji });
+  },
+  insertEmoji(e: WechatMiniprogram.TouchEvent) {
+    const emoji = e.currentTarget.dataset.emoji as string;
+    const c = this.data.content;
+    const pos = this.cursor;
+    const next = c.slice(0, pos) + emoji + c.slice(pos);
+    this.cursor = pos + emoji.length;
+    this.setData({ content: next, hasContent: next.trim().length > 0 });
+  },
+
+  // 标签选择（多选，最多 MAX_TAGS）
+  toggleTag(e: WechatMiniprogram.TouchEvent) {
+    const name = e.currentTarget.dataset.name as string;
+    const tags = this.data.tags.map((t) => ({ ...t }));
+    const target = tags.find((t) => t.name === name);
+    if (!target) return;
+    if (target.selected) {
+      target.selected = false;
+    } else {
+      const selectedCount = tags.filter((t) => t.selected).length;
+      if (selectedCount >= MAX_TAGS) {
+        wx.showToast({ title: `最多 ${MAX_TAGS} 个标签`, icon: 'none' });
+        return;
+      }
+      target.selected = true;
+    }
+    this.setData({ tags, tagCount: tags.filter((t) => t.selected).length });
+  },
+
+  toggleAnonymous() {
+    this.setData({ isAnonymous: !this.data.isAnonymous });
+  },
+
+  // 图片选择（与视频互斥）
   chooseImage() {
+    if (this.data.video) {
+      wx.showToast({ title: '视频与图片不可同时发布', icon: 'none' });
+      return;
+    }
     const remain = MAX_IMAGES - this.data.images.length;
     if (remain <= 0) {
       wx.showToast({ title: `最多 ${MAX_IMAGES} 张图`, icon: 'none' });
@@ -91,17 +160,43 @@ Page({
       },
     });
   },
-
   removeImage(e: WechatMiniprogram.TouchEvent) {
     const idx = e.currentTarget.dataset.idx as number;
     const imgs = [...this.data.images];
     imgs.splice(idx, 1);
     this.setData({ images: imgs });
   },
-
   previewImage(e: WechatMiniprogram.TouchEvent) {
     const { src } = e.currentTarget.dataset as { src: string };
     wx.previewImage({ current: src, urls: this.data.images });
+  },
+
+  // 视频选择（与图片互斥）
+  chooseVideo() {
+    if (this.data.images.length > 0) {
+      wx.showToast({ title: '视频与图片不可同时发布', icon: 'none' });
+      return;
+    }
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['video'],
+      maxDuration: 60,
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const f = res.tempFiles[0];
+        if (!f) return;
+        this.setData({
+          video: {
+            localPath: f.tempFilePath,
+            coverLocalPath: f.thumbTempFilePath ?? '',
+            duration: f.duration ?? 0,
+          },
+        });
+      },
+    });
+  },
+  removeVideo() {
+    this.setData({ video: null });
   },
 
   async submit() {
@@ -123,16 +218,36 @@ Page({
     this.setData({ submitting: true });
     wx.showLoading({ title: '发布中...', mask: true });
     try {
-      // 先上传图片（本地路径 → COS URL）
-      let urls: string[] = [];
+      // 先上传图片（本地路径 -> COS URL）
+      let imageUrls: string[] = [];
       if (this.data.images.length > 0) {
         this.setData({ uploading: true });
         wx.showLoading({ title: '上传图片...', mask: true });
-        urls = await uploadImages(this.data.images, 'posts');
+        imageUrls = await uploadImages(this.data.images, 'posts');
         this.setData({ uploading: false });
-        wx.showLoading({ title: '发布中...', mask: true });
       }
-      await createPost(this.data.selectedCircleId, content, urls);
+      // 上传视频 + 封面
+      let videoUrl: string | undefined;
+      let videoCover: string | undefined;
+      if (this.data.video) {
+        this.setData({ uploading: true });
+        wx.showLoading({ title: '上传视频...', mask: true });
+        videoUrl = await uploadVideo(this.data.video.localPath, 'posts');
+        if (this.data.video.coverLocalPath) {
+          videoCover = await uploadImage(this.data.video.coverLocalPath, 'posts');
+        }
+        this.setData({ uploading: false });
+      }
+      wx.showLoading({ title: '发布中...', mask: true });
+      const selectedTagNames = this.data.tags.filter((t) => t.selected).map((t) => t.name);
+      await createPost(this.data.selectedCircleId, {
+        content,
+        images: imageUrls,
+        tags: selectedTagNames,
+        isAnonymous: this.data.isAnonymous,
+        videoUrl,
+        videoCover,
+      });
       wx.showToast({ title: '发布成功', icon: 'success' });
       // 返回上一页并刷新
       setTimeout(() => {

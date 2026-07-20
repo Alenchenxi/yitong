@@ -3,12 +3,19 @@
     <image wx:if="{{hasAvatar}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
     <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
     <view class="meta">
-      <view class="nickname">{{post.authorNickname}}</view>
+      <view class="nickname">
+        {{post.authorNickname}}
+        <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
+      </view>
       <view class="time">{{timeText}}</view>
     </view>
   </view>
   <view class="content">{{post.content}}</view>
-  <view class="images images-{{imgLayout}}" wx:if="{{imgLayout}}">
+  <view class="tags" wx:if="{{post.tags.length}}">
+    <text class="tag" wx:for="{{post.tags}}" wx:key="*this">#{{item}}</text>
+  </view>
+  <video wx:if="{{post.videoUrl}}" class="video" src="{{post.videoUrl}}" poster="{{post.videoCover}}" object-fit="cover" controls></video>
+  <view class="images images-{{imgLayout}}" wx:elif="{{imgLayout}}">
     <image
       wx:for="{{post.images}}"
       wx:key="*this"

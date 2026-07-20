@@ -1,4 +1,5 @@
 // 表白墙视图对象（脱去内部字段，时间转 ISO 字符串）
+// 匿名帖：authorId 置空、authorNickname=anonName、authorAvatarUrl=null（真实 uid 仅后台可追溯）
 export interface PostVo {
   id: string;
   circleId: string;
@@ -7,6 +8,10 @@ export interface PostVo {
   authorAvatarUrl: string | null;
   content: string;
   images: string[];
+  tags: string[];
+  isAnonymous: boolean;
+  videoUrl: string | null;
+  videoCover: string | null;
   likeCount: number;
   liked: boolean; // 当前用户是否已赞
   commentCount: number;

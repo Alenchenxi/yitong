@@ -65,6 +65,15 @@ export class UploadService implements OnModuleInit {
   }
 
   async uploadImage(file: MulterFile, type: UploadType = 'common'): Promise<string> {
+    return this.store(file, type);
+  }
+
+  // 视频上传：同 putObject，mimetype/大小由控制器侧校验（mp4 ≤50MB）
+  async uploadVideo(file: MulterFile, type: UploadType = 'common'): Promise<string> {
+    return this.store(file, type);
+  }
+
+  private async store(file: MulterFile, type: UploadType): Promise<string> {
     if (!this.client) {
       if (process.env.NODE_ENV === 'production') {
         throw new BizException(90003, 'MinIO 未配置，上传不可用');

@@ -76,18 +76,23 @@ model Circle {
   @@map("circles")
 }
 model Post {
-  id        String     @id @default(cuid())
-  circleId  String     @map("circle_id")
-  authorId  String     @map("author_id")
-  content   String
-  images    String[]
-  likeCount Int        @default(0) @map("like_count")
-  status    PostStatus @default(PENDING)
-  createdAt DateTime   @default(now()) @map("created_at")
-  circle    Circle     @relation(fields: [circleId], references: [id])
-  author    User       @relation(fields: [authorId], references: [id])
-  postLikes PostLike[]
-  comments  Comment[]
+  id          String     @id @default(cuid())
+  circleId    String     @map("circle_id")
+  authorId    String     @map("author_id")
+  content     String
+  images      String[]
+  tags        String[]   @default([])
+  isAnonymous Boolean    @default(false) @map("is_anonymous")
+  anonName    String?    @map("anon_name")
+  videoUrl    String?    @map("video_url")
+  videoCover  String?    @map("video_cover")
+  likeCount   Int        @default(0) @map("like_count")
+  status      PostStatus @default(PENDING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  circle      Circle     @relation(fields: [circleId], references: [id])
+  author      User       @relation(fields: [authorId], references: [id])
+  postLikes   PostLike[]
+  comments    Comment[]
   @@index([circleId, status, createdAt])
   @@index([status, createdAt])
   @@map("posts")

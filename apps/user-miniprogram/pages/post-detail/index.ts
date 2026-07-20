@@ -191,7 +191,7 @@ Page({
   },
 
   async onFollow() {
-    if (!this.data.post) return;
+    if (!this.data.post || !this.data.post.authorId) return;
     try {
       const r = await toggleFollow(this.data.post.authorId);
       this.setData({ 'post.following': r.following });

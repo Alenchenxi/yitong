@@ -66,6 +66,15 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
   }
 }
 
+// 匿名展示昵称：词库随机组合，每帖独立、不可跨帖关联（真实 uid 仅后台按 authorId 追溯）
+const ANON_ADJ = ['浪漫的', '勇敢的', '温柔的', '神秘的', '倔强的', '安静的', '闪闪的', '路过的'];
+const ANON_NOUN = ['同学', '小可爱', '过客', '星辰', '树', '风', '月亮', '旅人'];
+function generateAnonName(): string {
+  const adj = ANON_ADJ[Math.floor(Math.random() * ANON_ADJ.length)] ?? '神秘的';
+  const noun = ANON_NOUN[Math.floor(Math.random() * ANON_NOUN.length)] ?? '过客';
+  return `${adj}${noun}`;
+}
+
 @Injectable()
 export class ConfessionService {
   constructor(
@@ -93,11 +102,20 @@ export class ConfessionService {
     const circle = await this.prisma.circle.findUnique({ where: { id: circleId } });
     if (!circle) throw new BizException(20001, '圈子不存在');
 
-    // 发帖前内联内容安全：文本 + 每张图（与 API 规范 §10 对齐）
+    // 发帖前内联内容安全：文本 + 每张图 + 视频封面（与 API 规范 §10 / 功能规划 §1.7 对齐）
     await this.moderation.checkText(dto.content, openid);
     for (const url of dto.images ?? []) {
       await this.moderation.checkImage(url);
     }
+    if (dto.videoCover) {
+      await this.moderation.checkImage(dto.videoCover);
+    }
+    // 视频完整审核：微信侧 mediaCheckAsync 需回调链路，P0 走 stub（fail-open + warn），P3-06 补全
+    if (dto.videoUrl) {
+      this.moderation.checkVideoStub(dto.videoUrl);
+    }
+
+    const isAnonymous = !!dto.isAnonymous;
 
     // 内容安全通过即发布（APPROVED）；PENDING 留给 review 命中 / 管理端审核队列
     const post = await this.prisma.post.create({
@@ -106,6 +124,11 @@ export class ConfessionService {
         authorId: uid,
         content: dto.content,
         images: dto.images ?? [],
+        tags: dto.tags ?? [],
+        isAnonymous,
+        anonName: isAnonymous ? generateAnonName() : null,
+        videoUrl: dto.videoUrl ?? null,
+        videoCover: dto.videoCover ?? null,
         status: PostStatus.APPROVED,
       },
       include: postInclude(uid),
@@ -345,14 +368,22 @@ export class ConfessionService {
   }
 
   private toPostVo(post: PostWithAuthor): PostVo {
+    const isAnonymous = post.isAnonymous;
     return {
       id: post.id,
       circleId: post.circleId,
-      authorId: post.authorId,
-      authorNickname: post.author.nickname,
-      authorAvatarUrl: post.author.avatarUrl,
+      // 匿名帖脱敏：不向客户端暴露真实 uid/昵称/头像（后台仍可按 authorId 追溯，见 listMyPosts）
+      authorId: isAnonymous ? '' : post.authorId,
+      authorNickname: isAnonymous
+        ? (post.anonName ?? '匿名用户')
+        : post.author.nickname,
+      authorAvatarUrl: isAnonymous ? null : post.author.avatarUrl,
       content: post.content,
       images: post.images,
+      tags: post.tags,
+      isAnonymous,
+      videoUrl: post.videoUrl,
+      videoCover: post.videoCover,
       likeCount: post.likeCount,
       liked: post.postLikes.length > 0,
       commentCount: post._count.comments,

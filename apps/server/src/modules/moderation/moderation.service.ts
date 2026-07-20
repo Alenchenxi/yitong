@@ -97,6 +97,12 @@ export class ModerationService {
     }
   }
 
+  // 视频审核 stub：微信侧 mediaCheckAsync 为异步回调链路，P0 暂走 fail-open（仅告警不拦截）。
+  // 视频封面已由 checkImage 覆盖；完整视频帧审核留 P3-06 内容安全覆盖矩阵补全。
+  checkVideoStub(videoUrl: string): void {
+    this.logger.warn(`video moderation stub (fail-open): ${videoUrl}; 完整视频审核待 P3-06 接入`);
+  }
+
   private handleCheckUnavailable(reason: string): void {
     if (process.env.NODE_ENV === 'production') {
       this.logger.error(`${reason}; fail-closed`);

@@ -15,10 +15,23 @@ export interface PostVo {
   authorAvatarUrl: string | null;
   content: string;
   images: string[];
+  tags: string[];
+  isAnonymous: boolean;
+  videoUrl: string | null;
+  videoCover: string | null;
   likeCount: number;
   liked: boolean;
   commentCount: number;
   createdAt: string;
+}
+
+export interface CreatePostPayload {
+  content: string;
+  images?: string[];
+  tags?: string[];
+  isAnonymous?: boolean;
+  videoUrl?: string;
+  videoCover?: string;
 }
 
 export interface CommentVo {
@@ -55,11 +68,19 @@ export function listCircles() {
 }
 
 // 发帖
-export function createPost(circleId: string, content: string, images: string[]) {
+export function createPost(circleId: string, payload: CreatePostPayload) {
   return request<PostVo>({
     url: `/circles/${circleId}/posts`,
     method: 'POST',
-    data: { content, images },
+    // 内联字面量（fresh literal 可赋给 Record<string, unknown>，具名 interface 不行）
+    data: {
+      content: payload.content,
+      images: payload.images,
+      tags: payload.tags,
+      isAnonymous: payload.isAnonymous,
+      videoUrl: payload.videoUrl,
+      videoCover: payload.videoCover,
+    },
   });
 }
 

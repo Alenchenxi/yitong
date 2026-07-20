@@ -5,13 +5,20 @@
       <image wx:if="{{post.authorAvatarUrl}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
       <view wx:else class="avatar avatar-ph">{{post.authorNickname[0]}}</view>
       <view class="meta">
-        <view class="nickname">{{post.authorNickname}}</view>
+        <view class="nickname">
+          {{post.authorNickname}}
+          <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
+        </view>
         <view class="time">{{post.timeText}}</view>
       </view>
-      <view class="follow-btn {{post.following ? 'followed' : ''}}" catchtap="onFollow">{{post.following ? '已关注' : '关注'}}</view>
+      <view class="follow-btn {{post.following ? 'followed' : ''}}" wx:if="{{!post.isAnonymous}}" catchtap="onFollow">{{post.following ? '已关注' : '关注'}}</view>
     </view>
     <view class="content">{{post.content}}</view>
-    <view class="images images-{{post.imgLayout}}" wx:if="{{post.imgLayout}}">
+    <view class="tags" wx:if="{{post.tags.length}}">
+      <text class="tag" wx:for="{{post.tags}}" wx:key="*this">#{{item}}</text>
+    </view>
+    <video wx:if="{{post.videoUrl}}" class="video" src="{{post.videoUrl}}" poster="{{post.videoCover}}" object-fit="cover" controls></video>
+    <view class="images images-{{post.imgLayout}}" wx:elif="{{post.imgLayout}}">
       <image
         wx:for="{{post.images}}"
         wx:key="*this"
