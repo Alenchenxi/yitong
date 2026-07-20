@@ -316,7 +316,7 @@ export class ConfessionService {
       where: { status: PostStatus.APPROVED, ...(circleId ? { circleId } : {}) },
       orderBy:
         sort === 'hot'
-          ? [{ likeCount: 'desc' }, { commentCount: 'desc' }, { createdAt: 'desc' }]
+          ? [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }]
           : [{ likeCount: 'desc' }, { createdAt: 'desc' }],
       take: limit,
       include: postInclude(uid),
