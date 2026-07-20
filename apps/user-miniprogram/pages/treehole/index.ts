@@ -8,12 +8,16 @@ import {
 } from '../../services/treehole';
 import { formatTime } from '../../utils/auth';
 
+type Tab = 'recommend' | 'latest' | 'mood';
+
 Page({
   data: {
     posts: [] as Array<AnonPostVo & { timeText: string; anonShort: string }>,
     nextCursor: null as string | null,
     hasMore: true,
     loading: false,
+    anonNickname: '',
+    activeTab: 'recommend' as Tab,
   },
 
   async onShow() {
@@ -21,10 +25,15 @@ Page({
     if (!app.requireAuth()) return;
     if (!hasAnonToken()) {
       try {
-        await getAnonymousToken();
+        const r = await getAnonymousToken();
+        this.setData({ anonNickname: r.nickname });
       } catch {
         return;
       }
+    } else if (!this.data.anonNickname) {
+      getAnonymousToken()
+        .then((r) => this.setData({ anonNickname: r.nickname }))
+        .catch(() => {});
     }
     if (this.data.posts.length === 0) this.reload();
   },
@@ -65,6 +74,15 @@ Page({
   onReachBottom() {
     this.loadMore();
   },
+
+  switchTab(e: WechatMiniprogram.TouchEvent) {
+    const tab = (e.currentTarget.dataset.tab as Tab) ?? 'recommend';
+    if (tab === this.data.activeTab) return;
+    this.setData({ activeTab: tab });
+    // P0-13 将按情绪分类筛选；当前统一 listPosts
+    this.reload();
+  },
+
   goPost() {
     wx.navigateTo({ url: '/pages/treehole/post/index' });
   },
@@ -73,6 +91,9 @@ Page({
   },
   goParty() {
     wx.navigateTo({ url: '/pages/treehole/party/index' });
+  },
+  goMood() {
+    wx.showToast({ title: '心情入口开发中', icon: 'none' });
   },
   goDetail(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;

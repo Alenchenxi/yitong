@@ -1,12 +1,40 @@
 <view class="page">
-  <view class="topbar">
-    <view class="action" bindtap="goPost">发动态</view>
-    <view class="action" bindtap="goMatch">随机匹配</view>
-    <view class="action" bindtap="goParty">派对房</view>
+  <!-- 匿名身份卡 -->
+  <view class="anon-card yt-card">
+    <view class="anon-avatar">🌙</view>
+    <view class="anon-info">
+      <view class="anon-nick">{{anonNickname || '匿名用户'}}</view>
+      <view class="anon-sub">匿名身份 · 自由表达</view>
+    </view>
+    <view class="anon-tag yt-tag-accent">匿名</view>
   </view>
 
+  <!-- 入口区：心情 / 随机匹配 / 群聊广场 -->
+  <view class="entries">
+    <view class="entry" bindtap="goMood">
+      <view class="entry-icon">💭</view>
+      <view class="entry-text">心情</view>
+    </view>
+    <view class="entry" bindtap="goMatch">
+      <view class="entry-icon">🎲</view>
+      <view class="entry-text">随机匹配</view>
+    </view>
+    <view class="entry" bindtap="goParty">
+      <view class="entry-icon">👥</view>
+      <view class="entry-text">群聊广场</view>
+    </view>
+  </view>
+
+  <!-- tab：推荐/最新/情绪 -->
+  <view class="main-tabs">
+    <view class="main-tab {{activeTab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchTab">推荐</view>
+    <view class="main-tab {{activeTab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchTab">最新</view>
+    <view class="main-tab {{activeTab === 'mood' ? 'active' : ''}}" data-tab="mood" bindtap="switchTab">情绪</view>
+  </view>
+
+  <!-- 广场列表 -->
   <view class="list" wx:if="{{posts.length > 0}}">
-    <view class="card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+    <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view class="anon">🌙 {{item.anonShort}}</view>
       <view class="content">{{item.content}}</view>
       <view class="row">
@@ -20,8 +48,13 @@
     <view class="tip" wx:elif="{{!hasMore}}">没有更多了</view>
   </view>
 
-  <view class="empty" wx:elif="{{!loading}}">
-    <view class="empty-emoji">🌙</view>
-    <view class="empty-text">树洞空空的，说点什么吧</view>
+  <view class="yt-empty" wx:elif="{{!loading}}">
+    <view class="yt-empty-emoji">🌙</view>
+    <view class="yt-empty-text">树洞空空的，说点什么吧</view>
+  </view>
+
+  <!-- 发动态 FAB -->
+  <view class="fab" bindtap="goPost">
+    <text class="fab-plus">＋</text>
   </view>
 </view>
