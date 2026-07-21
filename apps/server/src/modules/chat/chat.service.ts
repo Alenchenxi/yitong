@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { MatchStatus, Prisma, type ChatMessage } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModerationService } from '../moderation/moderation.service';
 
 export interface MessageVo {
   id: string;
@@ -28,7 +29,10 @@ export interface SessionVo {
 // fromId/toId 为标识符（实名 uid 或树洞 anonId），不假设与 User 表关联，匿名隔离由调用方保证。
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly moderation: ModerationService,
+  ) {}
 
   // 发消息：存 ChatMessage + 双向更新 ChatSession（双方都能看到）
   async sendMessage(fromId: string, toId: string, content: string, type = 'text'): Promise<MessageVo> {
@@ -36,6 +40,12 @@ export class ChatService {
       throw new BizException(30003, '匿名会话未匹配，不能发送消息', HttpStatus.FORBIDDEN);
     }
     const msgType = type === 'image' ? 'image' : 'text';
+    // P0-15 聊天安全审核：文字 checkText / 图片 checkImage（命中违规抛 90002）
+    if (msgType === 'image') {
+      await this.moderation.checkImage(content);
+    } else {
+      await this.moderation.checkText(content);
+    }
     const msg = await this.prisma.$transaction(async (tx) => {
       const m = await tx.chatMessage.create({ data: { fromId, toId, content, type: msgType } });
       const lastMessage = msgType === 'image' ? '[图片]' : content;
