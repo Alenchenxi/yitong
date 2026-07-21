@@ -27,6 +27,7 @@ export interface WsMessage {
   toId?: string;
   roomId?: string;
   content?: string;
+  msgType?: string; // P0-14 消息内容类型 text / image
   ts?: number;
   reason?: string;
   [k: string]: unknown;
@@ -265,8 +266,8 @@ export function sendRoomMessage(roomId: string, content: string) {
   enqueueOrSend({ type: 'room-msg', roomId, content });
 }
 
-export function sendWsMessage(toId: string, content: string) {
-  enqueueOrSend({ type: 'msg', toId, content });
+export function sendWsMessage(toId: string, content: string, msgType?: string) {
+  enqueueOrSend({ type: 'msg', toId, content, msgType });
 }
 
 export function getImToken(app: AppLike): Promise<ImCredential> {

@@ -42,6 +42,7 @@ export interface AnonMessageVo {
   fromId: string;
   toId: string;
   content: string;
+  type: string; // P0-14 text / image
   createdAt: string;
 }
 
@@ -147,8 +148,8 @@ export function joinParty(): Promise<PartyResp> {
   return anonRequest({ url: '/treehole/party/join', method: 'POST' });
 }
 
-export function sendAnonMessage(peerAnonId: string, content: string): Promise<AnonMessageVo> {
-  return anonRequest({ url: '/treehole/messages', method: 'POST', data: { peerAnonId, content } });
+export function sendAnonMessage(peerAnonId: string, content: string, type?: string): Promise<AnonMessageVo> {
+  return anonRequest({ url: '/treehole/messages', method: 'POST', data: { peerAnonId, content, type } });
 }
 
 export function listAnonMessages(

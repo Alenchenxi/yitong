@@ -183,6 +183,7 @@ model ChatMessage {
   fromId    String   @map("from_id")
   toId      String   @map("to_id")
   content   String
+  type      String   @default("text") @map("type") // P0-14 消息类型：text / image
   createdAt DateTime @default(now()) @map("created_at")
   @@index([fromId, toId, createdAt])
   @@index([toId, createdAt])

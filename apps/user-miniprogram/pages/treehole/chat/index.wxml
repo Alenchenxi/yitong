@@ -10,11 +10,20 @@
   <block wx:else>
     <view class="msgs">
       <view class="msg {{item.mine ? 'mine' : 'peer'}}" wx:for="{{messages}}" wx:key="index">
-        <text>{{item.content}}</text>
+        <image
+          wx:if="{{item.type === 'image'}}"
+          class="msg-img"
+          src="{{item.content}}"
+          mode="widthFix"
+          data-url="{{item.content}}"
+          bindtap="previewImage"
+        ></image>
+        <text wx:else>{{item.content}}</text>
       </view>
       <view class="empty-tip" wx:if="{{messages.length === 0}}">对方已连接，打个招呼吧</view>
     </view>
     <view class="bar">
+      <view class="img-btn" bindtap="sendImage">📷</view>
       <input class="input" placeholder="发消息…" value="{{input}}" bindinput="onInput" confirm-type="send" bindconfirm="send" adjust-position />
       <button class="send-btn" size="mini" bindtap="send">发送</button>
     </view>

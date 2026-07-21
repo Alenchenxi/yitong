@@ -209,11 +209,11 @@ export class TreeholeService {
     return { roomId: 'treehole-party-main', imCredential };
   }
 
-  async sendMessage(anonId: string, peerAnonId: string, content: string) {
+  async sendMessage(anonId: string, peerAnonId: string, content: string, type?: string) {
     if (!peerAnonId || !content.trim()) {
       throw new BizException(30004, '消息内容无效', HttpStatus.BAD_REQUEST);
     }
-    return this.chat.sendMessage(anonId, peerAnonId, content);
+    return this.chat.sendMessage(anonId, peerAnonId, content, type);
   }
 
   async listMessages(anonId: string, peerAnonId: string, cursor?: string, limit = 50) {

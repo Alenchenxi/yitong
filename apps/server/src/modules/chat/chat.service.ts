@@ -8,6 +8,7 @@ export interface MessageVo {
   fromId: string;
   toId: string;
   content: string;
+  type: string; // P0-14 text / image
   createdAt: string;
 }
 
@@ -30,21 +31,23 @@ export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
   // 发消息：存 ChatMessage + 双向更新 ChatSession（双方都能看到）
-  async sendMessage(fromId: string, toId: string, content: string): Promise<MessageVo> {
+  async sendMessage(fromId: string, toId: string, content: string, type = 'text'): Promise<MessageVo> {
     if (!(await this.canSendDirectMessage(fromId, toId))) {
       throw new BizException(30003, '匿名会话未匹配，不能发送消息', HttpStatus.FORBIDDEN);
     }
+    const msgType = type === 'image' ? 'image' : 'text';
     const msg = await this.prisma.$transaction(async (tx) => {
-      const m = await tx.chatMessage.create({ data: { fromId, toId, content } });
+      const m = await tx.chatMessage.create({ data: { fromId, toId, content, type: msgType } });
+      const lastMessage = msgType === 'image' ? '[图片]' : content;
       await tx.chatSession.upsert({
         where: { ownerId_peerId: { ownerId: fromId, peerId: toId } },
-        update: { lastMessage: content, lastAt: m.createdAt },
-        create: { ownerId: fromId, peerId: toId, lastMessage: content, lastAt: m.createdAt },
+        update: { lastMessage, lastAt: m.createdAt },
+        create: { ownerId: fromId, peerId: toId, lastMessage, lastAt: m.createdAt },
       });
       await tx.chatSession.upsert({
         where: { ownerId_peerId: { ownerId: toId, peerId: fromId } },
-        update: { lastMessage: content, lastAt: m.createdAt },
-        create: { ownerId: toId, peerId: fromId, lastMessage: content, lastAt: m.createdAt },
+        update: { lastMessage, lastAt: m.createdAt },
+        create: { ownerId: toId, peerId: fromId, lastMessage, lastAt: m.createdAt },
       });
       return m;
     });
@@ -100,6 +103,7 @@ export class ChatService {
       fromId: m.fromId,
       toId: m.toId,
       content: m.content,
+      type: m.type,
       createdAt: m.createdAt.toISOString(),
     };
   }

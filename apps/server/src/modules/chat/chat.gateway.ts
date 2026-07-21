@@ -18,6 +18,7 @@ interface ClientMsg {
   toId?: string;
   roomId?: string;
   content?: string;
+  msgType?: string; // P0-14 消息内容类型 text / image
 }
 
 interface ConnMeta {
@@ -136,9 +137,9 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
       return;
     }
     const ts = Date.now();
-    this.forward(m.toId, { type: 'msg', fromId: from, toId: m.toId, content: m.content, ts });
+    this.forward(m.toId, { type: 'msg', fromId: from, toId: m.toId, content: m.content, msgType: m.msgType, ts });
     // 回执给发送方（已转发）
-    this.send(ws, { type: 'msg_sent', toId: m.toId, content: m.content, ts });
+    this.send(ws, { type: 'msg_sent', toId: m.toId, content: m.content, msgType: m.msgType, ts });
   }
 
   private handleJoin(ws: WebSocket, m: ClientMsg) {
