@@ -54,6 +54,12 @@
 .app-item:last-child { border-bottom: none; }
 .app-nick { font-size: 28rpx; color: #222; }
 .app-status { font-size: 24rpx; color: #999; }
+.app-resume { background: #f7f8fa; border-radius: 10rpx; padding: 12rpx 16rpx; margin: 10rpx 0; }
+.app-resume-line { display: block; font-size: 24rpx; color: #4E5969; line-height: 1.6; }
+.app-answers { margin: 10rpx 0; }
+.app-ans { background: #f7f8fa; border-radius: 10rpx; padding: 12rpx 16rpx; margin-bottom: 8rpx; }
+.app-q { display: block; font-size: 24rpx; color: #1D2129; }
+.app-a { display: block; font-size: 24rpx; color: #4E5969; margin-top: 4rpx; }
 .r-item { padding: 16rpx 0; border-bottom: 1rpx solid #f4f4f4; }
 .r-item:last-child { border-bottom: none; }
 .r-stars { color: #ffb400; font-size: 26rpx; }

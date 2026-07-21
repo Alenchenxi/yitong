@@ -78,6 +78,12 @@ export class CreateJobPostDto {
   @IsBoolean()
   online?: boolean;
 
+  // P0-21 报名问题（商家设置，报名时必答）
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  questions?: string[];
+
   @IsIn(['D30', 'D90'])
   duration!: 'D30' | 'D90';
 }
@@ -176,4 +182,49 @@ export class ReportDto {
   @IsString()
   @MaxLength(200)
   reason?: string;
+}
+
+// P0-21 报名：可附简历 + 回答问题（answers 与 post.questions 顺序对齐）
+export class ApplyDto {
+  @IsOptional()
+  @IsString()
+  resumeId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  answers?: string[];
+}
+
+// P0-21 简历 upsert（一人一份）
+export class UpsertResumeDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  name!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(30)
+  phone!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  selfIntro?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  skills?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  availabilities?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  experience?: string;
 }

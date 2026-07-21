@@ -1,11 +1,11 @@
-import { Body, Controller, Get, HttpStatus, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { ok } from '../../common/dto/api-response';
 import { BizException } from '../../common/exceptions/biz.exception';
 import type { AuthenticatedRequest } from '../auth/types';
 import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
-import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto } from './dto/job.dto';
+import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto } from './dto/job.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -41,9 +41,22 @@ export class JobController {
   }
 
   @Post('job-posts/:id/applications')
-  async apply(@Param('id') id: string, @Req() req: Request) {
+  async apply(@Param('id') id: string, @Body() dto: ApplyDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.job.apply(uid, id));
+    return ok(await this.job.apply(uid, id, dto));
+  }
+
+  // P0-21 我的简历（一人一份）：获取 / upsert
+  @Get('resume')
+  async getMyResume(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.getMyResume(uid));
+  }
+
+  @Put('resume')
+  async upsertResume(@Body() dto: UpsertResumeDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.upsertResume(uid, dto));
   }
 
   // P0-19 举报岗位（创建 ModerationRecord，管理员审核队列可见）

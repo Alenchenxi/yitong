@@ -13,7 +13,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
-import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto } from './dto/job.dto';
+import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto } from './dto/job.dto';
 
 // 错误码 4xxxx 兼职段（API 规范 §3）：40001 岗位不存在 / 40002 重复报名 / 40003 已下架 / 40004 状态非法流转 / 40005 不能评价
 @Injectable()
@@ -57,6 +57,7 @@ export class JobService {
         headcount: dto.headcount ?? 1,
         urgent: dto.urgent ?? false,
         online: dto.online ?? false,
+        questions: dto.questions ?? [],
         duration: dto.duration,
         expireAt,
         status: JobPostStatus.PENDING,
@@ -141,8 +142,8 @@ export class JobService {
     return { reported: true };
   }
 
-  // 用户报名：防重（@@unique），岗位须 PUBLISHED 且未过期
-  async apply(uid: string, postId: string) {
+  // 用户报名：防重（@@unique），岗位须 PUBLISHED 且未过期；P0-21 可附简历 + 回答问题
+  async apply(uid: string, postId: string, dto: ApplyDto = {}) {
     const post = await this.prisma.jobPost.findUnique({
       where: { id: postId },
       include: { merchant: { select: { userId: true } } },
@@ -150,9 +151,37 @@ export class JobService {
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     if (post.status !== JobPostStatus.PUBLISHED) throw new BizException(40003, '岗位已下架');
     if (post.expireAt.getTime() < Date.now()) throw new BizException(40003, '岗位已过期');
+
+    // P0-21 报名问题校验：有问题则必答且数量一致
+    const questions = post.questions ?? [];
+    let answersJson: { question: string; answer: string }[] | null = null;
+    if (questions.length > 0) {
+      const answers = dto.answers ?? [];
+      if (answers.length !== questions.length || answers.some((a) => !a || !a.trim())) {
+        throw new BizException(40006, '请完整回答报名问题', HttpStatus.BAD_REQUEST);
+      }
+      answersJson = questions.map((q, i) => ({ question: q, answer: answers[i]!.trim() }));
+    }
+
+    // P0-21 简历校验：如提供 resumeId 须为本人简历
+    let resumeId: string | null = null;
+    if (dto.resumeId) {
+      const resume = await this.prisma.resume.findUnique({ where: { id: dto.resumeId } });
+      if (!resume || resume.userId !== uid) {
+        throw new BizException(40006, '简历无效', HttpStatus.BAD_REQUEST);
+      }
+      resumeId = resume.id;
+    }
+
     try {
       const app = await this.prisma.jobApplication.create({
-        data: { jobPostId: postId, userId: uid, status: AppStatus.PENDING },
+        data: {
+          jobPostId: postId,
+          userId: uid,
+          status: AppStatus.PENDING,
+          resumeId,
+          answers: answersJson ?? undefined,
+        },
         include: { jobPost: { select: { title: true } } },
       });
       // 通知商家有新报名
@@ -175,7 +204,7 @@ export class JobService {
     }
   }
 
-  // 商家查某岗位报名（需岗位属于该商家）
+  // 商家查某岗位报名（需岗位属于该商家）；P0-21 附带简历快照
   async listApplications(uid: string, postId: string) {
     await this.assertOwnsPost(uid, postId);
     const apps = await this.prisma.jobApplication.findMany({
@@ -183,7 +212,16 @@ export class JobService {
       orderBy: { createdAt: 'desc' },
       include: { user: { select: { nickname: true } }, jobPost: { select: { title: true } } },
     });
-    return apps.map((a) => this.toAppVo(a));
+    const resumeIds = [...new Set(apps.map((a) => a.resumeId).filter((id): id is string => !!id))];
+    const resumes =
+      resumeIds.length > 0
+        ? await this.prisma.resume.findMany({
+            where: { id: { in: resumeIds } },
+            select: { id: true, name: true, phone: true, selfIntro: true, skills: true },
+          })
+        : [];
+    const resumeMap = new Map(resumes.map((r) => [r.id, r]));
+    return apps.map((a) => this.toAppVo(a, a.resumeId ? (resumeMap.get(a.resumeId) ?? null) : null));
   }
 
   // 用户自己的报名
@@ -376,6 +414,7 @@ export class JobService {
     headcount: number;
     urgent: boolean;
     online: boolean;
+    questions: string[];
     duration: JobDuration;
     expireAt: Date;
     status: JobPostStatus;
@@ -399,6 +438,7 @@ export class JobService {
       headcount: p.headcount,
       urgent: p.urgent,
       online: p.online,
+      questions: p.questions,
       duration: p.duration,
       expireAt: p.expireAt.toISOString(),
       status: p.status,
@@ -421,23 +461,77 @@ export class JobService {
     return Number.isFinite(n) ? n : null;
   }
 
-  private toAppVo(a: {
-    id: string;
-    jobPostId: string;
-    userId: string;
-    status: AppStatus;
-    createdAt: Date;
-    user?: { nickname: string };
-    jobPost?: { title: string };
-  }) {
+  private toAppVo(
+    a: {
+      id: string;
+      jobPostId: string;
+      userId: string;
+      resumeId: string | null;
+      answers: unknown;
+      status: AppStatus;
+      createdAt: Date;
+      user?: { nickname: string };
+      jobPost?: { title: string };
+    },
+    resume: { name: string; phone: string; selfIntro: string | null; skills: string[] } | null = null,
+  ) {
     return {
       id: a.id,
       jobPostId: a.jobPostId,
       jobPostTitle: a.jobPost?.title ?? '',
       userId: a.userId,
       userNickname: a.user?.nickname ?? '',
+      resumeId: a.resumeId,
+      answers: a.answers,
+      // P0-21 简历快照（商家查看报名时展示）
+      resume: resume ? { name: resume.name, phone: resume.phone, selfIntro: resume.selfIntro, skills: resume.skills } : null,
       status: a.status,
       createdAt: a.createdAt.toISOString(),
+    };
+  }
+
+  // P0-21 我的简历（一人一份）
+  async getMyResume(uid: string) {
+    const r = await this.prisma.resume.findUnique({ where: { userId: uid } });
+    return r ? this.toResumeVo(r) : null;
+  }
+
+  async upsertResume(uid: string, dto: UpsertResumeDto) {
+    const data = {
+      name: dto.name,
+      phone: dto.phone,
+      selfIntro: dto.selfIntro ?? null,
+      skills: dto.skills ?? [],
+      availabilities: dto.availabilities ?? [],
+      experience: dto.experience ?? null,
+    };
+    const r = await this.prisma.resume.upsert({
+      where: { userId: uid },
+      update: data,
+      create: { userId: uid, ...data },
+    });
+    return this.toResumeVo(r);
+  }
+
+  private toResumeVo(r: {
+    id: string;
+    name: string;
+    phone: string;
+    selfIntro: string | null;
+    skills: string[];
+    availabilities: string[];
+    experience: string | null;
+    updatedAt: Date;
+  }) {
+    return {
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      selfIntro: r.selfIntro,
+      skills: r.skills,
+      availabilities: r.availabilities,
+      experience: r.experience,
+      updatedAt: r.updatedAt.toISOString(),
     };
   }
 

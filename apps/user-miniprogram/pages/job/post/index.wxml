@@ -35,6 +35,17 @@
   <view class="row"><text class="label">急招</text><switch checked="{{urgent}}" bindchange="toggleUrgent" color="#ff4d6d" /></view>
   <view class="row"><text class="label">可线上</text><switch checked="{{online}}" bindchange="toggleOnline" color="#ff4d6d" /></view>
 
+  <view class="block">
+    <text class="label">报名问题（选填）</text>
+    <view class="tags" wx:if="{{questions.length > 0}}">
+      <view class="tag" wx:for="{{questions}}" wx:key="*this" data-idx="{{index}}" bindtap="removeQuestion">{{item}} ✕</view>
+    </view>
+    <view class="add-row">
+      <input class="add-input" value="{{questionInput}}" bindinput="onQuestionInput" placeholder="如：何时能到岗 / 有无相关经验" bindconfirm="addQuestion" />
+      <view class="add-btn" bindtap="addQuestion">添加</view>
+    </view>
+  </view>
+
   <view class="textarea-wrap">
     <text class="label">工作内容</text>
     <textarea class="textarea" placeholder="岗位职责 / 工作内容" value="{{description}}" data-field="description" bindinput="onInput" maxlength="2000" auto-height show-confirm-bar="{{false}}" />

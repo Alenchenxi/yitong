@@ -1,0 +1,33 @@
+<view class="page" wx:if="{{post}}">
+  <view class="post-card">
+    <view class="title">{{post.title}}</view>
+    <view class="sub">{{post.salary}} · {{post.location}}</view>
+  </view>
+
+  <!-- 简历 -->
+  <view class="card">
+    <view class="card-title">我的简历</view>
+    <block wx:if="{{resume}}">
+      <view class="resume-row"><text class="k">姓名</text><text class="v">{{resume.name}}</text></view>
+      <view class="resume-row"><text class="k">电话</text><text class="v">{{resume.phone}}</text></view>
+      <view class="resume-row" wx:if="{{resume.skills.length > 0}}"><text class="k">技能</text><text class="v">{{resume.skills}}</text></view>
+      <view class="resume-row" wx:if="{{resume.selfIntro}}"><text class="k">介绍</text><text class="v">{{resume.selfIntro}}</text></view>
+      <view class="edit-link" bindtap="goResume">编辑简历 ›</view>
+    </block>
+    <block wx:else>
+      <view class="no-resume">建议先完善简历，商家更了解你</view>
+      <button class="create-btn" bindtap="goResume">创建简历</button>
+    </block>
+  </view>
+
+  <!-- 报名问题 -->
+  <view class="card" wx:if="{{post.questions.length > 0}}">
+    <view class="card-title">报名问题</view>
+    <view class="q-item" wx:for="{{post.questions}}" wx:key="*this" wx:for-index="qi">
+      <view class="q-label">Q{{qi + 1}}：{{item}}</view>
+      <input class="q-input" data-idx="{{qi}}" bindinput="onAnswerInput" placeholder="请回答" value="{{answers[qi]}}" />
+    </view>
+  </view>
+
+  <button class="submit" bindtap="submit" disabled="{{applying}}">{{applying ? '报名中…' : '确认报名'}}</button>
+</view>

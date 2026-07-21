@@ -64,6 +64,18 @@
         <text class="app-nick">{{item.userNickname}}</text>
         <text class="app-status">{{item.statusText}}</text>
       </view>
+      <!-- P0-21 简历快照 -->
+      <view class="app-resume" wx:if="{{item.resume}}">
+        <text class="app-resume-line">简历：{{item.resume.name}} · {{item.resume.phone}}</text>
+        <text class="app-resume-line" wx:if="{{item.resume.skills.length > 0}}">技能：{{item.resume.skills}}</text>
+      </view>
+      <!-- P0-21 报名问题回答 -->
+      <view class="app-answers" wx:if="{{item.answers && item.answers.length > 0}}">
+        <view class="app-ans" wx:for="{{item.answers}}" wx:for-item="ans" wx:for-index="ai" wx:key="ai">
+          <text class="app-q">Q：{{ans.question}}</text>
+          <text class="app-a">A：{{ans.answer}}</text>
+        </view>
+      </view>
       <view class="app-actions">
         <button wx:if="{{item.status === 'PENDING'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="accept">录用</button>
         <button wx:if="{{item.status === 'ACCEPTED'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="complete">标记完成</button>

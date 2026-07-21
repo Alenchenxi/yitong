@@ -16,6 +16,8 @@
     "pages/job/my-applications/index",
     "pages/job/manage/index",
     "pages/job/search/index",
+    "pages/job/apply/index",
+    "pages/resume/index",
     "pages/payment/index",
     "pages/treehole/post/index",
     "pages/treehole/detail/index",

@@ -1,0 +1,18 @@
+.page { padding: 24rpx; padding-bottom: 80rpx; }
+.row { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.label { width: 140rpx; font-size: 28rpx; color: #333; flex-shrink: 0; }
+.input { flex: 1; font-size: 28rpx; }
+.block { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.block .label { display: block; width: auto; margin-bottom: 16rpx; }
+.tags { display: flex; flex-wrap: wrap; gap: 14rpx; margin-bottom: 16rpx; }
+.tag { padding: 8rpx 22rpx; border-radius: 999rpx; background: #FFF7D1; color: #B8860B; font-size: 24rpx; }
+.add-row { display: flex; align-items: center; gap: 16rpx; }
+.add-input { flex: 1; background: #f5f6f8; border-radius: 12rpx; padding: 14rpx 20rpx; font-size: 26rpx; }
+.add-btn { background: #F9C801; color: #1D2129; font-size: 26rpx; font-weight: 600; padding: 14rpx 28rpx; border-radius: 12rpx; }
+.chips { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.chip { padding: 10rpx 24rpx; border-radius: 999rpx; background: #f5f6f8; font-size: 24rpx; color: #666; }
+.chip.active { background: #F9C801; color: #1D2129; font-weight: 600; }
+.textarea-wrap { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.textarea { width: 100%; min-height: 120rpx; font-size: 28rpx; line-height: 1.6; margin-top: 12rpx; }
+.save { width: 100%; background: #F9C801 !important; color: #1D2129 !important; border-radius: 48rpx !important; font-size: 30rpx !important; font-weight: 600; margin-top: 24rpx; }
+.save[disabled] { background: #FFF7D1 !important; color: #C9CDD4 !important; }

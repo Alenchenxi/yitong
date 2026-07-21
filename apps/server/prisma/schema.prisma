@@ -324,6 +324,7 @@ model JobPost {
   headcount    Int           @default(1) @map("headcount")             // P0-17 招聘人数
   urgent       Boolean       @default(false) @map("urgent")            // P0-17 急招
   online       Boolean       @default(false) @map("online")            // P0-17 是否可线上
+  questions    String[]      @default([]) @map("questions")            // P0-21 报名问题（商家设置）
   duration     JobDuration
   expireAt     DateTime      @map("expire_at")
   status       JobPostStatus @default(PENDING)
@@ -372,6 +373,8 @@ model JobApplication {
   id        String    @id @default(cuid())
   jobPostId String    @map("job_post_id")
   userId    String    @map("user_id")
+  resumeId  String?   @map("resume_id")                               // P0-21 报名所附简历
+  answers   Json?     @map("answers")                                 // P0-21 报名问题回答 [{question, answer}]
   status    AppStatus @default(PENDING)
   createdAt DateTime  @default(now()) @map("created_at")
   jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
@@ -395,6 +398,21 @@ model JobReview {
   createdAt     DateTime       @default(now()) @map("created_at")
   application   JobApplication @relation(fields: [applicationId], references: [id])
   @@map("job_reviews")
+}
+
+// P0-21 简历（一人一份，userId 唯一；覆盖 P1-20 基础字段）
+model Resume {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  name           String
+  phone          String
+  selfIntro      String?  @map("self_intro")
+  skills         String[] @default([])
+  availabilities String[] @default([])
+  experience     String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  @@map("resumes")
 }
 
 // ===== 支付（付费发布）=====

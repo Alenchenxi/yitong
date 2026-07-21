@@ -52,6 +52,8 @@ Page({
     headcount: '1',
     urgent: false,
     online: false,
+    questions: [] as string[],
+    questionInput: '',
     duration: 'D30',
     submitting: false,
   },
@@ -107,6 +109,24 @@ Page({
     this.setData({ online: !this.data.online });
   },
 
+  // P0-21 报名问题（动态增删）
+  onQuestionInput(e: WechatMiniprogram.Input) {
+    this.setData({ questionInput: e.detail.value });
+  },
+  addQuestion() {
+    const q = this.data.questionInput.trim();
+    if (!q) return;
+    if (this.data.questions.includes(q)) {
+      this.setData({ questionInput: '' });
+      return;
+    }
+    this.setData({ questions: [...this.data.questions, q], questionInput: '' });
+  },
+  removeQuestion(e: WechatMiniprogram.TouchEvent) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    this.setData({ questions: this.data.questions.filter((_, i) => i !== idx) });
+  },
+
   async submit() {
     if (this.data.submitting) return;
     const { title, description, requirements, salary, location, duration, headcount, urgent, online } = this.data;
@@ -138,6 +158,7 @@ Page({
         headcount: hc,
         urgent,
         online,
+        questions: this.data.questions.length > 0 ? this.data.questions : undefined,
         duration: duration as 'D30' | 'D90',
       });
       wx.showToast({ title: '创建成功', icon: 'success' });

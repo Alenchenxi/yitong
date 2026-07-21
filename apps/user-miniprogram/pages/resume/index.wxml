@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="row"><text class="label">姓名</text><input class="input" placeholder="你的姓名" value="{{name}}" data-field="name" bindinput="onInput" /></view>
+  <view class="row"><text class="label">电话</text><input class="input" type="number" placeholder="联系电话" value="{{phone}}" data-field="phone" bindinput="onInput" /></view>
+
+  <view class="block">
+    <text class="label">技能</text>
+    <view class="tags" wx:if="{{skills.length > 0}}">
+      <view class="tag" wx:for="{{skills}}" wx:key="*this" data-s="{{item}}" bindtap="removeSkill">{{item}} ✕</view>
+    </view>
+    <view class="add-row">
+      <input class="add-input" value="{{skillInput}}" bindinput="onSkillInput" placeholder="添加技能，如：PS / Excel / 摄影" bindconfirm="addSkill" />
+      <view class="add-btn" bindtap="addSkill">添加</view>
+    </view>
+  </view>
+
+  <view class="block">
+    <text class="label">空闲时间</text>
+    <view class="chips">
+      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{availOpts}}" wx:key="label" data-label="{{item.label}}" bindtap="toggleAvail">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="textarea-wrap">
+    <text class="label">自我介绍</text>
+    <textarea class="textarea" placeholder="简短介绍自己（选填）" value="{{selfIntro}}" data-field="selfIntro" bindinput="onInput" maxlength="1000" auto-height show-confirm-bar="{{false}}" />
+  </view>
+  <view class="textarea-wrap">
+    <text class="label">工作经历</text>
+    <textarea class="textarea" placeholder="过往兼职 / 工作经历（选填）" value="{{experience}}" data-field="experience" bindinput="onInput" maxlength="2000" auto-height show-confirm-bar="{{false}}" />
+  </view>
+
+  <button class="save" bindtap="save" disabled="{{saving}}">{{saving ? '保存中...' : '保存简历'}}</button>
+</view>

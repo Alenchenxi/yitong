@@ -50,6 +50,7 @@ export interface JobPostVo {
   headcount: number; // P0-17 招聘人数
   urgent: boolean; // P0-17 急招
   online: boolean; // P0-17 是否可线上
+  questions: string[]; // P0-21 报名问题
   duration: 'D30' | 'D90';
   expireAt: string;
   status: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
@@ -68,8 +69,23 @@ export interface JobAppVo {
   jobPostTitle: string;
   userId: string;
   userNickname: string;
+  resumeId: string | null; // P0-21 报名所附简历
+  answers: Array<{ question: string; answer: string }> | null; // P0-21 报名问题回答
+  resume: { name: string; phone: string; selfIntro: string | null; skills: string[] } | null; // P0-21 简历快照（商家查看）
   status: 'PENDING' | 'ACCEPTED' | 'DONE' | 'CANCELLED';
   createdAt: string;
+}
+
+// P0-21 简历（一人一份）
+export interface ResumeVo {
+  id: string;
+  name: string;
+  phone: string;
+  selfIntro: string | null;
+  skills: string[];
+  availabilities: string[];
+  experience: string | null;
+  updatedAt: string;
 }
 
 export interface JobReviewVo {
@@ -94,6 +110,7 @@ export function createJobPost(data: {
   headcount?: number;
   urgent?: boolean;
   online?: boolean;
+  questions?: string[]; // P0-21 报名问题
   duration: 'D30' | 'D90';
 }) {
   return request<JobPostVo>({ url: '/job-posts', method: 'POST', data });
@@ -136,8 +153,24 @@ export function getJobPost(id: string) {
   return request<JobPostVo>({ url: `/job-posts/${id}` });
 }
 
-export function applyJob(postId: string) {
-  return request<JobAppVo>({ url: `/job-posts/${postId}/applications`, method: 'POST' });
+export function applyJob(postId: string, data: { resumeId?: string; answers?: string[] } = {}) {
+  return request<JobAppVo>({ url: `/job-posts/${postId}/applications`, method: 'POST', data });
+}
+
+// P0-21 简历
+export function getMyResume() {
+  return request<ResumeVo | null>({ url: '/resume' });
+}
+
+export function upsertResume(data: {
+  name: string;
+  phone: string;
+  selfIntro?: string;
+  skills?: string[];
+  availabilities?: string[];
+  experience?: string;
+}) {
+  return request<ResumeVo>({ url: '/resume', method: 'PUT', data });
 }
 
 // P0-19 举报岗位

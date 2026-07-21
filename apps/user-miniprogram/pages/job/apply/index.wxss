@@ -1,0 +1,17 @@
+.page { padding: 24rpx; padding-bottom: 80rpx; }
+.post-card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.title { font-size: 32rpx; font-weight: 600; color: #222; }
+.sub { font-size: 26rpx; color: #ff4d6d; margin-top: 8rpx; }
+.card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.card-title { font-size: 28rpx; font-weight: 600; color: #333; margin-bottom: 16rpx; }
+.resume-row { display: flex; font-size: 26rpx; padding: 6rpx 0; }
+.resume-row .k { width: 100rpx; color: #999; }
+.resume-row .v { flex: 1; color: #333; }
+.edit-link { font-size: 26rpx; color: #1677ff; margin-top: 12rpx; }
+.no-resume { font-size: 26rpx; color: #999; margin-bottom: 16rpx; }
+.create-btn { background: #F9C801 !important; color: #1D2129 !important; border-radius: 32rpx !important; font-size: 28rpx !important; }
+.q-item { margin-bottom: 20rpx; }
+.q-label { font-size: 26rpx; color: #333; margin-bottom: 10rpx; }
+.q-input { background: #f5f6f8; border-radius: 12rpx; padding: 16rpx 20rpx; font-size: 28rpx; }
+.submit { width: 100%; background: #F9C801 !important; color: #1D2129 !important; border-radius: 48rpx !important; font-size: 30rpx !important; font-weight: 600; margin-top: 24rpx; }
+.submit[disabled] { background: #FFF7D1 !important; color: #C9CDD4 !important; }

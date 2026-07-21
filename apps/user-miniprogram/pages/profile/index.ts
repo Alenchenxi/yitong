@@ -78,7 +78,7 @@ Page({
   },
 
   goResume() {
-    wx.showToast({ title: '简历开发中', icon: 'none' });
+    wx.navigateTo({ url: '/pages/resume/index' });
   },
 
   goAdmin() {

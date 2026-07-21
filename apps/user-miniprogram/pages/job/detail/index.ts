@@ -1,7 +1,6 @@
 import type { AppInstance } from '../../../app';
 import {
   getJobPost,
-  applyJob,
   listPostReviews,
   listPostApplications,
   transitionApp,
@@ -13,7 +12,7 @@ import {
   type JobAppVo,
 } from '../../../services/job';
 import { checkFavorite, toggleFavorite } from '../../../services/favorite';
-import { requestJobApplySubscribe, requestJobStatusSubscribe } from '../../../services/subscribe-message';
+import { requestJobApplySubscribe } from '../../../services/subscribe-message';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '待处理',
@@ -89,17 +88,8 @@ Page({
   },
 
   async apply() {
-    if (this.data.applying) return;
-    this.setData({ applying: true });
-    try {
-      await requestJobStatusSubscribe();
-      await applyJob(this.postId);
-      wx.showToast({ title: '报名成功', icon: 'success' });
-    } catch {
-      /* 40002 重复报名 toast 已弹 */
-    } finally {
-      this.setData({ applying: false });
-    }
+    // P0-21 报名走报名页（带简历 + 报名问题）
+    wx.navigateTo({ url: `/pages/job/apply/index?id=${this.postId}` });
   },
 
   async subscribeJobApply() {
