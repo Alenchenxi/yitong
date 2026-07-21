@@ -1,15 +1,18 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import {
   AppStatus,
+  JobCategory,
   JobDuration,
   JobPostStatus,
   MerchantStatus,
   Prisma,
+  Settlement,
 } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
 import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto } from './dto/job.dto';
 
 // 错误码 4xxxx 兼职段（API 规范 §3）：40001 岗位不存在 / 40002 重复报名 / 40003 已下架 / 40004 状态非法流转 / 40005 不能评价
@@ -45,6 +48,13 @@ export class JobService {
         description: dto.description,
         salary: dto.salary,
         location: dto.location,
+        category: dto.category,
+        settlement: dto.settlement,
+        workDates: this.filterWhitelist(dto.workDates, WORK_DATE_VALUES),
+        workPeriods: this.filterWhitelist(dto.workPeriods, WORK_PERIOD_VALUES),
+        headcount: dto.headcount ?? 1,
+        urgent: dto.urgent ?? false,
+        online: dto.online ?? false,
         duration: dto.duration,
         expireAt,
         status: JobPostStatus.PENDING,
@@ -68,6 +78,8 @@ export class JobService {
       where.status = JobPostStatus.PUBLISHED;
       where.expireAt = { gt: new Date() };
     }
+    // P0-17 急招过滤（急招 tab）
+    if (q.urgent === 1) where.urgent = true;
     if (q.cursor) {
       const t = new Date(q.cursor);
       if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
@@ -319,6 +331,13 @@ export class JobService {
     description: string;
     salary: string;
     location: string;
+    category: JobCategory | null;
+    settlement: Settlement | null;
+    workDates: string[];
+    workPeriods: string[];
+    headcount: number;
+    urgent: boolean;
+    online: boolean;
     duration: JobDuration;
     expireAt: Date;
     status: JobPostStatus;
@@ -333,11 +352,25 @@ export class JobService {
       description: p.description,
       salary: p.salary,
       location: p.location,
+      category: p.category,
+      settlement: p.settlement,
+      workDates: p.workDates,
+      workPeriods: p.workPeriods,
+      headcount: p.headcount,
+      urgent: p.urgent,
+      online: p.online,
       duration: p.duration,
       expireAt: p.expireAt.toISOString(),
       status: p.status,
       createdAt: p.createdAt.toISOString(),
     };
+  }
+
+  // P0-17 工作日期/时段白名单过滤（结构化，丢弃非预设值）
+  private filterWhitelist(input: string[] | undefined, allowed: readonly string[]): string[] {
+    if (!input || input.length === 0) return [];
+    const set = new Set<string>(allowed);
+    return Array.from(new Set(input.filter((v) => set.has(v))));
   }
 
   private toAppVo(a: {

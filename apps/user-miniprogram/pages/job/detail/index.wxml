@@ -5,6 +5,20 @@
     <text class="salary">{{post.salary}}</text>
     <text class="loc">{{post.location}} · {{post.duration === 'D90' ? '90天' : '30天'}}</text>
   </view>
+
+  <!-- P0-17 结构化字段 -->
+  <view class="tags" wx:if="{{post.categoryLabel || post.urgent || post.online}}">
+    <text class="tag tag-cat" wx:if="{{post.categoryLabel}}">{{post.categoryLabel}}</text>
+    <text class="tag tag-urgent" wx:if="{{post.urgent}}">急招</text>
+    <text class="tag tag-online" wx:if="{{post.online}}">可线上</text>
+  </view>
+  <view class="info">
+    <view class="info-row" wx:if="{{post.settlementLabel}}"><text class="info-k">结算方式</text><text class="info-v">{{post.settlementLabel}}</text></view>
+    <view class="info-row" wx:if="{{post.headcount}}"><text class="info-k">招聘人数</text><text class="info-v">{{post.headcount}} 人</text></view>
+    <view class="info-row" wx:if="{{post.workDatesText}}"><text class="info-k">工作日期</text><text class="info-v">{{post.workDatesText}}</text></view>
+    <view class="info-row" wx:if="{{post.workPeriodsText}}"><text class="info-k">工作时段</text><text class="info-v">{{post.workPeriodsText}}</text></view>
+  </view>
+
   <view class="desc">{{post.description}}</view>
 
   <view class="fav-row">

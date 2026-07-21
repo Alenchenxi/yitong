@@ -315,6 +315,13 @@ model JobPost {
   description  String
   salary       String
   location     String
+  category     JobCategory?  @map("category")                          // P0-17 分类
+  settlement   Settlement?   @map("settlement")                        // P0-17 结算方式
+  workDates    String[]      @default([]) @map("work_dates")           // P0-17 工作日期（周一..周日/可商议）
+  workPeriods  String[]      @default([]) @map("work_periods")         // P0-17 工作时段（上午/下午/晚上/全天/可商议）
+  headcount    Int           @default(1) @map("headcount")             // P0-17 招聘人数
+  urgent       Boolean       @default(false) @map("urgent")            // P0-17 急招
+  online       Boolean       @default(false) @map("online")            // P0-17 是否可线上
   duration     JobDuration
   expireAt     DateTime      @map("expire_at")
   status       JobPostStatus @default(PENDING)
@@ -323,6 +330,8 @@ model JobPost {
   applications JobApplication[]
   @@index([status, expireAt])
   @@index([status, createdAt])
+  @@index([status, urgent, createdAt])
+  @@index([status, category, createdAt])
   @@map("job_posts")
 }
 enum JobDuration {
@@ -334,6 +343,26 @@ enum JobPostStatus {
   PUBLISHED
   TAKEN_DOWN
   EXPIRED
+}
+// P0-17 岗位分类（功能规划 §3.2，日结/周结/月结属结算方式不在此）
+enum JobCategory {
+  CATERING
+  RETAIL
+  PROMOTION
+  EXHIBITION
+  TUTORING
+  CAMPUS_AGENT
+  ONLINE
+  SURVEY
+  INTERNSHIP
+  LONG_TERM
+}
+// P0-17 结算方式
+enum Settlement {
+  DAILY
+  WEEKLY
+  MONTHLY
+  COMPLETION
 }
 
 model JobApplication {

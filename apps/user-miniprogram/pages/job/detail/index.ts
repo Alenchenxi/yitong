@@ -5,6 +5,8 @@ import {
   listPostReviews,
   listPostApplications,
   transitionApp,
+  JOB_CATEGORY_LABELS,
+  SETTLEMENT_LABELS,
   type JobPostVo,
   type JobReviewVo,
   type JobAppVo,
@@ -21,7 +23,13 @@ const STATUS_TEXT: Record<string, string> = {
 
 Page({
   data: {
-    post: null as (JobPostVo & { favorited?: boolean }) | null,
+    post: null as (JobPostVo & {
+      favorited?: boolean;
+      categoryLabel?: string;
+      settlementLabel?: string;
+      workDatesText?: string;
+      workPeriodsText?: string;
+    }) | null,
     reviews: [] as Array<JobReviewVo & { stars: string }>,
     apps: [] as Array<JobAppVo & { statusText: string }>,
     isMerchantOwner: false,
@@ -51,7 +59,15 @@ Page({
       const reviews = await listPostReviews(this.postId).catch(() => []);
       const favorite = await checkFavorite('job_post', this.postId).catch(() => null);
       this.setData({
-        post: { ...post, favorited: favorite?.favorited ?? false },
+        post: {
+          ...post,
+          favorited: favorite?.favorited ?? false,
+          // P0-17 结构化字段展示标签
+          categoryLabel: post.category ? JOB_CATEGORY_LABELS[post.category] : '',
+          settlementLabel: post.settlement ? SETTLEMENT_LABELS[post.settlement] : '',
+          workDatesText: post.workDates.join('、'),
+          workPeriodsText: post.workPeriods.join('、'),
+        },
         reviews: reviews.map((r) => ({ ...r, stars: '★'.repeat(r.rating) })),
       });
       const app = getApp<AppInstance>();

@@ -26,6 +26,10 @@
         <text class="title">{{item.title}}</text>
         <text class="salary">{{item.salary}}</text>
       </view>
+      <view class="card-badges" wx:if="{{item.urgent || item.online}}">
+        <text class="bd bd-urgent" wx:if="{{item.urgent}}">急招</text>
+        <text class="bd bd-online" wx:if="{{item.online}}">可线上</text>
+      </view>
       <view class="shop">{{item.merchantShopName}}</view>
       <view class="meta">
         <text class="meta-item">📍 {{item.location}}</text>

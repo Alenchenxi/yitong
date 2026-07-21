@@ -52,6 +52,10 @@
 .list { margin-top: 8rpx; }
 .card { margin-bottom: 20rpx; }
 .card-head { display: flex; justify-content: space-between; align-items: center; }
+.card-badges { display: flex; gap: 8rpx; margin-top: 8rpx; }
+.bd { font-size: 20rpx; padding: 2rpx 14rpx; border-radius: 999rpx; }
+.bd-urgent { background: #ff4d6d; color: #fff; }
+.bd-online { background: #FFF7D1; color: #B8860B; }
 .title { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); flex: 1; }
 .salary { color: var(--yt-primary-dark); font-size: 30rpx; font-weight: 700; }
 .shop { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 8rpx; }

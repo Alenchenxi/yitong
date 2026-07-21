@@ -34,7 +34,7 @@ Page({
     if (this.data.tab === 'recommend') {
       await this.loadRecommend();
     } else {
-      // latest / urgent 当前都用 listJobPosts（P0-17 加结构化字段后区分急招）
+      // latest 全量；urgent 只看急招（P0-17 urgent 字段过滤）
       await this.loadMore();
     }
   },
@@ -57,7 +57,8 @@ Page({
     if (this.data.loading || !this.data.hasMore) return;
     this.setData({ loading: true });
     try {
-      const resp = await listJobPosts(this.data.nextCursor ?? undefined, false);
+      const urgent = this.data.tab === 'urgent';
+      const resp = await listJobPosts(this.data.nextCursor ?? undefined, false, urgent);
       this.setData({
         posts: [...this.data.posts, ...resp.list],
         nextCursor: resp.nextCursor,

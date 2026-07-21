@@ -2,6 +2,39 @@
   <view class="row"><text class="label">标题</text><input class="input" placeholder="如：周末奶茶店兼职" value="{{title}}" data-field="title" bindinput="onInput" /></view>
   <view class="row"><text class="label">薪资</text><input class="input" placeholder="如：150元/天" value="{{salary}}" data-field="salary" bindinput="onInput" /></view>
   <view class="row"><text class="label">地点</text><input class="input" placeholder="如：学校南门" value="{{location}}" data-field="location" bindinput="onInput" /></view>
+
+  <view class="block">
+    <text class="label">分类</text>
+    <view class="chips">
+      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{categoryOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="pickCategory">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="block">
+    <text class="label">结算方式</text>
+    <view class="chips">
+      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{settlementOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="pickSettlement">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="block">
+    <text class="label">工作日期</text>
+    <view class="chips">
+      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{workDateOptions}}" wx:key="label" data-label="{{item.label}}" bindtap="toggleWorkDate">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="block">
+    <text class="label">工作时段</text>
+    <view class="chips">
+      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{workPeriodOptions}}" wx:key="label" data-label="{{item.label}}" bindtap="toggleWorkPeriod">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="row"><text class="label">招聘人数</text><input class="input" type="number" placeholder="1" value="{{headcount}}" bindinput="onHeadcountInput" /></view>
+  <view class="row"><text class="label">急招</text><switch checked="{{urgent}}" bindchange="toggleUrgent" color="#ff4d6d" /></view>
+  <view class="row"><text class="label">可线上</text><switch checked="{{online}}" bindchange="toggleOnline" color="#ff4d6d" /></view>
+
   <view class="textarea-wrap">
     <text class="label">描述</text>
     <textarea class="textarea" placeholder="岗位职责 / 要求 / 时间等" value="{{description}}" data-field="description" bindinput="onInput" maxlength="2000" auto-height show-confirm-bar="{{false}}" />
