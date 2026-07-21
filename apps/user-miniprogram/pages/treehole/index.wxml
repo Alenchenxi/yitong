@@ -32,10 +32,15 @@
     <view class="main-tab {{activeTab === 'mood' ? 'active' : ''}}" data-tab="mood" bindtap="switchTab">情绪</view>
   </view>
 
+  <!-- 情绪分类筛选 -->
+  <scroll-view scroll-x class="mood-bar" wx:if="{{activeTab === 'mood'}}">
+    <view class="mood-chip {{selectedMood === item ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this" data-mood="{{item}}" bindtap="pickMood">{{item}}</view>
+  </scroll-view>
+
   <!-- 广场列表 -->
   <view class="list" wx:if="{{posts.length > 0}}">
     <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
-      <view class="anon">🌙 {{item.anonShort}}</view>
+      <view class="anon">🌙 {{item.anonShort}}<text wx:if="{{item.mood}}" class="post-mood">{{item.mood}}</text></view>
       <view class="content">{{item.content}}</view>
       <view class="row">
         <text class="time">{{item.timeText}}</text>

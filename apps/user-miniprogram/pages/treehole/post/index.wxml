@@ -1,4 +1,10 @@
 <view class="page">
   <textarea class="textarea" placeholder="匿名说点什么…（不会暴露你的身份）" value="{{content}}" bindinput="onInput" maxlength="500" auto-height show-confirm-bar="{{false}}" />
+  <view class="mood-section">
+    <view class="mood-label">心情（可选）</view>
+    <view class="mood-chips">
+      <view class="mood-chip {{selectedMood === item ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this" data-mood="{{item}}" bindtap="pickMood">{{item}}</view>
+    </view>
+  </view>
   <button class="submit" bindtap="submit" disabled="{{submitting}}">{{submitting ? '发布中…' : '匿名发布'}}</button>
 </view>

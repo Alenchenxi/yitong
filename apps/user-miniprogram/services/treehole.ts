@@ -7,6 +7,7 @@ export interface AnonPostVo {
   anonId: string;
   content: string;
   images: string[];
+  mood: string | null; // P0-13 情绪分类
   likeCount: number;
   liked: boolean;
   createdAt: string;
@@ -114,16 +115,23 @@ function anonRequest<T>(opts: { url: string; method: 'GET' | 'POST'; data?: unkn
   });
 }
 
-export function listPosts(cursor?: string): Promise<{ list: AnonPostVo[]; nextCursor: string | null; hasMore: boolean }> {
-  const qs = `?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
-  return anonRequest({ url: `/treehole/posts${qs}`, method: 'GET' });
+export function listPosts(
+  cursor?: string,
+  sort?: 'latest' | 'recommend',
+  mood?: string,
+): Promise<{ list: AnonPostVo[]; nextCursor: string | null; hasMore: boolean }> {
+  const params = ['limit=20'];
+  if (cursor) params.push(`cursor=${encodeURIComponent(cursor)}`);
+  if (sort) params.push(`sort=${sort}`);
+  if (mood) params.push(`mood=${encodeURIComponent(mood)}`);
+  return anonRequest({ url: `/treehole/posts?${params.join('&')}`, method: 'GET' });
 }
 
 export function getPost(id: string): Promise<AnonPostVo> {
   return anonRequest({ url: `/treehole/posts/${id}`, method: 'GET' });
 }
 
-export function createPost(data: { content: string; images?: string[] }): Promise<AnonPostVo> {
+export function createPost(data: { content: string; images?: string[]; mood?: string }): Promise<AnonPostVo> {
   return anonRequest({ url: '/treehole/posts', method: 'POST', data });
 }
 

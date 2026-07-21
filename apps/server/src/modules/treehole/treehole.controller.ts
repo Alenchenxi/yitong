@@ -47,9 +47,22 @@ export class TreeholeController {
   @Public()
   @UseGuards(AnonGuard)
   @Get('posts')
-  async listPosts(@Query('cursor') cursor?: string, @Query('limit') limit?: string, @Req() req?: Request) {
+  async listPosts(
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+    @Query('sort') sort?: string,
+    @Query('mood') mood?: string,
+    @Req() req?: Request,
+  ) {
     const anonId = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.treehole.listPosts(anonId, cursor, parsePositiveInt(limit, 20, 1, 50)));
+    return ok(
+      await this.treehole.listPosts(anonId, {
+        cursor,
+        limit: parsePositiveInt(limit, 20, 1, 50),
+        sort: sort === 'recommend' ? 'recommend' : 'latest',
+        mood,
+      }),
+    );
   }
 
   // 我的匿名帖：用 access token（非 anon），按 userId -> anonId 查

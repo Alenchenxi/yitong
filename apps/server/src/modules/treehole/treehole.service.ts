@@ -110,16 +110,36 @@ export class TreeholeService {
         anonId,
         content: dto.content,
         images: dto.images ?? [],
+        mood: dto.mood ?? null,
         status: PostStatus.APPROVED,
       },
     });
     return this.toVo(post);
   }
 
-  async listPosts(anonId: string, cursor?: string, limit = 20) {
-    const where: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED };
-    if (cursor) {
-      const t = new Date(cursor);
+  async listPosts(
+    anonId: string,
+    opts: { cursor?: string; limit?: number; sort?: 'latest' | 'recommend'; mood?: string } = {},
+  ) {
+    const limit = opts.limit ?? 20;
+    const baseWhere: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED };
+    if (opts.mood) baseWhere.mood = opts.mood;
+
+    // P0-13 推荐：热度（点赞）+ 新鲜度，take limit 不分页（规则排序，不接 AI）
+    if (opts.sort === 'recommend') {
+      const posts = await this.prisma.anonymousPost.findMany({
+        where: baseWhere,
+        orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+        take: limit,
+        include: { likes: { where: { anonId }, select: { id: true }, take: 1 } },
+      });
+      return { list: posts.map((p) => this.toVo(p)), nextCursor: null, hasMore: false };
+    }
+
+    // 最新：按 createdAt 游标分页
+    const where: Prisma.AnonymousPostWhereInput = { ...baseWhere };
+    if (opts.cursor) {
+      const t = new Date(opts.cursor);
       if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
     }
     const posts = await this.prisma.anonymousPost.findMany({
@@ -296,6 +316,7 @@ export class TreeholeService {
     anonId: string;
     content: string;
     images: string[];
+    mood: string | null;
     status: PostStatus;
     likeCount: number;
     createdAt: Date;
@@ -306,6 +327,7 @@ export class TreeholeService {
       anonId: p.anonId,
       content: p.content,
       images: p.images,
+      mood: p.mood,
       likeCount: p.likeCount,
       liked: (p.likes?.length ?? 0) > 0,
       createdAt: p.createdAt.toISOString(),

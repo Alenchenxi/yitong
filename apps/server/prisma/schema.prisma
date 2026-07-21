@@ -143,11 +143,13 @@ model AnonymousPost {
   anonId    String     @map("anon_id")
   content   String
   images    String[]
+  mood      String?    @map("mood")   // P0-13 情绪分类：开心/emo/吐槽/求安慰/学习/恋爱/迷茫
   status    PostStatus @default(PENDING)
   createdAt DateTime   @default(now()) @map("created_at")
   likeCount Int        @default(0) @map("like_count")
   likes    AnonPostLike[]
   @@index([createdAt])
+  @@index([mood, createdAt])
   @@map("anonymous_posts")
 }
 

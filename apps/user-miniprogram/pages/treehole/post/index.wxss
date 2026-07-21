@@ -1,4 +1,37 @@
-.page { padding: 24rpx; }
-.textarea { width: 100%; min-height: 320rpx; background: #fff; border-radius: 16rpx; padding: 24rpx; font-size: 30rpx; line-height: 1.6; box-sizing: border-box; }
-.submit { margin-top: 32rpx; background: linear-gradient(135deg, #6b7fd7, #5566cc) !important; color: #fff !important; border-radius: 48rpx !important; font-size: 30rpx !important; }
-.submit[disabled] { background: #aab4e8 !important; }
+.page { padding: 24rpx; padding-bottom: 80rpx; }
+.textarea {
+  width: 100%;
+  min-height: 320rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  font-size: 30rpx;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.mood-section { margin-top: 20rpx; background: #fff; border-radius: 16rpx; padding: 24rpx; }
+.mood-label { font-size: 28rpx; font-weight: 600; color: #1D2129; margin-bottom: 20rpx; }
+.mood-chips { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.mood-chip {
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  background: #F2F3F5;
+  color: #4E5969;
+  font-size: 24rpx;
+}
+.mood-chip.on {
+  background: #FFF7D1;
+  color: #1D2129;
+  font-weight: 500;
+}
+
+.submit {
+  margin-top: 40rpx;
+  background: #F9C801 !important;
+  color: #1D2129 !important;
+  border-radius: 48rpx !important;
+  font-size: 30rpx !important;
+  font-weight: 600;
+}
+.submit[disabled] { background: #FFF7D1 !important; color: #C9CDD4 !important; }

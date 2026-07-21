@@ -10,6 +10,8 @@ import { formatTime } from '../../utils/auth';
 
 type Tab = 'recommend' | 'latest' | 'mood';
 
+const MOODS = ['开心', 'emo', '吐槽', '求安慰', '学习', '恋爱', '迷茫'];
+
 Page({
   data: {
     posts: [] as Array<AnonPostVo & { timeText: string; anonShort: string }>,
@@ -18,6 +20,8 @@ Page({
     loading: false,
     anonNickname: '',
     activeTab: 'recommend' as Tab,
+    moods: MOODS,
+    selectedMood: '',
   },
 
   async onShow() {
@@ -47,7 +51,9 @@ Page({
     if (this.data.loading || !this.data.hasMore) return;
     this.setData({ loading: true });
     try {
-      const resp = await listPosts(this.data.nextCursor ?? undefined);
+      const sort: 'latest' | 'recommend' = this.data.activeTab === 'recommend' ? 'recommend' : 'latest';
+      const mood = this.data.activeTab === 'mood' && this.data.selectedMood ? this.data.selectedMood : undefined;
+      const resp = await listPosts(this.data.nextCursor ?? undefined, sort, mood);
       this.setData({
         posts: [
           ...this.data.posts,
@@ -79,7 +85,13 @@ Page({
     const tab = (e.currentTarget.dataset.tab as Tab) ?? 'recommend';
     if (tab === this.data.activeTab) return;
     this.setData({ activeTab: tab });
-    // P0-13 将按情绪分类筛选；当前统一 listPosts
+    this.reload();
+  },
+
+  // P0-13 情绪分类筛选（mood tab 下选情绪）
+  pickMood(e: WechatMiniprogram.TouchEvent) {
+    const mood = e.currentTarget.dataset.mood as string;
+    this.setData({ selectedMood: mood === this.data.selectedMood ? '' : mood });
     this.reload();
   },
 
