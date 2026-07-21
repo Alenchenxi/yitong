@@ -20,6 +20,7 @@
     "pages/treehole/detail/index",
     "pages/treehole/chat/index",
     "pages/treehole/party/index",
+    "pages/treehole/profile/index",
     "pages/admin/index",
     "pages/notifications/index",
     "pages/favorites/index",

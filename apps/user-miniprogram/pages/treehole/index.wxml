@@ -1,10 +1,10 @@
 <view class="page">
   <!-- 匿名身份卡 -->
-  <view class="anon-card yt-card">
+  <view class="anon-card yt-card" bindtap="goProfile">
     <view class="anon-avatar">🌙</view>
     <view class="anon-info">
       <view class="anon-nick">{{anonNickname || '匿名用户'}}</view>
-      <view class="anon-sub">匿名身份 · 自由表达</view>
+      <view class="anon-sub">匿名身份 · 点击编辑资料</view>
     </view>
     <view class="anon-tag yt-tag-accent">匿名</view>
   </view>

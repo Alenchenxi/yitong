@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
@@ -7,6 +7,7 @@ import { Public } from '../auth/public.decorator';
 import { AnonGuard } from './anon.guard';
 import { TreeholeService } from './treehole.service';
 import { CreateAnonPostDto } from './dto/create-anon-post.dto';
+import { UpdateAnonProfileDto } from './dto/update-anon-profile.dto';
 
 @Controller('treehole')
 export class TreeholeController {
@@ -17,6 +18,19 @@ export class TreeholeController {
   async anonymousToken(@Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.treehole.getAnonymousToken(uid));
+  }
+
+  // P0-12 匿名身份资料：用 access token（uid），get/update（AnonymousProfile 后台可追溯）
+  @Get('profile')
+  async getProfile(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.getProfile(uid));
+  }
+
+  @Put('profile')
+  async updateProfile(@Body() dto: UpdateAnonProfileDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.updateProfile(uid, dto));
   }
 
   // 以下接口用 anonToken 鉴权（@Public 跳过 JwtAuthGuard + @UseGuards(AnonGuard)）

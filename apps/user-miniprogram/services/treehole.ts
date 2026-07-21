@@ -155,3 +155,36 @@ export function listAnonMessages(
 export function listMyAnonPosts() {
   return request<{ list: AnonPostVo[] }>({ url: '/treehole/posts/mine' });
 }
+
+// P0-12 匿名身份资料（用 user access token，非 anon）
+export interface AnonProfileVo {
+  nickname: string;
+  avatar: string | null;
+  personalityTags: string[];
+  interestTags: string[];
+  moodState: string | null;
+}
+
+export function getAnonProfile(): Promise<AnonProfileVo> {
+  return request<AnonProfileVo>({ url: '/treehole/profile' });
+}
+
+export function updateAnonProfile(data: {
+  nickname?: string;
+  avatar?: string;
+  personalityTags?: string[];
+  interestTags?: string[];
+  moodState?: string;
+}): Promise<AnonProfileVo> {
+  return request<AnonProfileVo>({
+    url: '/treehole/profile',
+    method: 'PUT',
+    data: {
+      nickname: data.nickname,
+      avatar: data.avatar,
+      personalityTags: data.personalityTags,
+      interestTags: data.interestTags,
+      moodState: data.moodState,
+    },
+  });
+}

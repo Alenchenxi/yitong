@@ -8,10 +8,20 @@ import { ModerationService } from '../moderation/moderation.service';
 import { ImService } from '../chat/im.service';
 import { ChatService } from '../chat/chat.service';
 import type { CreateAnonPostDto } from './dto/create-anon-post.dto';
+import type { UpdateAnonProfileDto } from './dto/update-anon-profile.dto';
 
 // 错误码 3xxxx 树洞段（API §3）：30001 匿名态失效 / 30002 匹配无可用对象
 const NICK_A = ['星河', '南门', '月光', '晚风', '深海', '森林', '云端', '陌路', '拾光', '孤岛'];
 const NICK_B = ['边的猫', '第二棵树', '漫游者', '低语者', '失眠人', '观察者', '拾星人', '夜行人'];
+
+// P0-12 匿名身份资料 VO（不含 userId/anonId，避免向前台泄露可追溯字段）
+export interface AnonProfileVo {
+  nickname: string;
+  avatar: string | null;
+  personalityTags: string[];
+  interestTags: string[];
+  moodState: string | null;
+}
 
 @Injectable()
 export class TreeholeService {
@@ -29,6 +39,16 @@ export class TreeholeService {
 
   // 换匿名 token：find/create AnonymousProfile（userId->anonId，后台可追溯），签 anonToken（含 anonId，不含 uid）
   async getAnonymousToken(uid: string) {
+    const profile = await this.getOrCreateProfile(uid);
+    const anonToken = await this.jwt.signAsync(
+      { anonId: profile.anonId, type: 'anon' },
+      { expiresIn: '7d' },
+    );
+    return { anonId: profile.anonId, anonToken, nickname: profile.nickname };
+  }
+
+  // P0-12 匿名身份资料：find/create profile（用 access token/uid）
+  private async getOrCreateProfile(uid: string) {
     let profile = await this.prisma.anonymousProfile.findUnique({ where: { userId: uid } });
     if (!profile) {
       profile = await this.prisma.anonymousProfile.create({
@@ -41,11 +61,43 @@ export class TreeholeService {
     } else if (this.isLegacyUnsafeAnonId(uid, profile.anonId)) {
       profile = await this.rotateUnsafeAnonId(profile.id, profile.anonId);
     }
-    const anonToken = await this.jwt.signAsync(
-      { anonId: profile.anonId, type: 'anon' },
-      { expiresIn: '7d' },
-    );
-    return { anonId: profile.anonId, anonToken, nickname: profile.nickname };
+    return profile;
+  }
+
+  async getProfile(uid: string): Promise<AnonProfileVo> {
+    const profile = await this.getOrCreateProfile(uid);
+    return this.toProfileVo(profile);
+  }
+
+  async updateProfile(uid: string, dto: UpdateAnonProfileDto): Promise<AnonProfileVo> {
+    const profile = await this.getOrCreateProfile(uid);
+    const updated = await this.prisma.anonymousProfile.update({
+      where: { id: profile.id },
+      data: {
+        ...(dto.nickname !== undefined ? { nickname: dto.nickname } : {}),
+        ...(dto.avatar !== undefined ? { avatar: dto.avatar } : {}),
+        ...(dto.personalityTags !== undefined ? { personalityTags: dto.personalityTags } : {}),
+        ...(dto.interestTags !== undefined ? { interestTags: dto.interestTags } : {}),
+        ...(dto.moodState !== undefined ? { moodState: dto.moodState } : {}),
+      },
+    });
+    return this.toProfileVo(updated);
+  }
+
+  private toProfileVo(p: {
+    nickname: string;
+    avatar: string | null;
+    personalityTags: string[];
+    interestTags: string[];
+    moodState: string | null;
+  }): AnonProfileVo {
+    return {
+      nickname: p.nickname,
+      avatar: p.avatar,
+      personalityTags: p.personalityTags,
+      interestTags: p.interestTags,
+      moodState: p.moodState,
+    };
   }
 
   async createPost(anonId: string, dto: CreateAnonPostDto) {

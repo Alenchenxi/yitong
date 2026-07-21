@@ -51,11 +51,15 @@ model UserRole {
 }
 
 model AnonymousProfile {
-  id        String   @id @default(cuid())
-  userId    String   @unique @map("user_id")
-  anonId    String   @unique @map("anon_id")
-  nickname  String
-  createdAt DateTime @default(now()) @map("created_at")
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  anonId          String   @unique @map("anon_id")
+  nickname        String
+  avatar          String?  @map("avatar")              // P0-12 匿名头像（预设 key 或 URL）
+  personalityTags String[] @default([]) @map("personality_tags") // P0-12 个性标签
+  interestTags    String[] @default([]) @map("interest_tags")    // P0-12 兴趣标签
+  moodState       String?  @map("mood_state")          // P0-12 心情状态
+  createdAt       DateTime @default(now()) @map("created_at")
   @@map("anonymous_profiles")
 }
 

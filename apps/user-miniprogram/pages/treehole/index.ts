@@ -92,6 +92,9 @@ Page({
   goParty() {
     wx.navigateTo({ url: '/pages/treehole/party/index' });
   },
+  goProfile() {
+    wx.navigateTo({ url: '/pages/treehole/profile/index' });
+  },
   goMood() {
     wx.showToast({ title: '心情入口开发中', icon: 'none' });
   },

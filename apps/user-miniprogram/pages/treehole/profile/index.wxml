@@ -1,0 +1,41 @@
+<view class="page">
+  <!-- 昵称 -->
+  <view class="card">
+    <view class="title">匿名昵称</view>
+    <input class="nick-input" value="{{nickname}}" bindinput="onNicknameInput" maxlength="20" placeholder="给自己起个匿名昵称" />
+  </view>
+
+  <!-- 头像 -->
+  <view class="card">
+    <view class="title">匿名头像</view>
+    <view class="avatars">
+      <view class="avatar-opt {{avatar === item ? 'on' : ''}}" wx:for="{{avatars}}" wx:key="*this" data-avatar="{{item}}" bindtap="pickAvatar">{{item}}</view>
+    </view>
+  </view>
+
+  <!-- 个性标签 -->
+  <view class="card">
+    <view class="title">个性标签 <text class="tip">最多 8 个</text></view>
+    <view class="tags">
+      <view class="tag {{item.selected ? 'on' : ''}}" wx:for="{{personalityTags}}" wx:key="name" data-name="{{item.name}}" bindtap="togglePersonality">{{item.name}}</view>
+    </view>
+  </view>
+
+  <!-- 兴趣标签 -->
+  <view class="card">
+    <view class="title">兴趣标签 <text class="tip">最多 8 个</text></view>
+    <view class="tags">
+      <view class="tag {{item.selected ? 'on' : ''}}" wx:for="{{interestTags}}" wx:key="name" data-name="{{item.name}}" bindtap="toggleInterest">{{item.name}}</view>
+    </view>
+  </view>
+
+  <!-- 心情状态 -->
+  <view class="card">
+    <view class="title">心情状态</view>
+    <view class="tags">
+      <view class="tag {{mood === item ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this" data-mood="{{item}}" bindtap="pickMood">{{item}}</view>
+    </view>
+  </view>
+
+  <button class="save" bindtap="save" disabled="{{saving || !loaded}}">{{saving ? '保存中...' : '保存'}}</button>
+</view>
