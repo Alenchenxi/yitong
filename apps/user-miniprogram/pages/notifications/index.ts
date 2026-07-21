@@ -57,6 +57,9 @@ Page({
       // P1-01：评论/回复通知带 commentId，详情页定位到具体评论
       const anchor = extraId ? `&commentId=${extraId}` : '';
       wx.navigateTo({ url: `/pages/post-detail/index?id=${targetId}${anchor}` });
+    } else if (targetType === 'user') {
+      // P1-12 封禁/禁言：去账号与安全
+      wx.navigateTo({ url: '/pages/account-security/index' });
     } else if (targetType === 'anon_post' || targetType === 'anon-post') {
       wx.navigateTo({ url: `/pages/treehole/detail/index?id=${targetId}` });
     } else if (targetType === 'job_post') {

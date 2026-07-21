@@ -75,4 +75,10 @@ export class AdminController {
   async banUser(@Param('id') id: string) {
     return ok(await this.admin.banUser(id));
   }
+
+  // P1-12 禁言（body { days?: number }；不传或 0 = 解除）
+  @Post('users/:id/mute')
+  async muteUser(@Param('id') id: string, @Body() body: { days?: number }) {
+    return ok(await this.admin.muteUser(id, body?.days));
+  }
 }

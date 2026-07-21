@@ -184,6 +184,44 @@ export class AdminService {
     if (!u) throw new BizException(10001, '用户不存在', HttpStatus.NOT_FOUND);
     if (u.deletedAt) return { id, banned: true };
     await this.prisma.user.update({ where: { id }, data: { deletedAt: new Date() } });
+    // P1-12 封禁通知
+    void this.notification
+      .create({
+        userId: id,
+        type: NotificationType.USER_BANNED,
+        title: '账号 · 已封禁',
+        content: '你的账号因违反社区规范被封禁；如需申诉请联系客服',
+        targetType: 'user',
+        targetId: id,
+      })
+      .catch((e: unknown) =>
+        this.logger.warn(`notify ban failed: ${e instanceof Error ? e.message : String(e)}`),
+      );
     return { id, banned: true };
+  }
+
+  // P1-12 禁言（参数 days；0 或 undefined = 解除）
+  async muteUser(id: string, days?: number) {
+    const u = await this.prisma.user.findUnique({ where: { id } });
+    if (!u) throw new BizException(10001, '用户不存在', HttpStatus.NOT_FOUND);
+    const mutedUntil = days && days > 0
+      ? new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+      : null;
+    await this.prisma.user.update({ where: { id }, data: { mutedUntil } });
+    void this.notification
+      .create({
+        userId: id,
+        type: NotificationType.USER_MUTED,
+        title: '账号 · 已禁言',
+        content: mutedUntil
+          ? `你将被禁言至 ${mutedUntil.toISOString().slice(0, 10)}`
+          : '禁言已解除',
+        targetType: 'user',
+        targetId: id,
+      })
+      .catch((e: unknown) =>
+        this.logger.warn(`notify mute failed: ${e instanceof Error ? e.message : String(e)}`),
+      );
+    return { id, mutedUntil };
   }
 }

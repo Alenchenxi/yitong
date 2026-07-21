@@ -31,6 +31,9 @@ export const NotificationType = {
   COMMENT_LIKE: 'comment_like',
   // P1-03 @用户
   COMMENT_MENTION: 'comment_mention',
+  // P1-12 封禁 / 禁言
+  USER_BANNED: 'user_banned',
+  USER_MUTED: 'user_muted',
 } as const;
 
 @Injectable()
