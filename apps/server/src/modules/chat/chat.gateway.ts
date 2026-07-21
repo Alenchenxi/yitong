@@ -237,7 +237,18 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
       },
       select: { id: true },
     });
-    return !!match;
+    if (!match) return false;
+    // P0-16 屏蔽双向隔离（网关级，防恶意客户端绕过 HTTP 直发 WS）
+    const blocked = await this.prisma.anonBlock.findFirst({
+      where: {
+        OR: [
+          { blockerAnonId: from, blockedAnonId: to },
+          { blockerAnonId: to, blockedAnonId: from },
+        ],
+      },
+      select: { id: true },
+    });
+    return !blocked;
   }
 
   private isAnonIdentifier(id: string): boolean {

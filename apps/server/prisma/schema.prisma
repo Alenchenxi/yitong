@@ -163,6 +163,19 @@ model AnonPostLike {
   @@unique([postId, anonId])
   @@map("anon_post_likes")
 }
+
+// P0-16 树洞匿名屏蔽：blocker 屏蔽 blocked（按 anonId，0 真实 uid，守匿名红线）
+// 查询时双向判断（A 屏蔽 B -> 广场/匹配/聊天双向隔离）
+model AnonBlock {
+  id             String   @id @default(cuid())
+  blockerAnonId  String   @map("blocker_anon_id")
+  blockedAnonId  String   @map("blocked_anon_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  @@unique([blockerAnonId, blockedAnonId])
+  @@index([blockerAnonId])
+  @@index([blockedAnonId])
+  @@map("anon_blocks")
+}
 model ChatMatch {
   id        String      @id @default(cuid())
   anonIdA   String      @map("anon_id_a")

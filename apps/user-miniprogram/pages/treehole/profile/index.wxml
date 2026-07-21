@@ -37,5 +37,17 @@
     </view>
   </view>
 
+  <!-- P0-16 屏蔽列表 -->
+  <view class="card">
+    <view class="title">屏蔽列表 <text class="tip">互相不可见、不匹配、不聊天</text></view>
+    <view wx:if="{{blocks.length > 0}}" class="block-list">
+      <view class="block-row" wx:for="{{blocks}}" wx:key="blockedAnonId">
+        <text class="block-name">树洞 {{item.short}}</text>
+        <view class="block-unblock" data-id="{{item.blockedAnonId}}" bindtap="unblock">取消屏蔽</view>
+      </view>
+    </view>
+    <view wx:else class="block-empty">暂无屏蔽的用户</view>
+  </view>
+
   <button class="save" bindtap="save" disabled="{{saving || !loaded}}">{{saving ? '保存中...' : '保存'}}</button>
 </view>

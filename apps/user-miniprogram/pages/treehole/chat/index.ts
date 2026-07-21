@@ -6,6 +6,7 @@ import {
   getAnonId,
   sendAnonMessage,
   listAnonMessages,
+  blockAnon,
   type MatchResp,
 } from '../../../services/treehole';
 import { connectIm, onMessage, sendWsMessage, type WsMessage } from '../../../services/im';
@@ -153,5 +154,27 @@ Page({
   previewImage(e: WechatMiniprogram.TouchEvent) {
     const url = e.currentTarget.dataset.url as string;
     if (url) wx.previewImage({ urls: [url] });
+  },
+
+  // P0-16 拉黑对方：屏蔽后互相隔离（广场/匹配/聊天），拉黑即离场
+  blockPeer() {
+    const peerAnonId = this.data.peerAnonId;
+    if (!peerAnonId) return;
+    wx.showModal({
+      title: '屏蔽对方',
+      content: '屏蔽后将互相看不到帖子、不再匹配、不能聊天。',
+      confirmText: '屏蔽',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await blockAnon(peerAnonId);
+          wx.showToast({ title: '已屏蔽', icon: 'success' });
+          setTimeout(() => wx.navigateBack(), 600);
+        } catch {
+          /* toast */
+        }
+      },
+    });
   },
 });

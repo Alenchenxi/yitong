@@ -124,6 +124,9 @@ export class TreeholeService {
     const limit = opts.limit ?? 20;
     const baseWhere: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED };
     if (opts.mood) baseWhere.mood = opts.mood;
+    // P0-16 广场隔离：排除与当前用户互相屏蔽的对端帖子
+    const blockedPeers = await this.getBlockedPeerSet(anonId);
+    if (blockedPeers.size > 0) baseWhere.anonId = { notIn: [...blockedPeers] };
 
     // P0-13 推荐：热度（点赞）+ 新鲜度，take limit 不分页（规则排序，不接 AI）
     if (opts.sort === 'recommend') {
@@ -173,6 +176,10 @@ export class TreeholeService {
       include: { likes: { where: { anonId }, select: { id: true }, take: 1 } },
     });
     if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    // P0-16 广场隔离：互相屏蔽则详情不可见
+    if (await this.isBlockedEither(anonId, post.anonId)) {
+      throw new BizException(30005, '内容不可见', HttpStatus.FORBIDDEN);
+    }
     return this.toVo(post);
   }
 
@@ -182,8 +189,13 @@ export class TreeholeService {
     const active = await this.findActiveMatch(anonId);
     if (active) {
       const peerAnonId = active.anonIdA === anonId ? active.anonIdB : active.anonIdA;
-      const imCredential = await this.im.getImCredential(anonId);
-      return { matchId: active.id, peerAnonId, imCredential, waiting: false };
+      // P0-16 匹配隔离：屏蔽后残留的活跃匹配不返回，关闭并继续走队列
+      if (await this.isBlockedEither(anonId, peerAnonId)) {
+        await this.prisma.chatMatch.update({ where: { id: active.id }, data: { status: MatchStatus.CLOSED } });
+      } else {
+        const imCredential = await this.im.getImCredential(anonId);
+        return { matchId: active.id, peerAnonId, imCredential, waiting: false };
+      }
     }
     while (this.matchQueue.length > 0) {
       const peer = this.matchQueue.shift()!;
@@ -191,6 +203,8 @@ export class TreeholeService {
         this.removeFromMatchQueue(peer);
         const peerActive = await this.findActiveMatch(peer);
         if (peerActive) continue;
+        // P0-16 匹配隔离：互相屏蔽不撮合
+        if (await this.isBlockedEither(anonId, peer)) continue;
         const m = await this.prisma.chatMatch.create({
           data: { anonIdA: peer, anonIdB: anonId, status: MatchStatus.ACTIVE },
         });
@@ -213,12 +227,94 @@ export class TreeholeService {
     if (!peerAnonId || !content.trim()) {
       throw new BizException(30004, '消息内容无效', HttpStatus.BAD_REQUEST);
     }
+    // P0-16 聊天隔离：互相屏蔽不可发消息（精确提示，覆盖 HTTP 主路径）
+    if (await this.isBlockedEither(anonId, peerAnonId)) {
+      throw new BizException(30005, '你已屏蔽对方或被对方屏蔽', HttpStatus.FORBIDDEN);
+    }
     return this.chat.sendMessage(anonId, peerAnonId, content, type);
   }
 
   async listMessages(anonId: string, peerAnonId: string, cursor?: string, limit = 50) {
     if (!peerAnonId) throw new BizException(30004, '消息对象无效', HttpStatus.BAD_REQUEST);
     return this.chat.listMessages(anonId, peerAnonId, cursor, limit);
+  }
+
+  // P0-16 屏蔽：A 屏蔽 B（按 anonId，幂等），并关闭两人活跃匹配（互相隔离·三处全隔离）
+  async block(anonId: string, blockedAnonId: string) {
+    if (!blockedAnonId || blockedAnonId === anonId) {
+      throw new BizException(30004, '屏蔽对象无效', HttpStatus.BAD_REQUEST);
+    }
+    await this.prisma.anonBlock.upsert({
+      where: { blockerAnonId_blockedAnonId: { blockerAnonId: anonId, blockedAnonId } },
+      update: {},
+      create: { blockerAnonId: anonId, blockedAnonId },
+    });
+    // 关闭两人已有活跃匹配（双向），屏蔽后不可再聊
+    await this.prisma.chatMatch.updateMany({
+      where: {
+        status: MatchStatus.ACTIVE,
+        OR: [
+          { anonIdA: anonId, anonIdB: blockedAnonId },
+          { anonIdA: blockedAnonId, anonIdB: anonId },
+        ],
+      },
+      data: { status: MatchStatus.CLOSED },
+    });
+    return { blocked: true };
+  }
+
+  // P0-16 取消屏蔽（单向删 blocker=anonId 的记录；不存在忽略）
+  async unblock(anonId: string, blockedAnonId: string) {
+    if (!blockedAnonId) throw new BizException(30004, '屏蔽对象无效', HttpStatus.BAD_REQUEST);
+    try {
+      await this.prisma.anonBlock.delete({
+        where: { blockerAnonId_blockedAnonId: { blockerAnonId: anonId, blockedAnonId } },
+      });
+    } catch (e) {
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025')) throw e;
+    }
+    return { blocked: false };
+  }
+
+  // P0-16 我的屏蔽列表（仅 blocker=anonId，被屏蔽对端）
+  async listBlocks(anonId: string) {
+    const blocks = await this.prisma.anonBlock.findMany({
+      where: { blockerAnonId: anonId },
+      orderBy: { createdAt: 'desc' },
+      select: { blockedAnonId: true, createdAt: true },
+    });
+    return {
+      list: blocks.map((b) => ({ blockedAnonId: b.blockedAnonId, createdAt: b.createdAt.toISOString() })),
+    };
+  }
+
+  // P0-16 双向屏蔽判断（A 屏蔽 B 或 B 屏蔽 A）-> 互相隔离
+  private async isBlockedEither(a: string, b: string): Promise<boolean> {
+    if (!a || !b || a === b) return false;
+    const row = await this.prisma.anonBlock.findFirst({
+      where: {
+        OR: [
+          { blockerAnonId: a, blockedAnonId: b },
+          { blockerAnonId: b, blockedAnonId: a },
+        ],
+      },
+      select: { id: true },
+    });
+    return !!row;
+  }
+
+  // P0-16 当前 anonId 的双向屏蔽对端集合（广场列表排除用，A 屏蔽 B 或 B 屏蔽 A 都排除 B）
+  private async getBlockedPeerSet(anonId: string): Promise<Set<string>> {
+    const rows = await this.prisma.anonBlock.findMany({
+      where: { OR: [{ blockerAnonId: anonId }, { blockedAnonId: anonId }] },
+      select: { blockerAnonId: true, blockedAnonId: true },
+    });
+    const set = new Set<string>();
+    for (const r of rows) {
+      if (r.blockerAnonId !== anonId) set.add(r.blockerAnonId);
+      if (r.blockedAnonId !== anonId) set.add(r.blockedAnonId);
+    }
+    return set;
   }
 
   // 匿名点赞 toggle（去重/取消）

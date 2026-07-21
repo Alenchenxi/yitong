@@ -68,6 +68,12 @@
   font-weight: 500;
 }
 
+.block-list { display: flex; flex-direction: column; gap: 16rpx; }
+.block-row { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 20rpx; background: #F7F8FA; border-radius: 12rpx; }
+.block-name { font-size: 26rpx; color: #4E5969; }
+.block-unblock { font-size: 24rpx; color: #E63946; padding: 6rpx 20rpx; border: 1rpx solid #E63946; border-radius: 28rpx; }
+.block-empty { font-size: 26rpx; color: #C9CDD4; }
+
 .save {
   width: 100%;
   background: #F9C801 !important;

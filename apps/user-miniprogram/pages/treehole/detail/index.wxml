@@ -7,8 +7,11 @@
     </view>
     <view class="row">
       <text class="time">{{post.timeText}}</text>
-      <view class="like {{post.liked ? 'liked' : ''}}" catchtap="onLike">
-        {{post.liked ? '已赞' : '点赞'}} {{post.likeCount || ''}}
+      <view class="actions">
+        <view class="block" catchtap="blockAuthor">屏蔽</view>
+        <view class="like {{post.liked ? 'liked' : ''}}" catchtap="onLike">
+          {{post.liked ? '已赞' : '点赞'}} {{post.likeCount || ''}}
+        </view>
       </view>
     </view>
   </view>

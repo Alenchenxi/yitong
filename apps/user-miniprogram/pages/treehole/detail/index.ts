@@ -4,6 +4,7 @@ import {
   getPost,
   hasAnonToken,
   toggleAnonPostLike,
+  blockAnon,
   type AnonPostVo,
 } from '../../../services/treehole';
 import { formatTime } from '../../../utils/auth';
@@ -73,5 +74,27 @@ Page({
         'post.likeCount': post.likeCount,
       });
     }
+  },
+
+  // P0-16 屏蔽此用户（帖子作者）：屏蔽后互相隔离，屏蔽即返回广场
+  blockAuthor() {
+    const post = this.data.post;
+    if (!post) return;
+    wx.showModal({
+      title: '屏蔽此用户',
+      content: '屏蔽后将互相看不到帖子、不再匹配、不能聊天。',
+      confirmText: '屏蔽',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await blockAnon(post.anonId);
+          wx.showToast({ title: '已屏蔽', icon: 'success' });
+          setTimeout(() => wx.navigateBack(), 600);
+        } catch {
+          /* toast */
+        }
+      },
+    });
   },
 });

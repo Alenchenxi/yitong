@@ -1,9 +1,14 @@
 import type { AppInstance } from '../../../app';
-import { getAnonProfile, updateAnonProfile } from '../../../services/treehole';
+import { getAnonProfile, updateAnonProfile, listAnonBlocks, unblockAnon } from '../../../services/treehole';
 
 interface TagItem {
   name: string;
   selected: boolean;
+}
+
+interface BlockItem {
+  blockedAnonId: string;
+  short: string;
 }
 
 interface PageData {
@@ -16,6 +21,7 @@ interface PageData {
   mood: string;
   saving: boolean;
   loaded: boolean;
+  blocks: BlockItem[];
 }
 
 const AVATARS = ['🌙', '🐱', '🦊', '🐧', '🦉', '🐢', '🌻', '🍄'];
@@ -40,6 +46,7 @@ Page({
     mood: '',
     saving: false,
     loaded: false,
+    blocks: [] as BlockItem[],
   } as PageData,
 
   async onLoad() {
@@ -59,6 +66,31 @@ Page({
         mood: p.moodState ?? '',
         loaded: true,
       });
+    } catch {
+      /* toast */
+    }
+    await this.loadBlocks();
+  },
+
+  // P0-16 我的屏蔽列表
+  async loadBlocks() {
+    try {
+      const r = await listAnonBlocks();
+      this.setData({
+        blocks: r.list.map((b) => ({ blockedAnonId: b.blockedAnonId, short: b.blockedAnonId.slice(0, 10) })),
+      });
+    } catch {
+      /* toast */
+    }
+  },
+
+  async unblock(e: WechatMiniprogram.TouchEvent) {
+    const blockedAnonId = e.currentTarget.dataset.id as string;
+    if (!blockedAnonId) return;
+    try {
+      await unblockAnon(blockedAnonId);
+      this.setData({ blocks: this.data.blocks.filter((b) => b.blockedAnonId !== blockedAnonId) });
+      wx.showToast({ title: '已取消屏蔽', icon: 'none' });
     } catch {
       /* toast */
     }

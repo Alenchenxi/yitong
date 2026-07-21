@@ -91,7 +91,7 @@ export function getAnonymousToken(): Promise<AnonTokenResp> {
   });
 }
 
-function anonRequest<T>(opts: { url: string; method: 'GET' | 'POST'; data?: unknown }): Promise<T> {
+function anonRequest<T>(opts: { url: string; method: 'GET' | 'POST' | 'DELETE'; data?: unknown }): Promise<T> {
   return new Promise((resolve, reject) => {
     const app = getApp<AppLike>();
     wx.request({
@@ -158,6 +158,24 @@ export function listAnonMessages(
 ): Promise<{ list: AnonMessageVo[]; nextCursor: string | null; hasMore: boolean }> {
   const qs = `?peerAnonId=${encodeURIComponent(peerAnonId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
   return anonRequest({ url: `/treehole/messages${qs}`, method: 'GET' });
+}
+
+// P0-16 黑名单/屏蔽（anonToken 鉴权）：屏蔽 / 取消屏蔽 / 我的屏蔽列表
+export interface AnonBlockVo {
+  blockedAnonId: string;
+  createdAt: string;
+}
+
+export function blockAnon(blockedAnonId: string): Promise<{ blocked: boolean }> {
+  return anonRequest({ url: '/treehole/blocks', method: 'POST', data: { blockedAnonId } });
+}
+
+export function unblockAnon(blockedAnonId: string): Promise<{ blocked: boolean }> {
+  return anonRequest({ url: `/treehole/blocks/${encodeURIComponent(blockedAnonId)}`, method: 'DELETE' });
+}
+
+export function listAnonBlocks(): Promise<{ list: AnonBlockVo[] }> {
+  return anonRequest({ url: '/treehole/blocks', method: 'GET' });
 }
 
 // 我的匿名帖（用 user access token，非 anon）

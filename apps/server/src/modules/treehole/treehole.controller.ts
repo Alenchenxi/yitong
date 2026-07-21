@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
@@ -125,6 +125,31 @@ export class TreeholeController {
   ) {
     const anonId = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.treehole.listMessages(anonId, peerAnonId, cursor, parsePositiveInt(limit, 50, 1, 100)));
+  }
+
+  // P0-16 黑名单/屏蔽：blocker 屏蔽 blocked（anonToken 鉴权），互相隔离广场/匹配/聊天
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('blocks')
+  async block(@Body() dto: { blockedAnonId?: string }, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.block(anonId, dto.blockedAnonId ?? ''));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Delete('blocks/:blockedAnonId')
+  async unblock(@Param('blockedAnonId') blockedAnonId: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.unblock(anonId, blockedAnonId));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('blocks')
+  async listBlocks(@Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listBlocks(anonId));
   }
 }
 

@@ -133,7 +133,18 @@ export class ChatService {
       },
       select: { id: true },
     });
-    return !!match;
+    if (!match) return false;
+    // P0-16 屏蔽双向隔离（防御纵深，覆盖直调 chat 路径与 WS 网关同源检查）
+    const blocked = await this.prisma.anonBlock.findFirst({
+      where: {
+        OR: [
+          { blockerAnonId: from, blockedAnonId: to },
+          { blockerAnonId: to, blockedAnonId: from },
+        ],
+      },
+      select: { id: true },
+    });
+    return !blocked;
   }
 
   private isAnonIdentifier(id: string): boolean {

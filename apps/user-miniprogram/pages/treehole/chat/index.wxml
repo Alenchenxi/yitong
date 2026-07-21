@@ -8,6 +8,9 @@
   </block>
 
   <block wx:else>
+    <view class="top-bar">
+      <view class="block-btn" bindtap="blockPeer">屏蔽对方</view>
+    </view>
     <view class="msgs">
       <view class="msg {{item.mine ? 'mine' : 'peer'}}" wx:for="{{messages}}" wx:key="index">
         <image
