@@ -1,15 +1,19 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { MerchantStatus, PostStatus, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfessionService } from '../confession/confession.service';
+import { NotificationService, NotificationType } from '../notification/notification.service';
 import type { UpdatePricingDto } from './dto/update-pricing.dto';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly confession: ConfessionService,
+    private readonly notification: NotificationService,
   ) {}
 
   // 审核队列：待审核商家 + 近期帖子（含已发布，管理员可下架）
@@ -112,6 +116,21 @@ export class AdminService {
     await this.prisma.moderationRecord.create({
       data: { targetType: 'post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
     });
+    // P0-11 下架通知作者（注明来源表白墙；不通知自己）
+    if (p.authorId !== reviewerId) {
+      void this.notification
+        .create({
+          userId: p.authorId,
+          type: NotificationType.POST_TAKEDOWN,
+          title: '表白墙 · 内容下架',
+          content: reason ? `你的帖子已被管理员下架：${reason}` : '你的帖子已被管理员下架',
+          targetType: 'post',
+          targetId: id,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify takedown failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    }
     return { id, status: PostStatus.REJECTED };
   }
 

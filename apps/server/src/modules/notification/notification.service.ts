@@ -20,6 +20,11 @@ export const NotificationType = {
   JOB_ACCEPT: 'job_accept',
   JOB_COMPLETE: 'job_complete',
   POST_TAKEDOWN: 'post_takedown',
+  // P0-11 表白墙来源化消息
+  POST_LIKE: 'post_like',
+  POST_COMMENT: 'post_comment',
+  COMMENT_REPLY: 'comment_reply',
+  POST_FOLLOW: 'post_follow',
 } as const;
 
 @Injectable()
@@ -54,6 +59,32 @@ export class NotificationService {
       this.logger.warn(`subscribe message skipped: ${e instanceof Error ? e.message : String(e)}`);
     });
     return notification;
+  }
+
+  // P0-11 表白墙来源化消息：带 actor 的通知（自动取 actor 昵称、跳过自通知）。
+  // content 为函数，避免 actor 昵称为空时拼接出 "undefined"。
+  async createFromActor(params: {
+    actorUid: string;
+    targetUid: string;
+    type: string;
+    title: string;
+    content: (actor: string) => string;
+    targetType: string;
+    targetId: string;
+  }): Promise<void> {
+    if (params.targetUid === params.actorUid) return; // 不通知自己
+    const actor = await this.prisma.user.findUnique({
+      where: { id: params.actorUid },
+      select: { nickname: true },
+    });
+    await this.create({
+      userId: params.targetUid,
+      type: params.type,
+      title: params.title,
+      content: params.content(actor?.nickname ?? '有人'),
+      targetType: params.targetType,
+      targetId: params.targetId,
+    });
   }
 
   getSubscribeTemplates() {

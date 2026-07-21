@@ -1,8 +1,9 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Prisma, PostStatus } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { NotificationService, NotificationType } from '../notification/notification.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { FeedQueryDto } from './dto/feed-query.dto';
@@ -90,9 +91,12 @@ function generateAnonName(): string {
 
 @Injectable()
 export class ConfessionService {
+  private readonly logger = new Logger(ConfessionService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
+    private readonly notification: NotificationService,
   ) {}
 
   listCircles() {
@@ -203,7 +207,7 @@ export class ConfessionService {
   async toggleLike(uid: string, postId: string): Promise<LikeResult> {
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true },
+      select: { id: true, authorId: true },
     });
     if (!post) throw new BizException(20003, '帖子不存在');
 
@@ -254,6 +258,22 @@ export class ConfessionService {
       select: { id: true },
     });
     invalidateFeedCache();
+    // P0-11 赞通知（不通知自己；取消赞不通知）
+    if (liked && post.authorId !== uid) {
+      void this.notification
+        .createFromActor({
+          actorUid: uid,
+          targetUid: post.authorId,
+          type: NotificationType.POST_LIKE,
+          title: '表白墙 · 新点赞',
+          content: (a) => `${a} 赞了你的帖子`,
+          targetType: 'post',
+          targetId: postId,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify like failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    }
     return { liked: !!liked, likeCount: after?.likeCount ?? 0 };
   }
 
@@ -265,7 +285,7 @@ export class ConfessionService {
   ): Promise<CommentVo> {
     const post = await this.prisma.post.findFirst({
       where: { id: postId, status: PostStatus.APPROVED },
-      select: { id: true },
+      select: { id: true, authorId: true },
     });
     if (!post) throw new BizException(20003, '帖子不存在');
 
@@ -299,6 +319,36 @@ export class ConfessionService {
       },
     });
     invalidateFeedCache();
+    // P0-11 表白墙来源化消息：回复通知被回复用户；顶级评论通知帖子作者（均不通知自己）
+    if (parentId && replyToUserId) {
+      void this.notification
+        .createFromActor({
+          actorUid: uid,
+          targetUid: replyToUserId,
+          type: NotificationType.COMMENT_REPLY,
+          title: '表白墙 · 新回复',
+          content: (a) => `${a} 回复了你的评论`,
+          targetType: 'post',
+          targetId: postId,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify reply failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    } else if (!parentId) {
+      void this.notification
+        .createFromActor({
+          actorUid: uid,
+          targetUid: post.authorId,
+          type: NotificationType.POST_COMMENT,
+          title: '表白墙 · 新评论',
+          content: (a) => `${a} 评论了你的帖子`,
+          targetType: 'post',
+          targetId: postId,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify comment failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    }
     return this.toCommentVo(comment);
   }
 
