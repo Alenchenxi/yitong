@@ -11,6 +11,7 @@ import type {
   CommentVo,
   FeedResult,
   LikeResult,
+  LocateResult,
   PageResult,
   PostVo,
 } from './types';
@@ -28,15 +29,25 @@ type PostWithAuthor = Prisma.PostGetPayload<{ include: ReturnType<typeof postInc
 // P0-10 评论 include：author + replyToUser（被回复用户昵称，用于"回复@user"展示）
 const commentAuthorSelect = { id: true, nickname: true, avatarUrl: true } as const;
 const replyToUserSelect = { select: { nickname: true } } as const;
-// 顶级评论 include：author + replyToUser + replies（按时间升序，含 author + replyToUser）
-const topLevelCommentInclude = {
-  author: { select: commentAuthorSelect },
-  replyToUser: replyToUserSelect,
-  replies: {
-    orderBy: { createdAt: 'asc' },
-    include: { author: { select: commentAuthorSelect }, replyToUser: replyToUserSelect },
-  },
-} as const;
+// P1-01 回复预览条数：顶级评论列表每条只带前 3 条回复，更多走 /replies 分页
+const REPLY_PREVIEW_SIZE = 3;
+// P1-01 顶级评论 include：author + replyToUser + 回复预览（前 3 条，时间升序）+ 回复总数 + 当前用户是否赞
+const topLevelCommentInclude = (uid: string) =>
+  ({
+    author: { select: commentAuthorSelect },
+    replyToUser: replyToUserSelect,
+    replies: {
+      orderBy: { createdAt: 'asc' },
+      take: REPLY_PREVIEW_SIZE,
+      include: {
+        author: { select: commentAuthorSelect },
+        replyToUser: replyToUserSelect,
+        likes: { where: { userId: uid }, select: { id: true }, take: 1 },
+      },
+    },
+    likes: { where: { userId: uid }, select: { id: true }, take: 1 },
+    _count: { select: { replies: true } },
+  }) as const;
 
 // 首页发现流缓存：5 分钟 TTL，减少高并发下重复查询
 interface CacheEntry {
@@ -80,6 +91,8 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
   }
 }
 
+// P1-03 @用户：解析 content 中的 @昵称（中文/英文/数字/下划线，1-20 字符）
+const AT_RE = /@([一-龥A-Za-z0-9_]{1,20})/g;
 // 匿名展示昵称：词库随机组合，每帖独立、不可跨帖关联（真实 uid 仅后台按 authorId 追溯）
 const ANON_ADJ = ['浪漫的', '勇敢的', '温柔的', '神秘的', '倔强的', '安静的', '闪闪的', '路过的'];
 const ANON_NOUN = ['同学', '小可爱', '过客', '星辰', '树', '风', '月亮', '旅人'];
@@ -320,6 +333,7 @@ export class ConfessionService {
     });
     invalidateFeedCache();
     // P0-11 表白墙来源化消息：回复通知被回复用户；顶级评论通知帖子作者（均不通知自己）
+    // P1-01 extraId=commentId：通知点击跳转详情页后定位到具体评论/回复
     if (parentId && replyToUserId) {
       void this.notification
         .createFromActor({
@@ -330,6 +344,7 @@ export class ConfessionService {
           content: (a) => `${a} 回复了你的评论`,
           targetType: 'post',
           targetId: postId,
+          extraId: comment.id,
         })
         .catch((e: unknown) =>
           this.logger.warn(`notify reply failed: ${e instanceof Error ? e.message : String(e)}`),
@@ -344,38 +359,164 @@ export class ConfessionService {
           content: (a) => `${a} 评论了你的帖子`,
           targetType: 'post',
           targetId: postId,
+          extraId: comment.id,
         })
         .catch((e: unknown) =>
           this.logger.warn(`notify comment failed: ${e instanceof Error ? e.message : String(e)}`),
         );
     }
+    // P1-03 @用户通知：解析 @昵称（去重、不通知自己） → 异步发送
+    void this.notifyMentions(uid, comment).catch((e: unknown) =>
+      this.logger.warn(`notify mention failed: ${e instanceof Error ? e.message : String(e)}`),
+    );
+
     return this.toCommentVo(comment);
   }
 
+  // P1-03 解析评论 content 中 @昵称 -> 发送 mention 通知
+  private async notifyMentions(actorUid: string, comment: {
+    id: string;
+    postId: string;
+    content: string;
+  }) {
+    const set = new Set<string>();
+    for (const m of comment.content.matchAll(AT_RE)) {
+      const nick = m[1];
+      if (nick) set.add(nick);
+    }
+    if (set.size === 0) return;
+    const targets = await this.prisma.user.findMany({
+      where: { nickname: { in: [...set] }, deletedAt: null },
+      select: { id: true, nickname: true },
+    });
+    for (const u of targets) {
+      if (u.id === actorUid) continue; // 不通知自己
+      void this.notification
+        .createFromActor({
+          actorUid,
+          targetUid: u.id,
+          type: NotificationType.COMMENT_MENTION,
+          title: '表白墙 · @了你',
+          content: (a) => `${a} 在评论中提到了你`,
+          targetType: 'post',
+          targetId: comment.postId,
+          extraId: comment.id,
+        })
+        .catch(() => undefined);
+    }
+  }
+
   async listComments(
+    uid: string,
     postId: string,
     page: number,
     pageSize: number,
   ): Promise<PageResult<CommentVo>> {
-    // P0-10：顶级评论分页（parentId 为空），每条带 replies（时间升序）；total = 顶级评论数（分页用）
-    const [topLevel, total] = await Promise.all([
+    const [topLevel, total, pinned] = await Promise.all([
       this.prisma.comment.findMany({
         where: { postId, parentId: null },
-        orderBy: { createdAt: 'desc' },
+        // P1-04 置顶优先，再按热度（likeCount desc + 回复数 desc + 时间 desc）
+        orderBy: [
+          { pinned: 'desc' },
+          { likeCount: 'desc' },
+          { replies: { _count: 'desc' } },
+          { createdAt: 'desc' },
+        ],
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: topLevelCommentInclude,
+        include: topLevelCommentInclude(uid),
       }),
       this.prisma.comment.count({ where: { postId, parentId: null } }),
+      // P1-04：第一页额外附置顶评论（即使不在分页结果里也展示在置顶区）
+      page === 1
+        ? this.prisma.comment.findMany({
+            where: { postId, parentId: null, pinned: true },
+            orderBy: { likeCount: 'desc' },
+            include: topLevelCommentInclude(uid),
+          })
+        : Promise.resolve([] as never[]),
+    ]);
+    const list = topLevel.map((c) =>
+      this.toCommentVo(
+        c,
+        c.replies.map((r) => this.toCommentVo(r)),
+        c._count.replies,
+      ),
+    );
+    // P1-04：第一页将置顶评论合并到顶部（去重）
+    const pinnedVos = pinned.map((c) =>
+      this.toCommentVo(
+        c,
+        c.replies.map((r) => this.toCommentVo(r)),
+        c._count.replies,
+      ),
+    );
+    const seen = new Set(list.map((c) => c.id));
+    const merged = [...pinnedVos.filter((c) => !seen.has(c.id) || true), ...list].filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i);
+    // pinned 永远置顶，普通评论保持原序
+    merged.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return 0;
+    });
+    return { list: merged, total: total + pinnedVos.filter((c) => !seen.has(c.id)).length, page, pageSize };
+  }
+
+  // P1-01 回复分页：顶级评论的完整回复列表（时间升序，page/pageSize）
+  async listReplies(
+    uid: string,
+    postId: string,
+    commentId: string,
+    page: number,
+    pageSize: number,
+  ): Promise<PageResult<CommentVo>> {
+    const parent = await this.prisma.comment.findFirst({
+      where: { id: commentId, postId },
+      select: { id: true, parentId: true },
+    });
+    if (!parent) throw new BizException(20005, '评论不存在');
+    if (parent.parentId !== null) throw new BizException(20005, '只能查看顶级评论的回复');
+
+    const [replies, total] = await Promise.all([
+      this.prisma.comment.findMany({
+        where: { postId, parentId: commentId },
+        orderBy: { createdAt: 'asc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          author: { select: commentAuthorSelect },
+          replyToUser: replyToUserSelect,
+          likes: { where: { userId: uid }, select: { id: true }, take: 1 },
+        },
+      }),
+      this.prisma.comment.count({ where: { postId, parentId: commentId } }),
     ]);
     return {
-      list: topLevel.map((c) =>
-        this.toCommentVo(c, c.replies.map((r) => this.toCommentVo(r))),
-      ),
+      list: replies.map((r) => this.toCommentVo(r)),
       total,
       page,
       pageSize,
     };
+  }
+
+  // P1-01 跳转定位：目标评论（或回复）所属顶级评论 + 其在顶级评论分页（createdAt desc）中的页码
+  async locateComment(postId: string, commentId: string, pageSize: number): Promise<LocateResult> {
+    const target = await this.prisma.comment.findFirst({
+      where: { id: commentId, postId },
+      select: { id: true, parentId: true },
+    });
+    if (!target) throw new BizException(20005, '评论不存在');
+    const threadRootId = target.parentId ?? target.id;
+    const root = await this.prisma.comment.findUnique({
+      where: { id: threadRootId },
+      select: { createdAt: true },
+    });
+    if (!root) throw new BizException(20005, '评论不存在');
+    // 顶级评论按 createdAt desc 分页：比 root 新的顶级评论数决定 root 所在页
+    const newer = await this.prisma.comment.count({
+      where: { postId, parentId: null, createdAt: { gt: root.createdAt } },
+    });
+    return { threadRootId, page: Math.floor(newer / pageSize) + 1, pageSize };
   }
 
   // 举报帖子 -> 创建 ModerationRecord（管理员在审核队列可见）
@@ -493,11 +634,15 @@ export class ConfessionService {
       authorId: string;
       content: string;
       parentId: string | null;
+      likeCount: number;
+      pinned: boolean;
       createdAt: Date;
       author: { nickname: string; avatarUrl: string | null };
       replyToUser: { nickname: string } | null;
+      likes?: { id: string }[];
     },
     replies: CommentVo[] = [],
+    replyCount = 0,
   ): CommentVo {
     return {
       id: comment.id,
@@ -509,7 +654,193 @@ export class ConfessionService {
       parentId: comment.parentId,
       replyToNickname: comment.replyToUser?.nickname ?? null,
       replies,
+      replyCount,
+      likeCount: comment.likeCount,
+      liked: !!comment.likes && comment.likes.length > 0,
+      pinned: comment.pinned,
       createdAt: comment.createdAt.toISOString(),
     };
+  }
+
+  // P1-02 评论点赞 toggle（commentId 不存在抛 20005；并发 P2002/P2025 兜底）
+  async toggleCommentLike(uid: string, commentId: string): Promise<{ liked: boolean; likeCount: number }> {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { id: true, authorId: true, postId: true },
+    });
+    if (!comment) throw new BizException(20005, '评论不存在');
+
+    const existing = await this.prisma.commentLike.findUnique({
+      where: { commentId_userId: { commentId, userId: uid } },
+    });
+    if (existing) {
+      try {
+        await this.prisma.$transaction([
+          this.prisma.commentLike.delete({ where: { id: existing.id } }),
+          this.prisma.comment.update({ where: { id: commentId }, data: { likeCount: { decrement: 1 } } }),
+        ]);
+      } catch (e) {
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025')) throw e;
+      }
+    } else {
+      try {
+        await this.prisma.$transaction([
+          this.prisma.commentLike.create({ data: { commentId, userId: uid } }),
+          this.prisma.comment.update({ where: { id: commentId }, data: { likeCount: { increment: 1 } } }),
+        ]);
+      } catch (e) {
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
+      }
+      // P1-02 评论点赞通知（不通知自己）
+      if (comment.authorId !== uid) {
+        void this.notification
+          .createFromActor({
+            actorUid: uid,
+            targetUid: comment.authorId,
+            type: NotificationType.COMMENT_LIKE,
+            title: '表白墙 · 评论点赞',
+            content: (a) => `${a} 赞了你的评论`,
+            targetType: 'post',
+            targetId: comment.postId,
+            extraId: commentId,
+          })
+          .catch((e: unknown) =>
+            this.logger.warn(`notify comment like failed: ${e instanceof Error ? e.message : String(e)}`),
+          );
+      }
+    }
+    const after = await this.prisma.comment.findUnique({ where: { id: commentId }, select: { likeCount: true } });
+    const stillLiked = await this.prisma.commentLike.findUnique({
+      where: { commentId_userId: { commentId, userId: uid } },
+      select: { id: true },
+    });
+    invalidateFeedCache();
+    return { liked: !!stillLiked, likeCount: Math.max(0, after?.likeCount ?? 0) };
+  }
+
+  // P1-04 热评置顶：定时（每小时）勾子，每帖取热度 top 2 标 pinned=true，余回 false
+  async refreshHotPins() {
+    // 各帖先清后置（事务内逐帖更新，简单起见单事务批量）
+    const groups = await this.prisma.comment.groupBy({
+      by: ['postId'],
+      where: { parentId: null },
+      _count: true,
+    });
+    for (const g of groups) {
+      const top = await this.prisma.comment.findMany({
+        where: { postId: g.postId, parentId: null },
+        orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+        take: 2,
+        select: { id: true },
+      });
+      const ids = top.map((c) => c.id);
+      await this.prisma.$transaction([
+        this.prisma.comment.updateMany({
+          where: { postId: g.postId, parentId: null },
+          data: { pinned: false },
+        }),
+        this.prisma.comment.updateMany({
+          where: { id: { in: ids } },
+          data: { pinned: true },
+        }),
+      ]);
+    }
+  }
+
+  // P1-05 搜索帖子内容（大小写不敏感包含）
+  async searchPosts(uid: string, q: string, limit: number) {
+    const kw = q.trim();
+    if (!kw) return { list: [] as PostVo[] };
+    const posts = await this.prisma.post.findMany({
+      where: {
+        status: PostStatus.APPROVED,
+        // 注意：Prisma + PG 用 ILIKE 需 raw 或 mode:'insensitive'，SQLite 不支持。这里 PG 用 mode（feature 可用）
+        content: { contains: kw, mode: 'insensitive' },
+      },
+      orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+      include: postInclude(uid),
+    });
+    void this.recordSearch(uid, kw).catch(() => {});
+    return { list: posts.map((p) => this.toPostVo(p)) };
+  }
+
+  // P1-06 搜索用户昵称
+  async searchUsers(uid: string, q: string, limit: number) {
+    const kw = q.trim();
+    if (!kw) return { list: [] as { id: string; nickname: string; avatarUrl: string | null }[] };
+    const users = await this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        nickname: { contains: kw, mode: 'insensitive' },
+      },
+      orderBy: [{ id: 'desc' }],
+      take: limit,
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
+    void this.recordSearch(uid, kw).catch(() => {});
+    return { list: users };
+  }
+
+  // P1-07 搜索话题/标签（对 posts.tags 数组做包含）
+  async searchTags(uid: string, q: string, limit: number) {
+    const kw = q.trim();
+    if (!kw) return { list: [] as { tag: string; postCount: number }[] };
+    // tags 是 String[]；PG hasArrayContain? 用 contains
+    const matched = await this.prisma.post.findMany({
+      where: {
+        status: PostStatus.APPROVED,
+        tags: { has: kw },
+      },
+      orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+      take: limit * 4,
+      select: { tags: true },
+    });
+    const counter = new Map<string, number>();
+    for (const p of matched) {
+      for (const t of p.tags) {
+        if (t.toLowerCase().includes(kw.toLowerCase())) {
+          counter.set(t, (counter.get(t) ?? 0) + 1);
+        }
+      }
+    }
+    const list = [...counter.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([tag, postCount]) => ({ tag, postCount }));
+    void this.recordSearch(uid, kw).catch(() => {});
+    return { list };
+  }
+
+  // P1-07 热搜词：取计数前 10
+  async hotKeywords() {
+    const rows = await this.prisma.hotSearch.findMany({
+      orderBy: [{ count: 'desc' }],
+      take: 10,
+      select: { keyword: true, count: true },
+    });
+    return { list: rows.map((r) => ({ keyword: r.keyword, count: r.count })) };
+  }
+
+  // P1-07 搜索记录 + 热度统计
+  private async recordSearch(uid: string, keyword: string) {
+    if (!uid) return;
+    // 单用户最近 10 条：先插再裁剪
+    await this.prisma.searchHistory.create({ data: { userId: uid, keyword } });
+    const old = await this.prisma.searchHistory.findMany({
+      where: { userId: uid },
+      orderBy: { createdAt: 'desc' },
+      skip: 10,
+      select: { id: true },
+    });
+    if (old.length > 0) {
+      await this.prisma.searchHistory.deleteMany({ where: { id: { in: old.map((o) => o.id) } } });
+    }
+    // 热度统计：upsert + count++（无锁，并发可略超）
+    await this.prisma.hotSearch.upsert({
+      where: { keyword },
+      create: { keyword, count: 1 },
+      update: { count: { increment: 1 } },
+    });
   }
 }

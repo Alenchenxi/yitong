@@ -43,8 +43,37 @@ export interface CommentVo {
   content: string;
   parentId: string | null; // P0-10 所属顶级评论；null=顶级评论
   replyToNickname: string | null; // P0-10 被回复用户昵称（"回复@user"）
-  replies: CommentVo[]; // P0-10 子回复（顶级评论按时间升序，回复为空）
+  replies: CommentVo[]; // 顶级评论：预览回复（最多 3 条，时间升序）；回复：空
+  replyCount: number; // P1-01 回复总数（顶级评论有效，回复恒为 0）
+  likeCount: number; // P1-02 评论点赞数
+  liked: boolean; // P1-02 当前用户是否已赞
+  pinned: boolean; // P1-04 热评置顶
   createdAt: string;
+}
+
+// P1-02 评论点赞结果
+export interface CommentLikeResult {
+  liked: boolean;
+  likeCount: number;
+}
+
+// P1-05 搜索帖子结果
+export interface PostSearchResult { list: PostVo[]; }
+// P1-06 搜索用户结果
+export interface UserSearchItem { id: string; nickname: string; avatarUrl: string | null; }
+export interface UserSearchResult { list: UserSearchItem[]; }
+// P1-07 搜索话题/标签结果
+export interface TagSearchItem { tag: string; postCount: number; }
+export interface TagSearchResult { list: TagSearchItem[]; }
+// P1-07 热搜词
+export interface HotKeyword { keyword: string; count: number; }
+export interface HotKeywordsResult { list: HotKeyword[]; }
+
+// P1-01 跳转定位结果
+export interface LocateResult {
+  threadRootId: string;
+  page: number;
+  pageSize: number;
 }
 
 export interface FeedResult {
@@ -137,7 +166,46 @@ export function listComments(postId: string, page = 1, pageSize = 20) {
   });
 }
 
+// P1-01 顶级评论的回复分页（时间升序）
+export function listReplies(postId: string, commentId: string, page = 1, pageSize = 10) {
+  return request<PageResult<CommentVo>>({
+    url: `/posts/${postId}/comments/${commentId}/replies?page=${page}&pageSize=${pageSize}`,
+  });
+}
+
+// P1-01 评论跳转定位（返回所属顶级评论与所在分页页码）
+export function locateComment(postId: string, commentId: string, pageSize = 20) {
+  return request<LocateResult>({
+    url: `/posts/${postId}/comments/locate?commentId=${encodeURIComponent(commentId)}&pageSize=${pageSize}`,
+  });
+}
+
 // 我的表白墙（当前用户发的帖）
 export function listMyPosts() {
   return request<{ list: PostVo[] }>({ url: '/posts/mine' });
+}
+
+// P1-02 评论点赞 toggle
+export function toggleCommentLike(commentId: string) {
+  return request<CommentLikeResult>({ url: `/comments/${commentId}/like`, method: 'POST' });
+}
+
+// P1-05/06/07 搜索：帖子 / 用户 / 话题 / 热搜词
+export function searchPosts(q: string, limit = 20) {
+  return request<PostSearchResult>({
+    url: `/posts/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+  });
+}
+export function searchUsers(q: string, limit = 20) {
+  return request<UserSearchResult>({
+    url: `/users/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+  });
+}
+export function searchTags(q: string, limit = 20) {
+  return request<TagSearchResult>({
+    url: `/tags/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+  });
+}
+export function hotKeywords() {
+  return request<HotKeywordsResult>({ url: '/search/hot' });
 }

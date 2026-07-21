@@ -69,7 +69,7 @@ Page({
   },
 
   goSearch() {
-    wx.showToast({ title: '搜索开发中', icon: 'none' });
+    wx.navigateTo({ url: '/pages/confession-search/index' });
   },
 
   goCreate() {

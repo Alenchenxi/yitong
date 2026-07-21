@@ -7,6 +7,7 @@ export interface NotificationVo {
   content: string;
   targetType: string | null;
   targetId: string | null;
+  extraId: string | null; // P1-01 附属定位 id（评论通知的 commentId）
   read: boolean;
   createdAt: string;
 }

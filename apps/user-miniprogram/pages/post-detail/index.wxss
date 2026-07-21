@@ -149,12 +149,38 @@
   word-break: break-word;
 }
 
-.c-actions { margin-top: 8rpx; }
+.c-actions {
+  margin-top: 8rpx;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
 .c-reply {
   display: inline-block;
   font-size: 22rpx;
   color: #86909C;
   padding: 4rpx 0;
+}
+.c-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  font-size: 22rpx;
+  color: #86909C;
+  padding: 4rpx 0;
+}
+.c-like.liked { color: #ff4d6d; }
+.c-like-icon { font-size: 26rpx; line-height: 1; }
+.c-like-count { font-size: 22rpx; }
+.c-pin {
+  display: inline-block;
+  font-size: 20rpx;
+  color: #fff;
+  background: var(--yt-primary, #F9C801);
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  margin-right: 12rpx;
+  vertical-align: middle;
 }
 
 /* P0-10 子回复 */
@@ -180,7 +206,24 @@
 .r-nick { color: #1D2129; font-weight: 500; }
 .r-reply-to { color: #86909C; }
 .r-content { color: #4E5969; }
-.r-reply { flex-shrink: 0; margin-left: 16rpx; }
+.reply-actions { display: flex; align-items: center; gap: 16rpx; flex-shrink: 0; margin-left: 16rpx; }
+.r-reply { flex-shrink: 0; }
+.r-like { padding: 4rpx 0; }
+
+/* P1-01 回复分页展开 */
+.reply-more {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #576B95;
+  font-weight: 500;
+}
+
+/* P1-01 跳转定位高亮 */
+.comment.anchor,
+.reply.anchor {
+  background: #FFF7D1;
+  border-radius: 8rpx;
+}
 
 .tip {
   text-align: center;

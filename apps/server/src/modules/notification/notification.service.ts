@@ -10,6 +10,7 @@ export interface NotificationVo {
   content: string;
   targetType: string | null;
   targetId: string | null;
+  extraId: string | null; // P1-01 附属定位 id（评论通知的 commentId）
   read: boolean;
   createdAt: string;
 }
@@ -26,6 +27,10 @@ export const NotificationType = {
   POST_COMMENT: 'post_comment',
   COMMENT_REPLY: 'comment_reply',
   POST_FOLLOW: 'post_follow',
+  // P1-02 评论点赞
+  COMMENT_LIKE: 'comment_like',
+  // P1-03 @用户
+  COMMENT_MENTION: 'comment_mention',
 } as const;
 
 @Injectable()
@@ -45,6 +50,7 @@ export class NotificationService {
     content: string;
     targetType?: string;
     targetId?: string;
+    extraId?: string;
   }) {
     const notification = await this.prisma.notification.create({
       data: {
@@ -54,6 +60,7 @@ export class NotificationService {
         content: params.content,
         targetType: params.targetType ?? null,
         targetId: params.targetId ?? null,
+        extraId: params.extraId ?? null,
       },
     });
     void this.trySendSubscribeMessage(notification).catch((e: unknown) => {
@@ -72,6 +79,7 @@ export class NotificationService {
     content: (actor: string) => string;
     targetType: string;
     targetId: string;
+    extraId?: string;
   }): Promise<void> {
     if (params.targetUid === params.actorUid) return; // 不通知自己
     const actor = await this.prisma.user.findUnique({
@@ -85,6 +93,7 @@ export class NotificationService {
       content: params.content(actor?.nickname ?? '有人'),
       targetType: params.targetType,
       targetId: params.targetId,
+      extraId: params.extraId,
     });
   }
 
@@ -141,6 +150,7 @@ export class NotificationService {
     content: string;
     targetType: string | null;
     targetId: string | null;
+    extraId: string | null;
     read: boolean;
     createdAt: Date;
   }): NotificationVo {
@@ -151,6 +161,7 @@ export class NotificationService {
       content: n.content,
       targetType: n.targetType,
       targetId: n.targetId,
+      extraId: n.extraId,
       read: n.read,
       createdAt: n.createdAt.toISOString(),
     };

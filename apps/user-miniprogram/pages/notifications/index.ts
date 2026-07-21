@@ -48,13 +48,15 @@ Page({
       });
     }
     if (item?.targetType && item.targetId) {
-      this.goTarget(item.targetType, item.targetId);
+      this.goTarget(item.targetType, item.targetId, item.extraId);
     }
   },
 
-  goTarget(targetType: string, targetId: string) {
+  goTarget(targetType: string, targetId: string, extraId?: string | null) {
     if (targetType === 'post') {
-      wx.navigateTo({ url: `/pages/post-detail/index?id=${targetId}` });
+      // P1-01：评论/回复通知带 commentId，详情页定位到具体评论
+      const anchor = extraId ? `&commentId=${extraId}` : '';
+      wx.navigateTo({ url: `/pages/post-detail/index?id=${targetId}${anchor}` });
     } else if (targetType === 'anon_post' || targetType === 'anon-post') {
       wx.navigateTo({ url: `/pages/treehole/detail/index?id=${targetId}` });
     } else if (targetType === 'job_post') {

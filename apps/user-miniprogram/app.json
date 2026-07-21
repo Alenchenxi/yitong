@@ -7,6 +7,7 @@
     "pages/profile/index",
     "pages/post-detail/index",
     "pages/post-create/index",
+    "pages/confession-search/index",
     "pages/merchant/register/index",
     "pages/merchant/profile/index",
     "pages/merchant/reviews/index",

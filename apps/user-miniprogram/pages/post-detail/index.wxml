@@ -39,29 +39,47 @@
 
   <view class="comments">
     <view class="comments-title">评论 ({{post.commentCount}})</view>
-    <view class="comment" wx:for="{{commentList}}" wx:key="id">
+    <view class="comment {{anchorId === item.id ? 'anchor' : ''}}" id="c-{{item.id}}" wx:for="{{commentList}}" wx:key="id">
       <view class="c-avatar">
         <text class="c-ph">{{item.authorNickname[0]}}</text>
       </view>
       <view class="c-main">
         <view class="c-head">
           <text class="c-nick">{{item.authorNickname}}</text>
+          <text class="c-pin" wx:if="{{item.pinned}}">置顶</text>
           <text class="c-time">{{item.timeText}}</text>
         </view>
         <view class="c-content">{{item.content}}</view>
         <view class="c-actions">
           <text class="c-reply" data-parent-id="{{item.id}}" data-nickname="{{item.authorNickname}}" catchtap="startReply">回复</text>
+          <text class="c-like {{item.liked ? 'liked' : ''}}" data-id="{{item.id}}" catchtap="onCommentLike">
+            <text class="c-like-icon">{{item.liked ? '♥' : '♡'}}</text>
+            <text class="c-like-count" wx:if="{{item.likeCount > 0}}">{{item.likeCount}}</text>
+          </text>
         </view>
         <view class="replies" wx:if="{{item.replies.length}}">
-          <view class="reply" wx:for="{{item.replies}}" wx:for-item="r" wx:key="id">
+          <view class="reply {{anchorId === r.id ? 'anchor' : ''}}" id="c-{{r.id}}" wx:for="{{item.replies}}" wx:for-item="r" wx:key="id">
             <view class="reply-main">
               <text class="r-nick">{{r.authorNickname}}</text>
               <text class="r-reply-to" wx:if="{{r.replyToNickname}}"> 回复 {{r.replyToNickname}}</text>
               <text class="r-content">：{{r.content}}</text>
             </view>
-            <text class="c-reply r-reply" data-parent-id="{{item.id}}" data-reply-to-id="{{r.id}}" data-nickname="{{r.authorNickname}}" catchtap="startReply">回复</text>
+            <view class="reply-actions">
+              <text class="c-like r-like {{r.liked ? 'liked' : ''}}" data-id="{{r.id}}" catchtap="onCommentLike">
+                <text class="c-like-icon">{{r.liked ? '♥' : '♡'}}</text>
+                <text class="c-like-count" wx:if="{{r.likeCount > 0}}">{{r.likeCount}}</text>
+              </text>
+              <text class="c-reply r-reply" data-parent-id="{{item.id}}" data-reply-to-id="{{r.id}}" data-nickname="{{r.authorNickname}}" catchtap="startReply">回复</text>
+            </view>
           </view>
         </view>
+        <!-- P1-01 回复分页：预览 3 条，更多走分页加载 -->
+        <view
+          class="reply-more"
+          wx:if="{{item.replies.length < item.replyCount}}"
+          data-id="{{item.id}}"
+          catchtap="loadMoreReplies"
+        >{{item.replyLoading ? '加载中…' : (item.replyPage <= 1 ? '查看全部 ' + item.replyCount + ' 条回复' : '展开更多回复（剩余 ' + (item.replyCount - item.replies.length) + ' 条）')}}</view>
       </view>
     </view>
     <view class="tip" wx:if="{{commentList.length === 0 && !loading}}">还没有评论，来说点什么吧</view>

@@ -1,0 +1,63 @@
+<view class="page">
+  <view class="search-bar">
+    <input class="input" placeholder="搜索帖子/用户/话题" value="{{q}}" bindinput="onInput" bindconfirm="onConfirm" confirm-type="search" focus="{{true}}" />
+    <text class="search-btn" bindtap="runSearch">搜索</text>
+  </view>
+  <view class="tabs">
+    <text class="tab {{tab === 'post' ? 'active' : ''}}" data-tab="post" catchtap="switchTab">帖子</text>
+    <text class="tab {{tab === 'user' ? 'active' : ''}}" data-tab="user" catchtap="switchTab">用户</text>
+    <text class="tab {{tab === 'tag' ? 'active' : ''}}" data-tab="tag" catchtap="switchTab">话题</text>
+  </view>
+
+  <!-- 无搜索：展示历史与热搜 -->
+  <block wx:if="{{!hasSearched}}">
+    <view class="section" wx:if="{{history.length}}">
+      <view class="section-head">
+        <text class="section-title">历史搜索</text>
+        <text class="section-action" bindtap="clearHistoryTap">清空</text>
+      </view>
+      <view class="chips">
+        <text class="chip" wx:for="{{history}}" wx:key="*this" data-kw="{{item}}" catchtap="tapHistory">{{item}}</text>
+      </view>
+    </view>
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">热门搜索</text>
+      </view>
+      <view class="hot-list">
+        <view class="hot-item" wx:for="{{hot}}" wx:key="keyword" data-kw="{{item.keyword}}" catchtap="tapHistory">
+          <text class="hot-keyword">{{item.keyword}}</text>
+          <text class="hot-count">{{item.count}} 次</text>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 搜索结果 -->
+  <block wx:elif="{{tab === 'post'}}">
+    <view class="post" wx:for="{{postResults}}" wx:key="id" data-id="{{item.id}}" catchtap="openPost">
+      <view class="post-content">{{item.content}}</view>
+      <view class="post-meta">{{item.authorNickname}} · {{item.timeText}} · ♥ {{item.likeCount}} · 💬 {{item.commentCount}}</view>
+    </view>
+    <view class="empty" wx:if="{{!loading && postResults.length === 0}}">无结果</view>
+  </block>
+
+  <block wx:elif="{{tab === 'user'}}">
+    <view class="user" wx:for="{{userResults}}" wx:key="id">
+      <image wx:if="{{item.avatarUrl}}" class="u-avatar" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+      <view wx:else class="u-avatar u-ph">{{item.nickname[0]}}</view>
+      <view class="u-nick">{{item.nickname}}</view>
+    </view>
+    <view class="empty" wx:if="{{!loading && userResults.length === 0}}">无结果</view>
+  </block>
+
+  <block wx:else>
+    <view class="tag-row" wx:for="{{tagResults}}" wx:key="tag">
+      <text class="tag-name">#{{item.tag}}</text>
+      <text class="tag-count">{{item.postCount}} 帖</text>
+    </view>
+    <view class="empty" wx:if="{{!loading && tagResults.length === 0}}">无结果</view>
+  </block>
+
+  <view class="loading" wx:if="{{loading}}">搜索中…</view>
+</view>
