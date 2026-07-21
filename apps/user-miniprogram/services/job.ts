@@ -72,7 +72,7 @@ export interface JobAppVo {
   resumeId: string | null; // P0-21 报名所附简历
   answers: Array<{ question: string; answer: string }> | null; // P0-21 报名问题回答
   resume: { name: string; phone: string; selfIntro: string | null; skills: string[] } | null; // P0-21 简历快照（商家查看）
-  status: 'PENDING' | 'ACCEPTED' | 'DONE' | 'CANCELLED';
+  status: 'PENDING' | 'ACCEPTED' | 'DONE' | 'CANCELLED' | 'REJECTED';
   createdAt: string;
 }
 
@@ -190,8 +190,17 @@ export function listMyApplications() {
   return request<JobAppVo[]>({ url: '/applications/me' });
 }
 
-export function transitionApp(appId: string, action: 'accept' | 'complete') {
+export function transitionApp(appId: string, action: 'accept' | 'complete' | 'reject') {
   return request<JobAppVo>({ url: `/applications/${appId}/transition`, method: 'POST', data: { action } });
+}
+
+// P0-23 批量录用/拒绝
+export function batchTransitionApps(postId: string, ids: string[], action: 'accept' | 'reject') {
+  return request<{ processed: Array<{ id: string; ok: boolean; status?: string; error?: string }> }>({
+    url: `/job-posts/${postId}/applications/batch`,
+    method: 'POST',
+    data: { ids, action },
+  });
 }
 
 export function reviewApp(appId: string, data: { rating: number; content: string }) {

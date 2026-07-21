@@ -234,29 +234,42 @@ export class JobService {
     return apps.map((a) => this.toAppVo(a));
   }
 
-  // 状态流转：accept(PENDING->ACCEPTED，商家) / complete(ACCEPTED->DONE，商家或学生)
-  async transition(uid: string, appId: string, action: 'accept' | 'complete') {
+  // 状态流转：accept(PENDING->ACCEPTED，商家) / reject(PENDING->REJECTED，商家) / complete(ACCEPTED->DONE，商家或学生)
+  async transition(uid: string, appId: string, action: 'accept' | 'complete' | 'reject') {
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: appId },
       include: { jobPost: { select: { id: true, merchantId: true } } },
     });
     if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
 
-    if (action === 'accept') {
+    if (action === 'accept' || action === 'reject') {
+      // 录用/拒绝：仅商家
       await this.assertOwnsPost(uid, app.jobPost.id);
       if (app.status !== AppStatus.PENDING) {
-        throw new BizException(40004, `状态非法流转：${app.status} -> ACCEPTED`, HttpStatus.CONFLICT);
+        const next = action === 'accept' ? 'ACCEPTED' : 'REJECTED';
+        throw new BizException(40004, `状态非法流转：${app.status} -> ${next}`, HttpStatus.CONFLICT);
       }
-      await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.ACCEPTED } });
-      // 通知报名者已录用
-      await this.notification.create({
-        userId: app.userId,
-        type: NotificationType.JOB_ACCEPT,
-        title: '报名已录用',
-        content: '商家已录用你的报名',
-        targetType: 'application',
-        targetId: appId,
-      });
+      if (action === 'accept') {
+        await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.ACCEPTED } });
+        await this.notification.create({
+          userId: app.userId,
+          type: NotificationType.JOB_ACCEPT,
+          title: '报名已录用',
+          content: '商家已录用你的报名',
+          targetType: 'application',
+          targetId: appId,
+        });
+      } else {
+        await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.REJECTED } });
+        await this.notification.create({
+          userId: app.userId,
+          type: NotificationType.JOB_REJECT,
+          title: '报名未录用',
+          content: '商家未录用你的报名',
+          targetType: 'application',
+          targetId: appId,
+        });
+      }
     } else {
       // complete：商家（拥有岗位）或学生（app.userId）
       const isOwner = await this.ownsPost(uid, app.jobPost.id);
@@ -267,7 +280,6 @@ export class JobService {
         throw new BizException(40004, `状态非法流转：${app.status} -> DONE`, HttpStatus.CONFLICT);
       }
       await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.DONE } });
-      // 通知报名者岗位已完成
       await this.notification.create({
         userId: app.userId,
         type: NotificationType.JOB_COMPLETE,
@@ -282,6 +294,21 @@ export class JobService {
       include: { user: { select: { nickname: true } }, jobPost: { select: { title: true } } },
     });
     return this.toAppVo(refreshed!);
+  }
+
+  // P0-23 批量录用/拒绝（商家须拥有岗位；逐条复用 transition 校验，失败跳过并记录）
+  async batchTransition(uid: string, postId: string, ids: string[], action: 'accept' | 'reject') {
+    await this.assertOwnsPost(uid, postId);
+    const results: Array<{ id: string; ok: boolean; status?: string; error?: string }> = [];
+    for (const id of ids) {
+      try {
+        const r = await this.transition(uid, id, action);
+        results.push({ id, ok: true, status: r.status });
+      } catch (e) {
+        results.push({ id, ok: false, error: (e as Error).message });
+      }
+    }
+    return { processed: results };
   }
 
   // 评价：仅学生（app.userId），且 application DONE + 未评价过

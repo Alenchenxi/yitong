@@ -388,6 +388,7 @@ enum AppStatus {
   ACCEPTED
   DONE
   CANCELLED
+  REJECTED
 }
 
 model JobReview {

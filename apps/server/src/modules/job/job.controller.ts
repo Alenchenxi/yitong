@@ -5,7 +5,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import type { AuthenticatedRequest } from '../auth/types';
 import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
-import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto } from './dto/job.dto';
+import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto } from './dto/job.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -44,6 +44,13 @@ export class JobController {
   async apply(@Param('id') id: string, @Body() dto: ApplyDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.job.apply(uid, id, dto));
+  }
+
+  // P0-23 批量录用/拒绝
+  @Post('job-posts/:id/applications/batch')
+  async batchTransition(@Param('id') id: string, @Body() dto: BatchTransitionDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.batchTransition(uid, id, dto.ids, dto.action));
   }
 
   // P0-21 我的简历（一人一份）：获取 / upsert

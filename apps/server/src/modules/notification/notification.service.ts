@@ -19,6 +19,7 @@ export const NotificationType = {
   JOB_APPLY: 'job_apply',
   JOB_ACCEPT: 'job_accept',
   JOB_COMPLETE: 'job_complete',
+  JOB_REJECT: 'job_reject',
   POST_TAKEDOWN: 'post_takedown',
   // P0-11 表白墙来源化消息
   POST_LIKE: 'post_like',

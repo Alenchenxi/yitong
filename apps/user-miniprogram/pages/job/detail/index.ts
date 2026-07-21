@@ -4,6 +4,7 @@ import {
   listPostReviews,
   listPostApplications,
   transitionApp,
+  batchTransitionApps,
   reportJob,
   JOB_CATEGORY_LABELS,
   SETTLEMENT_LABELS,
@@ -19,6 +20,7 @@ const STATUS_TEXT: Record<string, string> = {
   ACCEPTED: '已录用',
   DONE: '已完成',
   CANCELLED: '已取消',
+  REJECTED: '未录用',
 };
 
 Page({
@@ -31,11 +33,13 @@ Page({
       workPeriodsText?: string;
     }) | null,
     reviews: [] as Array<JobReviewVo & { stars: string }>,
-    apps: [] as Array<JobAppVo & { statusText: string }>,
+    apps: [] as Array<JobAppVo & { statusText: string; selected: boolean }>,
     isMerchantOwner: false,
     applying: false,
     transitioning: '',
     subscribingApply: false,
+    batchMode: false,
+    batchProcessing: false,
   },
   postId: '',
 
@@ -76,7 +80,7 @@ Page({
           const apps = await listPostApplications(this.postId);
           this.setData({
             isMerchantOwner: true,
-            apps: apps.map((a) => ({ ...a, statusText: STATUS_TEXT[a.status] ?? a.status })),
+            apps: apps.map((a) => ({ ...a, statusText: STATUS_TEXT[a.status] ?? a.status, selected: false })),
           });
         } catch {
           this.setData({ isMerchantOwner: false });
@@ -104,7 +108,7 @@ Page({
   },
 
   async transition(e: WechatMiniprogram.TouchEvent) {
-    const { id, action } = e.currentTarget.dataset as { id: string; action: 'accept' | 'complete' };
+    const { id, action } = e.currentTarget.dataset as { id: string; action: 'accept' | 'complete' | 'reject' };
     if (this.data.transitioning) return;
     this.setData({ transitioning: id });
     try {
@@ -115,6 +119,43 @@ Page({
       /* toast */
     } finally {
       this.setData({ transitioning: '' });
+    }
+  },
+
+  // P0-23 批量录用/拒绝
+  toggleBatchMode() {
+    this.setData({
+      batchMode: !this.data.batchMode,
+      apps: this.data.apps.map((a) => ({ ...a, selected: false })),
+    });
+  },
+  toggleSelect(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    this.setData({
+      apps: this.data.apps.map((a) => (a.id === id ? { ...a, selected: !a.selected } : a)),
+    });
+  },
+  selectAll() {
+    const allSelected = this.data.apps.filter((a) => a.status === 'PENDING').every((a) => a.selected);
+    this.setData({
+      apps: this.data.apps.map((a) => (a.status === 'PENDING' ? { ...a, selected: !allSelected } : a)),
+    });
+  },
+  async batchAction(e: WechatMiniprogram.TouchEvent) {
+    const action = e.currentTarget.dataset.action as 'accept' | 'reject';
+    const ids = this.data.apps.filter((a) => a.selected).map((a) => a.id);
+    if (this.data.batchProcessing || ids.length === 0 || !this.postId) return;
+    this.setData({ batchProcessing: true });
+    try {
+      const r = await batchTransitionApps(this.postId, ids, action);
+      const ok = r.processed.filter((p) => p.ok).length;
+      wx.showToast({ title: `已处理 ${ok} 条`, icon: 'none' });
+      this.setData({ batchMode: false });
+      await this.load();
+    } catch {
+      /* toast */
+    } finally {
+      this.setData({ batchProcessing: false });
     }
   },
 

@@ -160,8 +160,18 @@ export class JobListQueryDto {
 }
 
 export class TransitionDto {
-  @IsIn(['accept', 'complete'])
-  action!: 'accept' | 'complete';
+  @IsIn(['accept', 'complete', 'reject'])
+  action!: 'accept' | 'complete' | 'reject';
+}
+
+// P0-23 批量录用/拒绝
+export class BatchTransitionDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @IsIn(['accept', 'reject'])
+  action!: 'accept' | 'reject';
 }
 
 export class CreateReviewDto {

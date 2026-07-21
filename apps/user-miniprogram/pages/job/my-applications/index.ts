@@ -6,6 +6,7 @@ const STATUS_TEXT: Record<string, string> = {
   ACCEPTED: '已录用',
   DONE: '已完成',
   CANCELLED: '已取消',
+  REJECTED: '未录用',
 };
 
 Page({
