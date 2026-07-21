@@ -1,10 +1,17 @@
-// P1-08 我的表白墙：4 tab（我的发布/我的点赞/我的收藏/我的评论）
+// P1-08 + P1-11 我的表白墙：6 tab（我的发布/我的点赞/我的收藏/我的评论/我的草稿/我的私密）
 import type { AppInstance } from '../../app';
-import { listMyPosts, listMyLikedPosts, listMyCommentedPosts, type PostVo } from '../../services/confession';
+import {
+  listMyPosts,
+  listMyLikedPosts,
+  listMyCommentedPosts,
+  listMyDrafts,
+  listMyPrivate,
+  type PostVo,
+} from '../../services/confession';
 import { listFavorites } from '../../services/favorite';
 import { formatTime } from '../../utils/auth';
 
-type Tab = 'posts' | 'liked' | 'favorites' | 'commented';
+type Tab = 'posts' | 'liked' | 'favorites' | 'commented' | 'drafts' | 'private';
 
 interface PageData {
   activeTab: Tab;
@@ -52,20 +59,22 @@ Page({
       let total = 0;
       if (tab === 'posts') {
         const r = await listMyPosts();
-        list = r.list;
-        total = r.list.length;
+        list = r.list; total = r.list.length;
       } else if (tab === 'liked') {
         const r = await listMyLikedPosts(1, this.data.pageSize);
-        list = r.list;
-        total = r.total;
+        list = r.list; total = r.total;
       } else if (tab === 'commented') {
         const r = await listMyCommentedPosts(1, this.data.pageSize);
-        list = r.list;
-        total = r.total;
+        list = r.list; total = r.total;
+      } else if (tab === 'drafts') {
+        const r = await listMyDrafts(1, this.data.pageSize);
+        list = r.list; total = r.total;
+      } else if (tab === 'private') {
+        const r = await listMyPrivate(1, this.data.pageSize);
+        list = r.list; total = r.total;
       } else {
-        // favorites：返回的是 FavoriteItem[]，需拼装成 PostVo 形式（这里仅展示 targetId 列表，待 P1-08 进一步补详情跳转）
+        // favorites：返回的是 FavoriteItem[]，需拼装成 PostVo 形式（仅展示 id+收藏时间）
         const r = await listFavorites('post', 1, this.data.pageSize);
-        // 仅展示 id 列表作为占位（前端不重新拉详情避免 N+1）
         list = [];
         total = r.total;
         this.setData({
@@ -84,6 +93,7 @@ Page({
             likeCount: 0,
             liked: false,
             commentCount: 0,
+            visibility: 'PUBLIC' as const,
             createdAt: fav.createdAt,
             editedAt: null,
             timeText: formatTime(fav.createdAt),
@@ -106,8 +116,9 @@ Page({
   },
 
   async loadMore() {
-    if (this.data.loading || !this.data.hasMore || this.data.activeTab === 'posts' || this.data.activeTab === 'favorites') {
-      // posts 接口 /posts/mine 限一次性 50 条，不分页；favorites 暂不分页加载（列表已分页）
+    if (this.data.loading || !this.data.hasMore) return;
+    if (this.data.activeTab === 'posts' || this.data.activeTab === 'favorites') {
+      // posts/favorites 暂不分页
       return;
     }
     this.setData({ loading: true });
@@ -118,12 +129,16 @@ Page({
       let total = 0;
       if (tab === 'liked') {
         const r = await listMyLikedPosts(nextPage, this.data.pageSize);
-        list = r.list;
-        total = r.total;
+        list = r.list; total = r.total;
       } else if (tab === 'commented') {
         const r = await listMyCommentedPosts(nextPage, this.data.pageSize);
-        list = r.list;
-        total = r.total;
+        list = r.list; total = r.total;
+      } else if (tab === 'drafts') {
+        const r = await listMyDrafts(nextPage, this.data.pageSize);
+        list = r.list; total = r.total;
+      } else if (tab === 'private') {
+        const r = await listMyPrivate(nextPage, this.data.pageSize);
+        list = r.list; total = r.total;
       }
       const combined = [...this.data.posts, ...toViews(list)];
       this.setData({
@@ -145,6 +160,16 @@ Page({
   goDetail(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
     if (!id) return;
+    // P1-11 draft 在我的草稿 tab 下不可点（草稿状态 getPost 仍可读，因 author=me）；允许正常导航
     wx.navigateTo({ url: `/pages/post-detail/index?id=${id}` });
+  },
+
+  continueDraft(e: WechatMiniprogram.TouchEvent) {
+    // P1-11 我的草稿：点击继续编辑
+    const id = e.currentTarget.dataset.id as string;
+    const post = this.data.posts.find((p) => p.id === id);
+    if (!post) return;
+    wx.setStorageSync('yitong_edit_post_draft', post);
+    wx.navigateTo({ url: `/pages/post-create/index?editId=${id}` });
   },
 });

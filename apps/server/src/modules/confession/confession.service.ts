@@ -24,7 +24,9 @@ function postInclude(uid: string) {
     postLikes: { where: { userId: uid }, select: { id: true }, take: 1 },
   } as const;
 }
-type PostWithAuthor = Prisma.PostGetPayload<{ include: ReturnType<typeof postInclude> }>;
+type PostWithAuthor = Prisma.PostGetPayload<{
+  include: ReturnType<typeof postInclude>;
+}> & { visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT' };
 
 // P0-10 评论 include：author + replyToUser（被回复用户昵称，用于"回复@user"展示）
 const commentAuthorSelect = { id: true, nickname: true, avatarUrl: true } as const;
@@ -132,22 +134,25 @@ export class ConfessionService {
     const circle = await this.prisma.circle.findUnique({ where: { id: circleId } });
     if (!circle) throw new BizException(20001, '圈子不存在');
 
-    // 发帖前内联内容安全：文本 + 每张图 + 视频封面（与 API 规范 §10 / 功能规划 §1.7 对齐）
-    await this.moderation.checkText(dto.content, openid);
-    for (const url of dto.images ?? []) {
-      await this.moderation.checkImage(url);
-    }
-    if (dto.videoCover) {
-      await this.moderation.checkImage(dto.videoCover);
-    }
-    // 视频完整审核：微信侧 mediaCheckAsync 需回调链路，P0 走 stub（fail-open + warn），P3-06 补全
-    if (dto.videoUrl) {
-      this.moderation.checkVideoStub(dto.videoUrl);
+    // P1-11 草稿和私密投稿不进入公开审核流：跳过内容安全 + 直接 APPROVED；前台/feed 仅作者可见
+    const visibility = dto.visibility ?? 'PUBLIC';
+    const isDraftOrPrivate = visibility !== 'PUBLIC';
+
+    if (!isDraftOrPrivate) {
+      await this.moderation.checkText(dto.content, openid);
+      for (const url of dto.images ?? []) {
+        await this.moderation.checkImage(url);
+      }
+      if (dto.videoCover) {
+        await this.moderation.checkImage(dto.videoCover);
+      }
+      if (dto.videoUrl) {
+        this.moderation.checkVideoStub(dto.videoUrl);
+      }
     }
 
-    const isAnonymous = !!dto.isAnonymous;
+    const isAnonymous = !!dto.isAnonymous && !isDraftOrPrivate; // 匿名仅用于公开发布
 
-    // 内容安全通过即发布（APPROVED）；PENDING 留给 review 命中 / 管理端审核队列
     const post = await this.prisma.post.create({
       data: {
         circleId,
@@ -160,6 +165,7 @@ export class ConfessionService {
         videoUrl: dto.videoUrl ?? null,
         videoCover: dto.videoCover ?? null,
         status: PostStatus.APPROVED,
+        visibility,
       },
       include: postInclude(uid),
     });
@@ -208,20 +214,40 @@ export class ConfessionService {
     return { list: posts.map((p) => this.toPostVo(p)) };
   }
 
-  // P1-08 我点赞的帖（按点赞时间倒序分页，仅 APPROVED 且未软删）
+  // P1-08 我点赞的帖（按点赞时间倒序分页，仅 APPROVED + 公开 且未软删）
   async listMyLikedPosts(uid: string, page: number, pageSize: number): Promise<PageResult<PostVo>> {
     const [likes, total] = await Promise.all([
       this.prisma.postLike.findMany({
-        where: { userId: uid, post: { status: PostStatus.APPROVED, deletedAt: null } },
+        where: { userId: uid, post: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' } },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { post: { include: postInclude(uid) } },
       }),
-      this.prisma.postLike.count({ where: { userId: uid, post: { status: PostStatus.APPROVED, deletedAt: null } } }),
+      this.prisma.postLike.count({ where: { userId: uid, post: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' } } }),
     ]);
     const list = likes.map((l) => this.toPostVo(l.post));
     return { list, total, page, pageSize };
+  }
+
+  // P1-11 我指定 visibility 的帖子（草稿/私密）
+  async listMyByVisibility(uid: string, visibility: 'DRAFT' | 'PRIVATE', page: number, pageSize: number): Promise<PageResult<PostVo>> {
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where: { authorId: uid, visibility, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: postInclude(uid),
+      }),
+      this.prisma.post.count({ where: { authorId: uid, visibility, deletedAt: null } }),
+    ]);
+    return {
+      list: posts.map((p) => this.toPostVo(p)),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   // P1-08 我评论过的帖（按最后评论时间倒序去重分页；只展示 APPROVED 帖）
@@ -249,7 +275,7 @@ export class ConfessionService {
     const slice = postIds.slice((page - 1) * pageSize, page * pageSize);
     if (slice.length === 0) return { list: [], total: postIds.length, page, pageSize };
     const posts = await this.prisma.post.findMany({
-      where: { id: { in: slice }, status: PostStatus.APPROVED, deletedAt: null },
+      where: { id: { in: slice }, status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' },
       include: postInclude(uid),
     });
     // 保持排序：按 last comment desc
@@ -259,8 +285,16 @@ export class ConfessionService {
   }
 
   async getPost(uid: string, id: string): Promise<PostVo> {
+    // P1-11：作者可读自己的 DRAFT/PRIVATE；他人只看 PUBLIC 且 status=APPROVED
     const post = await this.prisma.post.findFirst({
-      where: { id, status: PostStatus.APPROVED, deletedAt: null },
+      where: {
+        id,
+        deletedAt: null,
+        OR: [
+          { status: PostStatus.APPROVED, visibility: 'PUBLIC' },
+          { authorId: uid }, // 作者自己可见所有状态
+        ],
+      },
       include: postInclude(uid),
     });
     if (!post) throw new BizException(20003, '帖子不存在');
@@ -290,6 +324,8 @@ export class ConfessionService {
         tags: dto.tags ?? [],
         videoUrl: dto.videoUrl ?? null,
         videoCover: dto.videoCover ?? null,
+        // P1-11：编辑可改 visibility（例：草稿保存后发布；私密改公开）
+        ...(dto.visibility ? { visibility: dto.visibility } : {}),
         editedAt: new Date(),
       },
       include: postInclude(uid),
@@ -635,7 +671,7 @@ export class ConfessionService {
     const limit = query.limit ?? 20;
     const cursor = query.cursor ? decodeCursor(query.cursor) : null;
 
-    const where: Prisma.PostWhereInput = { status: PostStatus.APPROVED, deletedAt: null };
+    const where: Prisma.PostWhereInput = { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' };
     if (circleId) where.circleId = circleId;
     if (cursor) {
       where.OR = [
@@ -668,7 +704,7 @@ export class ConfessionService {
   ): Promise<FeedResult> {
     const limit = query.limit ?? 20;
     const posts = await this.prisma.post.findMany({
-      where: { status: PostStatus.APPROVED, deletedAt: null, ...(circleId ? { circleId } : {}) },
+      where: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC', ...(circleId ? { circleId } : {}) },
       orderBy:
         sort === 'hot'
           ? [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }]
@@ -689,7 +725,7 @@ export class ConfessionService {
     const followeeIds = follows.map((f) => f.followeeId);
     if (followeeIds.length === 0) return { list: [], nextCursor: null, hasMore: false };
     const posts = await this.prisma.post.findMany({
-      where: { status: PostStatus.APPROVED, deletedAt: null, authorId: { in: followeeIds } },
+      where: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC', authorId: { in: followeeIds } },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
       include: postInclude(uid),
@@ -714,6 +750,7 @@ export class ConfessionService {
       likeCount: post.likeCount,
       liked: post.postLikes.length > 0,
       commentCount: post._count.comments,
+      visibility: post.visibility,
       createdAt: post.createdAt.toISOString(),
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,
     };
@@ -847,6 +884,7 @@ export class ConfessionService {
       where: {
         status: PostStatus.APPROVED,
         deletedAt: null,
+        visibility: 'PUBLIC',
         content: { contains: kw, mode: 'insensitive' },
       },
       orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
@@ -883,6 +921,7 @@ export class ConfessionService {
       where: {
         status: PostStatus.APPROVED,
         deletedAt: null,
+        visibility: 'PUBLIC',
         tags: { has: kw },
       },
       orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],

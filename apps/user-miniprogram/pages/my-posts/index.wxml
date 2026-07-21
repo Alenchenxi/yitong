@@ -1,22 +1,37 @@
 <view class="page">
-  <view class="tabs">
-    <text class="tab {{activeTab === 'posts' ? 'active' : ''}}" data-tab="posts" catchtap="switchTab">我的发布</text>
-    <text class="tab {{activeTab === 'liked' ? 'active' : ''}}" data-tab="liked" catchtap="switchTab">我的点赞</text>
-    <text class="tab {{activeTab === 'favorites' ? 'active' : ''}}" data-tab="favorites" catchtap="switchTab">我的收藏</text>
-    <text class="tab {{activeTab === 'commented' ? 'active' : ''}}" data-tab="commented" catchtap="switchTab">我的评论</text>
-  </view>
+  <scroll-view scroll-x class="tabs-scroll">
+    <view class="tabs">
+      <text class="tab {{activeTab === 'posts' ? 'active' : ''}}" data-tab="posts" catchtap="switchTab">我的发布</text>
+      <text class="tab {{activeTab === 'liked' ? 'active' : ''}}" data-tab="liked" catchtap="switchTab">点赞</text>
+      <text class="tab {{activeTab === 'favorites' ? 'active' : ''}}" data-tab="favorites" catchtap="switchTab">收藏</text>
+      <text class="tab {{activeTab === 'commented' ? 'active' : ''}}" data-tab="commented" catchtap="switchTab">评论</text>
+      <text class="tab {{activeTab === 'drafts' ? 'active' : ''}}" data-tab="drafts" catchtap="switchTab">草稿</text>
+      <text class="tab {{activeTab === 'private' ? 'active' : ''}}" data-tab="private" catchtap="switchTab">私密</text>
+    </view>
+  </scroll-view>
   <view class="list" wx:if="{{posts.length > 0}}">
-    <view class="item" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
-      <view class="content">{{item.content}}</view>
-      <view class="meta">
-        <text>{{item.timeText}}</text>
-        <text class="stats" wx:if="{{item.likeCount !== undefined}}">♥ {{item.likeCount}} · 💬 {{item.commentCount}}</text>
+    <view
+      class="item"
+      wx:for="{{posts}}"
+      wx:key="id"
+    >
+      <view class="item-main" data-id="{{item.id}}" bindtap="goDetail">
+        <view class="content">
+          <text wx:if="{{activeTab === 'drafts'}}" class="badge badge-draft">草稿</text>
+          <text wx:elif="{{activeTab === 'private'}}" class="badge badge-private">私密</text>
+          <text>{{item.content}}</text>
+        </view>
+        <view class="meta">
+          <text>{{item.timeText}}</text>
+          <text class="stats" wx:if="{{item.likeCount !== undefined && activeTab !== 'favorites'}}">♥ {{item.likeCount}} · 💬 {{item.commentCount}}</text>
+        </view>
       </view>
+      <text wx:if="{{activeTab === 'drafts'}}" class="action" data-id="{{item.id}}" catchtap="continueDraft">继续编辑</text>
     </view>
   </view>
   <view class="empty" wx:elif="{{!loading}}">
     <view class="empty-emoji">📝</view>
-    <view class="empty-text">{{activeTab === 'posts' ? '还没发过帖子' : activeTab === 'liked' ? '还没有点赞过帖子' : activeTab === 'favorites' ? '还没有收藏帖子' : '还没评论过帖子'}}</view>
+    <view class="empty-text">{{activeTab === 'posts' ? '还没发过帖子' : activeTab === 'liked' ? '还没有点赞过帖子' : activeTab === 'favorites' ? '还没有收藏帖子' : activeTab === 'commented' ? '还没评论过帖子' : activeTab === 'drafts' ? '草稿箱空着' : '还没有私密投稿'}}</view>
   </view>
   <view class="loading" wx:if="{{loading}}">加载中...</view>
   <view class="tip" wx:elif="{{!hasMore && posts.length > 0}}">没有更多了</view>

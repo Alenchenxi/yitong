@@ -85,6 +85,20 @@ export class ConfessionController {
     return ok(await this.confession.listMyCommentedPosts(uid, q.page ?? 1, q.pageSize ?? 20));
   }
 
+  // P1-11 我的草稿
+  @Get('posts/mine/drafts')
+  async myDrafts(@Req() req: Request, @Query() q: MyPostsQueryDto) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.listMyByVisibility(uid, 'DRAFT', q.page ?? 1, q.pageSize ?? 20));
+  }
+
+  // P1-11 我的私密投稿
+  @Get('posts/mine/private')
+  async myPrivate(@Req() req: Request, @Query() q: MyPostsQueryDto) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.listMyByVisibility(uid, 'PRIVATE', q.page ?? 1, q.pageSize ?? 20));
+  }
+
   @Get('posts/search')
   async searchPosts(@Query() q: SearchPostsQueryDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user?.uid ?? '';

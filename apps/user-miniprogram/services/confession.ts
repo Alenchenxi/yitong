@@ -7,6 +7,8 @@ export interface Circle {
   icon: string | null;
 }
 
+export type PostVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+
 export interface PostVo {
   id: string;
   circleId: string;
@@ -22,6 +24,7 @@ export interface PostVo {
   likeCount: number;
   liked: boolean;
   commentCount: number;
+  visibility: PostVisibility;
   createdAt: string;
   editedAt: string | null; // P1-10
 }
@@ -33,6 +36,7 @@ export interface CreatePostPayload {
   isAnonymous?: boolean;
   videoUrl?: string;
   videoCover?: string;
+  visibility?: PostVisibility; // P1-11
 }
 
 export interface CommentVo {
@@ -105,7 +109,6 @@ export function createPost(circleId: string, payload: CreatePostPayload) {
   return request<PostVo>({
     url: `/circles/${circleId}/posts`,
     method: 'POST',
-    // 内联字面量（fresh literal 可赋给 Record<string, unknown>，具名 interface 不行）
     data: {
       content: payload.content,
       images: payload.images,
@@ -113,6 +116,7 @@ export function createPost(circleId: string, payload: CreatePostPayload) {
       isAnonymous: payload.isAnonymous,
       videoUrl: payload.videoUrl,
       videoCover: payload.videoCover,
+      visibility: payload.visibility,
     },
   });
 }
@@ -193,6 +197,7 @@ export function editPost(postId: string, payload: CreatePostPayload) {
       isAnonymous: payload.isAnonymous,
       videoUrl: payload.videoUrl,
       videoCover: payload.videoCover,
+      visibility: payload.visibility,
     },
   });
 }
@@ -205,6 +210,14 @@ export function deletePost(postId: string) {
 // 我的表白墙（当前用户发的帖）
 export function listMyPosts() {
   return request<{ list: PostVo[] }>({ url: '/posts/mine' });
+}
+
+// P1-11 我的草稿 / 私密
+export function listMyDrafts(page = 1, pageSize = 20) {
+  return request<PageResult<PostVo>>({ url: `/posts/mine/drafts?page=${page}&pageSize=${pageSize}` });
+}
+export function listMyPrivate(page = 1, pageSize = 20) {
+  return request<PageResult<PostVo>>({ url: `/posts/mine/private?page=${page}&pageSize=${pageSize}` });
 }
 
 // P1-08 我点赞的帖

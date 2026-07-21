@@ -24,6 +24,7 @@ interface PageData {
   emojis: string[];
   video: { localPath: string; coverLocalPath: string; duration: number } | null; // P0-09 视频（与图片互斥）
   editId: string; // P1-10 编辑模式：被编辑帖子 id（空=新建）
+  visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT'; // P1-11 可见性选择
 }
 
 const MAX_IMAGES = 9;
@@ -55,6 +56,7 @@ Page({
     emojis: EMOJIS,
     video: null,
     editId: '',
+    visibility: 'PUBLIC',
   } as PageData,
 
   cursor: 0,
@@ -95,6 +97,7 @@ Page({
         initial.hasContent = draft.content.trim().length > 0;
         initial.images = draft.images ?? [];
         initial.isAnonymous = !!draft.isAnonymous;
+        initial.visibility = draft.visibility ?? 'PUBLIC';
         // 标记标签选中态
         const tags = PRESET_TAGS.map((name) => ({ name, selected: (draft.tags ?? []).includes(name) }));
         initial.tags = tags;
@@ -105,6 +108,12 @@ Page({
     }
 
     this.setData(initial as PageData);
+  },
+
+  // P1-11 可见性切换（公开/私密/草稿）
+  setVisibility(e: WechatMiniprogram.TouchEvent) {
+    const v = e.currentTarget.dataset.visibility as 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+    this.setData({ visibility: v });
   },
 
   openCirclePicker() {
@@ -267,7 +276,6 @@ Page({
       wx.showLoading({ title: this.data.editId ? '保存中...' : '发布中...', mask: true });
       const selectedTagNames = this.data.tags.filter((t) => t.selected).map((t) => t.name);
       if (this.data.editId) {
-        // P1-10 编辑：编辑模式下 images 来自已上传 URL（若用户重新选了图，混合：保留旧 + 新上传）
         const finalImages = imageUrls.length > 0 ? [...(this.data.images ?? []), ...imageUrls] : this.data.images ?? [];
         await editPost(this.data.editId, {
           content,
@@ -276,8 +284,10 @@ Page({
           isAnonymous: this.data.isAnonymous,
           videoUrl,
           videoCover,
+          visibility: this.data.visibility,
         });
-        wx.showToast({ title: '已保存', icon: 'success' });
+        const t = this.data.visibility === 'DRAFT' ? '已存为草稿' : this.data.visibility === 'PRIVATE' ? '已存为私密' : '已保存';
+        wx.showToast({ title: t, icon: 'success' });
       } else {
         await createPost(this.data.selectedCircleId, {
           content,
@@ -286,8 +296,10 @@ Page({
           isAnonymous: this.data.isAnonymous,
           videoUrl,
           videoCover,
+          visibility: this.data.visibility,
         });
-        wx.showToast({ title: '发布成功', icon: 'success' });
+        const t = this.data.visibility === 'DRAFT' ? '已存为草稿' : this.data.visibility === 'PRIVATE' ? '已存为私密' : '发布成功';
+        wx.showToast({ title: t, icon: 'success' });
       }
       // 返回上一页并刷新
       setTimeout(() => {

@@ -83,34 +83,43 @@ model Circle {
   @@map("circles")
 }
 model Post {
-  id          String     @id @default(cuid())
-  circleId    String     @map("circle_id")
-  authorId    String     @map("author_id")
+  id          String         @id @default(cuid())
+  circleId    String         @map("circle_id")
+  authorId    String         @map("author_id")
   content     String
   images      String[]
-  tags        String[]   @default([])
-  isAnonymous Boolean    @default(false) @map("is_anonymous")
-  anonName    String?    @map("anon_name")
-  videoUrl    String?    @map("video_url")
-  videoCover  String?    @map("video_cover")
-  likeCount   Int        @default(0) @map("like_count")
-  status      PostStatus @default(PENDING)
-  createdAt   DateTime   @default(now()) @map("created_at")
-  editedAt    DateTime?  @map("edited_at")    // P1-10 最后编辑时间
-  deletedAt   DateTime?  @map("deleted_at")   // P1-10 作者软删
-  circle      Circle     @relation(fields: [circleId], references: [id])
-  author      User       @relation(fields: [authorId], references: [id])
+  tags        String[]       @default([])
+  isAnonymous Boolean        @default(false) @map("is_anonymous")
+  anonName    String?        @map("anon_name")
+  videoUrl    String?        @map("video_url")
+  videoCover  String?        @map("video_cover")
+  likeCount   Int            @default(0) @map("like_count")
+  status      PostStatus     @default(PENDING)
+  visibility  PostVisibility @default(PUBLIC)  // P1-11 草稿/私密投稿
+  createdAt   DateTime       @default(now()) @map("created_at")
+  editedAt    DateTime?      @map("edited_at")    // P1-10 最后编辑时间
+  deletedAt   DateTime?      @map("deleted_at")   // P1-10 作者软删
+  circle      Circle         @relation(fields: [circleId], references: [id])
+  author      User           @relation(fields: [authorId], references: [id])
   postLikes   PostLike[]
   comments    Comment[]
   @@index([circleId, status, createdAt])
   @@index([status, createdAt])
   @@index([authorId, deletedAt])
+  @@index([authorId, visibility, createdAt])
   @@map("posts")
 }
 enum PostStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// P1-11 帖子可见性：PUBLIC 公开 / PRIVATE 仅作者可见（私密投稿） / DRAFT 草稿
+enum PostVisibility {
+  PUBLIC
+  PRIVATE
+  DRAFT
 }
 
 model Comment {

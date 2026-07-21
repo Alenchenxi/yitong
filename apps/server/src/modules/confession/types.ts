@@ -1,5 +1,7 @@
 // 表白墙视图对象（脱去内部字段，时间转 ISO 字符串）
 // 匿名帖：authorId 置空、authorNickname=anonName、authorAvatarUrl=null（真实 uid 仅后台可追溯）
+export type PostVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+
 export interface PostVo {
   id: string;
   circleId: string;
@@ -15,6 +17,7 @@ export interface PostVo {
   likeCount: number;
   liked: boolean; // 当前用户是否已赞
   commentCount: number;
+  visibility: PostVisibility; // P1-11
   createdAt: string;
   editedAt: string | null; // P1-10 最后编辑时间
 }

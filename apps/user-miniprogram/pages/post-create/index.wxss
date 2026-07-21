@@ -151,6 +151,18 @@
 .anon-label { display: flex; flex-direction: column; }
 .anon-tip { font-size: 22rpx; color: #C9CDD4; margin-top: 4rpx; }
 
+/* P1-11 可见性切换 */
+.visibility-row { display: flex; gap: 16rpx; flex-wrap: wrap; }
+.visibility-btn {
+  padding: 12rpx 24rpx;
+  border-radius: 999rpx;
+  background: #F2F3F5;
+  color: #4E5969;
+  font-size: 26rpx;
+}
+.visibility-btn.on { background: var(--yt-primary, #F9C801); color: var(--yt-text-main, #1D2129); font-weight: 600; }
+.section-tip { font-size: 22rpx; color: #86909C; margin-top: 8rpx; }
+
 /* 提交 */
 .submit {
   width: 100%;
