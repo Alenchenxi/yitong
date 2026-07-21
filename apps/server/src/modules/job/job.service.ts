@@ -46,6 +46,7 @@ export class JobService {
         merchantId: merchant.id,
         title: dto.title,
         description: dto.description,
+        requirements: dto.requirements ?? null,
         salary: dto.salary,
         salaryAmount: this.parseSalaryAmount(dto.salary),
         location: dto.location,
@@ -124,6 +125,20 @@ export class JobService {
     });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     return this.toPostVo(post);
+  }
+
+  // P0-19 举报岗位 -> 创建 ModerationRecord（targetType=job_post，管理员审核队列可见）
+  async report(postId: string, reason?: string) {
+    const post = await this.prisma.jobPost.findUnique({ where: { id: postId }, select: { id: true } });
+    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'job_post',
+        targetId: postId,
+        reason: reason ?? '用户举报',
+      },
+    });
+    return { reported: true };
   }
 
   // 用户报名：防重（@@unique），岗位须 PUBLISHED 且未过期
@@ -350,6 +365,7 @@ export class JobService {
     merchantId: string;
     title: string;
     description: string;
+    requirements: string | null;
     salary: string;
     salaryAmount: number | null;
     location: string;
@@ -372,6 +388,7 @@ export class JobService {
       merchantShopName: p.merchant?.shopName ?? '',
       title: p.title,
       description: p.description,
+      requirements: p.requirements,
       salary: p.salary,
       salaryAmount: p.salaryAmount,
       location: p.location,

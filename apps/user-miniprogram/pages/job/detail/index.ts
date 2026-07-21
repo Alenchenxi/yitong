@@ -5,6 +5,7 @@ import {
   listPostReviews,
   listPostApplications,
   transitionApp,
+  reportJob,
   JOB_CATEGORY_LABELS,
   SETTLEMENT_LABELS,
   type JobPostVo,
@@ -136,5 +137,35 @@ Page({
     } catch {
       wx.showToast({ title: '操作失败', icon: 'none' });
     }
+  },
+
+  // P0-19 分享
+  onShareAppMessage() {
+    const post = this.data.post;
+    return {
+      title: post ? `${post.title} · ${post.salary}` : '燚桐兼职',
+      path: `/pages/job/detail/index?id=${this.postId}`,
+    };
+  },
+
+  // P0-19 举报岗位
+  onReport() {
+    if (!this.postId) return;
+    wx.showModal({
+      title: '举报岗位',
+      editable: true,
+      placeholderText: '选填：举报原因（如虚假信息/违规）',
+      confirmText: '举报',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await reportJob(this.postId, res.content || undefined);
+          wx.showToast({ title: '已举报，平台将核实', icon: 'success' });
+        } catch {
+          /* toast */
+        }
+      },
+    });
   },
 });

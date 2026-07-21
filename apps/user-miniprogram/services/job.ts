@@ -39,6 +39,7 @@ export interface JobPostVo {
   merchantShopName: string;
   title: string;
   description: string;
+  requirements: string | null; // P0-19 任职要求
   salary: string;
   salaryAmount: number | null; // P0-18 薪资数额（auto-parse，范围筛选用）
   location: string;
@@ -83,6 +84,7 @@ export interface JobReviewVo {
 export function createJobPost(data: {
   title: string;
   description: string;
+  requirements?: string; // P0-19 任职要求
   salary: string;
   location: string;
   category: JobCategory;
@@ -136,6 +138,11 @@ export function getJobPost(id: string) {
 
 export function applyJob(postId: string) {
   return request<JobAppVo>({ url: `/job-posts/${postId}/applications`, method: 'POST' });
+}
+
+// P0-19 举报岗位
+export function reportJob(postId: string, reason?: string) {
+  return request<{ reported: boolean }>({ url: `/job-posts/${postId}/report`, method: 'POST', data: { reason } });
 }
 
 export function listPostApplications(postId: string) {

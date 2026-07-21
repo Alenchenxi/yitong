@@ -5,7 +5,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import type { AuthenticatedRequest } from '../auth/types';
 import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
-import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto } from './dto/job.dto';
+import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto } from './dto/job.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -44,6 +44,12 @@ export class JobController {
   async apply(@Param('id') id: string, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.job.apply(uid, id));
+  }
+
+  // P0-19 举报岗位（创建 ModerationRecord，管理员审核队列可见）
+  @Post('job-posts/:id/report')
+  async report(@Param('id') id: string, @Body() dto: ReportDto) {
+    return ok(await this.job.report(id, dto.reason));
   }
 
   @Get('job-posts/:id/applications')

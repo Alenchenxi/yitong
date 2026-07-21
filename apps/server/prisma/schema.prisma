@@ -313,6 +313,7 @@ model JobPost {
   merchantId   String        @map("merchant_id")
   title        String
   description  String
+  requirements String?       @map("requirements")                     // P0-19 任职要求（可空，与工作内容分开）
   salary       String
   salaryAmount Int?          @map("salary_amount")                    // P0-18 薪资数额（auto-parse 自 salary，范围筛选用；单位差异为已知限制）
   location     String

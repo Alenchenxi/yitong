@@ -30,6 +30,12 @@ export class CreateJobPostDto {
   @MaxLength(2000)
   description!: string;
 
+  // P0-19 任职要求（可空，与工作内容分开）
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  requirements?: string;
+
   @IsString()
   @MinLength(1)
   @MaxLength(50)
@@ -162,4 +168,12 @@ export class CreateReviewDto {
   @MinLength(1)
   @MaxLength(500)
   content!: string;
+}
+
+// P0-19 举报岗位（创建 ModerationRecord，管理员审核队列可见）
+export class ReportDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reason?: string;
 }

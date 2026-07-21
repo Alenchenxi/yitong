@@ -42,6 +42,7 @@ Page({
   data: {
     title: '',
     description: '',
+    requirements: '',
     salary: '',
     location: '',
     categoryOptions: CATEGORY_OPTIONS,
@@ -108,7 +109,7 @@ Page({
 
   async submit() {
     if (this.data.submitting) return;
-    const { title, description, salary, location, duration, headcount, urgent, online } = this.data;
+    const { title, description, requirements, salary, location, duration, headcount, urgent, online } = this.data;
     const category = this.data.categoryOptions.find((o) => o.selected)?.value;
     const settlement = this.data.settlementOptions.find((o) => o.selected)?.value;
     if (!title.trim() || !description.trim() || !salary.trim() || !location.trim()) {
@@ -127,6 +128,7 @@ Page({
       const post = await createJobPost({
         title: title.trim(),
         description: description.trim(),
+        requirements: requirements.trim() || undefined,
         salary: salary.trim(),
         location: location.trim(),
         category: category as JobCategory,

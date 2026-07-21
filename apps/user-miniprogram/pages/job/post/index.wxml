@@ -36,8 +36,12 @@
   <view class="row"><text class="label">可线上</text><switch checked="{{online}}" bindchange="toggleOnline" color="#ff4d6d" /></view>
 
   <view class="textarea-wrap">
-    <text class="label">描述</text>
-    <textarea class="textarea" placeholder="岗位职责 / 要求 / 时间等" value="{{description}}" data-field="description" bindinput="onInput" maxlength="2000" auto-height show-confirm-bar="{{false}}" />
+    <text class="label">工作内容</text>
+    <textarea class="textarea" placeholder="岗位职责 / 工作内容" value="{{description}}" data-field="description" bindinput="onInput" maxlength="2000" auto-height show-confirm-bar="{{false}}" />
+  </view>
+  <view class="textarea-wrap">
+    <text class="label">任职要求</text>
+    <textarea class="textarea" placeholder="学历 / 技能 / 经验等（选填）" value="{{requirements}}" data-field="requirements" bindinput="onInput" maxlength="2000" auto-height show-confirm-bar="{{false}}" />
   </view>
   <view class="row">
     <text class="label">下架时长</text>

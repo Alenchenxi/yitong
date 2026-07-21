@@ -1,17 +1,25 @@
 <view class="page" wx:if="{{post}}">
   <view class="title">{{post.title}}</view>
-  <view class="shop">{{post.merchantShopName}}</view>
-  <view class="meta">
-    <text class="salary">{{post.salary}}</text>
-    <text class="loc">{{post.location}} · {{post.duration === 'D90' ? '90天' : '30天'}}</text>
-  </view>
 
-  <!-- P0-17 结构化字段 -->
+  <!-- P0-17 结构化标签 -->
   <view class="tags" wx:if="{{post.categoryLabel || post.urgent || post.online}}">
     <text class="tag tag-cat" wx:if="{{post.categoryLabel}}">{{post.categoryLabel}}</text>
     <text class="tag tag-urgent" wx:if="{{post.urgent}}">急招</text>
     <text class="tag tag-online" wx:if="{{post.online}}">可线上</text>
   </view>
+
+  <view class="meta">
+    <text class="salary">{{post.salary}}</text>
+    <text class="loc">{{post.location}} · {{post.duration === 'D90' ? '90天' : '30天'}}</text>
+  </view>
+
+  <!-- P0-19 商家信息 -->
+  <view class="merchant">
+    <text class="shop">{{post.merchantShopName}}</text>
+    <text class="verified">✓ 资质已认证</text>
+  </view>
+
+  <!-- P0-17 结构化信息 -->
   <view class="info">
     <view class="info-row" wx:if="{{post.settlementLabel}}"><text class="info-k">结算方式</text><text class="info-v">{{post.settlementLabel}}</text></view>
     <view class="info-row" wx:if="{{post.headcount}}"><text class="info-k">招聘人数</text><text class="info-v">{{post.headcount}} 人</text></view>
@@ -19,13 +27,34 @@
     <view class="info-row" wx:if="{{post.workPeriodsText}}"><text class="info-k">工作时段</text><text class="info-v">{{post.workPeriodsText}}</text></view>
   </view>
 
-  <view class="desc">{{post.description}}</view>
+  <!-- P0-19 工作内容 / 任职要求 -->
+  <view class="section" wx:if="{{post.description}}">
+    <view class="section-title">工作内容</view>
+    <view class="section-body">{{post.description}}</view>
+  </view>
+  <view class="section" wx:if="{{post.requirements}}">
+    <view class="section-title">任职要求</view>
+    <view class="section-body">{{post.requirements}}</view>
+  </view>
 
-  <view class="fav-row">
-    <text class="fav-btn {{post.favorited ? 'faved' : ''}}" bindtap="onFavorite">{{post.favorited ? '★' : '☆'}} {{post.favorited ? '已收藏' : '收藏'}}</text>
+  <!-- P0-19 操作栏：收藏 / 分享 / 举报 -->
+  <view class="actions">
+    <view class="act {{post.favorited ? 'on' : ''}}" bindtap="onFavorite">{{post.favorited ? '★ 已收藏' : '☆ 收藏'}}</view>
+    <button class="act share-btn" open-type="share">↗ 分享</button>
+    <view class="act report" bindtap="onReport">举报</view>
   </view>
 
   <button wx:if="{{!isMerchantOwner}}" class="apply-btn" bindtap="apply" disabled="{{applying}}">{{applying ? '报名中…' : '立即报名'}}</button>
+
+  <!-- P0-19 风险提示（固定区块） -->
+  <view class="risk">
+    <view class="risk-title">⚠️ 兼职安全提示</view>
+    <view class="risk-item">· 不缴纳任何押金、培训费、体检费、服装费</view>
+    <view class="risk-item">· 不扣押身份证、学生证等个人证件</view>
+    <view class="risk-item">· 警惕高薪诱惑，拒绝刷单、转账、代付类兼职</view>
+    <view class="risk-item">· 面试尽量结伴前往，注意人身与财产安全</view>
+    <view class="risk-item">· 如遇诈骗或违规请立即举报并报警处理</view>
+  </view>
 
   <view class="apps" wx:if="{{isMerchantOwner}}">
     <view class="section-title">报名管理 ({{apps.length}})</view>
