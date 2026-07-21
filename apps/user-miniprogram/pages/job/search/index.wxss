@@ -1,0 +1,32 @@
+.page { padding: 0 24rpx 120rpx; }
+
+.search-bar { display: flex; align-items: center; gap: 16rpx; padding: 16rpx 0; position: sticky; top: 0; background: var(--yt-bg); z-index: 10; }
+.kw-input { flex: 1; background: var(--yt-card); border: 1rpx solid var(--yt-border); border-radius: 999rpx; padding: 14rpx 28rpx; font-size: 28rpx; }
+.search-btn { background: var(--yt-primary); color: #1D2129; font-size: 28rpx; font-weight: 600; padding: 14rpx 32rpx; border-radius: 999rpx; }
+
+.filter { background: var(--yt-card); border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.filter-label { font-size: 26rpx; color: var(--yt-text-sub); margin: 16rpx 0 12rpx; }
+.filter-label:first-child { margin-top: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.chip { padding: 10rpx 24rpx; border-radius: 999rpx; background: #f5f6f8; font-size: 24rpx; color: #666; }
+.chip.active { background: var(--yt-primary); color: #1D2129; font-weight: 600; }
+.salary-row { display: flex; align-items: center; gap: 16rpx; }
+.salary-input { flex: 1; background: #f5f6f8; border-radius: 12rpx; padding: 16rpx 20rpx; font-size: 26rpx; }
+.dash { color: #999; }
+.loc-input { width: 100%; background: #f5f6f8; border-radius: 12rpx; padding: 16rpx 20rpx; font-size: 26rpx; box-sizing: border-box; }
+.switch-row { display: flex; justify-content: space-between; align-items: center; margin-top: 16rpx; }
+.switch-row .filter-label { margin: 0; }
+
+.results { margin-top: 8rpx; }
+.card { margin-bottom: 20rpx; }
+.card-head { display: flex; justify-content: space-between; align-items: center; }
+.card-badges { display: flex; gap: 8rpx; margin-top: 8rpx; }
+.bd { font-size: 20rpx; padding: 2rpx 14rpx; border-radius: 999rpx; }
+.bd-urgent { background: #ff4d6d; color: #fff; }
+.bd-online { background: #FFF7D1; color: #B8860B; }
+.title { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); flex: 1; }
+.salary { color: var(--yt-primary-dark); font-size: 30rpx; font-weight: 700; }
+.shop { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 8rpx; }
+.meta { display: flex; gap: 24rpx; margin-top: 16rpx; }
+.meta-item { font-size: 24rpx; color: var(--yt-text-body); }
+.tip { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 24rpx 0; }

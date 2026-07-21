@@ -47,6 +47,7 @@ export class JobService {
         title: dto.title,
         description: dto.description,
         salary: dto.salary,
+        salaryAmount: this.parseSalaryAmount(dto.salary),
         location: dto.location,
         category: dto.category,
         settlement: dto.settlement,
@@ -80,6 +81,26 @@ export class JobService {
     }
     // P0-17 急招过滤（急招 tab）
     if (q.urgent === 1) where.urgent = true;
+    // P0-18 筛选：关键词 / 分类 / 结算 / 地点 / 薪资范围 / 可线上
+    const kw = q.keyword?.trim();
+    if (kw) {
+      where.OR = [
+        { title: { contains: kw, mode: 'insensitive' } },
+        { description: { contains: kw, mode: 'insensitive' } },
+      ];
+    }
+    if (q.category) where.category = q.category as JobCategory;
+    if (q.settlement) where.settlement = q.settlement as Settlement;
+    if (q.location?.trim()) {
+      where.location = { contains: q.location.trim(), mode: 'insensitive' };
+    }
+    if (q.online === 1) where.online = true;
+    if (q.salaryMin !== undefined || q.salaryMax !== undefined) {
+      const f: { gte?: number; lte?: number } = {};
+      if (q.salaryMin !== undefined) f.gte = q.salaryMin;
+      if (q.salaryMax !== undefined) f.lte = q.salaryMax;
+      where.salaryAmount = f;
+    }
     if (q.cursor) {
       const t = new Date(q.cursor);
       if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
@@ -330,6 +351,7 @@ export class JobService {
     title: string;
     description: string;
     salary: string;
+    salaryAmount: number | null;
     location: string;
     category: JobCategory | null;
     settlement: Settlement | null;
@@ -351,6 +373,7 @@ export class JobService {
       title: p.title,
       description: p.description,
       salary: p.salary,
+      salaryAmount: p.salaryAmount,
       location: p.location,
       category: p.category,
       settlement: p.settlement,
@@ -371,6 +394,14 @@ export class JobService {
     if (!input || input.length === 0) return [];
     const set = new Set<string>(allowed);
     return Array.from(new Set(input.filter((v) => set.has(v))));
+  }
+
+  // P0-18 从薪资字符串解析数额（取首个整数；"面议"/无数字返 null。单位差异为已知限制）
+  private parseSalaryAmount(salary: string): number | null {
+    const m = salary.match(/\d+/);
+    if (!m) return null;
+    const n = parseInt(m[0]!, 10);
+    return Number.isFinite(n) ? n : null;
   }
 
   private toAppVo(a: {

@@ -40,6 +40,7 @@ export interface JobPostVo {
   title: string;
   description: string;
   salary: string;
+  salaryAmount: number | null; // P0-18 薪资数额（auto-parse，范围筛选用）
   location: string;
   category: JobCategory | null; // P0-17 分类
   settlement: Settlement | null; // P0-17 结算方式
@@ -96,12 +97,32 @@ export function createJobPost(data: {
   return request<JobPostVo>({ url: '/job-posts', method: 'POST', data });
 }
 
-export function listJobPosts(cursor?: string, mine = false, urgent = false) {
+export interface JobListFilter {
+  cursor?: string;
+  mine?: boolean;
+  urgent?: boolean;
+  keyword?: string; // P0-18 关键词
+  category?: JobCategory; // P0-18 分类
+  settlement?: Settlement; // P0-18 结算方式
+  location?: string; // P0-18 工作地点
+  salaryMin?: number; // P0-18 薪资下限
+  salaryMax?: number; // P0-18 薪资上限
+  online?: boolean; // P0-18 仅看线上
+}
+
+export function listJobPosts(filter: JobListFilter = {}) {
   const params: string[] = [];
-  if (mine) params.push('mine=1');
-  if (urgent) params.push('urgent=1');
+  if (filter.mine) params.push('mine=1');
+  if (filter.urgent) params.push('urgent=1');
+  if (filter.online) params.push('online=1');
+  if (filter.keyword) params.push(`keyword=${encodeURIComponent(filter.keyword)}`);
+  if (filter.category) params.push(`category=${filter.category}`);
+  if (filter.settlement) params.push(`settlement=${filter.settlement}`);
+  if (filter.location) params.push(`location=${encodeURIComponent(filter.location)}`);
+  if (filter.salaryMin !== undefined) params.push(`salaryMin=${filter.salaryMin}`);
+  if (filter.salaryMax !== undefined) params.push(`salaryMax=${filter.salaryMax}`);
   params.push('limit=20');
-  if (cursor) params.push(`cursor=${encodeURIComponent(cursor)}`);
+  if (filter.cursor) params.push(`cursor=${encodeURIComponent(filter.cursor)}`);
   return request<JobListResult>({ url: `/job-posts?${params.join('&')}` });
 }
 

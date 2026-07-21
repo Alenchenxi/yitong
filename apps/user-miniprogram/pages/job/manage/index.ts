@@ -18,7 +18,7 @@ Page({
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     try {
-      const resp = await listJobPosts(undefined, true);
+      const resp = await listJobPosts({ mine: true });
       this.setData({
         posts: resp.list.map((p) => ({ ...p, statusText: STATUS_TEXT[p.status] ?? p.status })),
       });

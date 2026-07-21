@@ -1,0 +1,62 @@
+<view class="page">
+  <view class="search-bar">
+    <input class="kw-input" placeholder="搜索岗位标题/描述" value="{{keyword}}" bindinput="onKeywordInput" confirm-type="search" bindconfirm="search" />
+    <view class="search-btn" bindtap="search">搜索</view>
+  </view>
+
+  <view class="filter">
+    <view class="filter-label">分类</view>
+    <view class="chips">
+      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{categoryOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="pickCategory">{{item.label}}</view>
+    </view>
+
+    <view class="filter-label">结算方式</view>
+    <view class="chips">
+      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{settlementOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="pickSettlement">{{item.label}}</view>
+    </view>
+
+    <view class="filter-label">薪资范围（元）</view>
+    <view class="salary-row">
+      <input class="salary-input" type="number" placeholder="最低" value="{{salaryMin}}" bindinput="onSalaryMinInput" />
+      <text class="dash">-</text>
+      <input class="salary-input" type="number" placeholder="最高" value="{{salaryMax}}" bindinput="onSalaryMaxInput" />
+    </view>
+
+    <view class="filter-label">工作地点</view>
+    <input class="loc-input" placeholder="如：学校南门" value="{{location}}" bindinput="onLocationInput" />
+
+    <view class="switch-row">
+      <text class="filter-label">仅看线上</text>
+      <switch checked="{{online}}" bindchange="toggleOnline" color="#F9C801" />
+    </view>
+  </view>
+
+  <view class="results" wx:if="{{posts.length > 0}}">
+    <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+      <view class="card-head">
+        <text class="title">{{item.title}}</text>
+        <text class="salary">{{item.salary}}</text>
+      </view>
+      <view class="card-badges" wx:if="{{item.urgent || item.online}}">
+        <text class="bd bd-urgent" wx:if="{{item.urgent}}">急招</text>
+        <text class="bd bd-online" wx:if="{{item.online}}">可线上</text>
+      </view>
+      <view class="shop">{{item.merchantShopName}}</view>
+      <view class="meta">
+        <text class="meta-item">📍 {{item.location}}</text>
+        <text class="meta-item">⏱ {{item.duration === 'D90' ? '90天' : '30天'}}</text>
+      </view>
+    </view>
+    <view class="tip" wx:if="{{loading}}">加载中...</view>
+    <view class="tip" wx:elif="{{!hasMore}}">没有更多了</view>
+  </view>
+
+  <view class="yt-empty" wx:elif="{{searched && !loading}}">
+    <view class="yt-empty-emoji">🔍</view>
+    <view class="yt-empty-text">没有找到匹配的岗位</view>
+  </view>
+  <view class="yt-empty" wx:else>
+    <view class="yt-empty-emoji">🔍</view>
+    <view class="yt-empty-text">输入关键词或选择筛选条件搜索</view>
+  </view>
+</view>

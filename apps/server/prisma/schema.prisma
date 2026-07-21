@@ -314,6 +314,7 @@ model JobPost {
   title        String
   description  String
   salary       String
+  salaryAmount Int?          @map("salary_amount")                    // P0-18 薪资数额（auto-parse 自 salary，范围筛选用；单位差异为已知限制）
   location     String
   category     JobCategory?  @map("category")                          // P0-17 分类
   settlement   Settlement?   @map("settlement")                        // P0-17 结算方式
@@ -332,6 +333,7 @@ model JobPost {
   @@index([status, createdAt])
   @@index([status, urgent, createdAt])
   @@index([status, category, createdAt])
+  @@index([status, salaryAmount])
   @@map("job_posts")
 }
 enum JobDuration {

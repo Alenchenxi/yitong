@@ -58,7 +58,7 @@ Page({
     this.setData({ loading: true });
     try {
       const urgent = this.data.tab === 'urgent';
-      const resp = await listJobPosts(this.data.nextCursor ?? undefined, false, urgent);
+      const resp = await listJobPosts({ cursor: this.data.nextCursor ?? undefined, urgent });
       this.setData({
         posts: [...this.data.posts, ...resp.list],
         nextCursor: resp.nextCursor,
@@ -81,7 +81,7 @@ Page({
   },
 
   goSearch() {
-    wx.showToast({ title: '搜索开发中', icon: 'none' });
+    wx.navigateTo({ url: '/pages/job/search/index' });
   },
   goDetail(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;

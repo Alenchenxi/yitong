@@ -103,6 +103,48 @@ export class JobListQueryDto {
   @Min(0)
   @Max(1)
   urgent?: number;
+
+  /** P0-18 关键词（匹配 title / description，不区分大小写） */
+  @IsOptional()
+  @IsString()
+  keyword?: string;
+
+  /** P0-18 分类 */
+  @IsOptional()
+  @IsIn([...JOB_CATEGORY_VALUES])
+  category?: string;
+
+  /** P0-18 结算方式 */
+  @IsOptional()
+  @IsIn([...SETTLEMENT_VALUES])
+  settlement?: string;
+
+  /** P0-18 工作地点（contains，不区分大小写） */
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  /** P0-18 薪资下限（按 salaryAmount 过滤） */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  salaryMin?: number;
+
+  /** P0-18 薪资上限（按 salaryAmount 过滤） */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  salaryMax?: number;
+
+  /** P0-18 online=1 只返回可线上岗位 */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(1)
+  online?: number;
 }
 
 export class TransitionDto {
