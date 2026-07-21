@@ -8,6 +8,8 @@ import {
   toggleLike,
   toggleCommentLike,
   reportPost,
+  editPost,
+  deletePost,
   type PostVo,
   type CommentVo,
 } from '../../services/confession';
@@ -58,6 +60,7 @@ interface PageData {
   focus: boolean;
   reply: ReplyState | null;
   anchorId: string; // P1-01 定位高亮的评论/回复 id
+  isAuthor: boolean; // P1-10 当前用户是否为帖子作者
 }
 
 function calcImgLayout(n: number): '' | 'one' | 'two' | 'three' {
@@ -95,6 +98,7 @@ Page({
     focus: false,
     reply: null,
     anchorId: '',
+    isAuthor: false,
   } as PageData,
 
   postId: '',
@@ -114,6 +118,35 @@ Page({
     this.load();
   },
 
+  // P1-10 作者编辑帖子
+  onEdit() {
+    const p = this.data.post;
+    if (!p) return;
+    wx.setStorageSync('yitong_edit_post_draft', { ...p });
+    wx.navigateTo({ url: `/pages/post-create/index?editId=${p.id}` });
+  },
+
+  // P1-10 作者删除帖子（软删）
+  onDelete() {
+    const p = this.data.post;
+    if (!p) return;
+    wx.showModal({
+      title: '删除帖子',
+      content: '确定删除吗？删除后无法恢复（仅你可见，已下架）。',
+      success: async (r) => {
+        if (r.confirm) {
+          try {
+            await deletePost(p.id);
+            wx.showToast({ title: '已删除', icon: 'success' });
+            setTimeout(() => wx.navigateBack({ delta: 1 }), 600);
+          } catch {
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      },
+    });
+  },
+
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
@@ -131,12 +164,14 @@ Page({
         listComments(this.postId, 1, this.data.pageSize),
       ]);
       const favorite = await checkFavorite('post', this.postId).catch(() => null);
+      const meId = (getApp<AppInstance>().globalData.user?.id ?? '') as string;
       this.setData({
         post: toPostView(post, favorite?.favorited ?? false),
         commentList: commentsResp.list.map(toCommentView),
         total: commentsResp.total,
         page: 1,
         hasMore: commentsResp.list.length < commentsResp.total,
+        isAuthor: !!post.authorId && post.authorId === meId,
       });
       if (this.anchorCommentId) {
         await this.locateAnchor(this.anchorCommentId);
@@ -227,7 +262,11 @@ Page({
     try {
       const p = await getPost(this.postId);
       const favorite = await checkFavorite('post', this.postId).catch(() => null);
-      this.setData({ post: toPostView(p, favorite?.favorited ?? this.data.post?.favorited ?? false) });
+      const meId = (getApp<AppInstance>().globalData.user?.id ?? '') as string;
+      this.setData({
+        post: toPostView(p, favorite?.favorited ?? this.data.post?.favorited ?? false),
+        isAuthor: !!p.authorId && p.authorId === meId,
+      });
     } catch {
       // ignore
     }

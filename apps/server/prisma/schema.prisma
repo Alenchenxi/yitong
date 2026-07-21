@@ -96,12 +96,15 @@ model Post {
   likeCount   Int        @default(0) @map("like_count")
   status      PostStatus @default(PENDING)
   createdAt   DateTime   @default(now()) @map("created_at")
+  editedAt    DateTime?  @map("edited_at")    // P1-10 最后编辑时间
+  deletedAt   DateTime?  @map("deleted_at")   // P1-10 作者软删
   circle      Circle     @relation(fields: [circleId], references: [id])
   author      User       @relation(fields: [authorId], references: [id])
   postLikes   PostLike[]
   comments    Comment[]
   @@index([circleId, status, createdAt])
   @@index([status, createdAt])
+  @@index([authorId, deletedAt])
   @@map("posts")
 }
 enum PostStatus {

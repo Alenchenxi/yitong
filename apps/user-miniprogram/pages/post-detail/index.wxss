@@ -218,6 +218,12 @@
   font-weight: 500;
 }
 
+/* P1-10 作者操作 */
+.author-actions { display: flex; gap: 16rpx; margin-top: 16rpx; padding-top: 16rpx; border-top: 1rpx solid #f0f0f0; }
+.author-btn { padding: 8rpx 24rpx; border-radius: 999rpx; background: #F2F3F5; color: #4E5969; font-size: 24rpx; }
+.author-btn.danger { color: #ff4d6d; background: #FFF0F4; }
+.edited-tip { font-size: 22rpx; color: #C9CDD4; margin-top: 12rpx; }
+
 /* P1-01 跳转定位高亮 */
 .comment.anchor,
 .reply.anchor {

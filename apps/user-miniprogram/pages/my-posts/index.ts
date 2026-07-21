@@ -85,6 +85,7 @@ Page({
             liked: false,
             commentCount: 0,
             createdAt: fav.createdAt,
+            editedAt: null,
             timeText: formatTime(fav.createdAt),
           })),
           loading: false,

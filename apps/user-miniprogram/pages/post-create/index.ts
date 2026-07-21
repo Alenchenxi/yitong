@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../app';
-import { listCircles, createPost, type Circle } from '../../services/confession';
+import { listCircles, createPost, editPost, type Circle, type PostVo } from '../../services/confession';
 import { uploadImages, uploadImage, uploadVideo } from '../../services/upload';
 
 interface TagItem {
@@ -13,7 +13,7 @@ interface PageData {
   selectedCircleName: string;
   content: string;
   hasContent: boolean; // content.trim() 预计算（WXML 不支持 .trim()）
-  images: string[]; // 本地路径（选中后/上传中）
+  images: string[]; // 本地路径（选中后/上传中）；编辑模式下为已上传 URL
   uploading: boolean;
   submitting: boolean;
   showCirclePicker: boolean;
@@ -23,6 +23,7 @@ interface PageData {
   showEmoji: boolean; // P0-09 表情面板
   emojis: string[];
   video: { localPath: string; coverLocalPath: string; duration: number } | null; // P0-09 视频（与图片互斥）
+  editId: string; // P1-10 编辑模式：被编辑帖子 id（空=新建）
 }
 
 const MAX_IMAGES = 9;
@@ -53,11 +54,12 @@ Page({
     showEmoji: false,
     emojis: EMOJIS,
     video: null,
+    editId: '',
   } as PageData,
 
   cursor: 0,
 
-  async onLoad(options: { circleId?: string }) {
+  async onLoad(options: { circleId?: string; editId?: string }) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const circles = await listCircles().catch(() => []);
@@ -74,11 +76,35 @@ Page({
         selectedName = `${prefer.icon ? prefer.icon + ' ' : ''}${prefer.name}`;
       }
     }
-    this.setData({
+    const initial: Partial<PageData> = {
       circles,
       selectedCircleId: selectedId,
       selectedCircleName: selectedName,
-    });
+    };
+
+    // P1-10 编辑模式：从 storage 取出被编辑帖
+    if (options.editId) {
+      const draft = wx.getStorageSync<PostVo | null>('yitong_edit_post_draft');
+      if (draft && draft.id === options.editId) {
+        const c = circles.find((x) => x.id === draft.circleId);
+        if (c) {
+          initial.selectedCircleId = c.id;
+          initial.selectedCircleName = `${c.icon ? c.icon + ' ' : ''}${c.name}`;
+        }
+        initial.content = draft.content;
+        initial.hasContent = draft.content.trim().length > 0;
+        initial.images = draft.images ?? [];
+        initial.isAnonymous = !!draft.isAnonymous;
+        // 标记标签选中态
+        const tags = PRESET_TAGS.map((name) => ({ name, selected: (draft.tags ?? []).includes(name) }));
+        initial.tags = tags;
+        initial.tagCount = tags.filter((t) => t.selected).length;
+        initial.editId = draft.id;
+        wx.removeStorageSync('yitong_edit_post_draft');
+      }
+    }
+
+    this.setData(initial as PageData);
   },
 
   openCirclePicker() {
@@ -238,17 +264,31 @@ Page({
         }
         this.setData({ uploading: false });
       }
-      wx.showLoading({ title: '发布中...', mask: true });
+      wx.showLoading({ title: this.data.editId ? '保存中...' : '发布中...', mask: true });
       const selectedTagNames = this.data.tags.filter((t) => t.selected).map((t) => t.name);
-      await createPost(this.data.selectedCircleId, {
-        content,
-        images: imageUrls,
-        tags: selectedTagNames,
-        isAnonymous: this.data.isAnonymous,
-        videoUrl,
-        videoCover,
-      });
-      wx.showToast({ title: '发布成功', icon: 'success' });
+      if (this.data.editId) {
+        // P1-10 编辑：编辑模式下 images 来自已上传 URL（若用户重新选了图，混合：保留旧 + 新上传）
+        const finalImages = imageUrls.length > 0 ? [...(this.data.images ?? []), ...imageUrls] : this.data.images ?? [];
+        await editPost(this.data.editId, {
+          content,
+          images: finalImages,
+          tags: selectedTagNames,
+          isAnonymous: this.data.isAnonymous,
+          videoUrl,
+          videoCover,
+        });
+        wx.showToast({ title: '已保存', icon: 'success' });
+      } else {
+        await createPost(this.data.selectedCircleId, {
+          content,
+          images: imageUrls,
+          tags: selectedTagNames,
+          isAnonymous: this.data.isAnonymous,
+          videoUrl,
+          videoCover,
+        });
+        wx.showToast({ title: '发布成功', icon: 'success' });
+      }
       // 返回上一页并刷新
       setTimeout(() => {
         const pages = getCurrentPages();

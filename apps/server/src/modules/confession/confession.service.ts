@@ -197,7 +197,7 @@ export class ConfessionService {
     return this.queryPosts(uid, query, circleId);
   }
 
-  // 我的表白墙：当前用户发的帖（全部状态，含已下架）
+  // 我的表白墙：当前用户发的帖（含已软删，但不影响展示；用户可看到「我删了的帖」以便复盘）
   async listMyPosts(uid: string): Promise<{ list: PostVo[] }> {
     const posts = await this.prisma.post.findMany({
       where: { authorId: uid },
@@ -208,17 +208,17 @@ export class ConfessionService {
     return { list: posts.map((p) => this.toPostVo(p)) };
   }
 
-  // P1-08 我点赞的帖（按点赞时间倒序分页，仅 APPROVED 中存在的）
+  // P1-08 我点赞的帖（按点赞时间倒序分页，仅 APPROVED 且未软删）
   async listMyLikedPosts(uid: string, page: number, pageSize: number): Promise<PageResult<PostVo>> {
     const [likes, total] = await Promise.all([
       this.prisma.postLike.findMany({
-        where: { userId: uid, post: { status: PostStatus.APPROVED } },
+        where: { userId: uid, post: { status: PostStatus.APPROVED, deletedAt: null } },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { post: { include: postInclude(uid) } },
       }),
-      this.prisma.postLike.count({ where: { userId: uid, post: { status: PostStatus.APPROVED } } }),
+      this.prisma.postLike.count({ where: { userId: uid, post: { status: PostStatus.APPROVED, deletedAt: null } } }),
     ]);
     const list = likes.map((l) => this.toPostVo(l.post));
     return { list, total, page, pageSize };
@@ -249,7 +249,7 @@ export class ConfessionService {
     const slice = postIds.slice((page - 1) * pageSize, page * pageSize);
     if (slice.length === 0) return { list: [], total: postIds.length, page, pageSize };
     const posts = await this.prisma.post.findMany({
-      where: { id: { in: slice }, status: PostStatus.APPROVED },
+      where: { id: { in: slice }, status: PostStatus.APPROVED, deletedAt: null },
       include: postInclude(uid),
     });
     // 保持排序：按 last comment desc
@@ -260,11 +260,55 @@ export class ConfessionService {
 
   async getPost(uid: string, id: string): Promise<PostVo> {
     const post = await this.prisma.post.findFirst({
-      where: { id, status: PostStatus.APPROVED },
+      where: { id, status: PostStatus.APPROVED, deletedAt: null },
       include: postInclude(uid),
     });
     if (!post) throw new BizException(20003, '帖子不存在');
     return this.toPostVo(post);
+  }
+
+  // P1-10 帖子编辑（仅作者；过内容安全；status 保持 APPROVED；UPDATE editedAt）
+  async editPost(uid: string, postId: string, openid: string, dto: CreatePostDto): Promise<PostVo> {
+    const post = await this.prisma.post.findFirst({
+      where: { id: postId, deletedAt: null },
+      select: { id: true, authorId: true, isAnonymous: true, anonName: true },
+    });
+    if (!post) throw new BizException(20003, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (post.authorId !== uid) throw new BizException(10003, '只有作者可编辑', HttpStatus.FORBIDDEN);
+
+    // P1-10 编辑仍走内容安全 + 图片/视频审核
+    await this.moderation.checkText(dto.content, openid);
+    for (const url of dto.images ?? []) await this.moderation.checkImage(url);
+    if (dto.videoCover) await this.moderation.checkImage(dto.videoCover);
+    if (dto.videoUrl) this.moderation.checkVideoStub(dto.videoUrl);
+
+    const updated = await this.prisma.post.update({
+      where: { id: postId },
+      data: {
+        content: dto.content,
+        images: dto.images ?? [],
+        tags: dto.tags ?? [],
+        videoUrl: dto.videoUrl ?? null,
+        videoCover: dto.videoCover ?? null,
+        editedAt: new Date(),
+      },
+      include: postInclude(uid),
+    });
+    invalidateFeedCache();
+    return this.toPostVo(updated);
+  }
+
+  // P1-10 帖子软删（仅作者；deletedAt=now；listMyPosts 仍可见；getPost/listFeed/getCircle 不可见）
+  async deletePost(uid: string, postId: string) {
+    const post = await this.prisma.post.findFirst({
+      where: { id: postId, deletedAt: null },
+      select: { id: true, authorId: true },
+    });
+    if (!post) throw new BizException(20003, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (post.authorId !== uid) throw new BizException(10003, '只有作者可删除', HttpStatus.FORBIDDEN);
+    await this.prisma.post.update({ where: { id: postId }, data: { deletedAt: new Date() } });
+    invalidateFeedCache();
+    return { deleted: true };
   }
 
   async toggleLike(uid: string, postId: string): Promise<LikeResult> {
@@ -591,7 +635,7 @@ export class ConfessionService {
     const limit = query.limit ?? 20;
     const cursor = query.cursor ? decodeCursor(query.cursor) : null;
 
-    const where: Prisma.PostWhereInput = { status: PostStatus.APPROVED };
+    const where: Prisma.PostWhereInput = { status: PostStatus.APPROVED, deletedAt: null };
     if (circleId) where.circleId = circleId;
     if (cursor) {
       where.OR = [
@@ -624,7 +668,7 @@ export class ConfessionService {
   ): Promise<FeedResult> {
     const limit = query.limit ?? 20;
     const posts = await this.prisma.post.findMany({
-      where: { status: PostStatus.APPROVED, ...(circleId ? { circleId } : {}) },
+      where: { status: PostStatus.APPROVED, deletedAt: null, ...(circleId ? { circleId } : {}) },
       orderBy:
         sort === 'hot'
           ? [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }]
@@ -645,7 +689,7 @@ export class ConfessionService {
     const followeeIds = follows.map((f) => f.followeeId);
     if (followeeIds.length === 0) return { list: [], nextCursor: null, hasMore: false };
     const posts = await this.prisma.post.findMany({
-      where: { status: PostStatus.APPROVED, authorId: { in: followeeIds } },
+      where: { status: PostStatus.APPROVED, deletedAt: null, authorId: { in: followeeIds } },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
       include: postInclude(uid),
@@ -658,11 +702,8 @@ export class ConfessionService {
     return {
       id: post.id,
       circleId: post.circleId,
-      // 匿名帖脱敏：不向客户端暴露真实 uid/昵称/头像（后台仍可按 authorId 追溯，见 listMyPosts）
       authorId: isAnonymous ? '' : post.authorId,
-      authorNickname: isAnonymous
-        ? (post.anonName ?? '匿名用户')
-        : post.author.nickname,
+      authorNickname: isAnonymous ? (post.anonName ?? '匿名用户') : post.author.nickname,
       authorAvatarUrl: isAnonymous ? null : post.author.avatarUrl,
       content: post.content,
       images: post.images,
@@ -674,6 +715,7 @@ export class ConfessionService {
       liked: post.postLikes.length > 0,
       commentCount: post._count.comments,
       createdAt: post.createdAt.toISOString(),
+      editedAt: post.editedAt ? post.editedAt.toISOString() : null,
     };
   }
 
@@ -804,7 +846,7 @@ export class ConfessionService {
     const posts = await this.prisma.post.findMany({
       where: {
         status: PostStatus.APPROVED,
-        // 注意：Prisma + PG 用 ILIKE 需 raw 或 mode:'insensitive'，SQLite 不支持。这里 PG 用 mode（feature 可用）
+        deletedAt: null,
         content: { contains: kw, mode: 'insensitive' },
       },
       orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
@@ -840,6 +882,7 @@ export class ConfessionService {
     const matched = await this.prisma.post.findMany({
       where: {
         status: PostStatus.APPROVED,
+        deletedAt: null,
         tags: { has: kw },
       },
       orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],

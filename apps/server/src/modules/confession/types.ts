@@ -16,6 +16,7 @@ export interface PostVo {
   liked: boolean; // 当前用户是否已赞
   commentCount: number;
   createdAt: string;
+  editedAt: string | null; // P1-10 最后编辑时间
 }
 
 export interface CommentVo {

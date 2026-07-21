@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
+  Put,
   Query,
   Req,
 } from '@nestjs/common';
@@ -123,6 +125,20 @@ export class ConfessionController {
   async report(@Param('id') id: string, @Body() dto: ReportDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.confession.reportPost(uid, id, dto.reason));
+  }
+
+  // P1-10 编辑帖子
+  @Put('posts/:id')
+  async editPost(@Param('id') id: string, @Body() dto: CreatePostDto, @Req() req: Request) {
+    const user = (req as AuthenticatedRequest).user!;
+    return ok(await this.confession.editPost(user.uid, id, user.openid, dto));
+  }
+
+  // P1-10 删除帖子（软删）
+  @Delete('posts/:id')
+  async deletePost(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.deletePost(uid, id));
   }
 
   @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 评论 5/min（smoke 测试场景用 throttle: 30/min 环境开关后续做）

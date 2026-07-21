@@ -23,6 +23,7 @@ export interface PostVo {
   liked: boolean;
   commentCount: number;
   createdAt: string;
+  editedAt: string | null; // P1-10
 }
 
 export interface CreatePostPayload {
@@ -178,6 +179,27 @@ export function locateComment(postId: string, commentId: string, pageSize = 20) 
   return request<LocateResult>({
     url: `/posts/${postId}/comments/locate?commentId=${encodeURIComponent(commentId)}&pageSize=${pageSize}`,
   });
+}
+
+// P1-10 编辑帖子（PUT）
+export function editPost(postId: string, payload: CreatePostPayload) {
+  return request<PostVo>({
+    url: `/posts/${postId}`,
+    method: 'PUT',
+    data: {
+      content: payload.content,
+      images: payload.images,
+      tags: payload.tags,
+      isAnonymous: payload.isAnonymous,
+      videoUrl: payload.videoUrl,
+      videoCover: payload.videoCover,
+    },
+  });
+}
+
+// P1-10 删除帖子（软删）
+export function deletePost(postId: string) {
+  return request<{ deleted: boolean }>({ url: `/posts/${postId}`, method: 'DELETE' });
 }
 
 // 我的表白墙（当前用户发的帖）

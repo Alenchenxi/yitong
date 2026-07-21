@@ -35,6 +35,12 @@
       <text class="report-link" bindtap="onReport">举报</text>
       <text class="fav-link {{post.favorited ? 'faved' : ''}}" bindtap="onFavorite">{{post.favorited ? '★' : '☆'}} 收藏</text>
     </view>
+    <!-- P1-10 作者操作（自己的帖） -->
+    <view class="author-actions" wx:if="{{isAuthor}}">
+      <text class="author-btn" bindtap="onEdit">编辑</text>
+      <text class="author-btn danger" bindtap="onDelete">删除</text>
+    </view>
+    <view class="edited-tip" wx:if="{{post.editedAt && isAuthor}}">已编辑于 {{post.editedAt}}</view>
   </view>
 
   <view class="comments">
