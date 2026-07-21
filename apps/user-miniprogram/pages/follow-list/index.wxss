@@ -1,0 +1,42 @@
+.page { padding: 20rpx 24rpx 60rpx; }
+.tabs {
+  display: flex;
+  gap: 32rpx;
+  padding: 12rpx 8rpx;
+  border-bottom: 1rpx solid #eee;
+  margin-bottom: 24rpx;
+}
+.tab { font-size: 28rpx; color: #86909C; padding: 8rpx 0; }
+.tab.active { color: #1D2129; font-weight: 600; border-bottom: 4rpx solid var(--yt-primary, #F9C801); }
+.list { display: flex; flex-direction: column; gap: 16rpx; }
+.item {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  gap: 16rpx;
+}
+.avatar {
+  width: 88rpx; height: 88rpx; border-radius: 50%; background: #f2f2f2; flex-shrink: 0;
+}
+.avatar.ph {
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #ffb3c1, #ff8fa3);
+  color: #fff; font-size: 32rpx; font-weight: 600;
+}
+.meta { flex: 1; min-width: 0; }
+.nickname { font-size: 28rpx; color: #1D2129; font-weight: 500; }
+.time { font-size: 22rpx; color: #86909C; margin-top: 4rpx; }
+.action-btn {
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  background: var(--yt-disabled-bg, #F2F3F5);
+  color: var(--yt-text-sub, #4E5969);
+  font-size: 24rpx;
+}
+.empty { text-align: center; padding-top: 200rpx; color: #999; }
+.empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
+.empty-text { font-size: 28rpx; }
+.loading { text-align: center; color: #999; font-size: 24rpx; padding: 24rpx 0; }
+.tip { text-align: center; color: #C9CDD4; font-size: 24rpx; padding: 16rpx 0; }

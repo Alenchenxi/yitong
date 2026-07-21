@@ -49,6 +49,14 @@ Page({
     wx.navigateTo({ url: '/pages/my-posts/index' });
   },
 
+  goFollowing() {
+    wx.navigateTo({ url: '/pages/follow-list/index?mode=following' });
+  },
+
+  goFollowers() {
+    wx.navigateTo({ url: '/pages/follow-list/index?mode=followers' });
+  },
+
   goMyTreehole() {
     wx.navigateTo({ url: '/pages/my-anon-posts/index' });
   },

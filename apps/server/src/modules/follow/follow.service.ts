@@ -58,4 +58,54 @@ export class FollowService {
     });
     return { following: !!f };
   }
+
+  // P1-09 关注列表：我（followerId）关注的人
+  async listFollowing(uid: string, page: number, pageSize: number) {
+    const [items, total] = await Promise.all([
+      this.prisma.follow.findMany({
+        where: { followerId: uid, followee: { deletedAt: null } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { followee: { select: { id: true, nickname: true, avatarUrl: true } } },
+      }),
+      this.prisma.follow.count({ where: { followerId: uid, followee: { deletedAt: null } } }),
+    ]);
+    return {
+      list: items.map((f) => ({
+        userId: f.followee.id,
+        nickname: f.followee.nickname,
+        avatarUrl: f.followee.avatarUrl,
+        followedAt: f.createdAt.toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  // P1-09 粉丝列表：关注了我的人
+  async listFollowers(uid: string, page: number, pageSize: number) {
+    const [items, total] = await Promise.all([
+      this.prisma.follow.findMany({
+        where: { followeeId: uid, follower: { deletedAt: null } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { follower: { select: { id: true, nickname: true, avatarUrl: true } } },
+      }),
+      this.prisma.follow.count({ where: { followeeId: uid, follower: { deletedAt: null } } }),
+    ]);
+    return {
+      list: items.map((f) => ({
+        userId: f.follower.id,
+        nickname: f.follower.nickname,
+        avatarUrl: f.follower.avatarUrl,
+        followedAt: f.createdAt.toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
 }

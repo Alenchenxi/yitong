@@ -1,0 +1,23 @@
+<view class="page">
+  <view class="tabs">
+    <text class="tab {{mode === 'following' ? 'active' : ''}}" data-mode="following" catchtap="switchMode">我的关注</text>
+    <text class="tab {{mode === 'followers' ? 'active' : ''}}" data-mode="followers" catchtap="switchMode">我的粉丝</text>
+  </view>
+  <view class="list" wx:if="{{list.length > 0}}">
+    <view class="item" wx:for="{{list}}" wx:key="userId">
+      <image wx:if="{{item.avatarUrl}}" class="avatar" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+      <view wx:else class="avatar ph">{{item.nickname[0]}}</view>
+      <view class="meta">
+        <view class="nickname">{{item.nickname}}</view>
+        <view class="time">{{mode === 'following' ? '关注于' : '关注我于'}} {{item.timeText}}</view>
+      </view>
+      <text wx:if="{{mode === 'following'}}" class="action-btn" data-id="{{item.userId}}" catchtap="unfollow">取关</text>
+    </view>
+  </view>
+  <view class="empty" wx:elif="{{!loading}}">
+    <view class="empty-emoji">🌱</view>
+    <view class="empty-text">{{mode === 'following' ? '还没关注任何人' : '还没有粉丝'}}</view>
+  </view>
+  <view class="loading" wx:if="{{loading}}">加载中...</view>
+  <view class="tip" wx:elif="{{!hasMore && list.length > 0}}">没有更多了</view>
+</view>
