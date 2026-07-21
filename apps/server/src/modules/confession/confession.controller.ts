@@ -17,6 +17,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { FeedQueryDto } from './dto/feed-query.dto';
 import { LocateCommentQueryDto } from './dto/locate-comment-query.dto';
+import { MyPostsQueryDto } from './dto/my-posts-query.dto';
 import { ReportDto } from './dto/report.dto';
 import { SearchPostsQueryDto } from './dto/search-posts-query.dto';
 import { SearchTagsQueryDto } from './dto/search-tags-query.dto';
@@ -66,6 +67,20 @@ export class ConfessionController {
   async myPosts(@Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.confession.listMyPosts(uid));
+  }
+
+  // P1-08 我的表白墙：我点赞的帖子（按时间倒序分页）
+  @Get('posts/mine/liked')
+  async myLikedPosts(@Req() req: Request, @Query() q: MyPostsQueryDto) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.listMyLikedPosts(uid, q.page ?? 1, q.pageSize ?? 20));
+  }
+
+  // P1-08 我的表白墙：我评论过的帖子（按时间倒序去重分页）
+  @Get('posts/mine/commented')
+  async myCommentedPosts(@Req() req: Request, @Query() q: MyPostsQueryDto) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.listMyCommentedPosts(uid, q.page ?? 1, q.pageSize ?? 20));
   }
 
   @Get('posts/search')

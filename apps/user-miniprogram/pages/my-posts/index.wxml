@@ -1,16 +1,23 @@
 <view class="page">
+  <view class="tabs">
+    <text class="tab {{activeTab === 'posts' ? 'active' : ''}}" data-tab="posts" catchtap="switchTab">我的发布</text>
+    <text class="tab {{activeTab === 'liked' ? 'active' : ''}}" data-tab="liked" catchtap="switchTab">我的点赞</text>
+    <text class="tab {{activeTab === 'favorites' ? 'active' : ''}}" data-tab="favorites" catchtap="switchTab">我的收藏</text>
+    <text class="tab {{activeTab === 'commented' ? 'active' : ''}}" data-tab="commented" catchtap="switchTab">我的评论</text>
+  </view>
   <view class="list" wx:if="{{posts.length > 0}}">
     <view class="item" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view class="content">{{item.content}}</view>
       <view class="meta">
         <text>{{item.timeText}}</text>
-        <text class="stats">♥ {{item.likeCount}} · 💬 {{item.commentCount}}</text>
+        <text class="stats" wx:if="{{item.likeCount !== undefined}}">♥ {{item.likeCount}} · 💬 {{item.commentCount}}</text>
       </view>
     </view>
   </view>
   <view class="empty" wx:elif="{{!loading}}">
     <view class="empty-emoji">📝</view>
-    <view class="empty-text">还没有发过帖子</view>
+    <view class="empty-text">{{activeTab === 'posts' ? '还没发过帖子' : activeTab === 'liked' ? '还没有点赞过帖子' : activeTab === 'favorites' ? '还没有收藏帖子' : '还没评论过帖子'}}</view>
   </view>
   <view class="loading" wx:if="{{loading}}">加载中...</view>
+  <view class="tip" wx:elif="{{!hasMore && posts.length > 0}}">没有更多了</view>
 </view>

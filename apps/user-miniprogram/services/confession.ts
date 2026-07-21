@@ -185,6 +185,15 @@ export function listMyPosts() {
   return request<{ list: PostVo[] }>({ url: '/posts/mine' });
 }
 
+// P1-08 我点赞的帖
+export function listMyLikedPosts(page = 1, pageSize = 20) {
+  return request<PageResult<PostVo>>({ url: `/posts/mine/liked?page=${page}&pageSize=${pageSize}` });
+}
+// P1-08 我评论过的帖
+export function listMyCommentedPosts(page = 1, pageSize = 20) {
+  return request<PageResult<PostVo>>({ url: `/posts/mine/commented?page=${page}&pageSize=${pageSize}` });
+}
+
 // P1-02 评论点赞 toggle
 export function toggleCommentLike(commentId: string) {
   return request<CommentLikeResult>({ url: `/comments/${commentId}/like`, method: 'POST' });

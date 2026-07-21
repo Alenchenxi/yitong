@@ -208,6 +208,56 @@ export class ConfessionService {
     return { list: posts.map((p) => this.toPostVo(p)) };
   }
 
+  // P1-08 我点赞的帖（按点赞时间倒序分页，仅 APPROVED 中存在的）
+  async listMyLikedPosts(uid: string, page: number, pageSize: number): Promise<PageResult<PostVo>> {
+    const [likes, total] = await Promise.all([
+      this.prisma.postLike.findMany({
+        where: { userId: uid, post: { status: PostStatus.APPROVED } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { post: { include: postInclude(uid) } },
+      }),
+      this.prisma.postLike.count({ where: { userId: uid, post: { status: PostStatus.APPROVED } } }),
+    ]);
+    const list = likes.map((l) => this.toPostVo(l.post));
+    return { list, total, page, pageSize };
+  }
+
+  // P1-08 我评论过的帖（按最后评论时间倒序去重分页；只展示 APPROVED 帖）
+  async listMyCommentedPosts(uid: string, page: number, pageSize: number): Promise<PageResult<PostVo>> {
+    // 先聚合：查评论里我评论过的 postId + 该帖评论 max(createdAt)
+    const grouped = await this.prisma.comment.groupBy({
+      by: ['postId'],
+      where: { authorId: uid },
+      _max: { createdAt: true },
+    });
+    const postIds = grouped.map((g) => g.postId);
+    if (postIds.length === 0) return { list: [], total: 0, page, pageSize };
+    const lastByPost = new Map<string, Date>();
+    for (const g of grouped) {
+      const t = g._max.createdAt;
+      if (t) lastByPost.set(g.postId, t);
+    }
+    // 按 last comment 时间倒序排 postIds
+    postIds.sort((a, b) => {
+      const ta = lastByPost.get(a)?.getTime() ?? 0;
+      const tb = lastByPost.get(b)?.getTime() ?? 0;
+      return tb - ta;
+    });
+    // 分页
+    const slice = postIds.slice((page - 1) * pageSize, page * pageSize);
+    if (slice.length === 0) return { list: [], total: postIds.length, page, pageSize };
+    const posts = await this.prisma.post.findMany({
+      where: { id: { in: slice }, status: PostStatus.APPROVED },
+      include: postInclude(uid),
+    });
+    // 保持排序：按 last comment desc
+    const byId = new Map(posts.map((p) => [p.id, p]));
+    const list = slice.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => !!p).map((p) => this.toPostVo(p));
+    return { list, total: postIds.length, page, pageSize };
+  }
+
   async getPost(uid: string, id: string): Promise<PostVo> {
     const post = await this.prisma.post.findFirst({
       where: { id, status: PostStatus.APPROVED },
