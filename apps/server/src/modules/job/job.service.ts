@@ -128,8 +128,8 @@ export class JobService {
     return this.toPostVo(post);
   }
 
-  // P0-19 举报岗位 -> 创建 ModerationRecord（targetType=job_post，管理员审核队列可见）
-  async report(postId: string, reason?: string) {
+  // P0-19 举报岗位 -> 创建 ModerationRecord（targetType=job_post，管理员审核队列可见）；P1-27 记录举报人
+  async report(uid: string, postId: string, reason?: string) {
     const post = await this.prisma.jobPost.findUnique({ where: { id: postId }, select: { id: true } });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     await this.prisma.moderationRecord.create({
@@ -137,6 +137,45 @@ export class JobService {
         targetType: 'job_post',
         targetId: postId,
         reason: reason ?? '用户举报',
+        reporterId: uid,
+      },
+    });
+    return { reported: true };
+  }
+
+  // P1-27 举报商家（targetType=merchant）
+  async reportMerchant(uid: string, merchantId: string, reason?: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId }, select: { id: true } });
+    if (!merchant) throw new BizException(60002, '商家不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'merchant',
+        targetId: merchantId,
+        reason: reason ?? '用户举报商家',
+        reporterId: uid,
+      },
+    });
+    return { reported: true };
+  }
+
+  // P1-27 报名投诉（targetType=application；仅报名当事人：学生本人或岗位所属商家）
+  async reportApplication(uid: string, appId: string, reason?: string) {
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: appId },
+      include: { jobPost: { select: { merchantId: true, merchant: { select: { userId: true } } } } },
+    });
+    if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
+    const isStudent = app.userId === uid;
+    const isMerchant = app.jobPost.merchant?.userId === uid;
+    if (!isStudent && !isMerchant) {
+      throw new BizException(10003, '仅报名当事人可投诉', HttpStatus.FORBIDDEN);
+    }
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'application',
+        targetId: appId,
+        reason: reason ?? '报名投诉',
+        reporterId: uid,
       },
     });
     return { reported: true };

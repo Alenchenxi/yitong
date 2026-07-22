@@ -66,10 +66,25 @@ export class JobController {
     return ok(await this.job.upsertResume(uid, dto));
   }
 
-  // P0-19 举报岗位（创建 ModerationRecord，管理员审核队列可见）
+  // P0-19 举报岗位（创建 ModerationRecord，管理员审核队列可见）；P1-27 记录举报人
   @Post('job-posts/:id/report')
-  async report(@Param('id') id: string, @Body() dto: ReportDto) {
-    return ok(await this.job.report(id, dto.reason));
+  async report(@Param('id') id: string, @Body() dto: ReportDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.report(uid, id, dto.reason));
+  }
+
+  // P1-27 举报商家
+  @Post('merchants/:id/report')
+  async reportMerchant(@Param('id') id: string, @Body() dto: ReportDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.reportMerchant(uid, id, dto.reason));
+  }
+
+  // P1-27 报名投诉（学生本人或岗位所属商家）
+  @Post('applications/:id/report')
+  async reportApplication(@Param('id') id: string, @Body() dto: ReportDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.reportApplication(uid, id, dto.reason));
   }
 
   @Get('job-posts/:id/applications')

@@ -14,6 +14,14 @@
         bindtap="confirmCancel"
       >取消报名</button>
       <button wx:if="{{item.status === 'DONE'}}" class="review-btn" size="mini" data-id="{{item.id}}" bindtap="openReview">评价</button>
+      <!-- P1-27 学生投诉商家（录用/完成状态可投诉） -->
+      <button
+        wx:if="{{item.status === 'ACCEPTED' || item.status === 'DONE'}}"
+        class="report-btn"
+        size="mini"
+        data-id="{{item.id}}"
+        bindtap="onReport"
+      >投诉</button>
     </view>
   </view>
   <view class="empty" wx:if="{{apps.length === 0}}">暂无报名记录</view>

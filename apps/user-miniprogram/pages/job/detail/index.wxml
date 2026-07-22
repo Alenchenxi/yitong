@@ -17,6 +17,7 @@
   <view class="merchant">
     <text class="shop">{{post.merchantShopName}}</text>
     <text class="verified">✓ 资质已认证</text>
+    <text wx:if="{{!isMerchantOwner}}" class="report-merchant" bindtap="onReportMerchant">举报商家</text>
   </view>
 
   <!-- P0-17 结构化信息 -->
@@ -93,6 +94,14 @@
         <button wx:if="{{item.status === 'PENDING'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="accept">录用</button>
         <button wx:if="{{item.status === 'PENDING'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="reject">拒绝</button>
         <button wx:if="{{item.status === 'ACCEPTED'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="complete">标记完成</button>
+        <!-- P1-27 商家投诉报名（非 PENDING 状态可投诉） -->
+        <button
+          wx:if="{{item.status !== 'PENDING' && item.status !== 'CANCELLED'}}"
+          class="report-app-btn"
+          size="mini"
+          data-id="{{item.id}}"
+          bindtap="onReportApplication"
+        >投诉</button>
         <!-- P1-26 商家评价学生：DONE 状态 + 未评过 -->
         <button
           wx:if="{{item.status === 'DONE' && !reviewedIds.includes(item.id)}}"

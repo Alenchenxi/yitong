@@ -541,6 +541,9 @@ model ModerationRecord {
   reason     String?
   status     ModerationStatus  @default(PENDING)
   reviewerId String?           @map("reviewer_id")
+  reporterId String?           @map("reporter_id") // P1-27 举报人 uid
+  result     String?           @map("result")      // P1-28 处理结果备注
+  resolvedAt DateTime?         @map("resolved_at") // P1-28 处理时间
   createdAt  DateTime          @default(now()) @map("created_at")
   @@map("moderation_records")
 }

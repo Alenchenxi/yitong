@@ -77,6 +77,154 @@ export class AdminService {
     };
   }
 
+  // ===== P1-28 举报处理队列 =====
+
+  // 举报列表（含举报人昵称 + 目标摘要，分页 + 状态筛选）
+  async listReports(status?: string, page = 1, pageSize = 20) {
+    const where: Prisma.ModerationRecordWhereInput = { reporterId: { not: null } };
+    if (status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED') {
+      where.status = status;
+    }
+    const [list, total] = await Promise.all([
+      this.prisma.moderationRecord.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.moderationRecord.count({ where }),
+    ]);
+    // 批量取举报人昵称
+    const reporterIds = [...new Set(list.map((r) => r.reporterId).filter((x): x is string => !!x))];
+    const reporters = reporterIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: reporterIds } }, select: { id: true, nickname: true } })
+      : [];
+    const reporterMap = new Map(reporters.map((u) => [u.id, u.nickname]));
+    // 目标摘要（按类型分别批量取）
+    const summaries = await this.buildTargetSummaries(list);
+    return {
+      list: list.map((r) => ({
+        id: r.id,
+        targetType: r.targetType,
+        targetId: r.targetId,
+        targetSummary: summaries.get(`${r.targetType}:${r.targetId}`) ?? '',
+        reason: r.reason,
+        status: r.status,
+        result: r.result,
+        reporterId: r.reporterId,
+        reporterNickname: r.reporterId ? (reporterMap.get(r.reporterId) ?? '') : '',
+        reviewerId: r.reviewerId,
+        resolvedAt: r.resolvedAt?.toISOString() ?? null,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  private async buildTargetSummaries(records: Array<{ targetType: string; targetId: string }>) {
+    const map = new Map<string, string>();
+    const byType = (t: string) => records.filter((r) => r.targetType === t).map((r) => r.targetId);
+    const postIds = byType('job_post');
+    if (postIds.length) {
+      const posts = await this.prisma.jobPost.findMany({ where: { id: { in: postIds } }, select: { id: true, title: true } });
+      for (const p of posts) map.set(`job_post:${p.id}`, `岗位「${p.title}」`);
+    }
+    const merchantIds = byType('merchant');
+    if (merchantIds.length) {
+      const merchants = await this.prisma.merchant.findMany({ where: { id: { in: merchantIds } }, select: { id: true, shopName: true } });
+      for (const m of merchants) map.set(`merchant:${m.id}`, `商家「${m.shopName}」`);
+    }
+    const appIds = byType('application');
+    if (appIds.length) {
+      const apps = await this.prisma.jobApplication.findMany({
+        where: { id: { in: appIds } },
+        select: { id: true, jobPost: { select: { title: true } }, user: { select: { nickname: true } } },
+      });
+      for (const a of apps) map.set(`application:${a.id}`, `报名「${a.jobPost.title} · ${a.user.nickname}」`);
+    }
+    const confessionIds = byType('post');
+    if (confessionIds.length) {
+      const posts = await this.prisma.post.findMany({ where: { id: { in: confessionIds } }, select: { id: true, content: true } });
+      for (const p of posts) map.set(`post:${p.id}`, `表白墙帖「${p.content.slice(0, 20)}」`);
+    }
+    return map;
+  }
+
+  // 处理举报：approve=成立（可选下架目标），reject=驳回；通知举报人
+  async resolveReport(id: string, reviewerId: string, dto: { action: 'approve' | 'reject'; result?: string; takedown?: boolean }) {
+    const record = await this.prisma.moderationRecord.findUnique({ where: { id } });
+    if (!record) throw new BizException(40001, '举报记录不存在', HttpStatus.NOT_FOUND);
+    if (record.status !== 'PENDING') {
+      throw new BizException(40004, `举报已处理（${record.status}），不能重复处理`, HttpStatus.CONFLICT);
+    }
+    const approved = dto.action === 'approve';
+    const updated = await this.prisma.moderationRecord.update({
+      where: { id },
+      data: {
+        status: approved ? 'APPROVED' : 'REJECTED',
+        result: dto.result ?? (approved ? '举报成立' : '举报未通过核实'),
+        reviewerId,
+        resolvedAt: new Date(),
+      },
+    });
+    // 举报成立且要求下架：按目标类型处置
+    if (approved && dto.takedown) {
+      await this.takedownReportTarget(record.targetType, record.targetId, reviewerId, dto.result);
+    }
+    // 通知举报人处理结果
+    if (record.reporterId) {
+      void this.notification
+        .create({
+          userId: record.reporterId,
+          type: NotificationType.REPORT_RESULT,
+          title: approved ? '举报 · 已受理' : '举报 · 未通过',
+          content: approved
+            ? `你的举报已核实处理${dto.takedown ? '，相关内容已下架' : ''}${dto.result ? `：${dto.result}` : ''}`
+            : `你的举报经核实不成立${dto.result ? `：${dto.result}` : ''}`,
+          targetType: record.targetType,
+          targetId: record.targetId,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify report result failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    }
+    return { id: updated.id, status: updated.status };
+  }
+
+  private async takedownReportTarget(targetType: string, targetId: string, reviewerId: string, reason?: string) {
+    if (targetType === 'job_post') {
+      await this.prisma.jobPost.updateMany({
+        where: { id: targetId, status: 'PUBLISHED' },
+        data: { status: 'TAKEN_DOWN' },
+      });
+      const post = await this.prisma.jobPost.findUnique({
+        where: { id: targetId },
+        include: { merchant: { select: { userId: true } } },
+      });
+      if (post?.merchant) {
+        void this.notification
+          .create({
+            userId: post.merchant.userId,
+            type: NotificationType.POST_TAKEDOWN,
+            title: '兼职 · 岗位下架',
+            content: reason ? `你的岗位因举报被平台下架：${reason}` : '你的岗位因举报被平台下架',
+            targetType: 'job_post',
+            targetId,
+          })
+          .catch((e: unknown) =>
+            this.logger.warn(`notify job takedown failed: ${e instanceof Error ? e.message : String(e)}`),
+          );
+      }
+    } else if (targetType === 'post') {
+      await this.takedownPost(targetId, reviewerId, reason);
+    } else if (targetType === 'anon-post') {
+      await this.takedownAnonPost(targetId, reviewerId, reason);
+    }
+    // merchant / application 目标：不自动处置，留人工跟进
+  }
+
   // 商家审核通过：置 APPROVED + 加 MERCHANT 角色 + 留痕 ModerationRecord
   async approveMerchant(id: string, reviewerId: string, reason?: string) {
     const m = await this.prisma.merchant.findUnique({ where: { id } });

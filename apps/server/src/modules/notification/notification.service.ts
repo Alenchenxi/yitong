@@ -35,6 +35,8 @@ export const NotificationType = {
   // P1-12 封禁 / 禁言
   USER_BANNED: 'user_banned',
   USER_MUTED: 'user_muted',
+  // P1-28 举报处理结果
+  REPORT_RESULT: 'report_result',
 } as const;
 
 @Injectable()

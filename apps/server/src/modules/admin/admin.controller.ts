@@ -8,6 +8,7 @@ import { AdminService } from './admin.service';
 import { BatchMerchantDto } from './dto/batch-merchant.dto';
 import { UpdatePricingDto } from './dto/update-pricing.dto';
 import { CreateAnonTagDto, UpdateAnonTagDto } from './dto/anon-tag.dto';
+import { ResolveReportDto } from './dto/resolve-report.dto';
 import { Body, Param, Post, Put, UseGuards } from '@nestjs/common';
 
 @Controller('admin')
@@ -21,6 +22,20 @@ export class AdminController {
   @Get('queue')
   async queue() {
     return ok(await this.admin.getQueue());
+  }
+
+  // P1-28 举报处理队列
+  @Get('reports')
+  async listReports(@Query('status') status?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return ok(
+      await this.admin.listReports(status, Math.max(1, Number(page) || 1), Math.min(100, Math.max(1, Number(pageSize) || 20))),
+    );
+  }
+
+  @Post('reports/:id/resolve')
+  async resolveReport(@Param('id') id: string, @Body() dto: ResolveReportDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.resolveReport(id, uid, dto));
   }
 
   @Get('stats')

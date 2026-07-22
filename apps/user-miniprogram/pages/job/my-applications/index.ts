@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../../app';
-import { cancelApp, listMyApplications, reviewApp, type JobAppVo } from '../../../services/job';
+import { cancelApp, listMyApplications, reportApplication, reviewApp, type JobAppVo } from '../../../services/job';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '待处理',
@@ -90,6 +90,28 @@ Page({
           await cancelApp(appId);
           wx.showToast({ title: '已取消', icon: 'success' });
           await this.load();
+        } catch {
+          /* toast */
+        }
+      },
+    });
+  },
+
+  // P1-27 学生投诉商家（针对该报名）
+  onReport(e: WechatMiniprogram.TouchEvent) {
+    const appId = e.currentTarget.dataset.id as string;
+    if (!appId) return;
+    wx.showModal({
+      title: '投诉商家',
+      editable: true,
+      placeholderText: '选填：投诉原因（如拖欠薪资/岗位不符）',
+      confirmText: '投诉',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await reportApplication(appId, res.content || undefined);
+          wx.showToast({ title: '已投诉，平台将核实', icon: 'success' });
         } catch {
           /* toast */
         }

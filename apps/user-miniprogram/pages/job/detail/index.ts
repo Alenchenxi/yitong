@@ -6,6 +6,8 @@ import {
   transitionApp,
   batchTransitionApps,
   reportJob,
+  reportMerchant,
+  reportApplication,
   merchantReviewApp,
   JOB_CATEGORY_LABELS,
   SETTLEMENT_LABELS,
@@ -242,6 +244,50 @@ Page({
         try {
           await reportJob(this.postId, res.content || undefined);
           wx.showToast({ title: '已举报，平台将核实', icon: 'success' });
+        } catch {
+          /* toast */
+        }
+      },
+    });
+  },
+
+  // P1-27 举报商家
+  onReportMerchant() {
+    const merchantId = this.data.post?.merchantId;
+    if (!merchantId) return;
+    wx.showModal({
+      title: '举报商家',
+      editable: true,
+      placeholderText: '选填：举报原因（如资质造假/欺诈）',
+      confirmText: '举报',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await reportMerchant(merchantId, res.content || undefined);
+          wx.showToast({ title: '已举报，平台将核实', icon: 'success' });
+        } catch {
+          /* toast */
+        }
+      },
+    });
+  },
+
+  // P1-27 报名投诉（商家视角：投诉该报名的学生）
+  onReportApplication(e: WechatMiniprogram.TouchEvent) {
+    const appId = e.currentTarget.dataset.id as string;
+    if (!appId) return;
+    wx.showModal({
+      title: '投诉该报名',
+      editable: true,
+      placeholderText: '选填：投诉原因（如爽约/信息不实）',
+      confirmText: '投诉',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await reportApplication(appId, res.content || undefined);
+          wx.showToast({ title: '已投诉，平台将核实', icon: 'success' });
         } catch {
           /* toast */
         }

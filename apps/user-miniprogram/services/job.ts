@@ -179,6 +179,16 @@ export function reportJob(postId: string, reason?: string) {
   return request<{ reported: boolean }>({ url: `/job-posts/${postId}/report`, method: 'POST', data: { reason } });
 }
 
+// P1-27 举报商家
+export function reportMerchant(merchantId: string, reason?: string) {
+  return request<{ reported: boolean }>({ url: `/merchants/${merchantId}/report`, method: 'POST', data: { reason } });
+}
+
+// P1-27 报名投诉（学生本人或岗位所属商家）
+export function reportApplication(appId: string, reason?: string) {
+  return request<{ reported: boolean }>({ url: `/applications/${appId}/report`, method: 'POST', data: { reason } });
+}
+
 export function listPostApplications(postId: string) {
   return request<JobAppVo[]>({ url: `/job-posts/${postId}/applications` });
 }

@@ -3,6 +3,8 @@
 .merchant { display: flex; align-items: center; gap: 12rpx; margin-top: 10rpx; }
 .merchant .shop { font-size: 26rpx; color: #888; }
 .verified { font-size: 22rpx; color: #52c41a; border: 1rpx solid #52c41a; padding: 2rpx 12rpx; border-radius: 999rpx; }
+.report-merchant { font-size: 22rpx; color: #86909C; margin-left: auto; padding: 2rpx 12rpx; border: 1rpx solid #C9CDD4; border-radius: 999rpx; }
+.report-app-btn { background: #fff !important; color: #86909C !important; border: 1rpx solid #C9CDD4 !important; border-radius: 28rpx !important; font-size: 24rpx !important; }
 .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 20rpx; padding-bottom: 20rpx; border-bottom: 1rpx solid #f0f0f0; }
 .salary { color: #ff4d6d; font-size: 34rpx; font-weight: 600; }
 .loc { color: #666; font-size: 26rpx; }
