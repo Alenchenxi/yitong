@@ -876,6 +876,86 @@ export class TreeholeService {
     return members.map((m) => this.toGroupVo(m.group, true));
   }
 
+  // ===== P2-10 群成员管理 =====
+
+  // 加载成员关系（含 role），用于权限校验
+  private async getMember(groupId: string, anonId: string) {
+    return this.prisma.anonGroupMember.findUnique({
+      where: { groupId_anonId: { groupId, anonId } },
+    });
+  }
+
+  // 操作权限校验：OWNER 可做所有；ADMIN 可踢人/禁言但不能设角色；MEMBER 无权限
+  private async assertCanManage(
+    groupId: string,
+    operatorAnonId: string,
+    action: 'role' | 'kick' | 'mute' | 'unmute',
+  ): Promise<{ operator: { role: 'OWNER' | 'ADMIN' | 'MEMBER' }; target?: { role: 'OWNER' | 'ADMIN' | 'MEMBER'; anonId: string } }> {
+    const operator = await this.getMember(groupId, operatorAnonId);
+    if (!operator) throw new BizException(10003, '未加入该群', HttpStatus.FORBIDDEN);
+    if (action === 'role' && operator.role !== 'OWNER') {
+      throw new BizException(10003, '仅群主可设角色', HttpStatus.FORBIDDEN);
+    }
+    if ((action === 'kick' || action === 'mute' || action === 'unmute') && operator.role === 'MEMBER') {
+      throw new BizException(10003, '权限不足', HttpStatus.FORBIDDEN);
+    }
+    return { operator: { role: operator.role } };
+  }
+
+  // P2-10 设角色（OWNER 专属）：target 升级 ADMIN 或降级 MEMBER；不能改 OWNER
+  async setMemberRole(operatorAnonId: string, groupId: string, targetAnonId: string, role: 'ADMIN' | 'MEMBER') {
+    if (!['ADMIN', 'MEMBER'].includes(role)) {
+      throw new BizException(30004, '角色非法', HttpStatus.BAD_REQUEST);
+    }
+    await this.assertCanManage(groupId, operatorAnonId, 'role');
+    const target = await this.getMember(groupId, targetAnonId);
+    if (!target) throw new BizException(30009, '目标非群成员', HttpStatus.NOT_FOUND);
+    if (target.role === 'OWNER') throw new BizException(30004, '不能修改群主角色', HttpStatus.BAD_REQUEST);
+    await this.prisma.anonGroupMember.update({
+      where: { id: target.id },
+      data: { role },
+    });
+    return { anonId: targetAnonId, role };
+  }
+
+  // P2-10 踢出成员（OWNER/ADMIN 可踢 MEMBER；ADMIN 不能踢 ADMIN；OWNER 不能踢 OWNER）
+  async kickMember(operatorAnonId: string, groupId: string, targetAnonId: string) {
+    await this.assertCanManage(groupId, operatorAnonId, 'kick');
+    const target = await this.getMember(groupId, targetAnonId);
+    if (!target) throw new BizException(30009, '目标非群成员', HttpStatus.NOT_FOUND);
+    if (target.role === 'OWNER') throw new BizException(30004, '不能踢群主', HttpStatus.BAD_REQUEST);
+    const operator = await this.getMember(groupId, operatorAnonId);
+    if (operator!.role === 'ADMIN' && target.role === 'ADMIN') {
+      throw new BizException(10003, '管理员不能踢管理员', HttpStatus.FORBIDDEN);
+    }
+    await this.prisma.$transaction([
+      this.prisma.anonGroupMember.delete({ where: { id: target.id } }),
+      this.prisma.anonGroup.update({ where: { id: groupId }, data: { memberCount: { decrement: 1 } } }),
+    ]);
+    return { kicked: true, anonId: targetAnonId };
+  }
+
+  // P2-10 禁言（OWNER/ADMIN）；days=0 解除
+  async muteMember(operatorAnonId: string, groupId: string, targetAnonId: string, days: number) {
+    await this.assertCanManage(groupId, operatorAnonId, 'mute');
+    const target = await this.getMember(groupId, targetAnonId);
+    if (!target) throw new BizException(30009, '目标非群成员', HttpStatus.NOT_FOUND);
+    if (target.role === 'OWNER') throw new BizException(30004, '不能禁言群主', HttpStatus.BAD_REQUEST);
+    const operator = await this.getMember(groupId, operatorAnonId);
+    if (operator!.role === 'ADMIN' && target.role === 'ADMIN') {
+      throw new BizException(10003, '管理员不能禁言管理员', HttpStatus.FORBIDDEN);
+    }
+    if (!Number.isInteger(days) || days < 0 || days > 30) {
+      throw new BizException(30004, '禁言天数无效（0-30）', HttpStatus.BAD_REQUEST);
+    }
+    const mutedUntil = days > 0 ? new Date(Date.now() + days * 86400000) : null;
+    await this.prisma.anonGroupMember.update({
+      where: { id: target.id },
+      data: { mutedUntil },
+    });
+    return { mutedUntil: mutedUntil?.toISOString() ?? null };
+  }
+
   private toGroupVo(
     g: {
       id: string;

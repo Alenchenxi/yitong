@@ -227,6 +227,41 @@ export class TreeholeController {
     return ok(await this.treehole.leaveGroup(anonId, id));
   }
 
+  // ===== P2-10 群成员管理 =====
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/members/:anonId/role')
+  async setMemberRole(
+    @Param('id') id: string,
+    @Param('anonId') targetAnonId: string,
+    @Body() body: { role?: string },
+    @Req() req: Request,
+  ) {
+    const operatorAnonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(
+      await this.treehole.setMemberRole(operatorAnonId, id, targetAnonId, (body.role === 'ADMIN' ? 'ADMIN' : 'MEMBER')),
+    );
+  }
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/members/:anonId/kick')
+  async kickMember(@Param('id') id: string, @Param('anonId') targetAnonId: string, @Req() req: Request) {
+    const operatorAnonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.kickMember(operatorAnonId, id, targetAnonId));
+  }
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/members/:anonId/mute')
+  async muteMember(
+    @Param('id') id: string,
+    @Param('anonId') targetAnonId: string,
+    @Body() body: { days?: number },
+    @Req() req: Request,
+  ) {
+    const operatorAnonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.muteMember(operatorAnonId, id, targetAnonId, body.days ?? 0));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Post('messages')
