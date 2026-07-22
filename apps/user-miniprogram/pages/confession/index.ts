@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../app';
-import { feed, toggleLike, type PostVo } from '../../services/confession';
+import { feed, toggleLike, listHotTop, listTodayHit, type PostVo } from '../../services/confession';
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
 
 type MainTab = 'recommend' | 'latest' | 'hot' | 'follow';
@@ -11,6 +11,8 @@ interface PageData {
   loading: boolean;
   activeMainTab: MainTab;
   announcements: AnnouncementVo[];
+  hotTop: PostVo[]; // P2-01 置顶最热
+  todayHit: PostVo[]; // P2-02 今日上头
 }
 
 Page({
@@ -21,6 +23,8 @@ Page({
     loading: false,
     activeMainTab: 'recommend',
     announcements: [],
+    hotTop: [],
+    todayHit: [],
   } as PageData,
 
   async onShow() {
@@ -28,6 +32,9 @@ Page({
     if (!app.requireAuth()) return;
     if (this.data.posts.length === 0) this.reloadFeed();
     listAnnouncements().then((a) => this.setData({ announcements: a })).catch(() => {});
+    // P2-01/P2-02 运营位
+    listHotTop(10).then((r) => this.setData({ hotTop: r.list })).catch(() => {});
+    listTodayHit(1, 10).then((r) => this.setData({ todayHit: r.list })).catch(() => {});
   },
 
   async reloadFeed() {
@@ -74,6 +81,15 @@ Page({
 
   goCreate() {
     wx.navigateTo({ url: '/pages/post-create/index' });
+  },
+
+  goPostDetail(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    if (id) wx.navigateTo({ url: `/pages/post-detail/index?id=${id}` });
+  },
+
+  goTodayHit() {
+    wx.navigateTo({ url: '/pages/confession/today-hit/index' });
   },
 
   async onLike(e: WechatMiniprogram.CustomEvent) {

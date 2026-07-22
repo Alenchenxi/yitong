@@ -8,6 +8,7 @@
     "pages/post-detail/index",
     "pages/post-create/index",
     "pages/confession-search/index",
+    "pages/confession/today-hit/index",
     "pages/follow-list/index",
     "pages/merchant/register/index",
     "pages/merchant/profile/index",

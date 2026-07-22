@@ -65,6 +65,20 @@ export class ConfessionController {
     return ok(await this.confession.feed(uid, q));
   }
 
+  // P2-01 置顶最热帖子（首页顶部横向滚动，全时段 top N）
+  @Get('posts/hot-top')
+  async hotTop(@Query('limit') limit: string | undefined, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.listHotTop(uid, limit ? Number(limit) : 10));
+  }
+
+  // P2-02 今日上头（近 24h 最热，page 分页滚动加载）
+  @Get('posts/today-hit')
+  async todayHit(@Query() q: MyPostsQueryDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.listTodayHit(uid, q.page ?? 1, q.pageSize ?? 20));
+  }
+
   @Get('posts/mine')
   async myPosts(@Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;

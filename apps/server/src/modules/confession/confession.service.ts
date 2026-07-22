@@ -715,6 +715,39 @@ export class ConfessionService {
     return { list: posts.map((p) => this.toPostVo(p)), nextCursor: null, hasMore: false };
   }
 
+  // P2-01 置顶最热帖子：全时段最热 top N（首页顶部横向滚动），不分页
+  async listHotTop(uid: string, limit = 10): Promise<{ list: PostVo[] }> {
+    const posts = await this.prisma.post.findMany({
+      where: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' },
+      orderBy: [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }],
+      take: Math.min(50, Math.max(1, limit)),
+      include: postInclude(uid),
+    });
+    return { list: posts.map((p) => this.toPostVo(p)) };
+  }
+
+  // P2-02 今日上头：近 24h 最热，page 分页（滚动加载）
+  async listTodayHit(uid: string, page = 1, pageSize = 20): Promise<PageResult<PostVo>> {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const where: Prisma.PostWhereInput = {
+      status: PostStatus.APPROVED,
+      deletedAt: null,
+      visibility: 'PUBLIC',
+      createdAt: { gte: since },
+    };
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        orderBy: [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: postInclude(uid),
+      }),
+      this.prisma.post.count({ where }),
+    ]);
+    return { list: posts.map((p) => this.toPostVo(p)), total, page, pageSize };
+  }
+
   // 关注流：只看关注作者的最新帖
   private async queryFollowPosts(uid: string, query: FeedQueryDto): Promise<FeedResult> {
     const limit = query.limit ?? 20;

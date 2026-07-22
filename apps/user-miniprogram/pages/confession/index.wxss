@@ -42,6 +42,36 @@
 .announce-swiper { height: 40rpx; }
 .announce-text { font-size: 24rpx; color: var(--yt-primary-dark); line-height: 40rpx; }
 
+/* P2-01/P2-02 最热条 + 今日上头 */
+.hot-top, .today-hit { margin: 20rpx 0 0; }
+.section-label {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 24rpx 12rpx; font-size: 28rpx; font-weight: 600; color: var(--yt-text-main);
+}
+.section-emoji { margin-right: 8rpx; }
+.section-more { font-size: 24rpx; font-weight: 400; color: var(--yt-text-sub); }
+.hot-scroll { white-space: nowrap; padding: 0 16rpx 4rpx; }
+.hot-card {
+  display: inline-flex; align-items: flex-start; gap: 12rpx;
+  width: 440rpx; margin: 0 8rpx; padding: 20rpx;
+  background: var(--yt-card); border-radius: 16rpx;
+  vertical-align: top; white-space: normal; box-sizing: border-box;
+}
+.today-card { width: 380rpx; background: var(--yt-primary-lighter); }
+.hot-rank {
+  flex-shrink: 0; width: 36rpx; height: 36rpx; line-height: 36rpx; text-align: center;
+  border-radius: 8rpx; background: var(--yt-primary); color: var(--yt-text-main);
+  font-size: 24rpx; font-weight: 700;
+}
+.hot-content { flex: 1; min-width: 0; }
+.hot-text {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; font-size: 26rpx; color: var(--yt-text-main); line-height: 1.5;
+}
+.hot-meta { display: flex; justify-content: space-between; margin-top: 12rpx; }
+.hot-author { font-size: 22rpx; color: var(--yt-text-sub); max-width: 200rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hot-likes { font-size: 22rpx; color: var(--yt-primary-dark); }
+
 /* 主 tab */
 .main-tabs {
   display: flex;

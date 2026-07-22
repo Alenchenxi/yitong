@@ -133,6 +133,16 @@ export function feed(cursor?: string, limit = 20, sort?: 'latest' | 'hot' | 'rec
   return request<FeedResult>({ url: `/posts/feed${qs}` });
 }
 
+// P2-01 置顶最热帖子（首页顶部横向滚动，全时段 top N）
+export function listHotTop(limit = 10) {
+  return request<{ list: PostVo[] }>({ url: `/posts/hot-top?limit=${limit}` });
+}
+
+// P2-02 今日上头（近 24h 最热，page 分页）
+export function listTodayHit(page = 1, pageSize = 20) {
+  return request<PageResult<PostVo>>({ url: `/posts/today-hit?page=${page}&pageSize=${pageSize}` });
+}
+
 // 帖子详情
 export function getPost(id: string) {
   return request<PostVo>({ url: `/posts/${id}` });

@@ -17,6 +17,42 @@
     </swiper>
   </view>
 
+  <!-- P2-01 置顶最热帖子（横向滚动前十条） -->
+  <view class="hot-top" wx:if="{{hotTop.length > 0}}">
+    <view class="section-label"><text class="section-emoji">🔥</text>最热</view>
+    <scroll-view scroll-x class="hot-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="hot-card" wx:for="{{hotTop}}" wx:key="id" data-id="{{item.id}}" bindtap="goPostDetail">
+        <view class="hot-rank">{{index + 1}}</view>
+        <view class="hot-content">
+          <text class="hot-text">{{item.content}}</text>
+          <view class="hot-meta">
+            <text class="hot-author">{{item.isAnonymous ? (item.authorNickname || '匿名') : item.authorNickname}}</text>
+            <text class="hot-likes">♡ {{item.likeCount}}</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- P2-02 今日上头运营区（横向滚动 + 查看更多） -->
+  <view class="today-hit" wx:if="{{todayHit.length > 0}}">
+    <view class="section-label">
+      <text><text class="section-emoji">⚡</text>今日上头</text>
+      <text class="section-more" bindtap="goTodayHit">查看更多 ›</text>
+    </view>
+    <scroll-view scroll-x class="hot-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="hot-card today-card" wx:for="{{todayHit}}" wx:key="id" data-id="{{item.id}}" bindtap="goPostDetail">
+        <view class="hot-content">
+          <text class="hot-text">{{item.content}}</text>
+          <view class="hot-meta">
+            <text class="hot-author">{{item.isAnonymous ? (item.authorNickname || '匿名') : item.authorNickname}}</text>
+            <text class="hot-likes">♡ {{item.likeCount}}</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
   <!-- 主 tab：推荐/最新/热门/关注 -->
   <view class="main-tabs">
     <view class="main-tab {{activeMainTab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchMainTab">推荐</view>
