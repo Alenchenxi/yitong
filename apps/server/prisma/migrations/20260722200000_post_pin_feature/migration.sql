@@ -1,0 +1,4 @@
+-- P2-05 帖子置顶/加精
+ALTER TABLE "posts"
+  ADD COLUMN "pinned" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "featured" BOOLEAN NOT NULL DEFAULT false;

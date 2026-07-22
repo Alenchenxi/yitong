@@ -25,6 +25,8 @@ export interface PostVo {
   liked: boolean;
   commentCount: number;
   visibility: PostVisibility;
+  pinned: boolean; // P2-05 置顶
+  featured: boolean; // P2-05 加精
   createdAt: string;
   editedAt: string | null; // P1-10
 }

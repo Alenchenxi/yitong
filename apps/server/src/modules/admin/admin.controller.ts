@@ -77,6 +77,20 @@ export class AdminController {
     return ok(await this.admin.takedownAnonPost(id, uid, reason));
   }
 
+  // P2-05 帖子置顶/取消置顶
+  @Post('posts/:id/pin')
+  async pinPost(@Param('id') id: string, @Body() body: { pinned?: boolean }, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.pinPost(id, uid, body?.pinned !== false, (req.body as { reason?: string })?.reason));
+  }
+
+  // P2-05 帖子加精/取消加精
+  @Post('posts/:id/feature')
+  async featurePost(@Param('id') id: string, @Body() body: { featured?: boolean }, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.featurePost(id, uid, body?.featured !== false, (req.body as { reason?: string })?.reason));
+  }
+
   @Get('pricing')
   async getPricing() {
     return ok(await this.admin.getPricing());

@@ -94,6 +94,8 @@ Page({
             liked: false,
             commentCount: 0,
             visibility: 'PUBLIC' as const,
+            pinned: false,
+            featured: false,
             createdAt: fav.createdAt,
             editedAt: null,
             timeText: formatTime(fav.createdAt),

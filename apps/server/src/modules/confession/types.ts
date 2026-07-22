@@ -18,6 +18,8 @@ export interface PostVo {
   liked: boolean; // 当前用户是否已赞
   commentCount: number;
   visibility: PostVisibility; // P1-11
+  pinned: boolean; // P2-05 置顶
+  featured: boolean; // P2-05 加精
   createdAt: string;
   editedAt: string | null; // P1-10 最后编辑时间
 }

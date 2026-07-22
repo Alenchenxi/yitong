@@ -6,6 +6,12 @@
   border: 1rpx solid var(--yt-border);
 }
 
+/* P2-05 置顶/加精角标 */
+.badges { display: flex; gap: 8rpx; margin-bottom: 12rpx; }
+.badge { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 999rpx; font-weight: 600; }
+.badge-pin { background: var(--yt-primary); color: var(--yt-text-main); }
+.badge-feature { background: #ff4d6d; color: #fff; }
+
 .header {
   display: flex;
   align-items: center;

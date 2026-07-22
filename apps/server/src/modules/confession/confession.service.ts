@@ -671,7 +671,13 @@ export class ConfessionService {
     const limit = query.limit ?? 20;
     const cursor = query.cursor ? decodeCursor(query.cursor) : null;
 
-    const where: Prisma.PostWhereInput = { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' };
+    // P2-05 feed 主体只查普通帖（pinned=false）；置顶帖仅在首页（无 cursor）额外查合并到头部，翻页不重复
+    const where: Prisma.PostWhereInput = {
+      status: PostStatus.APPROVED,
+      deletedAt: null,
+      visibility: 'PUBLIC',
+      pinned: false,
+    };
     if (circleId) where.circleId = circleId;
     if (cursor) {
       where.OR = [
@@ -680,19 +686,38 @@ export class ConfessionService {
       ];
     }
 
-    const posts = await this.prisma.post.findMany({
-      where,
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: limit + 1,
-      include: postInclude(uid),
-    });
+    const pinnedWhere: Prisma.PostWhereInput = {
+      status: PostStatus.APPROVED,
+      deletedAt: null,
+      visibility: 'PUBLIC',
+      pinned: true,
+      ...(circleId ? { circleId } : {}),
+    };
+
+    const [posts, pinnedPosts] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: limit + 1,
+        include: postInclude(uid),
+      }),
+      cursor
+        ? Promise.resolve([])
+        : this.prisma.post.findMany({
+            where: pinnedWhere,
+            orderBy: [{ createdAt: 'desc' }],
+            take: 5,
+            include: postInclude(uid),
+          }),
+    ]);
 
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
     const last = slice[slice.length - 1];
     const nextCursor = hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
 
-    return { list: slice.map((p) => this.toPostVo(p)), nextCursor, hasMore };
+    const list = cursor ? slice : [...pinnedPosts, ...slice];
+    return { list: list.map((p) => this.toPostVo(p)), nextCursor, hasMore };
   }
 
   // 热度排序（hot/recommend）：按点赞/评论数排序，首页 take limit，不分页
@@ -707,26 +732,26 @@ export class ConfessionService {
       where: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC', ...(circleId ? { circleId } : {}) },
       orderBy:
         sort === 'hot'
-          ? [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }]
-          : [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+          ? [{ pinned: 'desc' }, { likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }]
+          : [{ pinned: 'desc' }, { likeCount: 'desc' }, { createdAt: 'desc' }],
       take: limit,
       include: postInclude(uid),
     });
     return { list: posts.map((p) => this.toPostVo(p)), nextCursor: null, hasMore: false };
   }
 
-  // P2-01 置顶最热帖子：全时段最热 top N（首页顶部横向滚动），不分页
+  // P2-01 置顶最热帖子：全时段最热 top N（首页顶部横向滚动），pinned 优先
   async listHotTop(uid: string, limit = 10): Promise<{ list: PostVo[] }> {
     const posts = await this.prisma.post.findMany({
       where: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' },
-      orderBy: [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }],
+      orderBy: [{ pinned: 'desc' }, { likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }],
       take: Math.min(50, Math.max(1, limit)),
       include: postInclude(uid),
     });
     return { list: posts.map((p) => this.toPostVo(p)) };
   }
 
-  // P2-02 今日上头：近 24h 最热，page 分页（滚动加载）
+  // P2-02 今日上头：近 24h 最热，page 分页（滚动加载），pinned 优先
   async listTodayHit(uid: string, page = 1, pageSize = 20): Promise<PageResult<PostVo>> {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const where: Prisma.PostWhereInput = {
@@ -738,7 +763,7 @@ export class ConfessionService {
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({
         where,
-        orderBy: [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }],
+        orderBy: [{ pinned: 'desc' }, { likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: postInclude(uid),
@@ -784,6 +809,8 @@ export class ConfessionService {
       liked: post.postLikes.length > 0,
       commentCount: post._count.comments,
       visibility: post.visibility,
+      pinned: post.pinned, // P2-05
+      featured: post.featured, // P2-05
       createdAt: post.createdAt.toISOString(),
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,
     };

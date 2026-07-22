@@ -1,4 +1,9 @@
 <view class="card" wx:if="{{post}}" bindtap="onTap">
+  <!-- P2-05 置顶/加精角标 -->
+  <view class="badges" wx:if="{{post.pinned || post.featured}}">
+    <text class="badge badge-pin" wx:if="{{post.pinned}}">置顶</text>
+    <text class="badge badge-feature" wx:if="{{post.featured}}">精</text>
+  </view>
   <view class="header">
     <image wx:if="{{hasAvatar}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
     <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>

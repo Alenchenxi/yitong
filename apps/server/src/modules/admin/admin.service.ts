@@ -293,6 +293,42 @@ export class AdminService {
     return { id, status: PostStatus.REJECTED };
   }
 
+  // P2-05 帖子置顶/取消置顶 + 留痕
+  async pinPost(id: string, reviewerId: string, pinned: boolean, reason?: string) {
+    const p = await this.prisma.post.findUnique({ where: { id } });
+    if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.post.update({ where: { id }, data: { pinned } });
+    this.confession.invalidateFeedCache();
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'post',
+        targetId: id,
+        reason: reason ?? (pinned ? '管理员置顶' : '取消置顶'),
+        status: 'APPROVED',
+        reviewerId,
+      },
+    });
+    return { id, pinned };
+  }
+
+  // P2-05 帖子加精/取消加精 + 留痕
+  async featurePost(id: string, reviewerId: string, featured: boolean, reason?: string) {
+    const p = await this.prisma.post.findUnique({ where: { id } });
+    if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.post.update({ where: { id }, data: { featured } });
+    this.confession.invalidateFeedCache();
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'post',
+        targetId: id,
+        reason: reason ?? (featured ? '管理员加精' : '取消加精'),
+        status: 'APPROVED',
+        reviewerId,
+      },
+    });
+    return { id, featured };
+  }
+
   // 批量审核商家
   async batchMerchants(ids: string[], action: 'approve' | 'reject', reviewerId: string, reason?: string) {
     let processed = 0;
