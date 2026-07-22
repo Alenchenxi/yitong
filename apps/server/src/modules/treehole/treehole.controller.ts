@@ -277,6 +277,38 @@ export class TreeholeController {
     );
   }
 
+  // ===== P2-11 群消息 =====
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/messages')
+  async sendGroupMessage(
+    @Param('id') id: string,
+    @Body() dto: { content?: string; type?: string },
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.sendGroupMessage(anonId, id, dto.content ?? '', dto.type));
+  }
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('groups/:id/messages')
+  async listGroupMessages(
+    @Param('id') id: string,
+    @Query('cursor') cursor: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listGroupMessages(anonId, id, cursor, limit ? Number(limit) : 50));
+  }
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/messages/:msgId/revoke')
+  async revokeGroupMessage(@Param('id') id: string, @Param('msgId') msgId: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.revokeGroupMessage(anonId, id, msgId));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Get('messages')

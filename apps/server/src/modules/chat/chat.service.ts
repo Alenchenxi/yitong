@@ -7,10 +7,12 @@ import { ModerationService } from '../moderation/moderation.service';
 export interface MessageVo {
   id: string;
   fromId: string;
-  toId: string;
+  toId: string | null; // P2-11 群消息时为 null
   content: string;
-  type: string; // P0-14 text / image；P1-18 + voice
-  duration: number | null; // P1-18 语音时长（秒），仅 type=voice
+  type: string; // text / image / voice
+  duration: number | null; // 语音时长（秒），仅 type=voice
+  groupId: string | null; // P2-11 群消息时为群 id
+  deleted: boolean; // P2-11 已撤回
   createdAt: string;
 }
 
@@ -125,14 +127,71 @@ export class ChatService {
     }));
   }
 
+  // ===== P2-11 群聊消息 =====
+
+  // 发群消息（文字/图片，禁言拦截由调用方 treehole.service 处理）
+  async sendGroupMessage(fromId: string, groupId: string, content: string, type = 'text'): Promise<MessageVo> {
+    const msgType = type === 'image' ? 'image' : 'text';
+    if (msgType === 'image') {
+      await this.moderation.checkImage(content);
+    } else {
+      await this.moderation.checkText(content);
+    }
+    const m = await this.prisma.chatMessage.create({
+      data: { fromId, toId: null, groupId, content, type: msgType },
+    });
+    return this.toMsgVo(m);
+  }
+
+  // 群消息历史（游标分页）
+  async listGroupMessages(groupId: string, cursor?: string, limit = 50) {
+    const where: { groupId: string; deletedAt: null; OR?: object[]; createdAt?: object } = {
+      groupId,
+      deletedAt: null,
+    };
+    if (cursor) {
+      const t = new Date(cursor);
+      if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
+    }
+    const msgs = await this.prisma.chatMessage.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+    });
+    const hasMore = msgs.length > limit;
+    const slice = hasMore ? msgs.slice(0, limit) : msgs;
+    const last = slice[slice.length - 1];
+    const nextCursor = hasMore && last ? last.createdAt.toISOString() : null;
+    return {
+      list: slice.reverse().map((m) => this.toMsgVo(m)),
+      nextCursor,
+      hasMore,
+    };
+  }
+
+  // 撤回消息（仅发送者可撤回，标记 deletedAt）
+  async revokeMessage(operatorId: string, messageId: string) {
+    const m = await this.prisma.chatMessage.findUnique({ where: { id: messageId } });
+    if (!m) throw new BizException(30010, '消息不存在');
+    if (m.fromId !== operatorId) throw new BizException(10003, '只能撤回自己的消息', HttpStatus.FORBIDDEN);
+    if (m.deletedAt) return this.toMsgVo(m);
+    const updated = await this.prisma.chatMessage.update({
+      where: { id: messageId },
+      data: { deletedAt: new Date(), content: '[已撤回]' },
+    });
+    return this.toMsgVo(updated);
+  }
+
   private toMsgVo(m: ChatMessage): MessageVo {
     return {
       id: m.id,
       fromId: m.fromId,
       toId: m.toId,
-      content: m.content,
+      content: m.deletedAt ? '[已撤回]' : m.content,
       type: m.type,
       duration: m.duration,
+      groupId: m.groupId,
+      deleted: !!m.deletedAt,
       createdAt: m.createdAt.toISOString(),
     };
   }

@@ -289,15 +289,18 @@ model AnonGroupMember {
 // ===== 聊天（1v1，通用）=====
 // fromId/toId 为标识符：实名场景用 uid，树洞匿名场景用 anonId（不存 uid，匿名隔离）
 model ChatMessage {
-  id        String   @id @default(cuid())
-  fromId    String   @map("from_id")
-  toId      String   @map("to_id")
-  content   String
-  type      String   @default("text") @map("type") // P0-14 消息类型：text / image；P1-18 + voice
-  duration  Int?     @map("duration") // P1-18 语音消息时长（秒），仅 type=voice
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String    @id @default(cuid())
+  fromId      String    @map("from_id")
+  toId        String?   @map("to_id") // P2-11 群消息时为 null，1v1 时为对端
+  content     String
+  type        String    @default("text") @map("type") // text / image / voice
+  duration    Int?      @map("duration") // 语音消息时长（秒），仅 type=voice
+  groupId     String?   @map("group_id") // P2-11 群消息时为群 id
+  deletedAt   DateTime? @map("deleted_at") // P2-11 撤回标记
+  createdAt   DateTime  @default(now()) @map("created_at")
   @@index([fromId, toId, createdAt])
   @@index([toId, createdAt])
+  @@index([groupId, createdAt])
   @@map("chat_messages")
 }
 

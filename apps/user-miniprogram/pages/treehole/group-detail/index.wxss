@@ -31,3 +31,24 @@
 .member-role.OWNER { background: #F9C801; color: #1D2129; font-weight: 600; }
 .member-role.ADMIN { background: var(--yt-primary-lighter); color: var(--yt-primary-dark); }
 .member-role.MEMBER { background: var(--yt-disabled-bg); color: var(--yt-text-sub); }
+
+/* P2-11 群消息流 */
+.chat-section { background: var(--yt-card); border-radius: 16rpx; margin: 0 24rpx 24rpx; padding: 20rpx; }
+.chat-title { font-size: 28rpx; font-weight: 600; color: var(--yt-text-main); margin-bottom: 16rpx; }
+.chat-list { display: flex; flex-direction: column; gap: 16rpx; }
+.chat-msg { padding: 14rpx; border-radius: 12rpx; background: #f7f8fa; position: relative; }
+.chat-msg.mine { background: var(--yt-primary-lighter); margin-left: 60rpx; }
+.chat-msg.deleted .chat-content { color: #C9CDD4; font-style: italic; }
+.chat-meta { display: flex; justify-content: space-between; margin-bottom: 6rpx; }
+.chat-nick { font-size: 24rpx; color: var(--yt-text-sub); }
+.chat-time { font-size: 20rpx; color: #C9CDD4; }
+.chat-content { font-size: 28rpx; color: var(--yt-text-main); line-height: 1.5; word-break: break-word; }
+.chat-revoke { position: absolute; right: 12rpx; top: 10rpx; font-size: 22rpx; color: #1677ff; padding: 2rpx 10rpx; }
+.chat-tip { text-align: center; color: var(--yt-text-sub); font-size: 22rpx; padding: 8rpx 0; }
+.chat-empty { text-align: center; color: #C9CDD4; font-size: 24rpx; padding: 20rpx 0; }
+
+.chat-input { display: flex; align-items: center; gap: 12rpx; padding: 16rpx 24rpx; background: var(--yt-card); border-top: 1rpx solid var(--yt-border); }
+.chat-input .input { flex: 1; background: #f5f6f8; border-radius: 32rpx; padding: 14rpx 24rpx; font-size: 28rpx; }
+.chat-input .send-btn { background: var(--yt-primary) !important; color: var(--yt-text-main) !important; border-radius: 28rpx !important; font-size: 26rpx !important; padding: 8rpx 24rpx !important; }
+.chat-input .send-btn[disabled] { background: var(--yt-disabled-bg) !important; color: var(--yt-text-sub) !important; }
+.chat-input-disabled { padding: 24rpx; text-align: center; color: var(--yt-text-sub); font-size: 24rpx; background: var(--yt-card); border-top: 1rpx solid var(--yt-border); }

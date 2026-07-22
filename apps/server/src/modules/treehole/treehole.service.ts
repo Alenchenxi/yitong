@@ -505,6 +505,41 @@ export class TreeholeService {
     return this.chat.listMessages(anonId, peerAnonId, cursor, limit);
   }
 
+  // ===== P2-11 群聊消息 =====
+
+  // 发群消息：校验成员 + 禁言 + 内容审核（chat.service 内部）
+  async sendGroupMessage(anonId: string, groupId: string, content: string, type = 'text') {
+    if (!content.trim()) throw new BizException(30004, '消息内容无效', HttpStatus.BAD_REQUEST);
+    const group = await this.prisma.anonGroup.findUnique({ where: { id: groupId } });
+    if (!group || group.status === 'DISBANDED') throw new BizException(30010, '群聊不存在');
+    const member = await this.getMember(groupId, anonId);
+    if (!member) throw new BizException(10003, '未加入该群', HttpStatus.FORBIDDEN);
+    // P2-10 禁言拦截
+    if (member.mutedUntil && member.mutedUntil.getTime() > Date.now()) {
+      throw new BizException(30011, '你已被禁言', HttpStatus.FORBIDDEN);
+    }
+    return this.chat.sendGroupMessage(anonId, groupId, content, type);
+  }
+
+  // 群消息历史
+  async listGroupMessages(anonId: string, groupId: string, cursor?: string, limit = 50) {
+    const group = await this.prisma.anonGroup.findUnique({ where: { id: groupId } });
+    if (!group || group.status === 'DISBANDED') throw new BizException(30010, '群聊不存在');
+    // 私密群非成员不可看历史
+    if (group.isPrivate) {
+      const member = await this.getMember(groupId, anonId);
+      if (!member) throw new BizException(30007, '私密群聊，需申请加入', HttpStatus.FORBIDDEN);
+    }
+    return this.chat.listGroupMessages(groupId, cursor, limit);
+  }
+
+  // 撤回群消息
+  async revokeGroupMessage(anonId: string, groupId: string, messageId: string) {
+    const m = await this.prisma.chatMessage.findUnique({ where: { id: messageId } });
+    if (!m || m.groupId !== groupId) throw new BizException(30010, '消息不存在');
+    return this.chat.revokeMessage(anonId, messageId);
+  }
+
   // P0-16 屏蔽：A 屏蔽 B（按 anonId，幂等），并关闭两人活跃匹配（互相隔离·三处全隔离）
   async block(anonId: string, blockedAnonId: string) {
     if (!blockedAnonId || blockedAnonId === anonId) {

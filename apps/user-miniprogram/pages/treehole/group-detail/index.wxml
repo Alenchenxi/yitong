@@ -33,4 +33,29 @@
       </view>
     </view>
   </view>
+
+  <!-- P2-11 群消息流 -->
+  <view class="chat-section">
+    <view class="chat-title">群消息 ({{messages.length}})</view>
+    <view class="chat-list" wx:if="{{messages.length > 0}}">
+      <view class="chat-msg {{item.isMine ? 'mine' : ''}} {{item.deleted ? 'deleted' : ''}}" wx:for="{{messages}}" wx:key="id">
+        <view class="chat-meta">
+          <text class="chat-nick">{{item.nickname}}</text>
+          <text class="chat-time">{{item.createdAt}}</text>
+        </view>
+        <view class="chat-content">{{item.content}}</view>
+        <view wx:if="{{item.isMine && !item.deleted}}" class="chat-revoke" data-id="{{item.id}}" bindtap="revokeMsg">撤回</view>
+      </view>
+      <view class="chat-tip" wx:if="{{hasMoreMsg}}" bindtap="loadMore">加载更多</view>
+      <view class="chat-tip" wx:elif="{{messages.length > 0}}">没有更多了</view>
+    </view>
+    <view class="chat-empty" wx:elif="{{!loading}}">暂无消息</view>
+  </view>
+
+  <!-- 发送输入（仅成员） -->
+  <view class="chat-input" wx:if="{{group.isMember}}">
+    <input class="input" placeholder="发消息…" value="{{draft}}" bindinput="onDraft" confirm-type="send" bindconfirm="send" />
+    <button class="send-btn" size="mini" bindtap="send" disabled="{{sending || !draft.trim()}}">发送</button>
+  </view>
+  <view class="chat-input-disabled" wx:else>加入群聊后可发送消息</view>
 </view>

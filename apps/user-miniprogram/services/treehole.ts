@@ -245,6 +245,36 @@ export function listMyAnonGroups(): Promise<AnonGroupVo[]> {
   return anonRequest({ url: '/treehole/groups/mine', method: 'GET' });
 }
 
+// ===== P2-11 群聊消息 =====
+export interface GroupMessageVo {
+  id: string;
+  fromId: string;
+  toId: string | null;
+  content: string;
+  type: string;
+  duration: number | null;
+  groupId: string | null;
+  deleted: boolean;
+  createdAt: string;
+}
+
+export function sendGroupMessage(groupId: string, content: string, type = 'text'): Promise<GroupMessageVo> {
+  return anonRequest({ url: `/treehole/groups/${groupId}/messages`, method: 'POST', data: { content, type } });
+}
+
+export function listGroupMessages(
+  groupId: string,
+  cursor?: string,
+  limit = 50,
+): Promise<{ list: GroupMessageVo[]; nextCursor: string | null; hasMore: boolean }> {
+  const qs = `?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+  return anonRequest({ url: `/treehole/groups/${groupId}/messages${qs}`, method: 'GET' });
+}
+
+export function revokeGroupMessage(groupId: string, msgId: string): Promise<GroupMessageVo> {
+  return anonRequest({ url: `/treehole/groups/${groupId}/messages/${msgId}/revoke`, method: 'POST' });
+}
+
 export function sendAnonMessage(
   peerAnonId: string,
   content: string,
