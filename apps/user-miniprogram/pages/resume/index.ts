@@ -1,7 +1,15 @@
 import type { AppInstance } from '../../app';
-import { getMyResume, upsertResume } from '../../services/job';
+import { getMyResume, upsertResume, listResumeApplications, type ResumeApplicationVo } from '../../services/job';
 
 const AVAILABILITIES = ['周末', '工作日晚上', '全天', '寒暑假', '节假日'];
+
+const APP_STATUS_TEXT: Record<string, string> = {
+  PENDING: '待处理',
+  ACCEPTED: '已录用',
+  DONE: '已完成',
+  CANCELLED: '已取消',
+  REJECTED: '未录用',
+};
 
 Page({
   data: {
@@ -14,12 +22,23 @@ Page({
     availOpts: AVAILABILITIES.map((a) => ({ label: a, selected: false })),
     saving: false,
     loaded: false,
+    // P1-21 完整度
+    completeness: 0,
+    missingFields: [] as string[],
+    hasResume: false,
+    // P1-22 投递记录
+    applications: [] as Array<ResumeApplicationVo & { statusText: string }>,
   },
 
   async onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     await this.load();
+  },
+
+  async onShow() {
+    // 从报名页返回后刷新投递记录
+    if (this.data.loaded) await this.loadApplications();
   },
 
   async load() {
@@ -33,12 +52,35 @@ Page({
           experience: r.experience ?? '',
           skills: r.skills,
           availOpts: AVAILABILITIES.map((a) => ({ label: a, selected: r.availabilities.includes(a) })),
+          completeness: r.completeness,
+          missingFields: r.missingFields,
+          hasResume: true,
         });
+      } else {
+        this.setData({ completeness: 0, missingFields: ['姓名', '联系方式', '自我介绍', '技能', '空闲时间', '工作经历'], hasResume: false });
       }
       this.setData({ loaded: true });
+      await this.loadApplications();
     } catch {
       /* toast */
     }
+  },
+
+  // P1-22 加载投递记录
+  async loadApplications() {
+    try {
+      const apps = await listResumeApplications();
+      this.setData({
+        applications: apps.map((a) => ({ ...a, statusText: APP_STATUS_TEXT[a.status] ?? a.status })),
+      });
+    } catch {
+      /* ignore */
+    }
+  },
+
+  goJobDetail(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    if (id) wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
   },
 
   onInput(e: WechatMiniprogram.Input) {
@@ -87,6 +129,8 @@ Page({
         experience: this.data.experience.trim() || undefined,
       });
       wx.showToast({ title: '已保存', icon: 'success' });
+      // P1-21 保存后刷新完整度 + 投递记录
+      await this.load();
       setTimeout(() => wx.navigateBack(), 600);
     } catch {
       /* toast */

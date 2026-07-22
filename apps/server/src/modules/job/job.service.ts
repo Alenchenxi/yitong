@@ -620,7 +620,7 @@ export class JobService {
     };
   }
 
-  // P0-21 我的简历（一人一份）
+  // P0-21 我的简历（一人一份）；P1-21 附完整度 + 缺失字段
   async getMyResume(uid: string) {
     const r = await this.prisma.resume.findUnique({ where: { userId: uid } });
     return r ? this.toResumeVo(r) : null;
@@ -643,6 +643,24 @@ export class JobService {
     return this.toResumeVo(r);
   }
 
+  // P1-22 简历投递记录：该用户所有报名（投递）含岗位标题 + 商家名 + 状态 + 是否附简历
+  async listResumeApplications(uid: string) {
+    const apps = await this.prisma.jobApplication.findMany({
+      where: { userId: uid },
+      orderBy: { createdAt: 'desc' },
+      include: { jobPost: { select: { id: true, title: true, merchant: { select: { shopName: true } } } } },
+    });
+    return apps.map((a) => ({
+      id: a.id,
+      jobPostId: a.jobPost.id,
+      jobPostTitle: a.jobPost.title,
+      merchantShopName: a.jobPost.merchant?.shopName ?? '',
+      status: a.status,
+      hasResume: !!a.resumeId,
+      createdAt: a.createdAt.toISOString(),
+    }));
+  }
+
   private toResumeVo(r: {
     id: string;
     name: string;
@@ -653,6 +671,18 @@ export class JobService {
     experience: string | null;
     updatedAt: Date;
   }) {
+    // P1-21 完整度：6 个核心字段，每个约 16.7%，filled/6*100 取整
+    const fields: Array<{ key: keyof typeof r; label: string; filled: boolean }> = [
+      { key: 'name', label: '姓名', filled: !!r.name?.trim() },
+      { key: 'phone', label: '联系方式', filled: !!r.phone?.trim() },
+      { key: 'selfIntro', label: '自我介绍', filled: !!r.selfIntro?.trim() },
+      { key: 'skills', label: '技能', filled: r.skills.length > 0 },
+      { key: 'availabilities', label: '空闲时间', filled: r.availabilities.length > 0 },
+      { key: 'experience', label: '工作经历', filled: !!r.experience?.trim() },
+    ];
+    const filledCount = fields.filter((f) => f.filled).length;
+    const completeness = Math.round((filledCount / fields.length) * 100);
+    const missingFields = fields.filter((f) => !f.filled).map((f) => f.label);
     return {
       id: r.id,
       name: r.name,
@@ -661,6 +691,8 @@ export class JobService {
       skills: r.skills,
       availabilities: r.availabilities,
       experience: r.experience,
+      completeness,
+      missingFields,
       updatedAt: r.updatedAt.toISOString(),
     };
   }

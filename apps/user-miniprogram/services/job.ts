@@ -85,7 +85,20 @@ export interface ResumeVo {
   skills: string[];
   availabilities: string[];
   experience: string | null;
+  completeness: number; // P1-21 完整度 0-100
+  missingFields: string[]; // P1-21 缺失字段中文标签
   updatedAt: string;
+}
+
+// P1-22 简历投递记录
+export interface ResumeApplicationVo {
+  id: string;
+  jobPostId: string;
+  jobPostTitle: string;
+  merchantShopName: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DONE' | 'CANCELLED' | 'REJECTED';
+  hasResume: boolean;
+  createdAt: string;
 }
 
 export interface JobReviewVo {
@@ -172,6 +185,11 @@ export function upsertResume(data: {
   experience?: string;
 }) {
   return request<ResumeVo>({ url: '/resume', method: 'PUT', data });
+}
+
+// P1-22 简历投递记录
+export function listResumeApplications() {
+  return request<ResumeApplicationVo[]>({ url: '/resume/applications' });
 }
 
 // P0-19 举报岗位

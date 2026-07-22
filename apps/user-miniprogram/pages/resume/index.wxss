@@ -1,4 +1,20 @@
 .page { padding: 24rpx; padding-bottom: 80rpx; }
+
+/* P1-21 完整度卡片 */
+.completeness-card { background: linear-gradient(135deg, #FFF7D1, #FFE89A); border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.comp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.comp-title { font-size: 28rpx; font-weight: 600; color: #B45309; }
+.comp-score { font-size: 36rpx; font-weight: 700; }
+.comp-score.high { color: #52c41a; }
+.comp-score.mid { color: #B45309; }
+.comp-score.low { color: #E63946; }
+.comp-bar { height: 12rpx; background: rgba(255,255,255,0.6); border-radius: 6rpx; overflow: hidden; }
+.comp-fill { height: 100%; background: #F9C801; border-radius: 6rpx; transition: width 0.3s; }
+.comp-missing { display: flex; flex-wrap: wrap; align-items: center; gap: 10rpx; margin-top: 14rpx; }
+.comp-missing-label { font-size: 24rpx; color: #86909C; }
+.comp-missing-item { font-size: 22rpx; color: #B45309; background: #fff; padding: 4rpx 14rpx; border-radius: 999rpx; }
+.comp-tip { font-size: 22rpx; color: #B45309; margin-top: 10rpx; opacity: 0.8; }
+
 .row { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
 .label { width: 140rpx; font-size: 28rpx; color: #333; flex-shrink: 0; }
 .input { flex: 1; font-size: 28rpx; }
@@ -16,3 +32,20 @@
 .textarea { width: 100%; min-height: 120rpx; font-size: 28rpx; line-height: 1.6; margin-top: 12rpx; }
 .save { width: 100%; background: #F9C801 !important; color: #1D2129 !important; border-radius: 48rpx !important; font-size: 30rpx !important; font-weight: 600; margin-top: 24rpx; }
 .save[disabled] { background: #FFF7D1 !important; color: #C9CDD4 !important; }
+
+/* P1-22 投递记录 */
+.apps-section { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-top: 24rpx; }
+.apps-title { font-size: 28rpx; font-weight: 600; color: #333; margin-bottom: 16rpx; }
+.app-item { padding: 16rpx 0; border-bottom: 1rpx solid #f4f4f4; }
+.app-item:last-child { border-bottom: none; }
+.app-head { display: flex; justify-content: space-between; align-items: center; }
+.app-title { font-size: 28rpx; color: #222; flex: 1; }
+.app-status { font-size: 22rpx; padding: 4rpx 14rpx; border-radius: 999rpx; background: #f5f6f8; color: #666; }
+.app-status.ACCEPTED { color: #fff; background: #ff4d6d; }
+.app-status.DONE { color: #fff; background: #52c41a; }
+.app-status.REJECTED { color: #fff; background: #999; }
+.app-status.CANCELLED { color: #fff; background: #C9CDD4; }
+.app-meta { display: flex; justify-content: space-between; margin-top: 8rpx; }
+.app-shop { font-size: 24rpx; color: #86909C; }
+.app-time { font-size: 22rpx; color: #C9CDD4; }
+.apps-empty { text-align: center; color: #C9CDD4; font-size: 24rpx; padding: 24rpx 0; }

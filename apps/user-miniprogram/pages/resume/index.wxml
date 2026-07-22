@@ -1,4 +1,18 @@
 <view class="page">
+  <!-- P1-21 简历完整度 -->
+  <view class="completeness-card" wx:if="{{loaded}}">
+    <view class="comp-head">
+      <text class="comp-title">简历完整度</text>
+      <text class="comp-score {{completeness >= 80 ? 'high' : completeness >= 50 ? 'mid' : 'low'}}">{{completeness}}%</text>
+    </view>
+    <view class="comp-bar"><view class="comp-fill" style="width: {{completeness}}%"></view></view>
+    <view class="comp-missing" wx:if="{{missingFields.length > 0}}">
+      <text class="comp-missing-label">待补全：</text>
+      <text class="comp-missing-item" wx:for="{{missingFields}}" wx:key="*this">{{item}}</text>
+    </view>
+    <view class="comp-tip" wx:if="{{completeness < 100}}">完整度越高，越容易被商家录用</view>
+  </view>
+
   <view class="row"><text class="label">姓名</text><input class="input" placeholder="你的姓名" value="{{name}}" data-field="name" bindinput="onInput" /></view>
   <view class="row"><text class="label">电话</text><input class="input" type="number" placeholder="联系电话" value="{{phone}}" data-field="phone" bindinput="onInput" /></view>
 
@@ -30,4 +44,20 @@
   </view>
 
   <button class="save" bindtap="save" disabled="{{saving}}">{{saving ? '保存中...' : '保存简历'}}</button>
+
+  <!-- P1-22 投递记录 -->
+  <view class="apps-section">
+    <view class="apps-title">投递记录 ({{applications.length}})</view>
+    <view class="app-item" wx:for="{{applications}}" wx:key="id" data-id="{{item.jobPostId}}" bindtap="goJobDetail">
+      <view class="app-head">
+        <text class="app-title">{{item.jobPostTitle}}</text>
+        <text class="app-status {{item.status}}">{{item.statusText}}</text>
+      </view>
+      <view class="app-meta">
+        <text class="app-shop">{{item.merchantShopName || '未知商家'}}</text>
+        <text class="app-time">{{item.createdAt}}</text>
+      </view>
+    </view>
+    <view class="apps-empty" wx:if="{{applications.length === 0}}">暂无投递记录</view>
+  </view>
 </view>

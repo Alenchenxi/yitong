@@ -66,6 +66,13 @@ export class JobController {
     return ok(await this.job.upsertResume(uid, dto));
   }
 
+  // P1-22 简历投递记录（该用户所有报名/投递，含岗位标题 + 商家名 + 是否附简历）
+  @Get('resume/applications')
+  async listResumeApplications(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.listResumeApplications(uid));
+  }
+
   // P0-19 举报岗位（创建 ModerationRecord，管理员审核队列可见）；P1-27 记录举报人
   @Post('job-posts/:id/report')
   async report(@Param('id') id: string, @Body() dto: ReportDto, @Req() req: Request) {
