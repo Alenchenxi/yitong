@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { MerchantStatus, PostStatus, Role } from '@prisma/client';
+import { MerchantStatus, PostStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfessionService } from '../confession/confession.service';
@@ -223,5 +223,62 @@ export class AdminService {
         this.logger.warn(`notify mute failed: ${e instanceof Error ? e.message : String(e)}`),
       );
     return { id, mutedUntil };
+  }
+
+  // ===== P1-13 树洞标签库管理 =====
+  async listAnonTags(category?: string) {
+    return this.prisma.anonTag.findMany({
+      where: category ? { category } : undefined,
+      orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async createAnonTag(dto: { name: string; category: string; sortOrder?: number; active?: boolean }) {
+    const validCats = ['personality', 'interest', 'mood'];
+    if (!validCats.includes(dto.category)) {
+      throw new BizException(30004, '标签分类不合法（personality/interest/mood）');
+    }
+    try {
+      return await this.prisma.anonTag.create({
+        data: {
+          name: dto.name,
+          category: dto.category,
+          sortOrder: dto.sortOrder ?? 0,
+          active: dto.active ?? true,
+        },
+      });
+    } catch (e: unknown) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new BizException(30005, '标签已存在');
+      }
+      throw e;
+    }
+  }
+
+  async updateAnonTag(id: string, dto: { name?: string; sortOrder?: number; active?: boolean }) {
+    const existing = await this.prisma.anonTag.findUnique({ where: { id } });
+    if (!existing) throw new BizException(30006, '标签不存在', HttpStatus.NOT_FOUND);
+    try {
+      return await this.prisma.anonTag.update({
+        where: { id },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name } : {}),
+          ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+          ...(dto.active !== undefined ? { active: dto.active } : {}),
+        },
+      });
+    } catch (e: unknown) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new BizException(30005, '标签名冲突');
+      }
+      throw e;
+    }
+  }
+
+  async deleteAnonTag(id: string) {
+    const existing = await this.prisma.anonTag.findUnique({ where: { id } });
+    if (!existing) throw new BizException(30006, '标签不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.anonTag.delete({ where: { id } });
+    return { id, deleted: true };
   }
 }

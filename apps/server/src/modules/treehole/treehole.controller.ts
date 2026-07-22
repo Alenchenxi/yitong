@@ -33,6 +33,13 @@ export class TreeholeController {
     return ok(await this.treehole.updateProfile(uid, dto));
   }
 
+  // P1-13 标签库：按 category 分组返回 active 标签（公开，前端 chips 用）
+  @Public()
+  @Get('tags')
+  async listTags() {
+    return ok(await this.treehole.listTags());
+  }
+
   // 以下接口用 anonToken 鉴权（@Public 跳过 JwtAuthGuard + @UseGuards(AnonGuard)）
 
   @Public()

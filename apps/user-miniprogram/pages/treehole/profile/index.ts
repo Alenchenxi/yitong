@@ -1,5 +1,12 @@
 import type { AppInstance } from '../../../app';
-import { getAnonProfile, updateAnonProfile, listAnonBlocks, unblockAnon } from '../../../services/treehole';
+import {
+  getAnonProfile,
+  updateAnonProfile,
+  getAnonTags,
+  listAnonBlocks,
+  unblockAnon,
+  type AnonTagItem,
+} from '../../../services/treehole';
 
 interface TagItem {
   name: string;
@@ -25,10 +32,12 @@ interface PageData {
 }
 
 const AVATARS = ['🌙', '🐱', '🦊', '🐧', '🦉', '🐢', '🌻', '🍄'];
-const PERSONALITY = ['温柔', '话痨', '慢热', '理性', '感性', '幽默', '安静', '社牛', '社恐', '细心'];
-const INTEREST = ['音乐', '电影', '游戏', '阅读', '运动', '美食', '旅行', '摄影', '动漫', '宠物'];
-const MOODS = ['开心', '平静', 'emo', '焦虑', '孤独', '迷茫', '疲惫'];
 const MAX_TAGS = 8;
+
+// P1-13：标签从后端标签库加载（admin 可配置）；库为空时回退到内置预设
+const FALLBACK_PERSONALITY = ['温柔', '话痨', '慢热', '理性', '感性', '幽默', '安静', '社牛', '社恐', '细心'];
+const FALLBACK_INTEREST = ['音乐', '电影', '游戏', '阅读', '运动', '美食', '旅行', '摄影', '动漫', '宠物'];
+const FALLBACK_MOODS = ['开心', 'emo', '吐槽', '求安慰', '学习', '恋爱', '迷茫'];
 
 function buildTags(preset: string[], selected: string[]): TagItem[] {
   const set = new Set(selected);
@@ -40,9 +49,9 @@ Page({
     nickname: '',
     avatars: AVATARS,
     avatar: '',
-    personalityTags: buildTags(PERSONALITY, []),
-    interestTags: buildTags(INTEREST, []),
-    moods: MOODS,
+    personalityTags: buildTags(FALLBACK_PERSONALITY, []),
+    interestTags: buildTags(FALLBACK_INTEREST, []),
+    moods: FALLBACK_MOODS,
     mood: '',
     saving: false,
     loaded: false,
@@ -56,18 +65,37 @@ Page({
   },
 
   async load() {
+    // P1-13：并行拉 profile + 标签库
+    let personalityPreset = FALLBACK_PERSONALITY;
+    let interestPreset = FALLBACK_INTEREST;
+    let moodPreset = FALLBACK_MOODS;
+    try {
+      const tags = await getAnonTags();
+      if (tags.personality.length > 0) personalityPreset = tags.personality.map((t) => t.name);
+      if (tags.interest.length > 0) interestPreset = tags.interest.map((t) => t.name);
+      if (tags.mood.length > 0) moodPreset = tags.mood.map((t) => t.name);
+    } catch {
+      /* 标签库拉取失败用 fallback */
+    }
+
     try {
       const p = await getAnonProfile();
       this.setData({
         nickname: p.nickname,
         avatar: p.avatar ?? '',
-        personalityTags: buildTags(PERSONALITY, p.personalityTags),
-        interestTags: buildTags(INTEREST, p.interestTags),
+        personalityTags: buildTags(personalityPreset, p.personalityTags),
+        interestTags: buildTags(interestPreset, p.interestTags),
+        moods: moodPreset,
         mood: p.moodState ?? '',
         loaded: true,
       });
     } catch {
-      /* toast */
+      this.setData({
+        personalityTags: buildTags(personalityPreset, []),
+        interestTags: buildTags(interestPreset, []),
+        moods: moodPreset,
+        loaded: true,
+      });
     }
     await this.loadBlocks();
   },

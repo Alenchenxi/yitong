@@ -1,13 +1,14 @@
 import type { AppInstance } from '../../../app';
-import { hasAnonToken, getAnonymousToken, createPost } from '../../../services/treehole';
+import { hasAnonToken, getAnonymousToken, createPost, getAnonTags } from '../../../services/treehole';
 
-const MOODS = ['开心', 'emo', '吐槽', '求安慰', '学习', '恋爱', '迷茫'];
+// P1-13：mood 从标签库加载；库为空回退内置
+const FALLBACK_MOODS = ['开心', 'emo', '吐槽', '求安慰', '学习', '恋爱', '迷茫'];
 
 Page({
   data: {
     content: '',
     submitting: false,
-    moods: MOODS,
+    moods: FALLBACK_MOODS,
     selectedMood: '',
   },
 
@@ -16,6 +17,15 @@ Page({
     if (!app.requireAuth()) return;
     if (!hasAnonToken()) {
       try { await getAnonymousToken(); } catch { return; }
+    }
+    // P1-13 从标签库拉 mood 选项
+    try {
+      const tags = await getAnonTags();
+      if (tags.mood.length > 0) {
+        this.setData({ moods: tags.mood.map((t) => t.name) });
+      }
+    } catch {
+      /* 用 fallback */
     }
   },
 

@@ -59,11 +59,24 @@ model AnonymousProfile {
   anonId          String   @unique @map("anon_id")
   nickname        String
   avatar          String?  @map("avatar")              // P0-12 匿名头像（预设 key 或 URL）
-  personalityTags String[] @default([]) @map("personality_tags") // P0-12 个性标签
-  interestTags    String[] @default([]) @map("interest_tags")    // P0-12 兴趣标签
+  personalityTags String[] @default([]) @map("personality_tags") // P0-12 个性标签（P1-13 从 AnonTag 库选）
+  interestTags    String[] @default([]) @map("interest_tags")    // P0-12 兴趣标签（P1-13 从 AnonTag 库选）
   moodState       String?  @map("mood_state")          // P0-12 心情状态
   createdAt       DateTime @default(now()) @map("created_at")
   @@map("anonymous_profiles")
+}
+
+// P1-13 树洞标签库：个性 / 兴趣 / 心情 三类，admin 可配置；用户选标签 / 发帖 mood 从此库校验
+model AnonTag {
+  id        String   @id @default(cuid())
+  category  String   // personality | interest | mood
+  name      String   // 标签名（1-12 字）
+  sortOrder Int      @default(0) @map("sort_order")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([category, name])
+  @@index([category, active, sortOrder])
+  @@map("anon_tags")
 }
 
 model AdminUser {

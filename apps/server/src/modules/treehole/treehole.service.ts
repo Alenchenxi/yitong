@@ -71,6 +71,16 @@ export class TreeholeService {
 
   async updateProfile(uid: string, dto: UpdateAnonProfileDto): Promise<AnonProfileVo> {
     const profile = await this.getOrCreateProfile(uid);
+    // P1-13：个性/兴趣/心情标签从 AnonTag 库校验（库为空时放行，兼容未 seed）
+    if (dto.personalityTags !== undefined) {
+      await this.assertTagsInLibrary('personality', dto.personalityTags);
+    }
+    if (dto.interestTags !== undefined) {
+      await this.assertTagsInLibrary('interest', dto.interestTags);
+    }
+    if (dto.moodState !== undefined && dto.moodState) {
+      await this.assertTagsInLibrary('mood', [dto.moodState]);
+    }
     const updated = await this.prisma.anonymousProfile.update({
       where: { id: profile.id },
       data: {
@@ -82,6 +92,44 @@ export class TreeholeService {
       },
     });
     return this.toProfileVo(updated);
+  }
+
+  // P1-13 标签库：返回按 category 分组的 active 标签（公开，前端 chips 选择用）
+  async listTags() {
+    const tags = await this.prisma.anonTag.findMany({
+      where: { active: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { id: true, category: true, name: true, sortOrder: true },
+    });
+    const grouped: Record<string, { id: string; name: string; sortOrder: number }[]> = {
+      personality: [],
+      interest: [],
+      mood: [],
+    };
+    for (const t of tags) {
+      const g = grouped[t.category];
+      if (g) g.push({ id: t.id, name: t.name, sortOrder: t.sortOrder });
+    }
+    return grouped;
+  }
+
+  // P1-13 校验传入标签名都在库中且 active；库为空时放行（兼容未 seed / 老数据）
+  private async assertTagsInLibrary(category: string, names: string[]) {
+    if (names.length === 0) return;
+    const active = await this.prisma.anonTag.findMany({
+      where: { category, active: true, name: { in: names } },
+      select: { name: true },
+    });
+    const activeNames = new Set(active.map((t) => t.name));
+    // 库里该 category 没有任何标签 -> 放行（兼容未 seed）
+    if (active.length === 0) {
+      const anyInCat = await this.prisma.anonTag.count({ where: { category } });
+      if (anyInCat === 0) return;
+    }
+    const invalid = names.filter((n) => !activeNames.has(n));
+    if (invalid.length > 0) {
+      throw new BizException(30003, `标签不在可选范围：${invalid.join('、')}`);
+    }
   }
 
   private toProfileVo(p: {
@@ -104,6 +152,10 @@ export class TreeholeService {
     await this.moderation.checkText(dto.content);
     for (const url of dto.images ?? []) {
       await this.moderation.checkImage(url);
+    }
+    // P1-13：发帖 mood 从标签库校验
+    if (dto.mood) {
+      await this.assertTagsInLibrary('mood', [dto.mood]);
     }
     const post = await this.prisma.anonymousPost.create({
       data: {

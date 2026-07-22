@@ -52,6 +52,46 @@ async function main() {
   }
   // eslint-disable-next-line no-console
   console.log('seed: pricing config ensured (D30=90, D90=180)');
+
+  // P1-13 树洞标签库种子（个性 / 兴趣 / 心情 三类；幂等：category+name 查重）
+  const DEFAULT_ANON_TAGS: Array<{ category: string; name: string; sortOrder: number }> = [
+    // 心情（发帖 mood + 资料 moodState）
+    { category: 'mood', name: '开心', sortOrder: 1 },
+    { category: 'mood', name: 'emo', sortOrder: 2 },
+    { category: 'mood', name: '吐槽', sortOrder: 3 },
+    { category: 'mood', name: '求安慰', sortOrder: 4 },
+    { category: 'mood', name: '学习', sortOrder: 5 },
+    { category: 'mood', name: '恋爱', sortOrder: 6 },
+    { category: 'mood', name: '迷茫', sortOrder: 7 },
+    // 兴趣
+    { category: 'interest', name: '音乐', sortOrder: 1 },
+    { category: 'interest', name: '电影', sortOrder: 2 },
+    { category: 'interest', name: '游戏', sortOrder: 3 },
+    { category: 'interest', name: '阅读', sortOrder: 4 },
+    { category: 'interest', name: '运动', sortOrder: 5 },
+    { category: 'interest', name: '美食', sortOrder: 6 },
+    { category: 'interest', name: '旅行', sortOrder: 7 },
+    { category: 'interest', name: '摄影', sortOrder: 8 },
+    // 个性
+    { category: 'personality', name: '社恐', sortOrder: 1 },
+    { category: 'personality', name: '话痨', sortOrder: 2 },
+    { category: 'personality', name: '理性', sortOrder: 3 },
+    { category: 'personality', name: '感性', sortOrder: 4 },
+    { category: 'personality', name: '乐观', sortOrder: 5 },
+    { category: 'personality', name: '慢热', sortOrder: 6 },
+  ];
+  let tagCreated = 0;
+  for (const t of DEFAULT_ANON_TAGS) {
+    const exists = await prisma.anonTag.findUnique({
+      where: { category_name: { category: t.category, name: t.name } },
+    });
+    if (!exists) {
+      await prisma.anonTag.create({ data: t });
+      tagCreated += 1;
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.log(`seed: ${tagCreated}/${DEFAULT_ANON_TAGS.length} anon tags created`);
 }
 
 main()

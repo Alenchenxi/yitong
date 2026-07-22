@@ -215,3 +215,19 @@ export function updateAnonProfile(data: {
     },
   });
 }
+
+// P1-13 树洞标签库（个性/兴趣/心情三类，按 category 分组）
+export interface AnonTagItem {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
+export interface AnonTagLibrary {
+  personality: AnonTagItem[];
+  interest: AnonTagItem[];
+  mood: AnonTagItem[];
+}
+
+export function getAnonTags(): Promise<AnonTagLibrary> {
+  return request<AnonTagLibrary>({ url: '/treehole/tags' });
+}

@@ -1,4 +1,4 @@
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Get, Req, Query, Delete } from '@nestjs/common';
 import type { Request } from 'express';
 import { ok } from '../../common/dto/api-response';
 import type { AuthenticatedRequest } from '../auth/types';
@@ -7,6 +7,7 @@ import { DashboardService } from './dashboard.service';
 import { AdminService } from './admin.service';
 import { BatchMerchantDto } from './dto/batch-merchant.dto';
 import { UpdatePricingDto } from './dto/update-pricing.dto';
+import { CreateAnonTagDto, UpdateAnonTagDto } from './dto/anon-tag.dto';
 import { Body, Param, Post, Put, UseGuards } from '@nestjs/common';
 
 @Controller('admin')
@@ -80,5 +81,26 @@ export class AdminController {
   @Post('users/:id/mute')
   async muteUser(@Param('id') id: string, @Body() body: { days?: number }) {
     return ok(await this.admin.muteUser(id, body?.days));
+  }
+
+  // ===== P1-13 树洞标签库管理 =====
+  @Get('anon-tags')
+  async listAnonTags(@Query('category') category?: string) {
+    return ok(await this.admin.listAnonTags(category));
+  }
+
+  @Post('anon-tags')
+  async createAnonTag(@Body() dto: CreateAnonTagDto) {
+    return ok(await this.admin.createAnonTag(dto));
+  }
+
+  @Put('anon-tags/:id')
+  async updateAnonTag(@Param('id') id: string, @Body() dto: UpdateAnonTagDto) {
+    return ok(await this.admin.updateAnonTag(id, dto));
+  }
+
+  @Delete('anon-tags/:id')
+  async deleteAnonTag(@Param('id') id: string) {
+    return ok(await this.admin.deleteAnonTag(id));
   }
 }
