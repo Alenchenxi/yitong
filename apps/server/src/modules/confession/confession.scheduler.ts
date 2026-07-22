@@ -17,4 +17,17 @@ export class ConfessionScheduler {
       this.logger.warn(`refreshHotPins failed: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
+
+  // P2-06 定时发布：每分钟扫到点的草稿帖，转公开 + 审核
+  @Cron(CronExpression.EVERY_MINUTE)
+  async publishScheduledPosts() {
+    try {
+      const r = await this.confession.publishScheduledPosts();
+      if (r.published > 0 || r.failed > 0) {
+        this.logger.log(`publishScheduledPosts: published=${r.published} failed=${r.failed}`);
+      }
+    } catch (e: unknown) {
+      this.logger.warn(`publishScheduledPosts failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 }

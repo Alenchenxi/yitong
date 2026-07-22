@@ -2,6 +2,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
@@ -12,6 +13,7 @@ import {
 // 发帖：文字必填（1-2000），图片可选（最多 9 张，传已上传的 COS URL）
 // P0-09 增强：标签（最多 5 个，每个 1-12 字）、匿名/实名、视频（URL+封面）
 // P1-11：visibility=PUBLIC/PRIVATE/DRAFT；草稿（DRAFT）和私密（PRIVATE）跳过内容审核+限仅作者可见
+// P2-06：publishAt 定时发布（未来时间），到点 DRAFT->PUBLIC + 审核
 export class CreatePostDto {
   @IsString()
   @MinLength(1)
@@ -50,4 +52,9 @@ export class CreatePostDto {
   @IsOptional()
   @IsEnum(['PUBLIC', 'PRIVATE', 'DRAFT'] as const)
   visibility?: 'PUBLIC' | 'PRIVATE' | 'DRAFT';
+
+  // P2-06 定时发布时间（ISO 8601，须为未来时间）；仅与 PUBLIC 配合，到点转公开
+  @IsOptional()
+  @IsDateString()
+  publishAt?: string;
 }

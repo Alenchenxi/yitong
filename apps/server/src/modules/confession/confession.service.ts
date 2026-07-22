@@ -137,7 +137,24 @@ export class ConfessionService {
     if (!circle) throw new BizException(20001, '圈子不存在');
 
     // P1-11 草稿和私密投稿不进入公开审核流：跳过内容安全 + 直接 APPROVED；前台/feed 仅作者可见
-    const visibility = dto.visibility ?? 'PUBLIC';
+    let visibility = dto.visibility ?? 'PUBLIC';
+    // P2-06 定时发布：publishAt 未来时间 -> 暂存为 DRAFT，到点由 cron 转 PUBLIC + 审核
+    let publishAt: Date | null = null;
+    if (dto.publishAt) {
+      const t = new Date(dto.publishAt);
+      if (Number.isNaN(t.getTime())) {
+        throw new BizException(20003, '定时发布时间格式无效', HttpStatus.BAD_REQUEST);
+      }
+      if (t.getTime() <= Date.now()) {
+        throw new BizException(20003, '定时发布时间必须晚于当前时间', HttpStatus.BAD_REQUEST);
+      }
+      if (visibility === 'PRIVATE') {
+        throw new BizException(20003, '私密投稿不支持定时发布', HttpStatus.BAD_REQUEST);
+      }
+      publishAt = t;
+      visibility = 'DRAFT'; // 暂存草稿，到点转公开
+    }
+    const isScheduled = !!publishAt;
     const isDraftOrPrivate = visibility !== 'PUBLIC';
 
     if (!isDraftOrPrivate) {
@@ -168,10 +185,11 @@ export class ConfessionService {
         videoCover: dto.videoCover ?? null,
         status: PostStatus.APPROVED,
         visibility,
+        publishAt,
       },
       include: postInclude(uid),
     });
-    invalidateFeedCache();
+    if (!isScheduled) invalidateFeedCache();
     return this.toPostVo(post);
   }
 
@@ -813,6 +831,7 @@ export class ConfessionService {
       visibility: post.visibility,
       pinned: post.pinned, // P2-05
       featured: post.featured, // P2-05
+      publishAt: post.publishAt ? post.publishAt.toISOString() : null, // P2-06
       createdAt: post.createdAt.toISOString(),
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,
     };
@@ -936,6 +955,54 @@ export class ConfessionService {
         }),
       ]);
     }
+  }
+
+  // P2-06 定时发布：扫 DRAFT + publishAt<=now 的帖，逐条走内容安全审核 -> 通过转 PUBLIC，失败保持 DRAFT + 通知作者
+  async publishScheduledPosts() {
+    const due = await this.prisma.post.findMany({
+      where: { visibility: 'DRAFT', publishAt: { not: null, lte: new Date() }, deletedAt: null },
+      take: 50,
+    });
+    if (due.length === 0) return { published: 0, failed: 0 };
+    let published = 0;
+    let failed = 0;
+    for (const post of due) {
+      try {
+        await this.moderation.checkText(post.content);
+        for (const url of post.images) {
+          await this.moderation.checkImage(url);
+        }
+        if (post.videoCover) await this.moderation.checkImage(post.videoCover);
+        // 审核通过：转 PUBLIC + 清 publishAt（避免重复触发）
+        await this.prisma.post.update({
+          where: { id: post.id },
+          data: { visibility: 'PUBLIC', publishAt: null },
+        });
+        published += 1;
+      } catch (e) {
+        // 审核失败（90002 等）：保持 DRAFT，清 publishAt 终止重试，通知作者
+        failed += 1;
+        await this.prisma.post.update({
+          where: { id: post.id },
+          data: { publishAt: null },
+        }).catch(() => undefined);
+        void this.notification
+          .create({
+            userId: post.authorId,
+            type: NotificationType.POST_TAKEDOWN,
+            title: '表白墙 · 定时发布失败',
+            content: `你的定时帖因内容审核未通过未能发布，请编辑后重发：${post.content.slice(0, 30)}`,
+            targetType: 'post',
+            targetId: post.id,
+          })
+          .catch((err: unknown) =>
+            this.logger.warn(`notify scheduled publish failed: ${err instanceof Error ? err.message : String(err)}`),
+          );
+        this.logger.warn(`scheduled publish ${post.id} moderation failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    if (published > 0) invalidateFeedCache();
+    return { published, failed };
   }
 
   // P1-05 搜索帖子内容（大小写不敏感包含）

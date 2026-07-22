@@ -25,6 +25,8 @@ interface PageData {
   video: { localPath: string; coverLocalPath: string; duration: number } | null; // P0-09 视频（与图片互斥）
   editId: string; // P1-10 编辑模式：被编辑帖子 id（空=新建）
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT'; // P1-11 可见性选择
+  scheduleEnabled: boolean; // P2-06 定时发布开关
+  publishAt: string; // P2-06 定时发布时间（显示用，YYYY-MM-DD HH:mm）
 }
 
 const MAX_IMAGES = 9;
@@ -57,6 +59,8 @@ Page({
     video: null,
     editId: '',
     visibility: 'PUBLIC',
+    scheduleEnabled: false,
+    publishAt: '',
   } as PageData,
 
   cursor: 0,
@@ -113,7 +117,22 @@ Page({
   // P1-11 可见性切换（公开/私密/草稿）
   setVisibility(e: WechatMiniprogram.TouchEvent) {
     const v = e.currentTarget.dataset.visibility as 'PUBLIC' | 'PRIVATE' | 'DRAFT';
-    this.setData({ visibility: v });
+    // P2-06 定时发布仅支持公开；切到非公开时关闭定时
+    this.setData({ visibility: v, ...(v !== 'PUBLIC' ? { scheduleEnabled: false, publishAt: '' } : {}) });
+  },
+
+  // P2-06 定时发布开关
+  toggleSchedule() {
+    if (this.data.visibility !== 'PUBLIC' && !this.data.scheduleEnabled) {
+      wx.showToast({ title: '仅公开帖支持定时发布', icon: 'none' });
+      return;
+    }
+    this.setData({ scheduleEnabled: !this.data.scheduleEnabled, ...(this.data.scheduleEnabled ? { publishAt: '' } : {}) });
+  },
+
+  // P2-06 选择定时时间（datetime picker）
+  onScheduleChange(e: WechatMiniprogram.PickerChange) {
+    this.setData({ publishAt: e.detail.value as string });
   },
 
   openCirclePicker() {
@@ -252,6 +271,24 @@ Page({
 
     this.setData({ submitting: true });
     wx.showLoading({ title: '发布中...', mask: true });
+    // P2-06 定时发布：校验时间且须为未来
+    let publishAtIso: string | undefined;
+    if (this.data.scheduleEnabled && this.data.visibility === 'PUBLIC') {
+      if (!this.data.publishAt) {
+        wx.showToast({ title: '请选择定时发布时间', icon: 'none' });
+        this.setData({ submitting: false });
+        wx.hideLoading();
+        return;
+      }
+      const t = new Date(this.data.publishAt.replace(/-/g, '/').replace(' ', 'T'));
+      if (Number.isNaN(t.getTime()) || t.getTime() <= Date.now()) {
+        wx.showToast({ title: '定时时间须晚于当前', icon: 'none' });
+        this.setData({ submitting: false });
+        wx.hideLoading();
+        return;
+      }
+      publishAtIso = t.toISOString();
+    }
     try {
       // 先上传图片（本地路径 -> COS URL）
       let imageUrls: string[] = [];
@@ -297,8 +334,11 @@ Page({
           videoUrl,
           videoCover,
           visibility: this.data.visibility,
+          publishAt: publishAtIso,
         });
-        const t = this.data.visibility === 'DRAFT' ? '已存为草稿' : this.data.visibility === 'PRIVATE' ? '已存为私密' : '发布成功';
+        const t = publishAtIso
+          ? '已设置定时发布'
+          : this.data.visibility === 'DRAFT' ? '已存为草稿' : this.data.visibility === 'PRIVATE' ? '已存为私密' : '发布成功';
         wx.showToast({ title: t, icon: 'success' });
       }
       // 返回上一页并刷新

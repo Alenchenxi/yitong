@@ -20,6 +20,7 @@ export interface PostVo {
   visibility: PostVisibility; // P1-11
   pinned: boolean; // P2-05 置顶
   featured: boolean; // P2-05 加精
+  publishAt: string | null; // P2-06 定时发布时间
   createdAt: string;
   editedAt: string | null; // P1-10 最后编辑时间
 }

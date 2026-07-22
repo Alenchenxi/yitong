@@ -27,6 +27,7 @@ export interface PostVo {
   visibility: PostVisibility;
   pinned: boolean; // P2-05 置顶
   featured: boolean; // P2-05 加精
+  publishAt: string | null; // P2-06 定时发布时间
   createdAt: string;
   editedAt: string | null; // P1-10
 }
@@ -39,6 +40,7 @@ export interface CreatePostPayload {
   videoUrl?: string;
   videoCover?: string;
   visibility?: PostVisibility; // P1-11
+  publishAt?: string; // P2-06 定时发布（ISO）
 }
 
 export interface CommentVo {
@@ -119,6 +121,7 @@ export function createPost(circleId: string, payload: CreatePostPayload) {
       videoUrl: payload.videoUrl,
       videoCover: payload.videoCover,
       visibility: payload.visibility,
+      publishAt: payload.publishAt,
     },
   });
 }

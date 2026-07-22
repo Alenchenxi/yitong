@@ -125,6 +125,7 @@ model Post {
   pinned      Boolean        @default(false) // P2-05 置顶
   featured    Boolean        @default(false) // P2-05 加精
   topicId     String?        @map("topic_id") // P2-04 校园话题
+  publishAt   DateTime?      @map("publish_at") // P2-06 定时发布时间（到点 DRAFT->PUBLIC + 审核）
   createdAt   DateTime       @default(now()) @map("created_at")
   editedAt    DateTime?      @map("edited_at")    // P1-10 最后编辑时间
   deletedAt   DateTime?      @map("deleted_at")   // P1-10 作者软删

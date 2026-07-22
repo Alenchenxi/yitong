@@ -89,6 +89,21 @@
     <view class="section-tip">
       {{visibility === 'PUBLIC' ? '所有人可见，进入公开信息流' : visibility === 'PRIVATE' ? '仅自己可见，不会出现在广场/搜索/关注流' : '保存到草稿箱，稍后可编辑再发布'}}
     </view>
+
+    <!-- P2-06 定时发布（仅公开帖） -->
+    <view class="schedule-row" wx:if="{{visibility === 'PUBLIC'}}">
+      <view class="schedule-toggle">
+        <text class="schedule-label">定时发布</text>
+        <switch checked="{{scheduleEnabled}}" bindchange="toggleSchedule" color="#F9C801" />
+      </view>
+      <picker wx:if="{{scheduleEnabled}}" mode="date" value="{{publishAt}}" bindchange="onScheduleChange">
+        <view class="schedule-picker">
+          <text>{{publishAt || '选择发布日期'}}</text>
+          <text class="schedule-arrow">›</text>
+        </view>
+      </picker>
+      <view class="section-tip" wx:if="{{scheduleEnabled}}">到点自动发布并进入内容审核；审核通过后公开可见</view>
+    </view>
   </view>
 
   <!-- 提交 -->

@@ -163,6 +163,13 @@
 .visibility-btn.on { background: var(--yt-primary, #F9C801); color: var(--yt-text-main, #1D2129); font-weight: 600; }
 .section-tip { font-size: 22rpx; color: #86909C; margin-top: 8rpx; }
 
+/* P2-06 定时发布 */
+.schedule-row { margin-top: 16rpx; }
+.schedule-toggle { display: flex; justify-content: space-between; align-items: center; }
+.schedule-label { font-size: 28rpx; color: var(--yt-text-main, #1D2129); }
+.schedule-picker { display: flex; justify-content: space-between; align-items: center; background: var(--yt-disabled-bg, #f5f6f8); border-radius: 12rpx; padding: 16rpx 20rpx; margin-top: 12rpx; font-size: 28rpx; color: var(--yt-text-main, #1D2129); }
+.schedule-arrow { color: #C9CDD4; }
+
 /* 提交 */
 .submit {
   width: 100%;

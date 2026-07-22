@@ -96,6 +96,7 @@ Page({
             visibility: 'PUBLIC' as const,
             pinned: false,
             featured: false,
+            publishAt: null,
             createdAt: fav.createdAt,
             editedAt: null,
             timeText: formatTime(fav.createdAt),
