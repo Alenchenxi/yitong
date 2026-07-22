@@ -27,6 +27,7 @@ model User {
   userRoles UserRole[]
   applications JobApplication[]
   favorites Favorite[]
+  supportTickets SupportTicket[]
   following Follow[] @relation("FollowFollower")
   followers Follow[] @relation("FollowFollowee")
   referralCode ReferralCode?
@@ -458,6 +459,30 @@ model Favorite {
   @@unique([userId, targetType, targetId])
   @@index([userId, targetType, createdAt])
   @@map("favorites")
+}
+
+// P2-20 客服工单
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+model SupportTicket {
+  id          String       @id @default(cuid())
+  userId      String       @map("user_id")
+  role        String       @default("user") // user / merchant
+  title       String
+  content     String
+  status      TicketStatus @default(OPEN)
+  reply       String?
+  repliedBy   String?      @map("replied_by")
+  repliedAt   DateTime?    @map("replied_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  user        User         @relation(fields: [userId], references: [id])
+  @@index([userId])
+  @@index([status, createdAt])
+  @@map("support_tickets")
 }
 
 // 关注关系（follower 关注 followee）

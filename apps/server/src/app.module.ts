@@ -20,6 +20,7 @@ import { FavoriteModule } from './modules/favorite/favorite.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { ReferralModule } from './modules/referral/referral.module';
+import { SupportModule } from './modules/support/support.module';
 import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
@@ -44,6 +45,7 @@ import { UploadModule } from './modules/upload/upload.module';
     NotificationModule,
     ReferralModule,
     ConfessionModule,
+    SupportModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard }, // 限流先于鉴权
