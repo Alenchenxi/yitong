@@ -268,6 +268,7 @@ model AnonGroup {
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
   members      AnonGroupMember[]
+  joinRequests AnonGroupJoinRequest[]
   @@index([isPrivate, status, memberCount])
   @@index([isPrivate, status, createdAt])
   @@map("anon_groups")
@@ -284,6 +285,27 @@ model AnonGroupMember {
   @@index([groupId])
   @@index([anonId])
   @@map("anon_group_members")
+}
+
+// P2-12 加入申请（仅私密群）
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+model AnonGroupJoinRequest {
+  id         String            @id @default(cuid())
+  groupId    String            @map("group_id")
+  anonId     String            @map("anon_id")
+  message    String?
+  status     JoinRequestStatus @default(PENDING)
+  reviewedBy String?           @map("reviewed_by") // 审批人 anonId（OWNER/ADMIN）
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+  group      AnonGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@unique([groupId, anonId, status]) // 同人同群同一状态唯一（一个 PENDING）
+  @@index([groupId, status])
+  @@map("anon_group_join_requests")
 }
 
 // ===== 聊天（1v1，通用）=====

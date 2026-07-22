@@ -540,6 +540,104 @@ export class TreeholeService {
     return this.chat.revokeMessage(anonId, messageId);
   }
 
+  // ===== P2-12 加入申请 =====
+
+  // 申请加入私密群
+  async applyJoinGroup(anonId: string, groupId: string, message?: string) {
+    const group = await this.prisma.anonGroup.findUnique({ where: { id: groupId } });
+    if (!group || group.status === 'DISBANDED') throw new BizException(30010, '群聊不存在');
+    if (!group.isPrivate) throw new BizException(30004, '公开群直接加入，无需申请', HttpStatus.BAD_REQUEST);
+    if (group.memberCount >= group.maxMembers) throw new BizException(30008, '群聊已满员', HttpStatus.CONFLICT);
+    const existingMember = await this.getMember(groupId, anonId);
+    if (existingMember) throw new BizException(30009, '已加入该群', HttpStatus.CONFLICT);
+    if (message) await this.moderation.checkText(message);
+    try {
+      return await this.prisma.anonGroupJoinRequest.create({
+        data: { groupId, anonId, message: message ?? null },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new BizException(30004, '已有待处理申请', HttpStatus.CONFLICT);
+      }
+      throw e;
+    }
+  }
+
+  // PENDING 申请列表（OWNER/ADMIN）
+  async listJoinRequests(operatorAnonId: string, groupId: string) {
+    await this.assertCanManage(groupId, operatorAnonId, 'role');
+    const reqs = await this.prisma.anonGroupJoinRequest.findMany({
+      where: { groupId, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
+    // 批量取申请人昵称
+    const anonIds = [...new Set(reqs.map((r) => r.anonId))];
+    const profiles = anonIds.length
+      ? await this.prisma.anonymousProfile.findMany({
+          where: { anonId: { in: anonIds } },
+          select: { anonId: true, nickname: true },
+        })
+      : [];
+    const profileMap = new Map(profiles.map((p) => [p.anonId, p]));
+    return reqs.map((r) => ({
+      id: r.id,
+      groupId: r.groupId,
+      anonId: r.anonId,
+      nickname: profileMap.get(r.anonId)?.nickname ?? '匿名',
+      message: r.message,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+
+  // 审批（approve=加入并设置角色 MEMBER；reject=驳回）
+  async reviewJoinRequest(operatorAnonId: string, groupId: string, requestId: string, action: 'approve' | 'reject') {
+    await this.assertCanManage(groupId, operatorAnonId, 'role');
+    const req = await this.prisma.anonGroupJoinRequest.findUnique({ where: { id: requestId } });
+    if (!req || req.groupId !== groupId) throw new BizException(30010, '申请不存在');
+    if (req.status !== 'PENDING') throw new BizException(30004, '申请已处理', HttpStatus.CONFLICT);
+    if (action === 'approve') {
+      const group = await this.prisma.anonGroup.findUnique({ where: { id: groupId } });
+      if (group && group.memberCount >= group.maxMembers) {
+        throw new BizException(30008, '群聊已满员', HttpStatus.CONFLICT);
+      }
+      await this.prisma.$transaction([
+        this.prisma.anonGroupJoinRequest.update({
+          where: { id: requestId },
+          data: { status: 'APPROVED', reviewedBy: operatorAnonId },
+        }),
+        this.prisma.anonGroupMember.upsert({
+          where: { groupId_anonId: { groupId, anonId: req.anonId } },
+          update: { role: 'MEMBER' },
+          create: { groupId, anonId: req.anonId, role: 'MEMBER' },
+        }),
+        this.prisma.anonGroup.update({ where: { id: groupId }, data: { memberCount: { increment: 1 } } }),
+      ]);
+    } else {
+      await this.prisma.anonGroupJoinRequest.update({
+        where: { id: requestId },
+        data: { status: 'REJECTED', reviewedBy: operatorAnonId },
+      });
+    }
+    return { id: requestId, action };
+  }
+
+  // ===== P2-13 群举报 =====
+  async reportGroup(anonId: string, groupId: string, reason?: string) {
+    const group = await this.prisma.anonGroup.findUnique({ where: { id: groupId } });
+    if (!group || group.status === 'DISBANDED') throw new BizException(30010, '群聊不存在');
+    if (reason) await this.moderation.checkText(reason);
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'anon-group',
+        targetId: groupId,
+        reason: reason ?? '用户举报群聊',
+        reporterId: anonId,
+      },
+    });
+    return { reported: true };
+  }
+
   // P0-16 屏蔽：A 屏蔽 B（按 anonId，幂等），并关闭两人活跃匹配（互相隔离·三处全隔离）
   async block(anonId: string, blockedAnonId: string) {
     if (!blockedAnonId || blockedAnonId === anonId) {

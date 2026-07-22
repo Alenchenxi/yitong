@@ -309,6 +309,51 @@ export class TreeholeController {
     return ok(await this.treehole.revokeGroupMessage(anonId, id, msgId));
   }
 
+  // ===== P2-12 加入申请 =====
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/apply')
+  async applyJoinGroup(
+    @Param('id') id: string,
+    @Body() body: { message?: string },
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.applyJoinGroup(anonId, id, body.message));
+  }
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('groups/:id/requests')
+  async listJoinRequests(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listJoinRequests(anonId, id));
+  }
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/requests/:reqId/review')
+  async reviewJoinRequest(
+    @Param('id') id: string,
+    @Param('reqId') reqId: string,
+    @Body() body: { action?: string },
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.reviewJoinRequest(anonId, id, reqId, body.action === 'approve' ? 'approve' : 'reject'));
+  }
+
+  // ===== P2-13 群举报 =====
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/report')
+  async reportGroup(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.reportGroup(anonId, id, body.reason));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Get('messages')
