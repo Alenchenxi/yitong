@@ -30,6 +30,9 @@ export interface MatchResp {
   peerAnonId?: string;
   imCredential?: ImCredential;
   waiting: boolean;
+  matchScore?: number;   // P1-15 规则匹配度 0-100
+  matchedTags?: string[]; // P1-15 命中标签
+  peerTags?: string[];    // P1-15 peer 展示标签
 }
 
 export interface PartyResp {

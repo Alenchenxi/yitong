@@ -24,6 +24,9 @@ Page({
     matching: false,
     matched: false,
     peerAnonId: '',
+    matchScore: 0,
+    matchedTags: [] as string[],
+    peerTags: [] as string[],
     messages: [] as Msg[],
     input: '',
     sending: false,
@@ -57,7 +60,14 @@ Page({
       if (r.waiting) {
         wx.showToast({ title: '暂无可用对象，稍后再试', icon: 'none' });
       } else if (r.imCredential && r.peerAnonId) {
-        this.setData({ matched: true, peerAnonId: r.peerAnonId, messages: [] });
+        this.setData({
+          matched: true,
+          peerAnonId: r.peerAnonId,
+          matchScore: r.matchScore ?? 0,
+          matchedTags: r.matchedTags ?? [],
+          peerTags: r.peerTags ?? [],
+          messages: [],
+        });
         onMessage((m: WsMessage) => {
           if (m.type === 'msg' && m.fromId === this.data.peerAnonId) {
             this.setData({

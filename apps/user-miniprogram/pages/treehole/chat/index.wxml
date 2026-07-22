@@ -8,6 +8,17 @@
   </block>
 
   <block wx:else>
+    <!-- P1-15 匹配度卡片 -->
+    <view class="match-card" wx:if="{{matchScore > 0 || matchedTags.length > 0}}">
+      <view class="mc-score">匹配度 {{matchScore}}%</view>
+      <view class="mc-tags" wx:if="{{matchedTags.length > 0}}">
+        <text class="mc-tag" wx:for="{{matchedTags}}" wx:key="*this">{{item}}</text>
+      </view>
+      <view class="mc-peer-tags" wx:if="{{peerTags.length > 0}}">
+        <text class="mc-peer-label">TA 的标签：</text>
+        <text class="mc-peer-tag" wx:for="{{peerTags}}" wx:key="*this">{{item}}</text>
+      </view>
+    </view>
     <view class="top-bar">
       <view class="block-btn" bindtap="blockPeer">屏蔽对方</view>
     </view>

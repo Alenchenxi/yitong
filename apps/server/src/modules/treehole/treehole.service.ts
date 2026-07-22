@@ -322,27 +322,93 @@ export class TreeholeService {
         await this.prisma.chatMatch.update({ where: { id: active.id }, data: { status: MatchStatus.CLOSED } });
       } else {
         const imCredential = await this.im.getImCredential(anonId);
-        return { matchId: active.id, peerAnonId, imCredential, waiting: false };
+        // P1-15 返回已有匹配度 + 命中标签 + peer 展示标签
+        const peerTags = await this.getDisplayTags(peerAnonId);
+        return {
+          matchId: active.id,
+          peerAnonId,
+          imCredential,
+          waiting: false,
+          matchScore: active.matchScore ?? 0,
+          matchedTags: active.matchedTags,
+          peerTags,
+        };
       }
     }
+    // P1-15 规则匹配：遍历队列所有候选，按标签重合度选最优
+    const myTags = await this.getDisplayTags(anonId);
+    let bestPeer: string | null = null;
+    let bestScore = -1;
+    let bestMatched: string[] = [];
+    const skipped: string[] = [];
     while (this.matchQueue.length > 0) {
       const peer = this.matchQueue.shift()!;
-      if (peer !== anonId) {
-        this.removeFromMatchQueue(peer);
-        const peerActive = await this.findActiveMatch(peer);
-        if (peerActive) continue;
-        // P0-16 匹配隔离：互相屏蔽不撮合
-        if (await this.isBlockedEither(anonId, peer)) continue;
-        const m = await this.prisma.chatMatch.create({
-          data: { anonIdA: peer, anonIdB: anonId, status: MatchStatus.ACTIVE },
-        });
-        const imCredential = await this.im.getImCredential(anonId);
-        return { matchId: m.id, peerAnonId: peer, imCredential, waiting: false };
+      if (peer === anonId) continue;
+      this.removeFromMatchQueue(peer);
+      const peerActive = await this.findActiveMatch(peer);
+      if (peerActive) continue;
+      // P0-16 匹配隔离：互相屏蔽不撮合
+      if (await this.isBlockedEither(anonId, peer)) continue;
+      // P1-15 算重合度
+      const peerTags = await this.getDisplayTags(peer);
+      const { score, matched } = this.computeMatchScore(myTags, peerTags);
+      if (score > bestScore) {
+        // 之前的最优如果存在，放回队列尾部供后续匹配
+        if (bestPeer !== null) this.matchQueue.push(bestPeer);
+        bestPeer = peer;
+        bestScore = score;
+        bestMatched = matched;
+      } else {
+        // 不是最优，放回队列尾部
+        this.matchQueue.push(peer);
       }
+      skipped.push(peer);
+    }
+    if (bestPeer !== null) {
+      const m = await this.prisma.chatMatch.create({
+        data: {
+          anonIdA: bestPeer,
+          anonIdB: anonId,
+          status: MatchStatus.ACTIVE,
+          matchScore: bestScore,
+          matchedTags: bestMatched,
+        },
+      });
+      const imCredential = await this.im.getImCredential(anonId);
+      const peerTags = await this.getDisplayTags(bestPeer);
+      return {
+        matchId: m.id,
+        peerAnonId: bestPeer,
+        imCredential,
+        waiting: false,
+        matchScore: bestScore,
+        matchedTags: bestMatched,
+        peerTags,
+      };
     }
     // 无可用对象，自己入队等待
     this.matchQueue.push(anonId);
     return { waiting: true };
+  }
+
+  // P1-15 取匿名画像展示标签（interestTags + personalityTags 合并，不含 uid）
+  private async getDisplayTags(anonId: string): Promise<string[]> {
+    const p = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { interestTags: true, personalityTags: true },
+    });
+    if (!p) return [];
+    return [...new Set([...p.interestTags, ...p.personalityTags])];
+  }
+
+  // P1-15 规则匹配度：Jaccard 相似度（交集/并集 * 100）；并集为空时 0
+  private computeMatchScore(tagsA: string[], tagsB: string[]): { score: number; matched: string[] } {
+    const setA = new Set(tagsA);
+    const setB = new Set(tagsB);
+    const matched = [...setA].filter((t) => setB.has(t));
+    const unionSize = new Set([...tagsA, ...tagsB]).size;
+    const score = unionSize === 0 ? 0 : Math.round((matched.length / unionSize) * 100);
+    return { score, matched };
   }
 
   // 派对房：返回房间号 + IM 凭证（客户端 ws join roomId 群聊）
@@ -506,7 +572,7 @@ export class TreeholeService {
         status: MatchStatus.ACTIVE,
         OR: [{ anonIdA: anonId }, { anonIdB: anonId }],
       },
-      select: { id: true, anonIdA: true, anonIdB: true },
+      select: { id: true, anonIdA: true, anonIdB: true, matchScore: true, matchedTags: true },
       orderBy: { createdAt: 'desc' },
     });
   }

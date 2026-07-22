@@ -221,11 +221,13 @@ model AnonBlock {
   @@map("anon_blocks")
 }
 model ChatMatch {
-  id        String      @id @default(cuid())
-  anonIdA   String      @map("anon_id_a")
-  anonIdB   String      @map("anon_id_b")
-  status    MatchStatus @default(ACTIVE)
-  createdAt DateTime    @default(now()) @map("created_at")
+  id          String      @id @default(cuid())
+  anonIdA     String      @map("anon_id_a")
+  anonIdB     String      @map("anon_id_b")
+  status      MatchStatus @default(ACTIVE)
+  matchScore  Int?        @map("match_score")   // P1-15 规则匹配度 0-100
+  matchedTags String[]    @default([]) @map("matched_tags") // P1-15 命中标签
+  createdAt   DateTime    @default(now()) @map("created_at")
   @@map("chat_matches")
 }
 enum MatchStatus {
