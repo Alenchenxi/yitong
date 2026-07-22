@@ -29,10 +29,15 @@ Page({
     matchScore: 0,
     matchedTags: [] as string[],
     peerTags: [] as string[],
+    expireAt: '',
+    remainingText: '',
+    expired: false,
     messages: [] as Msg[],
     input: '',
     sending: false,
   },
+
+  countdownTimer: null as ReturnType<typeof setInterval> | null,
 
   async onLoad() {
     const app = getApp<AppInstance>();
@@ -83,8 +88,11 @@ Page({
       matchScore: r.matchScore ?? 0,
       matchedTags: r.matchedTags ?? [],
       peerTags: r.peerTags ?? [],
+      expireAt: r.expireAt ?? '',
+      expired: false,
       messages: [],
     });
+    this.startCountdown(r.expireAt ?? '');
     onMessage((m: WsMessage) => {
       if (m.type === 'msg' && m.fromId === this.data.peerAnonId) {
         this.setData({
@@ -97,6 +105,40 @@ Page({
     });
     await connectIm(r.imCredential);
     await this.loadHistory();
+  },
+
+  // P1-17 限时聊天倒计时
+  startCountdown(expireAtIso: string) {
+    this.clearCountdown();
+    if (!expireAtIso) return;
+    const tick = () => {
+      const remain = new Date(expireAtIso).getTime() - Date.now();
+      if (remain <= 0) {
+        this.setData({ remainingText: '已过期', expired: true });
+        this.clearCountdown();
+        wx.showToast({ title: '聊天已过期', icon: 'none' });
+        return;
+      }
+      const h = Math.floor(remain / 3600000);
+      const m = Math.floor((remain % 3600000) / 60000);
+      const s = Math.floor((remain % 60000) / 1000);
+      this.setData({
+        remainingText: h > 0 ? `${h}时${m}分` : `${m}分${s}秒`,
+      });
+    };
+    tick();
+    this.countdownTimer = setInterval(tick, 1000);
+  },
+
+  clearCountdown() {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+  },
+
+  onUnload() {
+    this.clearCountdown();
   },
 
   // P1-16 跳过/不喜欢当前匹配 + 重新匹配

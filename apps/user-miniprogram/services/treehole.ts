@@ -33,6 +33,7 @@ export interface MatchResp {
   matchScore?: number;   // P1-15 规则匹配度 0-100
   matchedTags?: string[]; // P1-15 命中标签
   peerTags?: string[];    // P1-15 peer 展示标签
+  expireAt?: string | null; // P1-17 过期时间 ISO
 }
 
 export interface PartyResp {
@@ -153,6 +154,7 @@ export interface MatchHistoryItem {
   matchScore: number;
   matchedTags: string[];
   status: string;
+  expireAt: string | null; // P1-17
   createdAt: string;
 }
 export interface MatchHistoryResult {

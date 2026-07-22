@@ -16,6 +16,8 @@ import {
 } from './questionnaire-bank';
 
 // 错误码 3xxxx 树洞段（API §3）：30001 匿名态失效 / 30002 匹配无可用对象
+// P1-17 限时聊天有效期（毫秒）：默认 24 小时
+const MATCH_TTL_MS = parseInt(process.env.TREEHOLE_MATCH_TTL_MS || `${24 * 60 * 60 * 1000}`, 10);
 const NICK_A = ['星河', '南门', '月光', '晚风', '深海', '森林', '云端', '陌路', '拾光', '孤岛'];
 const NICK_B = ['边的猫', '第二棵树', '漫游者', '低语者', '失眠人', '观察者', '拾星人', '夜行人'];
 
@@ -316,23 +318,29 @@ export class TreeholeService {
     this.removeFromMatchQueue(anonId);
     const active = await this.findActiveMatch(anonId);
     if (active) {
-      const peerAnonId = active.anonIdA === anonId ? active.anonIdB : active.anonIdA;
-      // P0-16 匹配隔离：屏蔽后残留的活跃匹配不返回，关闭并继续走队列
-      if (await this.isBlockedEither(anonId, peerAnonId)) {
-        await this.prisma.chatMatch.update({ where: { id: active.id }, data: { status: MatchStatus.CLOSED } });
+      // P1-17 过期匹配自动关闭，继续走队列
+      if (await this.expireIfStale(anonId, active)) {
+        // 过期已 CLOSE，落入下方队列逻辑
       } else {
-        const imCredential = await this.im.getImCredential(anonId);
-        // P1-15 返回已有匹配度 + 命中标签 + peer 展示标签
-        const peerTags = await this.getDisplayTags(peerAnonId);
-        return {
-          matchId: active.id,
-          peerAnonId,
-          imCredential,
-          waiting: false,
-          matchScore: active.matchScore ?? 0,
-          matchedTags: active.matchedTags,
-          peerTags,
-        };
+        const peerAnonId = active.anonIdA === anonId ? active.anonIdB : active.anonIdA;
+        // P0-16 匹配隔离：屏蔽后残留的活跃匹配不返回，关闭并继续走队列
+        if (await this.isBlockedEither(anonId, peerAnonId)) {
+          await this.prisma.chatMatch.update({ where: { id: active.id }, data: { status: MatchStatus.CLOSED } });
+        } else {
+          const imCredential = await this.im.getImCredential(anonId);
+          // P1-15 返回已有匹配度 + 命中标签 + peer 展示标签；P1-17 带 expireAt
+          const peerTags = await this.getDisplayTags(peerAnonId);
+          return {
+            matchId: active.id,
+            peerAnonId,
+            imCredential,
+            waiting: false,
+            matchScore: active.matchScore ?? 0,
+            matchedTags: active.matchedTags,
+            peerTags,
+            expireAt: active.expireAt ? active.expireAt.toISOString() : null,
+          };
+        }
       }
     }
     // P1-15 规则匹配：遍历队列所有候选，按标签重合度选最优
@@ -365,6 +373,7 @@ export class TreeholeService {
       skipped.push(peer);
     }
     if (bestPeer !== null) {
+      const expireAt = new Date(Date.now() + MATCH_TTL_MS);
       const m = await this.prisma.chatMatch.create({
         data: {
           anonIdA: bestPeer,
@@ -372,6 +381,7 @@ export class TreeholeService {
           status: MatchStatus.ACTIVE,
           matchScore: bestScore,
           matchedTags: bestMatched,
+          expireAt,
         },
       });
       const imCredential = await this.im.getImCredential(anonId);
@@ -384,6 +394,7 @@ export class TreeholeService {
         matchScore: bestScore,
         matchedTags: bestMatched,
         peerTags,
+        expireAt: expireAt.toISOString(),
       };
     }
     // 无可用对象，自己入队等待
@@ -441,10 +452,20 @@ export class TreeholeService {
         matchScore: m.matchScore ?? 0,
         matchedTags: m.matchedTags,
         status: m.status,
+        expireAt: m.expireAt ? m.expireAt.toISOString() : null,
         createdAt: m.createdAt.toISOString(),
       };
     });
     return { list, total, page, pageSize };
+  }
+
+  // P1-17 定时关闭过期活跃匹配（cron 调用；惰性关闭在 expireIfStale）
+  async closeExpiredMatches() {
+    const result = await this.prisma.chatMatch.updateMany({
+      where: { status: MatchStatus.ACTIVE, expireAt: { lt: new Date() } },
+      data: { status: MatchStatus.CLOSED },
+    });
+    return { closed: result.count };
   }
 
   // P1-16 跳过/不喜欢：关闭指定匹配（校验归属）+ 重新匹配返回新对象
@@ -623,9 +644,17 @@ export class TreeholeService {
         status: MatchStatus.ACTIVE,
         OR: [{ anonIdA: anonId }, { anonIdB: anonId }],
       },
-      select: { id: true, anonIdA: true, anonIdB: true, matchScore: true, matchedTags: true },
+      select: { id: true, anonIdA: true, anonIdB: true, matchScore: true, matchedTags: true, expireAt: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // P1-17 检查活跃匹配是否过期；过期则 CLOSE 并返回 true（调用方当作无活跃匹配）
+  private async expireIfStale(anonId: string, active: { id: string; expireAt: Date | null } | null): Promise<boolean> {
+    if (!active || !active.expireAt) return false;
+    if (active.expireAt.getTime() > Date.now()) return false;
+    await this.prisma.chatMatch.update({ where: { id: active.id }, data: { status: MatchStatus.CLOSED } });
+    return true;
   }
 
   private isLegacyUnsafeAnonId(uid: string, anonId: string): boolean {

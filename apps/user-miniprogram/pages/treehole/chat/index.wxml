@@ -20,6 +20,7 @@
       </view>
     </view>
     <view class="top-bar">
+      <view class="countdown {{expired ? 'expired' : ''}}" wx:if="{{remainingText}}">⏳ {{remainingText}}</view>
       <view class="skip-btn" bindtap="skipPeer">跳过</view>
       <view class="block-btn" bindtap="blockPeer">屏蔽</view>
     </view>

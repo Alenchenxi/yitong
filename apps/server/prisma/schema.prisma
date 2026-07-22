@@ -227,7 +227,9 @@ model ChatMatch {
   status      MatchStatus @default(ACTIVE)
   matchScore  Int?        @map("match_score")   // P1-15 规则匹配度 0-100
   matchedTags String[]    @default([]) @map("matched_tags") // P1-15 命中标签
+  expireAt    DateTime?   @map("expire_at")     // P1-17 限时聊天过期时间
   createdAt   DateTime    @default(now()) @map("created_at")
+  @@index([status, expireAt])
   @@map("chat_matches")
 }
 enum MatchStatus {
