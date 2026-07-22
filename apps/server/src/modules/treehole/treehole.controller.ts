@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpStatus, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
+import { BizException } from '../../common/exceptions/biz.exception';
 import type { AuthenticatedRequest } from '../auth/types';
 import { Public } from '../auth/public.decorator';
 import { AnonGuard } from './anon.guard';
@@ -237,10 +238,11 @@ export class TreeholeController {
     @Body() body: { role?: string },
     @Req() req: Request,
   ) {
+    if (body.role !== 'ADMIN' && body.role !== 'MEMBER') {
+      throw new BizException(30004, '角色非法（仅 ADMIN/MEMBER）', HttpStatus.BAD_REQUEST);
+    }
     const operatorAnonId = (req as AuthenticatedRequest).user!.uid;
-    return ok(
-      await this.treehole.setMemberRole(operatorAnonId, id, targetAnonId, (body.role === 'ADMIN' ? 'ADMIN' : 'MEMBER')),
-    );
+    return ok(await this.treehole.setMemberRole(operatorAnonId, id, targetAnonId, body.role));
   }
   @Public()
   @UseGuards(AnonGuard)
