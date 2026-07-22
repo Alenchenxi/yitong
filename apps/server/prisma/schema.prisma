@@ -462,7 +462,7 @@ model JobApplication {
   createdAt DateTime  @default(now()) @map("created_at")
   jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
-  review    JobReview?
+  review    JobReview[] @relation("AppReview")
   @@unique([jobPostId, userId])
   @@map("job_applications")
 }
@@ -476,11 +476,15 @@ enum AppStatus {
 
 model JobReview {
   id            String         @id @default(cuid())
-  applicationId String         @unique @map("application_id")
+  applicationId String         @map("application_id")
+  reviewerId    String?        @map("reviewer_id") // P1-26 商家评价：reviewer=userId（商家）；既有学生评价 reviewerId=null 兼容
+  direction     String         @default("stu_to_merchant") @map("direction") // P1-26 stu_to_merchant / merchant_to_stu
   rating        Int
   content       String
   createdAt     DateTime       @default(now()) @map("created_at")
-  application   JobApplication @relation(fields: [applicationId], references: [id])
+  application   JobApplication @relation("AppReview", fields: [applicationId], references: [id])
+  @@unique([applicationId, direction]) // P1-26 同一报名可双向评（学生评商家 + 商家评学生）
+  @@index([reviewerId])
   @@map("job_reviews")
 }
 

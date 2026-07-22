@@ -108,6 +108,13 @@ export class JobController {
     return ok(await this.job.review(u.uid, id, dto, u.openid));
   }
 
+  // P1-26 商家评价学生（仅商家拥有岗位，application DONE + 未评过）
+  @Post('applications/:id/merchant-review')
+  async merchantReview(@Param('id') id: string, @Body() dto: CreateReviewDto, @Req() req: Request) {
+    const u = (req as AuthenticatedRequest).user!;
+    return ok(await this.job.reviewByMerchant(u.uid, id, dto, u.openid));
+  }
+
   // dev 专用：手动触发到期下架（prod 禁止）
   @Post('job-posts/expire-now')
   async expireNow() {

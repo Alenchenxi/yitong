@@ -6,6 +6,7 @@ import {
   transitionApp,
   batchTransitionApps,
   reportJob,
+  merchantReviewApp,
   JOB_CATEGORY_LABELS,
   SETTLEMENT_LABELS,
   type JobPostVo,
@@ -40,6 +41,12 @@ Page({
     subscribingApply: false,
     batchMode: false,
     batchProcessing: false,
+    // P1-26 商家评价学生
+    reviewAppId: '',
+    reviewRating: 5,
+    reviewContent: '',
+    reviewSubmitting: false,
+    reviewedIds: [] as string[], // 已评过的报名 id 前端隐去按钮
   },
   postId: '',
 
@@ -78,8 +85,13 @@ Page({
       if (app.globalData.currentRole === 'MERCHANT') {
         try {
           const apps = await listPostApplications(this.postId);
+          // P1-26 由 reviews 反推 reviewedIds，过滤已评过按钮
+          const reviewedIds = reviews
+            .filter((r) => r.direction === 'merchant_to_stu')
+            .map((r) => r.applicationId);
           this.setData({
             isMerchantOwner: true,
+            reviewedIds,
             apps: apps.map((a) => ({ ...a, statusText: STATUS_TEXT[a.status] ?? a.status, selected: false })),
           });
         } catch {
@@ -177,6 +189,43 @@ Page({
       title: post ? `${post.title} · ${post.salary}` : '燚桐兼职',
       path: `/pages/job/detail/index?id=${this.postId}`,
     };
+  },
+
+  // ===== P1-26 商家评价学生 =====
+  openMerchantReview(e: WechatMiniprogram.TouchEvent) {
+    const appId = e.currentTarget.dataset.id as string;
+    this.setData({ reviewAppId: appId, reviewRating: 5, reviewContent: '' });
+  },
+  cancelMerchantReview() {
+    this.setData({ reviewAppId: '' });
+  },
+  pickReviewRating(e: WechatMiniprogram.TouchEvent) {
+    this.setData({ reviewRating: Number(e.currentTarget.dataset.r) });
+  },
+  onMerchantReviewInput(e: WechatMiniprogram.Input) {
+    this.setData({ reviewContent: e.detail.value });
+  },
+  async submitMerchantReview() {
+    if (this.data.reviewSubmitting) return;
+    const { reviewAppId, reviewRating, reviewContent } = this.data;
+    if (!reviewContent.trim()) {
+      wx.showToast({ title: '请写评语', icon: 'none' });
+      return;
+    }
+    this.setData({ reviewSubmitting: true });
+    try {
+      await merchantReviewApp(reviewAppId, { rating: reviewRating, content: reviewContent.trim() });
+      wx.showToast({ title: '评价成功', icon: 'success' });
+      this.setData({
+        reviewAppId: '',
+        reviewedIds: [...this.data.reviewedIds, reviewAppId],
+      });
+      await this.load();
+    } catch {
+      /* toast */
+    } finally {
+      this.setData({ reviewSubmitting: false });
+    }
   },
 
   // P0-19 举报岗位

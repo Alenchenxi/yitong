@@ -93,6 +93,15 @@
         <button wx:if="{{item.status === 'PENDING'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="accept">录用</button>
         <button wx:if="{{item.status === 'PENDING'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="reject">拒绝</button>
         <button wx:if="{{item.status === 'ACCEPTED'}}" size="mini" bindtap="transition" data-id="{{item.id}}" data-action="complete">标记完成</button>
+        <!-- P1-26 商家评价学生：DONE 状态 + 未评过 -->
+        <button
+          wx:if="{{item.status === 'DONE' && !reviewedIds.includes(item.id)}}"
+          class="review-btn"
+          size="mini"
+          data-id="{{item.id}}"
+          bindtap="openMerchantReview"
+        >评价学生</button>
+        <text wx:if="{{item.status === 'DONE' && reviewedIds.includes(item.id)}}" class="reviewed-tag">已评价</text>
       </view>
     </view>
     <view class="empty" wx:if="{{apps.length === 0}}">暂无报名</view>
@@ -101,9 +110,25 @@
   <view class="reviews">
     <view class="section-title">评价 ({{reviews.length}})</view>
     <view class="r-item" wx:for="{{reviews}}" wx:key="id">
+      <view class="r-dir">
+        <text wx:if="{{item.direction === 'merchant_to_stu'}}">商家评学生</text>
+        <text wx:else>学生评商家</text>
+      </view>
       <view class="r-stars">{{item.stars}}</view>
       <view class="r-content">{{item.content}}</view>
     </view>
     <view class="empty" wx:if="{{reviews.length === 0}}">暂无评价</view>
+  </view>
+
+  <!-- P1-26 商家评价学生弹层 -->
+  <view class="mask" wx:if="{{reviewAppId}}" bindtap="cancelMerchantReview">
+    <view class="picker" catchtap="">
+      <view class="picker-title">评价该学生</view>
+      <view class="stars">
+        <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" wx:for-item="n" class="star {{n <= reviewRating ? 'on' : ''}}" data-r="{{n}}" bindtap="pickReviewRating">{{n <= reviewRating ? '★' : '☆'}}</text>
+      </view>
+      <textarea class="review-input" placeholder="说说该学生的表现…" value="{{reviewContent}}" bindinput="onMerchantReviewInput" maxlength="500" show-confirm-bar="{{false}}" />
+      <button class="send-btn" bindtap="submitMerchantReview" disabled="{{reviewSubmitting}}">{{reviewSubmitting ? '提交中…' : '提交评价'}}</button>
+    </view>
   </view>
 </view>

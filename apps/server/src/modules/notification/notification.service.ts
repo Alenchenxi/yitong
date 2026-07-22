@@ -21,6 +21,7 @@ export const NotificationType = {
   JOB_ACCEPT: 'job_accept',
   JOB_COMPLETE: 'job_complete',
   JOB_REJECT: 'job_reject',
+  JOB_REVIEW_FROM_MERCHANT: 'job_review_from_merchant', // P1-26 商家评价学生
   POST_TAKEDOWN: 'post_takedown',
   // P0-11 表白墙来源化消息
   POST_LIKE: 'post_like',

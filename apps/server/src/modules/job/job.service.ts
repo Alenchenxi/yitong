@@ -343,20 +343,45 @@ export class JobService {
     return { processed: results };
   }
 
-  // 评价：仅学生（app.userId），且 application DONE + 未评价过
-  async review(uid: string, appId: string, dto: CreateReviewDto, openid?: string) {
-    const app = await this.prisma.jobApplication.findUnique({ where: { id: appId } });
+  // 评价：direction=stu_to_merchant 走原学生评商家路径（P1-25）；direction=merchant_to_stu 为商家评学生（P1-26）
+  async review(uid: string, appId: string, dto: CreateReviewDto, openid?: string, direction = 'stu_to_merchant') {
+    const isMerchantReview = direction === 'merchant_to_stu';
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: appId },
+      include: { jobPost: { select: { id: true, merchantId: true, title: true } } },
+    });
     if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
-    if (app.userId !== uid) throw new BizException(10003, '无权评价', HttpStatus.FORBIDDEN);
+    if (isMerchantReview) {
+      await this.assertOwnsPost(uid, app.jobPost.id);
+    } else if (app.userId !== uid) {
+      throw new BizException(10003, '无权评价', HttpStatus.FORBIDDEN);
+    }
     if (app.status !== AppStatus.DONE) {
       throw new BizException(40005, '岗位未完成，不能评价', HttpStatus.CONFLICT);
     }
     await this.moderation.checkText(dto.content, openid);
     try {
       const r = await this.prisma.jobReview.create({
-        data: { applicationId: appId, rating: dto.rating, content: dto.content },
+        data: {
+          applicationId: appId,
+          rating: dto.rating,
+          content: dto.content,
+          reviewerId: isMerchantReview ? uid : app.userId,
+          direction,
+        },
       });
-      return this.toReviewVo(r, uid);
+      // 商家评完学生通知学生
+      if (isMerchantReview) {
+        await this.notification.create({
+          userId: app.userId,
+          type: NotificationType.JOB_REVIEW_FROM_MERCHANT,
+          title: '商家已评价',
+          content: `商家对你此次兼职「${app.jobPost.title}」给出了 ${dto.rating} 星评价`,
+          targetType: 'application',
+          targetId: appId,
+        });
+      }
+      return this.toReviewVo(r, isMerchantReview ? uid : app.userId);
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         throw new BizException(40005, '已评价过', HttpStatus.CONFLICT);
@@ -365,11 +390,18 @@ export class JobService {
     }
   }
 
+  // 商家评学生：仅商家拥有岗位 + DONE + 未评过（应用 applicationId 唯一约束）
+  async reviewByMerchant(uid: string, appId: string, dto: CreateReviewDto, openid?: string) {
+    return this.review(uid, appId, dto, openid, 'merchant_to_stu');
+  }
+
   async listReviews(postId: string) {
     const reviews = await this.prisma.jobReview.findMany({
       where: { application: { jobPostId: postId } },
       orderBy: { createdAt: 'desc' },
-      include: { application: { select: { userId: true, user: { select: { nickname: true } } } } },
+      include: {
+        application: { select: { userId: true, user: { select: { nickname: true } } } },
+      },
     });
     return reviews.map((r) => this.toReviewVo(r, r.application.userId));
   }
@@ -594,11 +626,12 @@ export class JobService {
     };
   }
 
-  private toReviewVo(r: { id: string; applicationId: string; rating: number; content: string; createdAt: Date }, reviewerId: string) {
+  private toReviewVo(r: { id: string; applicationId: string; rating: number; content: string; createdAt: Date; direction?: string }, reviewerId: string) {
     return {
       id: r.id,
       applicationId: r.applicationId,
       reviewerId,
+      direction: r.direction ?? 'stu_to_merchant',
       rating: r.rating,
       content: r.content,
       createdAt: r.createdAt.toISOString(),

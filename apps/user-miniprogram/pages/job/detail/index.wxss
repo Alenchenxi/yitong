@@ -72,6 +72,19 @@
 .app-check { font-size: 36rpx; color: #F9C801; margin-right: 12rpx; }
 .r-item { padding: 16rpx 0; border-bottom: 1rpx solid #f4f4f4; }
 .r-item:last-child { border-bottom: none; }
+.r-dir { font-size: 22rpx; color: #1677ff; margin-bottom: 6rpx; }
 .r-stars { color: #ffb400; font-size: 26rpx; }
 .r-content { font-size: 28rpx; color: #333; margin-top: 8rpx; }
 .empty { text-align: center; color: #999; font-size: 24rpx; padding: 24rpx 0; }
+
+/* P1-26 商家评价学生 */
+.review-btn { background: #F9C801 !important; color: #1D2129 !important; border-radius: 28rpx !important; font-size: 24rpx !important; margin-right: 12rpx; }
+.reviewed-tag { font-size: 24rpx; color: #86909C; padding: 4rpx 12rpx; background: #f5f6f8; border-radius: 999rpx; }
+.mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: flex-end; }
+.picker { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 32rpx; padding-bottom: calc(32rpx + env(safe-area-inset-bottom)); }
+.picker-title { font-size: 32rpx; font-weight: 600; text-align: center; margin-bottom: 24rpx; }
+.stars { text-align: center; font-size: 56rpx; margin-bottom: 24rpx; }
+.star { margin: 0 8rpx; color: #ccc; }
+.star.on { color: #ffb400; }
+.review-input { width: 100%; min-height: 160rpx; background: #f5f6f8; border-radius: 12rpx; padding: 20rpx; font-size: 28rpx; box-sizing: border-box; }
+.send-btn { margin-top: 24rpx; background: #F9C801 !important; color: #1D2129 !important; border-radius: 48rpx !important; font-weight: 600; }

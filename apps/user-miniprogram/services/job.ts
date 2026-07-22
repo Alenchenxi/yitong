@@ -92,6 +92,7 @@ export interface JobReviewVo {
   id: string;
   applicationId: string;
   reviewerId: string;
+  direction: 'stu_to_merchant' | 'merchant_to_stu'; // P1-26
   rating: number;
   content: string;
   createdAt: string;
@@ -210,4 +211,9 @@ export function batchTransitionApps(postId: string, ids: string[], action: 'acce
 
 export function reviewApp(appId: string, data: { rating: number; content: string }) {
   return request<JobReviewVo>({ url: `/applications/${appId}/review`, method: 'POST', data });
+}
+
+// P1-26 商家评价学生（仅商家拥有岗位，application DONE + 未评过）
+export function merchantReviewApp(appId: string, data: { rating: number; content: string }) {
+  return request<JobReviewVo>({ url: `/applications/${appId}/merchant-review`, method: 'POST', data });
 }
