@@ -1,0 +1,37 @@
+<view class="page">
+  <view class="list" wx:if="{{list.length > 0}}">
+    <view
+      class="match-card {{item.status === 'ACTIVE' ? 'active' : 'closed'}}"
+      wx:for="{{list}}"
+      wx:key="id"
+      data-item="{{item}}"
+      bindtap="openChat"
+    >
+      <view class="mc-head">
+        <view wx:if="{{item.peerAvatar}}" class="mc-avatar">{{item.peerAvatar}}</view>
+        <view wx:else class="mc-avatar ph">🌙</view>
+        <view class="mc-info">
+          <view class="mc-nick">{{item.peerNickname}}</view>
+          <view class="mc-time">{{item.timeText}}</view>
+        </view>
+        <view class="mc-score-box">
+          <text class="mc-score">{{item.matchScore}}%</text>
+          <text class="mc-score-label">匹配度</text>
+        </view>
+      </view>
+      <view class="mc-tags" wx:if="{{item.matchedTags.length > 0}}">
+        <text class="mc-tag-label">命中：</text>
+        <text class="mc-tag" wx:for="{{item.matchedTags}}" wx:for-item="t" wx:key="*this">{{t}}</text>
+      </view>
+      <view class="mc-status {{item.status === 'ACTIVE' ? 'on' : ''}}">
+        {{item.status === 'ACTIVE' ? '进行中 · 点击继续聊天' : '已结束'}}
+      </view>
+    </view>
+  </view>
+  <view class="empty" wx:elif="{{!loading}}">
+    <view class="empty-emoji">🔮</view>
+    <view class="empty-text">还没有匹配记录</view>
+  </view>
+  <view class="loading" wx:if="{{loading}}">加载中...</view>
+  <view class="tip" wx:elif="{{!hasMore && list.length > 0}}">没有更多了</view>
+</view>

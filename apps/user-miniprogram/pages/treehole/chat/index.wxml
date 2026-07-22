@@ -20,7 +20,8 @@
       </view>
     </view>
     <view class="top-bar">
-      <view class="block-btn" bindtap="blockPeer">屏蔽对方</view>
+      <view class="skip-btn" bindtap="skipPeer">跳过</view>
+      <view class="block-btn" bindtap="blockPeer">屏蔽</view>
     </view>
     <view class="msgs">
       <view class="msg {{item.mine ? 'mine' : 'peer'}}" wx:for="{{messages}}" wx:key="index">

@@ -1,0 +1,37 @@
+.page { padding: 20rpx 24rpx 60rpx; }
+.list { display: flex; flex-direction: column; gap: 16rpx; }
+.match-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+.match-card.closed { opacity: 0.65; }
+.mc-head { display: flex; align-items: center; gap: 16rpx; }
+.mc-avatar {
+  width: 72rpx; height: 72rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36rpx; background: #F2F3F5; flex-shrink: 0;
+}
+.mc-avatar.ph { background: linear-gradient(135deg, #C9CDD4, #86909C); }
+.mc-info { flex: 1; min-width: 0; }
+.mc-nick { font-size: 28rpx; font-weight: 600; color: #1D2129; }
+.mc-time { font-size: 22rpx; color: #C9CDD4; margin-top: 4rpx; }
+.mc-score-box { text-align: center; flex-shrink: 0; }
+.mc-score { font-size: 32rpx; font-weight: 700; color: #B45309; display: block; }
+.mc-score-label { font-size: 20rpx; color: #86909C; }
+
+.mc-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8rpx; margin-top: 16rpx; }
+.mc-tag-label { font-size: 22rpx; color: #86909C; }
+.mc-tag {
+  padding: 4rpx 16rpx; background: #FFF7D1; color: #B45309;
+  border-radius: 999rpx; font-size: 22rpx;
+}
+
+.mc-status { margin-top: 16rpx; font-size: 22rpx; color: #C9CDD4; }
+.mc-status.on { color: #00B42A; }
+
+.empty { text-align: center; padding-top: 200rpx; color: #999; }
+.empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
+.empty-text { font-size: 28rpx; }
+.loading { text-align: center; color: #999; font-size: 24rpx; padding: 24rpx 0; }
+.tip { text-align: center; color: #C9CDD4; font-size: 24rpx; padding: 16rpx 0; }

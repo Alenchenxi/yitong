@@ -27,6 +27,7 @@
     "pages/treehole/party/index",
     "pages/treehole/profile/index",
     "pages/treehole/quiz/index",
+    "pages/treehole/matches/index",
     "pages/admin/index",
     "pages/notifications/index",
     "pages/favorites/index",

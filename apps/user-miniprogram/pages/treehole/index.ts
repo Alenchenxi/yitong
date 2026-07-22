@@ -101,6 +101,9 @@ Page({
   goMatch() {
     wx.navigateTo({ url: '/pages/treehole/chat/index' });
   },
+  goMatches() {
+    wx.navigateTo({ url: '/pages/treehole/matches/index' });
+  },
   goParty() {
     wx.navigateTo({ url: '/pages/treehole/party/index' });
   },

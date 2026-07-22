@@ -122,6 +122,35 @@ export class TreeholeController {
     return ok(await this.treehole.match(anonId));
   }
 
+  // P1-16 匹配历史列表
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('matches')
+  async listMatches(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Req() req?: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(
+      await this.treehole.listMatches(
+        anonId,
+        parsePositiveInt(page, 1, 1, 1000),
+        parsePositiveInt(pageSize, 20, 1, 50),
+      ),
+    );
+  }
+
+  // P1-16 跳过/不喜欢当前匹配 + 重新匹配
+  @Public()
+  @UseGuards(AnonGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('matches/:id/skip')
+  async skipMatch(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.skipMatch(anonId, id));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Post('party/join')

@@ -3,6 +3,7 @@ import {
   hasAnonToken,
   getAnonymousToken,
   matchAnon,
+  skipAnonMatch,
   getAnonId,
   sendAnonMessage,
   listAnonMessages,
@@ -23,6 +24,7 @@ Page({
   data: {
     matching: false,
     matched: false,
+    matchId: '',
     peerAnonId: '',
     matchScore: 0,
     matchedTags: [] as string[],
@@ -60,30 +62,66 @@ Page({
       if (r.waiting) {
         wx.showToast({ title: '暂无可用对象，稍后再试', icon: 'none' });
       } else if (r.imCredential && r.peerAnonId) {
-        this.setData({
-          matched: true,
-          peerAnonId: r.peerAnonId,
-          matchScore: r.matchScore ?? 0,
-          matchedTags: r.matchedTags ?? [],
-          peerTags: r.peerTags ?? [],
-          messages: [],
-        });
-        onMessage((m: WsMessage) => {
-          if (m.type === 'msg' && m.fromId === this.data.peerAnonId) {
-            this.setData({
-              messages: [
-                ...this.data.messages,
-                { fromId: m.fromId!, content: m.content!, mine: false, type: m.msgType === 'image' ? 'image' : 'text' },
-              ],
-            });
-          }
-        });
-        await connectIm(r.imCredential);
-        await this.loadHistory();
+        await this.applyMatch(r);
         wx.showToast({ title: '匹配成功', icon: 'success' });
       }
     } catch {
       /* toast */
+    } finally {
+      this.setData({ matching: false });
+      wx.hideLoading();
+    }
+  },
+
+  // P1-16 应用匹配结果（startMatch / skipPeer 共用）
+  async applyMatch(r: MatchResp) {
+    if (!r.imCredential || !r.peerAnonId) return;
+    this.setData({
+      matched: true,
+      matchId: r.matchId ?? '',
+      peerAnonId: r.peerAnonId,
+      matchScore: r.matchScore ?? 0,
+      matchedTags: r.matchedTags ?? [],
+      peerTags: r.peerTags ?? [],
+      messages: [],
+    });
+    onMessage((m: WsMessage) => {
+      if (m.type === 'msg' && m.fromId === this.data.peerAnonId) {
+        this.setData({
+          messages: [
+            ...this.data.messages,
+            { fromId: m.fromId!, content: m.content!, mine: false, type: m.msgType === 'image' ? 'image' : 'text' },
+          ],
+        });
+      }
+    });
+    await connectIm(r.imCredential);
+    await this.loadHistory();
+  },
+
+  // P1-16 跳过/不喜欢当前匹配 + 重新匹配
+  async skipPeer() {
+    if (this.data.matching || !this.data.matchId) return;
+    this.setData({ matching: true });
+    wx.showLoading({ title: '正在为您重新匹配...', mask: true });
+    try {
+      let r: MatchResp = await skipAnonMatch(this.data.matchId);
+      let retries = 0;
+      while (r.waiting && retries < 5) {
+        await new Promise((res) => setTimeout(res, 3000));
+        r = await matchAnon();
+        retries += 1;
+      }
+      if (r.waiting) {
+        // 无新对象，回到未匹配状态
+        this.setData({ matched: false, matchId: '', peerAnonId: '', messages: [] });
+        wx.showToast({ title: '暂无更多对象', icon: 'none' });
+      } else {
+        await this.applyMatch(r);
+        wx.showToast({ title: '已为你匹配新对象', icon: 'success' });
+      }
+    } catch {
+      wx.showToast({ title: '操作失败', icon: 'none' });
     } finally {
       this.setData({ matching: false });
       wx.hideLoading();

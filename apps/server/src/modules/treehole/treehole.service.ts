@@ -411,6 +411,57 @@ export class TreeholeService {
     return { score, matched };
   }
 
+  // P1-16 匹配历史：当前用户的 ChatMatch 列表（含 peer 展示信息），按时间倒序分页
+  async listMatches(anonId: string, page: number, pageSize: number) {
+    const [matches, total] = await Promise.all([
+      this.prisma.chatMatch.findMany({
+        where: { OR: [{ anonIdA: anonId }, { anonIdB: anonId }] },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.chatMatch.count({ where: { OR: [{ anonIdA: anonId }, { anonIdB: anonId }] } }),
+    ]);
+    // 批量取 peer 的展示信息（nickname/avatar/tags）
+    const peerIds = [...new Set(matches.map((m) => (m.anonIdA === anonId ? m.anonIdB : m.anonIdA)))];
+    const peers = await this.prisma.anonymousProfile.findMany({
+      where: { anonId: { in: peerIds } },
+      select: { anonId: true, nickname: true, avatar: true, interestTags: true, personalityTags: true },
+    });
+    const peerMap = new Map(peers.map((p) => [p.anonId, p]));
+    const list = matches.map((m) => {
+      const peerAnonId = m.anonIdA === anonId ? m.anonIdB : m.anonIdA;
+      const peer = peerMap.get(peerAnonId);
+      return {
+        id: m.id,
+        peerAnonId,
+        peerNickname: peer?.nickname ?? '匿名用户',
+        peerAvatar: peer?.avatar ?? null,
+        peerTags: peer ? [...new Set([...peer.interestTags, ...peer.personalityTags])] : [],
+        matchScore: m.matchScore ?? 0,
+        matchedTags: m.matchedTags,
+        status: m.status,
+        createdAt: m.createdAt.toISOString(),
+      };
+    });
+    return { list, total, page, pageSize };
+  }
+
+  // P1-16 跳过/不喜欢：关闭指定匹配（校验归属）+ 重新匹配返回新对象
+  async skipMatch(anonId: string, matchId: string) {
+    const m = await this.prisma.chatMatch.findUnique({ where: { id: matchId } });
+    if (!m) throw new BizException(30010, '匹配不存在');
+    if (m.anonIdA !== anonId && m.anonIdB !== anonId) {
+      throw new BizException(10003, '无权操作此匹配');
+    }
+    // 关闭当前匹配
+    if (m.status === MatchStatus.ACTIVE) {
+      await this.prisma.chatMatch.update({ where: { id: matchId }, data: { status: MatchStatus.CLOSED } });
+    }
+    // 重新匹配（match 内部会先 removeFromMatchQueue + findActiveMatch，当前已关闭故走队列）
+    return this.match(anonId);
+  }
+
   // 派对房：返回房间号 + IM 凭证（客户端 ws join roomId 群聊）
   async joinParty(anonId: string) {
     const imCredential = await this.im.getImCredential(anonId);

@@ -143,6 +143,34 @@ export function matchAnon(): Promise<MatchResp> {
   return anonRequest({ url: '/treehole/match', method: 'POST' });
 }
 
+// P1-16 匹配历史
+export interface MatchHistoryItem {
+  id: string;
+  peerAnonId: string;
+  peerNickname: string;
+  peerAvatar: string | null;
+  peerTags: string[];
+  matchScore: number;
+  matchedTags: string[];
+  status: string;
+  createdAt: string;
+}
+export interface MatchHistoryResult {
+  list: MatchHistoryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export function listAnonMatches(page = 1, pageSize = 20): Promise<MatchHistoryResult> {
+  return anonRequest({ url: `/treehole/matches?page=${page}&pageSize=${pageSize}`, method: 'GET' });
+}
+
+// P1-16 跳过/不喜欢当前匹配 + 重新匹配
+export function skipAnonMatch(matchId: string): Promise<MatchResp> {
+  return anonRequest({ url: `/treehole/matches/${matchId}/skip`, method: 'POST' });
+}
+
 export function toggleAnonPostLike(postId: string): Promise<{ liked: boolean; likeCount: number }> {
   return anonRequest({ url: `/treehole/posts/${postId}/like`, method: 'POST' });
 }
