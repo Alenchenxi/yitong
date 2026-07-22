@@ -329,6 +329,26 @@ export class AdminService {
     return { id, featured };
   }
 
+  // P2-15 兼职精品 toggle（admin）
+  async featureJob(id: string, reviewerId: string, featured: boolean) {
+    const p = await this.prisma.jobPost.findUnique({ where: { id } });
+    if (!p) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.jobPost.update({
+      where: { id },
+      data: { featured, featuredAt: featured ? new Date() : null },
+    });
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'job_post',
+        targetId: id,
+        reason: featured ? '设为精品岗位' : '取消精品',
+        status: 'APPROVED',
+        reviewerId,
+      },
+    });
+    return { id, featured };
+  }
+
   // 批量审核商家
   async batchMerchants(ids: string[], action: 'approve' | 'reject', reviewerId: string, reason?: string) {
     let processed = 0;

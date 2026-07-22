@@ -35,8 +35,19 @@ export class JobController {
     return ok(await this.job.recommend(uid));
   }
 
+  // P2-15 精品岗位列表（前台）
+  @Get('job-posts/featured')
+  async featured(@Query('limit') limit: string | undefined) {
+    return ok(await this.job.listFeatured(limit ? Number(limit) : 20));
+  }
+
   @Get('job-posts/:id')
-  async detail(@Param('id') id: string) {
+  async detail(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user?.uid ?? '';
+    // P2-16 记录浏览（已登录用户）
+    if (uid) {
+      this.job.recordView(uid, id).catch(() => undefined);
+    }
     return ok(await this.job.getPost(id));
   }
 
@@ -109,6 +120,13 @@ export class JobController {
   async myApps(@Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.job.listMyApplications(uid));
+  }
+
+  // P2-16 商家招聘数据看板
+  @Get('merchant/dashboard')
+  async merchantDashboard(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.getMerchantDashboard(uid));
   }
 
   // 状态流转：accept(PENDING->ACCEPTED) / complete(ACCEPTED->DONE)

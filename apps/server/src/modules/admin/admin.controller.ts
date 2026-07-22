@@ -91,6 +91,13 @@ export class AdminController {
     return ok(await this.admin.featurePost(id, uid, body?.featured !== false, (req.body as { reason?: string })?.reason));
   }
 
+  // P2-15 兼职精品 toggle
+  @Post('job-posts/:id/feature')
+  async featureJob(@Param('id') id: string, @Body() body: { featured?: boolean }, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.featureJob(id, uid, body?.featured !== false));
+  }
+
   @Get('pricing')
   async getPricing() {
     return ok(await this.admin.getPricing());

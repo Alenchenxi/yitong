@@ -128,6 +128,51 @@ export class JobService {
     return this.toPostVo(post);
   }
 
+  // P2-16 记录浏览事件（用于商家看板统计）
+  async recordView(uid: string, postId: string) {
+    const post = await this.prisma.jobPost.findUnique({ where: { id: postId }, select: { id: true } });
+    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.jobView.create({ data: { jobPostId: postId, userId: uid } });
+    return { recorded: true };
+  }
+
+  // P2-15 精品岗位列表（status=PUBLISHED + featured=true，按 featuredAt 倒序）
+  async listFeatured(limit = 20) {
+    const posts = await this.prisma.jobPost.findMany({
+      where: { status: 'PUBLISHED', featured: true, expireAt: { gt: new Date() } },
+      orderBy: [{ featuredAt: 'desc' }, { createdAt: 'desc' }],
+      take: Math.min(50, Math.max(1, limit)),
+      include: { merchant: { select: { shopName: true } } },
+    });
+    return posts.map((p) => this.toPostVo(p));
+  }
+
+  // P2-16 商家招聘数据看板：浏览 / 报名 / 录用 / 完成 / 转化率
+  async getMerchantDashboard(merchantUid: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    const where = { jobPost: { merchantId: merchant.id } };
+    const [viewCount, total, pending, accepted, completed, rejected, cancelled] = await Promise.all([
+      this.prisma.jobView.count({ where }),
+      this.prisma.jobApplication.count({ where }),
+      this.prisma.jobApplication.count({ where: { ...where, status: 'PENDING' } }),
+      this.prisma.jobApplication.count({ where: { ...where, status: 'ACCEPTED' } }),
+      this.prisma.jobApplication.count({ where: { ...where, status: 'DONE' } }),
+      this.prisma.jobApplication.count({ where: { ...where, status: 'REJECTED' } }),
+      this.prisma.jobApplication.count({ where: { ...where, status: 'CANCELLED' } }),
+    ]);
+    return {
+      viewCount,
+      applicationCount: total,
+      pendingCount: pending,
+      acceptedCount: accepted,
+      completedCount: completed,
+      rejectedCount: rejected,
+      cancelledCount: cancelled,
+      conversionRate: total > 0 ? Math.round(((accepted + completed) / total) * 100) : 0,
+    };
+  }
+
   // P0-19 举报岗位 -> 创建 ModerationRecord（targetType=job_post，管理员审核队列可见）；P1-27 记录举报人
   async report(uid: string, postId: string, reason?: string) {
     const post = await this.prisma.jobPost.findUnique({ where: { id: postId }, select: { id: true } });
@@ -543,6 +588,7 @@ export class JobService {
     workPeriods: string[];
     headcount: number;
     urgent: boolean;
+    featured?: boolean;
     online: boolean;
     questions: string[];
     duration: JobDuration;
@@ -567,6 +613,7 @@ export class JobService {
       workPeriods: p.workPeriods,
       headcount: p.headcount,
       urgent: p.urgent,
+      featured: p.featured ?? false,
       online: p.online,
       questions: p.questions,
       duration: p.duration,

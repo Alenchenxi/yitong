@@ -529,6 +529,8 @@ model JobPost {
   workPeriods  String[]      @default([]) @map("work_periods")         // P0-17 工作时段（上午/下午/晚上/全天/可商议）
   headcount    Int           @default(1) @map("headcount")             // P0-17 招聘人数
   urgent       Boolean       @default(false) @map("urgent")            // P0-17 急招
+  featured     Boolean       @default(false) @map("featured")          // P2-15 精品
+  featuredAt   DateTime?     @map("featured_at")                       // P2-15 精品设置时间
   online       Boolean       @default(false) @map("online")            // P0-17 是否可线上
   questions    String[]      @default([]) @map("questions")            // P0-21 报名问题（商家设置）
   duration     JobDuration
@@ -537,11 +539,13 @@ model JobPost {
   createdAt    DateTime      @default(now()) @map("created_at")
   merchant     Merchant      @relation(fields: [merchantId], references: [id])
   applications JobApplication[]
+  views        JobView[]
   @@index([status, expireAt])
   @@index([status, createdAt])
   @@index([status, urgent, createdAt])
   @@index([status, category, createdAt])
   @@index([status, salaryAmount])
+  @@index([status, featured, featuredAt])
   @@map("job_posts")
 }
 enum JobDuration {
@@ -609,6 +613,18 @@ model JobReview {
   @@unique([applicationId, direction]) // P1-26 同一报名可双向评（学生评商家 + 商家评学生）
   @@index([reviewerId])
   @@map("job_reviews")
+}
+
+// P2-16 招聘浏览事件
+model JobView {
+  id        String   @id @default(cuid())
+  jobPostId String   @map("job_post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  jobPost   JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  @@index([jobPostId, createdAt])
+  @@index([userId, createdAt])
+  @@map("job_views")
 }
 
 // P0-21 简历（一人一份，userId 唯一；覆盖 P1-20 基础字段）
