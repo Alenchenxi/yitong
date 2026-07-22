@@ -8,12 +8,14 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { FeedQueryDto } from './dto/feed-query.dto';
 import type {
+  ActivityTopicVo,
   CommentVo,
   FeedResult,
   LikeResult,
   LocateResult,
   PageResult,
   PostVo,
+  TopicVo,
 } from './types';
 
 // 帖子查询的关联加载：作者信息 + 评论数 + 当前用户是否已赞
@@ -1034,5 +1036,106 @@ export class ConfessionService {
       create: { keyword, count: 1 },
       update: { count: { increment: 1 } },
     });
+  }
+
+  // ===== P2-03 活动专题（前台浏览）=====
+
+  async listActivityTopics(): Promise<ActivityTopicVo[]> {
+    const topics = await this.prisma.activityTopic.findMany({
+      where: { status: 'PUBLISHED' },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    });
+    return topics.map((t) => ({
+      id: t.id,
+      title: t.title,
+      coverUrl: t.coverUrl,
+      description: t.description,
+      sortOrder: t.sortOrder,
+      createdAt: t.createdAt.toISOString(),
+    }));
+  }
+
+  // 活动专题详情 + 关联帖子（按 sortOrder -> createdAt）
+  async getActivityTopic(uid: string, id: string): Promise<{ topic: ActivityTopicVo; posts: PostVo[] }> {
+    const topic = await this.prisma.activityTopic.findFirst({
+      where: { id, status: 'PUBLISHED' },
+    });
+    if (!topic) throw new BizException(20001, '活动专题不存在', HttpStatus.NOT_FOUND);
+    const links = await this.prisma.activityTopicPost.findMany({
+      where: { topicId: id },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+      include: { post: { include: postInclude(uid) } },
+      take: 50,
+    });
+    const posts = links
+      .filter((l) => l.post && l.post.status === PostStatus.APPROVED && !l.post.deletedAt && l.post.visibility === 'PUBLIC')
+      .map((l) => this.toPostVo(l.post));
+    return {
+      topic: {
+        id: topic.id,
+        title: topic.title,
+        coverUrl: topic.coverUrl,
+        description: topic.description,
+        sortOrder: topic.sortOrder,
+        createdAt: topic.createdAt.toISOString(),
+      },
+      posts,
+    };
+  }
+
+  // ===== P2-04 校园话题（前台浏览）=====
+
+  async listTopics(): Promise<TopicVo[]> {
+    const topics = await this.prisma.topic.findMany({
+      where: { status: 'PUBLISHED' },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+      include: { _count: { select: { posts: true } } },
+    });
+    return topics.map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      coverUrl: t.coverUrl,
+      postCount: t._count.posts,
+      sortOrder: t.sortOrder,
+      createdAt: t.createdAt.toISOString(),
+    }));
+  }
+
+  // 话题详情 + 该话题帖子（分页）
+  async getTopic(uid: string, id: string, page = 1, pageSize = 20): Promise<{ topic: TopicVo; posts: PageResult<PostVo> }> {
+    const topic = await this.prisma.topic.findFirst({
+      where: { id, status: 'PUBLISHED' },
+      include: { _count: { select: { posts: true } } },
+    });
+    if (!topic) throw new BizException(20001, '话题不存在', HttpStatus.NOT_FOUND);
+    const where: Prisma.PostWhereInput = {
+      topicId: id,
+      status: PostStatus.APPROVED,
+      deletedAt: null,
+      visibility: 'PUBLIC',
+    };
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: postInclude(uid),
+      }),
+      this.prisma.post.count({ where }),
+    ]);
+    return {
+      topic: {
+        id: topic.id,
+        name: topic.name,
+        description: topic.description,
+        coverUrl: topic.coverUrl,
+        postCount: topic._count.posts,
+        sortOrder: topic.sortOrder,
+        createdAt: topic.createdAt.toISOString(),
+      },
+      posts: { list: posts.map((p) => this.toPostVo(p)), total, page, pageSize },
+    };
   }
 }

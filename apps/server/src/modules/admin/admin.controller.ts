@@ -132,4 +132,44 @@ export class AdminController {
   async deleteAnonTag(@Param('id') id: string) {
     return ok(await this.admin.deleteAnonTag(id));
   }
+
+  // ===== P2-03 活动专题管理 =====
+  @Post('activity-topics')
+  async createActivityTopic(@Body() body: { title: string; coverUrl?: string; description?: string; status?: string; sortOrder?: number }) {
+    return ok(await this.admin.createActivityTopic(body));
+  }
+  @Put('activity-topics/:id')
+  async updateActivityTopic(@Param('id') id: string, @Body() body: Partial<{ title: string; coverUrl: string | null; description: string | null; status: string; sortOrder: number }>) {
+    return ok(await this.admin.updateActivityTopic(id, body));
+  }
+  @Delete('activity-topics/:id')
+  async deleteActivityTopic(@Param('id') id: string) {
+    return ok(await this.admin.deleteActivityTopic(id));
+  }
+  @Post('activity-topics/:id/posts')
+  async addTopicPost(@Param('id') id: string, @Body() body: { postId: string; sortOrder?: number }) {
+    return ok(await this.admin.addTopicPost(id, body.postId, body.sortOrder ?? 0));
+  }
+  @Delete('activity-topics/:id/posts/:postId')
+  async removeTopicPost(@Param('id') id: string, @Param('postId') postId: string) {
+    return ok(await this.admin.removeTopicPost(id, postId));
+  }
+
+  // ===== P2-04 话题管理 =====
+  @Post('topics')
+  async createTopic(@Body() body: { name: string; description?: string; coverUrl?: string; status?: string; sortOrder?: number }) {
+    return ok(await this.admin.createTopic(body));
+  }
+  @Put('topics/:id')
+  async updateTopic(@Param('id') id: string, @Body() body: Partial<{ name: string; description: string | null; coverUrl: string | null; status: string; sortOrder: number }>) {
+    return ok(await this.admin.updateTopic(id, body));
+  }
+  @Delete('topics/:id')
+  async deleteTopic(@Param('id') id: string) {
+    return ok(await this.admin.deleteTopic(id));
+  }
+  @Post('posts/:id/topic')
+  async setPostTopic(@Param('id') id: string, @Body() body: { topicId?: string | null }) {
+    return ok(await this.admin.setPostTopic(id, body.topicId ?? null));
+  }
 }

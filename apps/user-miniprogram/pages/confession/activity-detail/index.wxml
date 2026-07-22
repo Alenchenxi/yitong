@@ -1,0 +1,14 @@
+<view class="page" wx:if="{{topic}}">
+  <view class="header">
+    <image wx:if="{{topic.coverUrl}}" class="cover" src="{{topic.coverUrl}}" mode="aspectFill"></image>
+    <view class="title">{{topic.title}}</view>
+    <view class="desc" wx:if="{{topic.description}}">{{topic.description}}</view>
+  </view>
+  <view class="list" wx:if="{{posts.length > 0}}">
+    <post-card wx:for="{{posts}}" wx:key="id" post="{{item}}" bind:like="onLike"></post-card>
+  </view>
+  <view class="yt-empty" wx:elif="{{!loading}}">
+    <view class="yt-empty-emoji">📭</view>
+    <view class="yt-empty-text">该专题暂无内容</view>
+  </view>
+</view>

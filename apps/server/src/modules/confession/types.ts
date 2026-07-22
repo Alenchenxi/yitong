@@ -65,3 +65,24 @@ export interface LikeResult {
   liked: boolean;
   likeCount: number;
 }
+
+// P2-03 活动专题
+export interface ActivityTopicVo {
+  id: string;
+  title: string;
+  coverUrl: string | null;
+  description: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+// P2-04 校园话题
+export interface TopicVo {
+  id: string;
+  name: string;
+  description: string | null;
+  coverUrl: string | null;
+  postCount: number;
+  sortOrder: number;
+  createdAt: string;
+}

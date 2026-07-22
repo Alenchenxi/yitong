@@ -145,6 +145,39 @@ export function listTodayHit(page = 1, pageSize = 20) {
   return request<PageResult<PostVo>>({ url: `/posts/today-hit?page=${page}&pageSize=${pageSize}` });
 }
 
+// P2-03 活动专题
+export interface ActivityTopicVo {
+  id: string;
+  title: string;
+  coverUrl: string | null;
+  description: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+export function listActivityTopics() {
+  return request<ActivityTopicVo[]>({ url: '/activity-topics' });
+}
+export function getActivityTopic(id: string) {
+  return request<{ topic: ActivityTopicVo; posts: PostVo[] }>({ url: `/activity-topics/${id}` });
+}
+
+// P2-04 校园话题
+export interface TopicVo {
+  id: string;
+  name: string;
+  description: string | null;
+  coverUrl: string | null;
+  postCount: number;
+  sortOrder: number;
+  createdAt: string;
+}
+export function listTopics() {
+  return request<TopicVo[]>({ url: '/topics' });
+}
+export function getTopic(id: string, page = 1, pageSize = 20) {
+  return request<{ topic: TopicVo; posts: PageResult<PostVo> }>({ url: `/topics/${id}?page=${page}&pageSize=${pageSize}` });
+}
+
 // 帖子详情
 export function getPost(id: string) {
   return request<PostVo>({ url: `/posts/${id}` });

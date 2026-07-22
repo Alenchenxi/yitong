@@ -136,6 +136,28 @@ export class ConfessionController {
     return ok(await this.confession.hotKeywords());
   }
 
+  // P2-03 活动专题
+  @Get('activity-topics')
+  async listActivityTopics() {
+    return ok(await this.confession.listActivityTopics());
+  }
+  @Get('activity-topics/:id')
+  async getActivityTopic(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.getActivityTopic(uid, id));
+  }
+
+  // P2-04 校园话题
+  @Get('topics')
+  async listTopics() {
+    return ok(await this.confession.listTopics());
+  }
+  @Get('topics/:id')
+  async getTopic(@Param('id') id: string, @Query() q: MyPostsQueryDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.confession.getTopic(uid, id, q.page ?? 1, q.pageSize ?? 20));
+  }
+
   // ===== 动态段路由 =====
   @Get('posts/:id')
   async getPost(@Param('id') id: string, @Req() req: Request) {

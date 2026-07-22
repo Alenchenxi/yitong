@@ -53,6 +53,16 @@
     </scroll-view>
   </view>
 
+  <!-- P2-03/P2-04 运营入口 -->
+  <view class="ops-entry">
+    <view class="ops-item" bindtap="goActivity">
+      <text class="ops-emoji">🎉</text><text class="ops-text">活动专题</text>
+    </view>
+    <view class="ops-item" bindtap="goTopic">
+      <text class="ops-emoji">💬</text><text class="ops-text">校园话题</text>
+    </view>
+  </view>
+
   <!-- 主 tab：推荐/最新/热门/关注 -->
   <view class="main-tabs">
     <view class="main-tab {{activeMainTab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchMainTab">推荐</view>

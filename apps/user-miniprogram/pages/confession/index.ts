@@ -92,6 +92,14 @@ Page({
     wx.navigateTo({ url: '/pages/confession/today-hit/index' });
   },
 
+  goActivity() {
+    wx.navigateTo({ url: '/pages/confession/activity/index' });
+  },
+
+  goTopic() {
+    wx.navigateTo({ url: '/pages/confession/topic/index' });
+  },
+
   async onLike(e: WechatMiniprogram.CustomEvent) {
     const { id } = e.detail as { id: string };
     const idx = this.data.posts.findIndex((p) => p.id === id);

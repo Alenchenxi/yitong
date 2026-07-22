@@ -465,4 +465,111 @@ export class AdminService {
     await this.prisma.anonTag.delete({ where: { id } });
     return { id, deleted: true };
   }
+
+  // ===== P2-03 活动专题管理 =====
+  async createActivityTopic(dto: { title: string; coverUrl?: string; description?: string; status?: string; sortOrder?: number }) {
+    return this.prisma.activityTopic.create({
+      data: {
+        title: dto.title,
+        coverUrl: dto.coverUrl ?? null,
+        description: dto.description ?? null,
+        status: dto.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT',
+        sortOrder: dto.sortOrder ?? 0,
+      },
+    });
+  }
+  async updateActivityTopic(id: string, dto: Partial<{ title: string; coverUrl: string | null; description: string | null; status: string; sortOrder: number }>) {
+    const existing = await this.prisma.activityTopic.findUnique({ where: { id } });
+    if (!existing) throw new BizException(20001, '活动专题不存在', HttpStatus.NOT_FOUND);
+    const data: Prisma.ActivityTopicUpdateInput = {};
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.coverUrl !== undefined) data.coverUrl = dto.coverUrl;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.status !== undefined) data.status = dto.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT';
+    if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
+    return this.prisma.activityTopic.update({ where: { id }, data });
+  }
+  async deleteActivityTopic(id: string) {
+    const existing = await this.prisma.activityTopic.findUnique({ where: { id } });
+    if (!existing) throw new BizException(20001, '活动专题不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.activityTopic.delete({ where: { id } }); // 级联删关联
+    return { id, deleted: true };
+  }
+  // 活动专题加帖
+  async addTopicPost(id: string, postId: string, sortOrder = 0) {
+    const topic = await this.prisma.activityTopic.findUnique({ where: { id } });
+    if (!topic) throw new BizException(20001, '活动专题不存在', HttpStatus.NOT_FOUND);
+    const post = await this.prisma.post.findUnique({ where: { id: postId } });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    try {
+      return await this.prisma.activityTopicPost.create({
+        data: { topicId: id, postId, sortOrder },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new BizException(20002, '该帖子已在专题中', HttpStatus.CONFLICT);
+      }
+      throw e;
+    }
+  }
+  async removeTopicPost(id: string, postId: string) {
+    await this.prisma.activityTopicPost.deleteMany({ where: { topicId: id, postId } });
+    return { topicId: id, postId, removed: true };
+  }
+
+  // ===== P2-04 话题管理 =====
+  async createTopic(dto: { name: string; description?: string; coverUrl?: string; status?: string; sortOrder?: number }) {
+    try {
+      return await this.prisma.topic.create({
+        data: {
+          name: dto.name,
+          description: dto.description ?? null,
+          coverUrl: dto.coverUrl ?? null,
+          status: dto.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT',
+          sortOrder: dto.sortOrder ?? 0,
+        },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new BizException(20002, '话题名已存在', HttpStatus.CONFLICT);
+      }
+      throw e;
+    }
+  }
+  async updateTopic(id: string, dto: Partial<{ name: string; description: string | null; coverUrl: string | null; status: string; sortOrder: number }>) {
+    const existing = await this.prisma.topic.findUnique({ where: { id } });
+    if (!existing) throw new BizException(20001, '话题不存在', HttpStatus.NOT_FOUND);
+    const data: Prisma.TopicUpdateInput = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.coverUrl !== undefined) data.coverUrl = dto.coverUrl;
+    if (dto.status !== undefined) data.status = dto.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT';
+    if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
+    try {
+      return await this.prisma.topic.update({ where: { id }, data });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new BizException(20002, '话题名已存在', HttpStatus.CONFLICT);
+      }
+      throw e;
+    }
+  }
+  async deleteTopic(id: string) {
+    const existing = await this.prisma.topic.findUnique({ where: { id } });
+    if (!existing) throw new BizException(20001, '话题不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.topic.delete({ where: { id } }); // posts.topicId ON DELETE SET NULL
+    return { id, deleted: true };
+  }
+  // 帖子归入话题（批量/单个）
+  async setPostTopic(postId: string, topicId: string | null) {
+    const post = await this.prisma.post.findUnique({ where: { id: postId } });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (topicId) {
+      const topic = await this.prisma.topic.findUnique({ where: { id: topicId } });
+      if (!topic) throw new BizException(20001, '话题不存在', HttpStatus.NOT_FOUND);
+    }
+    await this.prisma.post.update({ where: { id: postId }, data: { topicId } });
+    this.confession.invalidateFeedCache();
+    return { postId, topicId };
+  }
 }

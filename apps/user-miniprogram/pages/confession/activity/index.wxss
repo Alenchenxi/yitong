@@ -1,0 +1,10 @@
+.page { padding: 24rpx; }
+.topic-item { display: flex; gap: 20rpx; background: var(--yt-card); border-radius: 16rpx; padding: 20rpx; margin-bottom: 20rpx; border: 1rpx solid var(--yt-border); }
+.cover { width: 200rpx; height: 130rpx; border-radius: 12rpx; flex-shrink: 0; background: var(--yt-primary-lighter); }
+.cover-ph { display: flex; align-items: center; justify-content: center; font-size: 24rpx; color: var(--yt-primary-dark); padding: 8rpx; text-align: center; }
+.info { flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.title { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); }
+.desc { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 10rpx; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.yt-empty { text-align: center; padding-top: 200rpx; }
+.yt-empty-emoji { font-size: 80rpx; }
+.yt-empty-text { font-size: 26rpx; color: var(--yt-text-sub); margin-top: 16rpx; }

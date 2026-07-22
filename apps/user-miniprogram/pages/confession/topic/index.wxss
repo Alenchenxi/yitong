@@ -1,0 +1,11 @@
+.page { padding: 24rpx; }
+.topic-item { display: flex; gap: 16rpx; background: var(--yt-card); border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; border: 1rpx solid var(--yt-border); }
+.topic-hash { font-size: 40rpx; font-weight: 700; color: var(--yt-primary); flex-shrink: 0; }
+.info { flex: 1; min-width: 0; }
+.name { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); }
+.meta { display: flex; justify-content: space-between; align-items: center; margin-top: 10rpx; gap: 16rpx; }
+.desc { font-size: 24rpx; color: var(--yt-text-sub); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.count { font-size: 22rpx; color: var(--yt-text-sub); flex-shrink: 0; }
+.yt-empty { text-align: center; padding-top: 200rpx; }
+.yt-empty-emoji { font-size: 80rpx; }
+.yt-empty-text { font-size: 26rpx; color: var(--yt-text-sub); margin-top: 16rpx; }

@@ -124,13 +124,16 @@ model Post {
   visibility  PostVisibility @default(PUBLIC)  // P1-11 草稿/私密投稿
   pinned      Boolean        @default(false) // P2-05 置顶
   featured    Boolean        @default(false) // P2-05 加精
+  topicId     String?        @map("topic_id") // P2-04 校园话题
   createdAt   DateTime       @default(now()) @map("created_at")
   editedAt    DateTime?      @map("edited_at")    // P1-10 最后编辑时间
   deletedAt   DateTime?      @map("deleted_at")   // P1-10 作者软删
   circle      Circle         @relation(fields: [circleId], references: [id])
   author      User           @relation(fields: [authorId], references: [id])
+  topic       Topic?         @relation(fields: [topicId], references: [id])
   postLikes   PostLike[]
   comments    Comment[]
+  activityTopics ActivityTopicPost[]
   @@index([circleId, status, createdAt])
   @@index([status, createdAt])
   @@index([authorId, deletedAt])
@@ -324,6 +327,55 @@ model Announcement {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   @@map("announcements")
+}
+
+// ===== P2-03 活动专题 =====
+enum ActivityTopicStatus {
+  DRAFT
+  PUBLISHED
+}
+model ActivityTopic {
+  id          String             @id @default(cuid())
+  title       String
+  coverUrl    String?            @map("cover_url")
+  description String?
+  status      ActivityTopicStatus @default(DRAFT)
+  sortOrder   Int                @default(0) @map("sort_order")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  posts       ActivityTopicPost[]
+  @@map("activity_topics")
+}
+// 活动专题 ↔ 帖子（多对多，可排序）
+model ActivityTopicPost {
+  id           String        @id @default(cuid())
+  topicId      String        @map("topic_id")
+  postId       String        @map("post_id")
+  sortOrder    Int           @default(0) @map("sort_order")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  topic        ActivityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  post         Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([topicId, postId])
+  @@index([topicId, sortOrder])
+  @@map("activity_topic_posts")
+}
+
+// ===== P2-04 校园话题运营 =====
+enum TopicStatus {
+  DRAFT
+  PUBLISHED
+}
+model Topic {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  coverUrl    String?     @map("cover_url")
+  status      TopicStatus @default(DRAFT)
+  sortOrder   Int         @default(0) @map("sort_order")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  posts       Post[]
+  @@map("topics")
 }
 
 // ===== 收藏（跨内容类型：表白墙帖 post / 树洞帖 anon_post / 兼职岗位 job_post）=====

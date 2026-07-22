@@ -72,6 +72,12 @@
 .hot-author { font-size: 22rpx; color: var(--yt-text-sub); max-width: 200rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hot-likes { font-size: 22rpx; color: var(--yt-primary-dark); }
 
+/* P2-03/P2-04 运营入口 */
+.ops-entry { display: flex; gap: 16rpx; padding: 16rpx 24rpx 0; }
+.ops-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx; padding: 24rpx 0; background: var(--yt-card); border-radius: 16rpx; border: 1rpx solid var(--yt-border); }
+.ops-emoji { font-size: 44rpx; }
+.ops-text { font-size: 24rpx; color: var(--yt-text-main); }
+
 /* 主 tab */
 .main-tabs {
   display: flex;

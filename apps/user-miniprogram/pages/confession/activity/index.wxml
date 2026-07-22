@@ -1,0 +1,14 @@
+<view class="page">
+  <view class="topic-item" wx:for="{{topics}}" wx:key="id" data-id="{{item.id}}" bindtap="goTopic">
+    <image wx:if="{{item.coverUrl}}" class="cover" src="{{item.coverUrl}}" mode="aspectFill"></image>
+    <view wx:else class="cover cover-ph">{{item.title}}</view>
+    <view class="info">
+      <view class="title">{{item.title}}</view>
+      <view class="desc" wx:if="{{item.description}}">{{item.description}}</view>
+    </view>
+  </view>
+  <view class="yt-empty" wx:if="{{!loading && topics.length === 0}}">
+    <view class="yt-empty-emoji">🎉</view>
+    <view class="yt-empty-text">暂无活动专题</view>
+  </view>
+</view>
