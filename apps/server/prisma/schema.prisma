@@ -244,7 +244,8 @@ model ChatMessage {
   fromId    String   @map("from_id")
   toId      String   @map("to_id")
   content   String
-  type      String   @default("text") @map("type") // P0-14 消息类型：text / image
+  type      String   @default("text") @map("type") // P0-14 消息类型：text / image；P1-18 + voice
+  duration  Int?     @map("duration") // P1-18 语音消息时长（秒），仅 type=voice
   createdAt DateTime @default(now()) @map("created_at")
   @@index([fromId, toId, createdAt])
   @@index([toId, createdAt])

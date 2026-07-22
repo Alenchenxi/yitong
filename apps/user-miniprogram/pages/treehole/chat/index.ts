@@ -11,13 +11,14 @@ import {
   type MatchResp,
 } from '../../../services/treehole';
 import { connectIm, onMessage, sendWsMessage, type WsMessage } from '../../../services/im';
-import { uploadImage } from '../../../services/upload';
+import { uploadImage, uploadVoice } from '../../../services/upload';
 
 interface Msg {
   fromId: string;
   content: string;
   mine: boolean;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'voice';
+  duration?: number; // P1-18 语音时长（秒）
 }
 
 Page({
@@ -35,9 +36,16 @@ Page({
     messages: [] as Msg[],
     input: '',
     sending: false,
+    // P1-18 语音消息
+    voiceMode: false,
+    recording: false,
+    playingIdx: -1,
   },
 
   countdownTimer: null as ReturnType<typeof setInterval> | null,
+  recorder: null as WechatMiniprogram.RecorderManager | null,
+  recordCancel: false,
+  audioCtx: null as WechatMiniprogram.InnerAudioContext | null,
 
   async onLoad() {
     const app = getApp<AppInstance>();
@@ -49,6 +57,7 @@ Page({
         return;
       }
     }
+    this.initRecorder();
   },
 
   async startMatch() {
@@ -98,7 +107,13 @@ Page({
         this.setData({
           messages: [
             ...this.data.messages,
-            { fromId: m.fromId!, content: m.content!, mine: false, type: m.msgType === 'image' ? 'image' : 'text' },
+            {
+              fromId: m.fromId!,
+              content: m.content!,
+              mine: false,
+              type: m.msgType === 'image' ? 'image' : m.msgType === 'voice' ? 'voice' : 'text',
+              duration: m.msgType === 'voice' ? m.duration : undefined,
+            },
           ],
         });
       }
@@ -139,6 +154,15 @@ Page({
 
   onUnload() {
     this.clearCountdown();
+    // P1-18 停止录音/播放，释放资源
+    if (this.data.recording) {
+      this.recordCancel = true;
+      this.recorder?.stop();
+    }
+    if (this.audioCtx) {
+      this.audioCtx.destroy();
+      this.audioCtx = null;
+    }
   },
 
   // P1-16 跳过/不喜欢当前匹配 + 重新匹配
@@ -170,7 +194,7 @@ Page({
     }
   },
 
-  // P0-14 历史拉取（含图片类型）
+  // P0-14 历史拉取（含图片类型；P1-18 含语音类型+时长）
   async loadHistory() {
     try {
       const resp = await listAnonMessages(this.data.peerAnonId);
@@ -179,7 +203,8 @@ Page({
         fromId: m.fromId,
         content: m.content,
         mine: m.fromId === me,
-        type: m.type === 'image' ? 'image' : 'text',
+        type: m.type === 'image' ? 'image' : m.type === 'voice' ? 'voice' : 'text',
+        duration: m.type === 'voice' ? (m.duration ?? undefined) : undefined,
       }));
       this.setData({ messages: [...history, ...this.data.messages] });
     } catch {
@@ -244,6 +269,119 @@ Page({
   previewImage(e: WechatMiniprogram.TouchEvent) {
     const url = e.currentTarget.dataset.url as string;
     if (url) wx.previewImage({ urls: [url] });
+  },
+
+  // ===== P1-18 语音消息 =====
+
+  // 初始化录音管理器（单例；onStop 在 touchend stop 后回调）
+  initRecorder() {
+    if (this.recorder) return;
+    const recorder = wx.getRecorderManager();
+    recorder.onStop((res) => {
+      this.setData({ recording: false });
+      if (this.recordCancel) {
+        this.recordCancel = false;
+        return;
+      }
+      const secs = Math.round(res.duration / 1000);
+      if (!res.tempFilePath || secs < 1) {
+        wx.showToast({ title: '说话时间太短', icon: 'none' });
+        return;
+      }
+      void this.sendVoice(res.tempFilePath, secs);
+    });
+    recorder.onError(() => {
+      this.setData({ recording: false });
+      wx.showToast({ title: '录音失败，请检查麦克风权限', icon: 'none' });
+    });
+    this.recorder = recorder;
+  },
+
+  // 切换语音/键盘输入模式
+  toggleVoiceMode() {
+    this.setData({ voiceMode: !this.data.voiceMode });
+  },
+
+  // 按住开始录音（最长 60s，mp3）
+  startRecord() {
+    if (this.data.expired || this.data.sending) return;
+    this.recordCancel = false;
+    this.recorder?.start({
+      duration: 60000,
+      format: 'mp3',
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      encodeBitRate: 48000,
+    });
+    this.setData({ recording: true });
+  },
+
+  // 松开发送
+  stopRecord() {
+    if (!this.data.recording) return;
+    this.recorder?.stop();
+  },
+
+  // 上滑取消（松手在按钮外）
+  cancelRecord() {
+    if (!this.data.recording) return;
+    this.recordCancel = true;
+    this.recorder?.stop();
+  },
+
+  // 上传语音 -> 存消息 -> WS 转发
+  async sendVoice(tempFilePath: string, secs: number) {
+    const peerAnonId = this.data.peerAnonId;
+    if (!peerAnonId || this.data.sending) return;
+    this.setData({ sending: true });
+    wx.showLoading({ title: '发送中...', mask: true });
+    try {
+      const url = await uploadVoice(tempFilePath);
+      await sendAnonMessage(peerAnonId, url, 'voice', secs);
+      sendWsMessage(peerAnonId, url, 'voice', secs);
+      this.setData({
+        messages: [...this.data.messages, { fromId: getAnonId(), content: url, mine: true, type: 'voice', duration: secs }],
+      });
+    } catch {
+      wx.showToast({ title: '发送失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+      this.setData({ sending: false });
+    }
+  },
+
+  // 播放语音（InnerAudioContext 单例，再点同一条停止）
+  playVoice(e: WechatMiniprogram.TouchEvent) {
+    const url = e.currentTarget.dataset.url as string;
+    const idx = Number(e.currentTarget.dataset.idx);
+    if (!url) return;
+    if (this.audioCtx && this.data.playingIdx === idx) {
+      this.audioCtx.stop();
+      this.audioCtx.destroy();
+      this.audioCtx = null;
+      this.setData({ playingIdx: -1 });
+      return;
+    }
+    if (this.audioCtx) {
+      this.audioCtx.destroy();
+      this.audioCtx = null;
+    }
+    const ctx = wx.createInnerAudioContext();
+    ctx.src = url;
+    ctx.onEnded(() => {
+      this.setData({ playingIdx: -1 });
+      ctx.destroy();
+      if (this.audioCtx === ctx) this.audioCtx = null;
+    });
+    ctx.onError(() => {
+      this.setData({ playingIdx: -1 });
+      ctx.destroy();
+      if (this.audioCtx === ctx) this.audioCtx = null;
+      wx.showToast({ title: '播放失败', icon: 'none' });
+    });
+    this.audioCtx = ctx;
+    this.setData({ playingIdx: idx });
+    ctx.play();
   },
 
   // P0-16 拉黑对方：屏蔽后互相隔离（广场/匹配/聊天），拉黑即离场

@@ -34,14 +34,37 @@
           data-url="{{item.content}}"
           bindtap="previewImage"
         ></image>
+        <!-- P1-18 语音气泡：按时长撑宽，点击播放 -->
+        <view
+          wx:elif="{{item.type === 'voice'}}"
+          class="msg-voice {{item.mine ? 'mine' : 'peer'}} {{playingIdx === index ? 'playing' : ''}}"
+          style="width: {{120 + (item.duration || 1) * 6 > 380 ? 380 : 120 + (item.duration || 1) * 6}}rpx"
+          data-url="{{item.content}}"
+          data-idx="{{index}}"
+          bindtap="playVoice"
+        >
+          <text class="voice-icon">{{item.mine ? '◀' : '▶'}}</text>
+          <text class="voice-len">{{item.duration || 1}}″</text>
+        </view>
         <text wx:else>{{item.content}}</text>
       </view>
       <view class="empty-tip" wx:if="{{messages.length === 0}}">对方已连接，打个招呼吧</view>
     </view>
     <view class="bar">
-      <view class="img-btn" bindtap="sendImage">📷</view>
-      <input class="input" placeholder="发消息…" value="{{input}}" bindinput="onInput" confirm-type="send" bindconfirm="send" adjust-position />
-      <button class="send-btn" size="mini" bindtap="send">发送</button>
+      <view class="img-btn" bindtap="toggleVoiceMode">{{voiceMode ? '⌨️' : '🎤'}}</view>
+      <view class="img-btn" wx:if="{{!voiceMode}}" bindtap="sendImage">📷</view>
+      <!-- P1-18 语音模式：按住说话 -->
+      <view
+        wx:if="{{voiceMode}}"
+        class="record-btn {{recording ? 'recording' : ''}}"
+        bindtouchstart="startRecord"
+        bindtouchend="stopRecord"
+        bindtouchcancel="cancelRecord"
+      >{{recording ? '松开 发送' : '按住 说话'}}</view>
+      <block wx:else>
+        <input class="input" placeholder="发消息…" value="{{input}}" bindinput="onInput" confirm-type="send" bindconfirm="send" adjust-position />
+        <button class="send-btn" size="mini" bindtap="send">发送</button>
+      </block>
     </view>
   </block>
 </view>

@@ -27,7 +27,8 @@ export interface WsMessage {
   toId?: string;
   roomId?: string;
   content?: string;
-  msgType?: string; // P0-14 消息内容类型 text / image
+  msgType?: string; // P0-14 消息内容类型 text / image；P1-18 + voice
+  duration?: number; // P1-18 语音时长（秒），仅 msgType=voice
   ts?: number;
   reason?: string;
   [k: string]: unknown;
@@ -266,8 +267,8 @@ export function sendRoomMessage(roomId: string, content: string) {
   enqueueOrSend({ type: 'room-msg', roomId, content });
 }
 
-export function sendWsMessage(toId: string, content: string, msgType?: string) {
-  enqueueOrSend({ type: 'msg', toId, content, msgType });
+export function sendWsMessage(toId: string, content: string, msgType?: string, duration?: number) {
+  enqueueOrSend({ type: 'msg', toId, content, msgType, duration });
 }
 
 export function getImToken(app: AppLike): Promise<ImCredential> {

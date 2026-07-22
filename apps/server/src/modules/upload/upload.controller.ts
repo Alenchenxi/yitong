@@ -10,6 +10,17 @@ const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_VIDEO_MIME = ['video/mp4'];
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+// P1-18 语音消息：小程序 RecorderManager 输出 mp3/aac；m4a/wav 兼容
+const ALLOWED_VOICE_MIME = [
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/aac',
+  'audio/x-m4a',
+  'audio/m4a',
+  'audio/wav',
+  'audio/x-wav',
+];
+const MAX_VOICE_SIZE = 2 * 1024 * 1024; // 2MB（60s 语音足够）
 
 // 图片上传：需登录（非 @Public）。仅图片，≤5MB。
 // query.type 指定桶内文件夹（posts/anon/avatars/merchant/common），默认 common。
@@ -52,6 +63,25 @@ export class UploadController {
       ? (type as UploadType)
       : 'common';
     const url = await this.upload.uploadVideo(file, t);
+    return ok({ url });
+  }
+
+  // P1-18 语音上传：仅 mp3/m4a/aac/wav，≤2MB；用于树洞聊天语音消息。返回 { url }。
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // 语音 10/min
+  @Post('voice')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_VOICE_SIZE } }))
+  async uploadVoiceFile(
+    @UploadedFile() file: MulterFile | undefined,
+    @Query('type') type?: string,
+  ) {
+    if (!file) throw new BizException(90004, '文件不能为空');
+    if (!ALLOWED_VOICE_MIME.includes(file.mimetype)) {
+      throw new BizException(90004, '仅支持 mp3/m4a/aac/wav 语音');
+    }
+    const t: UploadType = (ALLOWED_UPLOAD_TYPES as readonly string[]).includes(type ?? '')
+      ? (type as UploadType)
+      : 'voice';
+    const url = await this.upload.uploadVoice(file, t);
     return ok({ url });
   }
 }

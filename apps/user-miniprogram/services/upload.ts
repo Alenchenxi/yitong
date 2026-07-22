@@ -1,12 +1,12 @@
-export type UploadType = 'common' | 'posts' | 'anon' | 'avatars' | 'merchant';
+export type UploadType = 'common' | 'posts' | 'anon' | 'avatars' | 'merchant' | 'voice';
 
-// 通用上传：wx.chooseMedia 拿到本地路径 -> wx.uploadFile 传 /uploads(图片) 或 /uploads/video(视频) -> 返回 {url}
+// 通用上传：wx.chooseMedia 拿到本地路径 -> wx.uploadFile 传 /uploads(图片) /uploads/video(视频) /uploads/voice(语音) -> 返回 {url}
 // 注意：uploadFile 不能复用 request 封装（它走 multipart/form-data 而非 JSON），
 // 故直接用 wx.uploadFile 并手动注入 Authorization。
 function uploadFile(
   localPath: string,
   type: UploadType,
-  endpoint: 'uploads' | 'uploads/video',
+  endpoint: 'uploads' | 'uploads/video' | 'uploads/voice',
 ): Promise<string> {
   const app = getApp<{ globalData: { apiBase: string; token: string } }>();
   return new Promise((resolve, reject) => {
@@ -51,6 +51,11 @@ export function uploadImage(localPath: string, type: UploadType = 'common'): Pro
 // 视频上传（mp4，≤50MB）
 export function uploadVideo(localPath: string, type: UploadType = 'common'): Promise<string> {
   return uploadFile(localPath, type, 'uploads/video');
+}
+
+// P1-18 语音上传（mp3/m4a/aac/wav，≤2MB），默认 voice 文件夹
+export function uploadVoice(localPath: string, type: UploadType = 'voice'): Promise<string> {
+  return uploadFile(localPath, type, 'uploads/voice');
 }
 
 // 批量上传图片（顺序，上传中展示 loading）

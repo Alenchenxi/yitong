@@ -24,6 +24,13 @@
 .msg.mine { background: #F9C801; color: #1D2129; margin-left: auto; }
 .msg.peer { background: #fff; color: #333; }
 .msg-img { width: 320rpx; border-radius: 12rpx; display: block; }
+/* P1-18 语音消息 */
+.msg-voice { display: flex; align-items: center; justify-content: space-between; min-width: 120rpx; }
+.voice-icon { font-size: 26rpx; }
+.voice-len { font-size: 26rpx; color: inherit; opacity: 0.75; }
+.msg-voice.playing .voice-icon { color: #B45309; font-weight: 700; }
+.record-btn { flex: 1; background: #f5f6f8; border-radius: 32rpx; padding: 14rpx 24rpx; font-size: 28rpx; text-align: center; color: #4E5969; user-select: none; }
+.record-btn.recording { background: #F9C801; color: #1D2129; font-weight: 600; }
 .empty-tip { text-align: center; color: #999; font-size: 26rpx; padding: 48rpx 0; }
 .bar { display: flex; align-items: center; gap: 16rpx; padding: 16rpx 24rpx; background: #fff; border-top: 1rpx solid #eee; padding-bottom: calc(16rpx + env(safe-area-inset-bottom)); }
 .img-btn { width: 64rpx; height: 64rpx; line-height: 64rpx; text-align: center; font-size: 40rpx; color: #86909C; flex-shrink: 0; }

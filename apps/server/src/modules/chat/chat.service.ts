@@ -9,7 +9,8 @@ export interface MessageVo {
   fromId: string;
   toId: string;
   content: string;
-  type: string; // P0-14 text / image
+  type: string; // P0-14 text / image；P1-18 + voice
+  duration: number | null; // P1-18 语音时长（秒），仅 type=voice
   createdAt: string;
 }
 
@@ -35,20 +36,37 @@ export class ChatService {
   ) {}
 
   // 发消息：存 ChatMessage + 双向更新 ChatSession（双方都能看到）
-  async sendMessage(fromId: string, toId: string, content: string, type = 'text'): Promise<MessageVo> {
+  // P1-18 voice：duration 为秒（1-60），语音不做内联文本/图片审核（异步语音审核留 P3-06）
+  async sendMessage(
+    fromId: string,
+    toId: string,
+    content: string,
+    type = 'text',
+    duration?: number,
+  ): Promise<MessageVo> {
     if (!(await this.canSendDirectMessage(fromId, toId))) {
       throw new BizException(30003, '匿名会话未匹配，不能发送消息', HttpStatus.FORBIDDEN);
     }
-    const msgType = type === 'image' ? 'image' : 'text';
+    const msgType = type === 'image' || type === 'voice' ? type : 'text';
+    let msgDuration: number | null = null;
+    if (msgType === 'voice') {
+      const d = duration ?? 0;
+      if (!Number.isInteger(d) || d < 1 || d > 60) {
+        throw new BizException(30004, '语音时长无效', HttpStatus.BAD_REQUEST);
+      }
+      msgDuration = d;
+    }
     // P0-15 聊天安全审核：文字 checkText / 图片 checkImage（命中违规抛 90002）
     if (msgType === 'image') {
       await this.moderation.checkImage(content);
-    } else {
+    } else if (msgType === 'text') {
       await this.moderation.checkText(content);
     }
     const msg = await this.prisma.$transaction(async (tx) => {
-      const m = await tx.chatMessage.create({ data: { fromId, toId, content, type: msgType } });
-      const lastMessage = msgType === 'image' ? '[图片]' : content;
+      const m = await tx.chatMessage.create({
+        data: { fromId, toId, content, type: msgType, duration: msgDuration },
+      });
+      const lastMessage = msgType === 'image' ? '[图片]' : msgType === 'voice' ? '[语音]' : content;
       await tx.chatSession.upsert({
         where: { ownerId_peerId: { ownerId: fromId, peerId: toId } },
         update: { lastMessage, lastAt: m.createdAt },
@@ -114,6 +132,7 @@ export class ChatService {
       toId: m.toId,
       content: m.content,
       type: m.type,
+      duration: m.duration,
       createdAt: m.createdAt.toISOString(),
     };
   }

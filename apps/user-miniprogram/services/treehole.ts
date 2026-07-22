@@ -46,7 +46,8 @@ export interface AnonMessageVo {
   fromId: string;
   toId: string;
   content: string;
-  type: string; // P0-14 text / image
+  type: string; // P0-14 text / image；P1-18 + voice
+  duration: number | null; // P1-18 语音时长（秒），仅 type=voice
   createdAt: string;
 }
 
@@ -181,8 +182,13 @@ export function joinParty(): Promise<PartyResp> {
   return anonRequest({ url: '/treehole/party/join', method: 'POST' });
 }
 
-export function sendAnonMessage(peerAnonId: string, content: string, type?: string): Promise<AnonMessageVo> {
-  return anonRequest({ url: '/treehole/messages', method: 'POST', data: { peerAnonId, content, type } });
+export function sendAnonMessage(
+  peerAnonId: string,
+  content: string,
+  type?: string,
+  duration?: number,
+): Promise<AnonMessageVo> {
+  return anonRequest({ url: '/treehole/messages', method: 'POST', data: { peerAnonId, content, type, duration } });
 }
 
 export function listAnonMessages(

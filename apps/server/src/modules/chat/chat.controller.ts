@@ -37,7 +37,7 @@ export class ChatController {
   async send(@Body() dto: SendMessageDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user?.uid;
     if (!uid) throw new BizException(10001, '未登录', HttpStatus.UNAUTHORIZED);
-    return ok(await this.chat.sendMessage(uid, dto.peerId, dto.content));
+    return ok(await this.chat.sendMessage(uid, dto.peerId, dto.content, dto.type, dto.duration));
   }
 
   @Get('messages')

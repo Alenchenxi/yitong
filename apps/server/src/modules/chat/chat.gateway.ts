@@ -18,7 +18,8 @@ interface ClientMsg {
   toId?: string;
   roomId?: string;
   content?: string;
-  msgType?: string; // P0-14 消息内容类型 text / image
+  msgType?: string; // P0-14 消息内容类型 text / image；P1-18 + voice
+  duration?: number; // P1-18 语音时长（秒），仅 msgType=voice
 }
 
 interface ConnMeta {
@@ -137,9 +138,24 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
       return;
     }
     const ts = Date.now();
-    this.forward(m.toId, { type: 'msg', fromId: from, toId: m.toId, content: m.content, msgType: m.msgType, ts });
+    this.forward(m.toId, {
+      type: 'msg',
+      fromId: from,
+      toId: m.toId,
+      content: m.content,
+      msgType: m.msgType,
+      duration: m.duration,
+      ts,
+    });
     // 回执给发送方（已转发）
-    this.send(ws, { type: 'msg_sent', toId: m.toId, content: m.content, msgType: m.msgType, ts });
+    this.send(ws, {
+      type: 'msg_sent',
+      toId: m.toId,
+      content: m.content,
+      msgType: m.msgType,
+      duration: m.duration,
+      ts,
+    });
   }
 
   private handleJoin(ws: WebSocket, m: ClientMsg) {

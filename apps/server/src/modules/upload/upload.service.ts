@@ -5,8 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { BizException } from '../../common/exceptions/biz.exception';
 import type { MulterFile } from './types';
 
-// 允许的上传类型（桶内文件夹名）：common 兜底，posts 表白墙帖，anon 树洞匿名帖，avatars 头像，merchant 商家资质
-export const ALLOWED_UPLOAD_TYPES = ['common', 'posts', 'anon', 'avatars', 'merchant'] as const;
+// 允许的上传类型（桶内文件夹名）：common 兜底，posts 表白墙帖，anon 树洞匿名帖，avatars 头像，merchant 商家资质，voice 语音消息
+export const ALLOWED_UPLOAD_TYPES = ['common', 'posts', 'anon', 'avatars', 'merchant', 'voice'] as const;
 export type UploadType = (typeof ALLOWED_UPLOAD_TYPES)[number];
 
 // MinIO 图片上传：单桶，按 type 分文件夹（type/date/uuid.ext）。
@@ -70,6 +70,11 @@ export class UploadService implements OnModuleInit {
 
   // 视频上传：同 putObject，mimetype/大小由控制器侧校验（mp4 ≤50MB）
   async uploadVideo(file: MulterFile, type: UploadType = 'common'): Promise<string> {
+    return this.store(file, type);
+  }
+
+  // P1-18 语音上传：同 putObject，mimetype/大小由控制器侧校验（mp3/m4a/aac/wav ≤2MB）
+  async uploadVoice(file: MulterFile, type: UploadType = 'voice'): Promise<string> {
     return this.store(file, type);
   }
 

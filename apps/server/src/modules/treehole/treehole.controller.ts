@@ -162,9 +162,14 @@ export class TreeholeController {
   @Public()
   @UseGuards(AnonGuard)
   @Post('messages')
-  async sendMessage(@Body() dto: { peerAnonId?: string; content?: string; type?: string }, @Req() req: Request) {
+  async sendMessage(
+    @Body() dto: { peerAnonId?: string; content?: string; type?: string; duration?: number },
+    @Req() req: Request,
+  ) {
     const anonId = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.treehole.sendMessage(anonId, dto.peerAnonId ?? '', dto.content ?? '', dto.type));
+    return ok(
+      await this.treehole.sendMessage(anonId, dto.peerAnonId ?? '', dto.content ?? '', dto.type, dto.duration),
+    );
   }
 
   @Public()
