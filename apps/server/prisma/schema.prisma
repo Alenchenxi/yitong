@@ -66,6 +66,18 @@ model AnonymousProfile {
   @@map("anonymous_profiles")
 }
 
+// P1-14 树洞问卷答题记录（anonId，0 uid；结果标签入 AnonymousProfile 画像）
+model QuestionnaireAnswer {
+  id         String   @id @default(cuid())
+  anonId     String   @map("anon_id")
+  type       String   // personality | interest | values | mood
+  answers    Json     // [{ questionId, optionId }]
+  resultTags String[] @map("result_tags") // 算出的标签（top N）
+  createdAt  DateTime @default(now()) @map("created_at")
+  @@index([anonId, type, createdAt])
+  @@map("questionnaire_answers")
+}
+
 // P1-13 树洞标签库：个性 / 兴趣 / 心情 三类，admin 可配置；用户选标签 / 发帖 mood 从此库校验
 model AnonTag {
   id        String   @id @default(cuid())

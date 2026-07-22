@@ -9,6 +9,11 @@ import { ImService } from '../chat/im.service';
 import { ChatService } from '../chat/chat.service';
 import type { CreateAnonPostDto } from './dto/create-anon-post.dto';
 import type { UpdateAnonProfileDto } from './dto/update-anon-profile.dto';
+import {
+  QUESTIONNAIRE_BANK,
+  QUIZ_RESULT_CONFIG,
+  type QuestionnaireType,
+} from './questionnaire-bank';
 
 // 错误码 3xxxx 树洞段（API §3）：30001 匿名态失效 / 30002 匹配无可用对象
 const NICK_A = ['星河', '南门', '月光', '晚风', '深海', '森林', '云端', '陌路', '拾光', '孤岛'];
@@ -45,6 +50,77 @@ export class TreeholeService {
       { expiresIn: '7d' },
     );
     return { anonId: profile.anonId, anonToken, nickname: profile.nickname };
+  }
+
+  // P1-14 获取问卷题库（公开，无需鉴权）
+  getQuestionnaire(type: string) {
+    const t = type as QuestionnaireType;
+    const bank = QUESTIONNAIRE_BANK[t];
+    if (!bank) throw new BizException(30007, '问卷类型不存在');
+    return bank;
+  }
+
+  // P1-14 提交问卷：算标签 -> 更新 profile 画像 + 存答题记录（anonId，0 uid）
+  async submitQuestionnaire(
+    uid: string,
+    type: string,
+    answers: { questionId: string; optionId: string }[],
+  ) {
+    const t = type as QuestionnaireType;
+    const bank = QUESTIONNAIRE_BANK[t];
+    if (!bank) throw new BizException(30007, '问卷类型不存在');
+    if (!Array.isArray(answers) || answers.length === 0) {
+      throw new BizException(30008, '答案不能为空');
+    }
+
+    // 累计标签权重
+    const counter = new Map<string, number>();
+    for (const a of answers) {
+      const q = bank.questions.find((x) => x.id === a.questionId);
+      if (!q) throw new BizException(30009, `题目不存在：${a.questionId}`);
+      const opt = q.options.find((x) => x.id === a.optionId);
+      if (!opt) throw new BizException(30009, `选项不存在：${a.optionId}`);
+      for (const tag of opt.tags) {
+        counter.set(tag, (counter.get(tag) ?? 0) + 1);
+      }
+    }
+
+    // 按权重排序取 top N
+    const cfg = QUIZ_RESULT_CONFIG[t];
+    const sorted = [...counter.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const resultTags = sorted.slice(0, cfg.topN).map(([name]) => name);
+
+    // 更新 profile 对应字段
+    const profile = await this.getOrCreateProfile(uid);
+    const updateData: Record<string, unknown> = {};
+    if (cfg.field === 'moodState') {
+      updateData.moodState = resultTags[0] ?? null;
+    } else {
+      // personality/interest：合并已有标签 + 新标签，去重，限 8 个
+      const existing = (profile as unknown as Record<string, string[]>)[cfg.field] ?? [];
+      const merged = [...new Set([...resultTags, ...existing])].slice(0, 8);
+      updateData[cfg.field] = merged;
+    }
+    const updated = await this.prisma.anonymousProfile.update({
+      where: { id: profile.id },
+      data: updateData,
+    });
+
+    // 存答题记录（anonId，0 uid）
+    await this.prisma.questionnaireAnswer.create({
+      data: {
+        anonId: profile.anonId,
+        type: t,
+        answers: answers,
+        resultTags,
+      },
+    });
+
+    return {
+      type: t,
+      resultTags,
+      profile: this.toProfileVo(updated),
+    };
   }
 
   // P0-12 匿名身份资料：find/create profile（用 access token/uid）

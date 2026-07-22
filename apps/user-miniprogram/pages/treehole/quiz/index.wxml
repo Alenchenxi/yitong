@@ -1,0 +1,73 @@
+<view class="page">
+  <!-- 阶段1：选类型 -->
+  <block wx:if="{{stage === 'select'}}">
+    <view class="header">
+      <view class="title">灵魂问卷</view>
+      <view class="sub">答题生成你的匿名画像，用于匹配更合拍的灵魂</view>
+    </view>
+    <view class="type-list">
+      <view
+        class="type-card"
+        wx:for="{{types}}"
+        wx:key="key"
+        data-type="{{item.key}}"
+        bindtap="pickType"
+      >
+        <view class="type-icon">{{item.icon}}</view>
+        <view class="type-info">
+          <view class="type-title">{{item.title}}</view>
+          <view class="type-desc">{{item.desc}}</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- 阶段2：答题 -->
+  <block wx:elif="{{stage === 'quiz' && bank}}">
+    <view class="quiz-header">
+      <view class="quiz-title">{{bank.title}}</view>
+      <view class="progress">{{current + 1}} / {{bank.questions.length}}</view>
+    </view>
+    <view class="progress-bar">
+      <view class="progress-fill" style="width: {{(current + 1) / bank.questions.length * 100}}%"></view>
+    </view>
+
+    <view class="question" wx:for="{{bank.questions}}" wx:key="id" wx:if="{{index === current}}">
+      <view class="q-text">{{item.text}}</view>
+      <view class="options">
+        <view
+          class="option {{answers[item.id] === opt.id ? 'on' : ''}}"
+          wx:for="{{item.options}}"
+          wx:for-item="opt"
+          wx:key="id"
+          data-qid="{{item.id}}"
+          data-oid="{{opt.id}}"
+          bindtap="pickOption"
+        >{{opt.text}}</view>
+      </view>
+    </view>
+
+    <view class="nav">
+      <text wx:if="{{current > 0}}" class="nav-btn" bindtap="prev">上一题</text>
+      <text wx:if="{{current < bank.questions.length - 1}}" class="nav-btn primary" bindtap="next">下一题</text>
+      <text wx:if="{{current === bank.questions.length - 1}}" class="nav-btn primary" bindtap="submit">{{submitting ? '提交中…' : '提交'}}</text>
+    </view>
+  </block>
+
+  <!-- 阶段3：结果 -->
+  <block wx:elif="{{stage === 'result'}}">
+    <view class="result">
+      <view class="result-emoji">✨</view>
+      <view class="result-title">你的画像标签</view>
+      <view class="result-tags">
+        <text class="result-tag" wx:for="{{resultTags}}" wx:key="*this">{{item}}</text>
+      </view>
+      <view class="result-tip">标签已保存到你的匿名画像，将用于匹配</view>
+      <view class="result-actions">
+        <text class="nav-btn" bindtap="backToSelect">再测一个</text>
+        <text class="nav-btn primary" bindtap="goProfile">查看画像</text>
+      </view>
+    </view>
+  </block>
+</view>

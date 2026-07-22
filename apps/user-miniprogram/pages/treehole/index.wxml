@@ -9,11 +9,15 @@
     <view class="anon-tag yt-tag-accent">匿名</view>
   </view>
 
-  <!-- 入口区：心情 / 随机匹配 / 群聊广场 -->
+  <!-- 入口区：心情 / 灵魂问卷 / 随机匹配 / 群聊广场 -->
   <view class="entries">
     <view class="entry" bindtap="goMood">
       <view class="entry-icon">💭</view>
       <view class="entry-text">心情</view>
+    </view>
+    <view class="entry" bindtap="goQuiz">
+      <view class="entry-icon">✨</view>
+      <view class="entry-text">灵魂问卷</view>
     </view>
     <view class="entry" bindtap="goMatch">
       <view class="entry-icon">🎲</view>

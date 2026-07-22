@@ -40,6 +40,23 @@ export class TreeholeController {
     return ok(await this.treehole.listTags());
   }
 
+  // P1-14 问卷题库（公开）
+  @Public()
+  @Get('questionnaire')
+  async getQuestionnaire(@Query('type') type: string) {
+    return ok(this.treehole.getQuestionnaire(type));
+  }
+
+  // P1-14 提交问卷（access token；结果入画像）
+  @Post('questionnaire/submit')
+  async submitQuestionnaire(
+    @Body() dto: { type?: string; answers?: { questionId: string; optionId: string }[] },
+    @Req() req: Request,
+  ) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.submitQuestionnaire(uid, dto.type ?? '', dto.answers ?? []));
+  }
+
   // 以下接口用 anonToken 鉴权（@Public 跳过 JwtAuthGuard + @UseGuards(AnonGuard)）
 
   @Public()

@@ -231,3 +231,36 @@ export interface AnonTagLibrary {
 export function getAnonTags(): Promise<AnonTagLibrary> {
   return request<AnonTagLibrary>({ url: '/treehole/tags' });
 }
+
+// P1-14 问卷
+export type QuestionnaireType = 'personality' | 'interest' | 'values' | 'mood';
+
+export interface QuizOption { id: string; text: string; tags: string[]; }
+export interface QuizQuestion { id: string; text: string; options: QuizOption[]; }
+export interface QuizBank {
+  type: QuestionnaireType;
+  title: string;
+  desc: string;
+  questions: QuizQuestion[];
+}
+
+export function getQuestionnaire(type: QuestionnaireType): Promise<QuizBank> {
+  return request<QuizBank>({ url: `/treehole/questionnaire?type=${type}` });
+}
+
+export interface QuizSubmitResult {
+  type: string;
+  resultTags: string[];
+  profile: AnonProfileVo;
+}
+
+export function submitQuestionnaire(
+  type: QuestionnaireType,
+  answers: { questionId: string; optionId: string }[],
+): Promise<QuizSubmitResult> {
+  return request<QuizSubmitResult>({
+    url: '/treehole/questionnaire/submit',
+    method: 'POST',
+    data: { type, answers },
+  });
+}

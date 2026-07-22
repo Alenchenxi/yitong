@@ -107,8 +107,11 @@ Page({
   goProfile() {
     wx.navigateTo({ url: '/pages/treehole/profile/index' });
   },
+  goQuiz() {
+    wx.navigateTo({ url: '/pages/treehole/quiz/index' });
+  },
   goMood() {
-    wx.showToast({ title: '心情入口开发中', icon: 'none' });
+    wx.navigateTo({ url: '/pages/treehole/quiz/index?type=mood' });
   },
   goDetail(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
