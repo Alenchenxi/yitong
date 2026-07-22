@@ -90,6 +90,12 @@ export class JobController {
   }
 
   // 状态流转：accept(PENDING->ACCEPTED) / complete(ACCEPTED->DONE)
+  @Post('applications/:id/cancel')
+  async cancel(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.cancel(uid, id));
+  }
+
   @Post('applications/:id/transition')
   async transition(@Param('id') id: string, @Body() dto: TransitionDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;

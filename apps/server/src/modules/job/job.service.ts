@@ -234,11 +234,42 @@ export class JobService {
     return apps.map((a) => this.toAppVo(a));
   }
 
+  // P1-23 用户取消未处理报名：仅 app.userId，仅 PENDING，PENDING -> CANCELLED；通知商家
+  async cancel(uid: string, appId: string) {
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: appId },
+      include: { jobPost: { select: { id: true, title: true, merchantId: true, merchant: { select: { userId: true } } } } },
+    });
+    if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
+    if (app.userId !== uid) {
+      throw new BizException(10003, '无权操作此报名', HttpStatus.FORBIDDEN);
+    }
+    if (app.status !== AppStatus.PENDING) {
+      throw new BizException(40004, `状态非法流转：${app.status} -> CANCELLED`, HttpStatus.CONFLICT);
+    }
+    await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.CANCELLED } });
+    if (app.jobPost.merchant) {
+      await this.notification.create({
+        userId: app.jobPost.merchant.userId,
+        type: NotificationType.JOB_APPLY, // 复用申请模板，content 区分
+        title: '报名已取消',
+        content: `用户已取消对岗位「${app.jobPost.title}」的报名`,
+        targetType: 'job_post',
+        targetId: app.jobPost.id,
+      });
+    }
+    const refreshed = await this.prisma.jobApplication.findUnique({
+      where: { id: appId },
+      include: { user: { select: { nickname: true } }, jobPost: { select: { title: true } } },
+    });
+    return this.toAppVo(refreshed!);
+  }
+
   // 状态流转：accept(PENDING->ACCEPTED，商家) / reject(PENDING->REJECTED，商家) / complete(ACCEPTED->DONE，商家或学生)
   async transition(uid: string, appId: string, action: 'accept' | 'complete' | 'reject') {
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: appId },
-      include: { jobPost: { select: { id: true, merchantId: true } } },
+      include: { jobPost: { select: { id: true, merchantId: true, title: true } } },
     });
     if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
 
@@ -255,17 +286,18 @@ export class JobService {
           userId: app.userId,
           type: NotificationType.JOB_ACCEPT,
           title: '报名已录用',
-          content: '商家已录用你的报名',
+          content: `商家已录用你对岗位「${app.jobPost.title}」的报名`,
           targetType: 'application',
           targetId: appId,
         });
       } else {
+        // P1-24 未录用通知：站内通知 + 订阅消息模板路由已通
         await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.REJECTED } });
         await this.notification.create({
           userId: app.userId,
           type: NotificationType.JOB_REJECT,
           title: '报名未录用',
-          content: '商家未录用你的报名',
+          content: `商家未录用你对岗位「${app.jobPost.title}」的报名`,
           targetType: 'application',
           targetId: appId,
         });

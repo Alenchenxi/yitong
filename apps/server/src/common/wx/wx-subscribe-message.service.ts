@@ -84,7 +84,7 @@ export class WxSubscribeMessageService {
   private templateIdFor(type: string) {
     const templates = this.getTemplates();
     if (type === 'job_apply') return templates.jobApply;
-    if (type === 'job_accept' || type === 'job_complete') return templates.jobStatus;
+    if (type === 'job_accept' || type === 'job_complete' || type === 'job_reject') return templates.jobStatus;
     return null;
   }
 
@@ -109,7 +109,14 @@ export class WxSubscribeMessageService {
     }
     return {
       thing1: { value: truncate(payload.title, 20) },
-      phrase2: { value: payload.type === 'job_accept' ? '已录用' : '已完成' },
+      phrase2: {
+        value:
+          payload.type === 'job_accept'
+            ? '已录用'
+            : payload.type === 'job_reject'
+              ? '未录用'
+              : '已完成',
+      },
       thing3: { value: truncate(payload.content, 20) },
       time4: { value: time },
     };

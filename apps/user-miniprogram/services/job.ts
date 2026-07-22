@@ -194,6 +194,11 @@ export function transitionApp(appId: string, action: 'accept' | 'complete' | 're
   return request<JobAppVo>({ url: `/applications/${appId}/transition`, method: 'POST', data: { action } });
 }
 
+// P1-23 学生取消报名（仅 PENDING 状态可取消）
+export function cancelApp(appId: string) {
+  return request<JobAppVo>({ url: `/applications/${appId}/cancel`, method: 'POST' });
+}
+
 // P0-23 批量录用/拒绝
 export function batchTransitionApps(postId: string, ids: string[], action: 'accept' | 'reject') {
   return request<{ processed: Array<{ id: string; ok: boolean; status?: string; error?: string }> }>({

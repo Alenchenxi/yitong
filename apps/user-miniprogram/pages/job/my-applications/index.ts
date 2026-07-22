@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../../app';
-import { listMyApplications, reviewApp, type JobAppVo } from '../../../services/job';
+import { cancelApp, listMyApplications, reviewApp, type JobAppVo } from '../../../services/job';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '待处理',
@@ -73,5 +73,27 @@ Page({
     } finally {
       this.setData({ submitting: false });
     }
+  },
+
+  // P1-23 取消未处理报名：二次确认后调 cancelApp，成功后刷新
+  confirmCancel(e: WechatMiniprogram.TouchEvent) {
+    const appId = e.currentTarget.dataset.id as string;
+    if (!appId) return;
+    wx.showModal({
+      title: '取消报名',
+      content: '确认取消此报名？取消后商家将收到通知。',
+      confirmText: '确认取消',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await cancelApp(appId);
+          wx.showToast({ title: '已取消', icon: 'success' });
+          await this.load();
+        } catch {
+          /* toast */
+        }
+      },
+    });
   },
 });

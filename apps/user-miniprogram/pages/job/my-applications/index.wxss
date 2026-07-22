@@ -6,8 +6,11 @@
 .app-status.DONE { color: #fff; background: #52c41a; }
 .app-status.ACCEPTED { color: #fff; background: #ff4d6d; }
 .app-status.REJECTED { color: #fff; background: #999; }
+.app-status.CANCELLED { color: #fff; background: #C9CDD4; }
 .app-time { font-size: 22rpx; color: #999; margin-top: 12rpx; }
-.review-btn { margin-top: 16rpx; background: #ff4d6d !important; color: #fff !important; border-radius: 32rpx !important; font-size: 24rpx !important; }
+.app-actions { display: flex; gap: 16rpx; margin-top: 16rpx; }
+.cancel-btn { background: #fff !important; color: #E63946 !important; border: 1rpx solid #E63946 !important; border-radius: 32rpx !important; font-size: 24rpx !important; }
+.review-btn { background: #ff4d6d !important; color: #fff !important; border-radius: 32rpx !important; font-size: 24rpx !important; }
 .empty { text-align: center; color: #999; padding-top: 200rpx; font-size: 28rpx; }
 
 .mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: flex-end; }

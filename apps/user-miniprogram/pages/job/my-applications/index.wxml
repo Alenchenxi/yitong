@@ -5,7 +5,16 @@
       <text class="app-status {{item.status}}">{{item.statusText}}</text>
     </view>
     <view class="app-time">{{item.createdAt}}</view>
-    <button wx:if="{{item.status === 'DONE'}}" class="review-btn" size="mini" data-id="{{item.id}}" bindtap="openReview">评价</button>
+    <view class="app-actions">
+      <button
+        wx:if="{{item.status === 'PENDING'}}"
+        class="cancel-btn"
+        size="mini"
+        data-id="{{item.id}}"
+        bindtap="confirmCancel"
+      >取消报名</button>
+      <button wx:if="{{item.status === 'DONE'}}" class="review-btn" size="mini" data-id="{{item.id}}" bindtap="openReview">评价</button>
+    </view>
   </view>
   <view class="empty" wx:if="{{apps.length === 0}}">暂无报名记录</view>
 </view>
