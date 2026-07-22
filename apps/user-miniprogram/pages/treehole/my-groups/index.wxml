@@ -1,0 +1,20 @@
+<view class="page">
+  <view class="group-item" wx:for="{{groups}}" wx:key="id" data-id="{{item.id}}" bindtap="goGroup">
+    <view class="group-avatar">{{item.name.slice(0, 1)}}</view>
+    <view class="group-info">
+      <view class="group-name">
+        <text>{{item.name}}</text>
+        <text class="group-private" wx:if="{{item.isPrivate}}">🔒</text>
+      </view>
+      <view class="group-desc" wx:if="{{item.description}}">{{item.description}}</view>
+      <view class="group-meta">
+        <text class="group-count">👥 {{item.memberCount}}/{{item.maxMembers}}</text>
+        <text class="group-tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+      </view>
+    </view>
+  </view>
+  <view class="yt-empty" wx:if="{{!loading && groups.length === 0}}">
+    <view class="yt-empty-emoji">💬</view>
+    <view class="yt-empty-text">暂未加入任何群聊</view>
+  </view>
+</view>

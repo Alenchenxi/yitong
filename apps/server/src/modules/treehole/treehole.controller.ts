@@ -159,6 +159,74 @@ export class TreeholeController {
     return ok(await this.treehole.joinParty(anonId));
   }
 
+  // ===== P2-07~P2-09 树洞群聊 =====
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups')
+  async createGroup(
+    @Body() dto: {
+      name?: string;
+      avatarUrl?: string;
+      description?: string;
+      tags?: string[];
+      announcement?: string;
+      maxMembers?: number;
+      isPrivate?: boolean;
+    },
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.createGroup(anonId, dto as { name: string; avatarUrl?: string; description?: string; tags?: string[]; announcement?: string; maxMembers?: number; isPrivate?: boolean }));
+  }
+
+  // P2-07 群聊广场
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('groups')
+  async listGroups(
+    @Query('sort') sort: string | undefined,
+    @Query('tag') tag: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listGroups(anonId, { sort, tag, limit: limit ? Number(limit) : undefined }));
+  }
+
+  // P2-14 我的群聊（静态段必须排在 groups/:id 之前）
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('groups/mine')
+  async listMyGroups(@Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listMyGroups(anonId));
+  }
+
+  // P2-09 群聊详情
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('groups/:id')
+  async getGroup(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.getGroup(anonId, id));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/join')
+  async joinGroup(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.joinGroup(anonId, id));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/leave')
+  async leaveGroup(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.leaveGroup(anonId, id));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Post('messages')

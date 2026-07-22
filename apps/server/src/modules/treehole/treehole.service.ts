@@ -703,4 +703,208 @@ export class TreeholeService {
       createdAt: p.createdAt.toISOString(),
     };
   }
+
+  // ===== P2-07~P2-09 树洞群聊 =====
+
+  // P2-08 创建群聊：创建者成为 OWNER
+  async createGroup(
+    anonId: string,
+    dto: {
+      name: string;
+      avatarUrl?: string;
+      description?: string;
+      tags?: string[];
+      announcement?: string;
+      maxMembers?: number;
+      isPrivate?: boolean;
+    },
+  ) {
+    const name = dto.name.trim();
+    if (!name || name.length > 30) {
+      throw new BizException(30004, '群名称无效（1-30 字）', HttpStatus.BAD_REQUEST);
+    }
+    const maxMembers = dto.maxMembers ?? 100;
+    if (!Number.isInteger(maxMembers) || maxMembers < 2 || maxMembers > 500) {
+      throw new BizException(30004, '人数上限无效（2-500）', HttpStatus.BAD_REQUEST);
+    }
+    // 内容安全：群名/简介/公告
+    await this.moderation.checkText(name);
+    if (dto.description) await this.moderation.checkText(dto.description);
+    if (dto.announcement) await this.moderation.checkText(dto.announcement);
+
+    const group = await this.prisma.anonGroup.create({
+      data: {
+        name,
+        avatarUrl: dto.avatarUrl ?? null,
+        description: dto.description ?? null,
+        tags: (dto.tags ?? []).slice(0, 5),
+        announcement: dto.announcement ?? null,
+        maxMembers,
+        isPrivate: !!dto.isPrivate,
+        ownerAnonId: anonId,
+        memberCount: 1,
+      },
+    });
+    await this.prisma.anonGroupMember.create({
+      data: { groupId: group.id, anonId, role: 'OWNER' },
+    });
+    return this.toGroupVo(group, true);
+  }
+
+  // P2-07 群聊广场：公开群列表（recommend/latest/hot + tag 分类筛选）
+  async listGroups(
+    anonId: string,
+    query: { sort?: string; tag?: string; limit?: number },
+  ) {
+    const limit = Math.min(50, Math.max(1, query.limit ?? 20));
+    const where: Prisma.AnonGroupWhereInput = { isPrivate: false, status: 'ACTIVE' };
+    if (query.tag) where.tags = { has: query.tag };
+    const sort = query.sort ?? 'recommend';
+    const orderBy: Prisma.AnonGroupOrderByWithRelationInput[] =
+      sort === 'latest'
+        ? [{ createdAt: 'desc' }]
+        : sort === 'hot'
+          ? [{ memberCount: 'desc' }, { createdAt: 'desc' }]
+          : [{ memberCount: 'desc' }, { createdAt: 'desc' }]; // recommend 默认按成员数
+    const groups = await this.prisma.anonGroup.findMany({
+      where,
+      orderBy,
+      take: limit,
+    });
+    // 批量查当前用户已加入的群
+    const ids = groups.map((g) => g.id);
+    const myMembers = ids.length
+      ? await this.prisma.anonGroupMember.findMany({
+          where: { groupId: { in: ids }, anonId },
+          select: { groupId: true },
+        })
+      : [];
+    const joinedSet = new Set(myMembers.map((m) => m.groupId));
+    return groups.map((g) => this.toGroupVo(g, joinedSet.has(g.id)));
+  }
+
+  // P2-09 群聊详情：群信息 + 成员 + 是否已加入
+  async getGroup(anonId: string, id: string) {
+    const group = await this.prisma.anonGroup.findUnique({ where: { id } });
+    if (!group || group.status === 'DISBANDED') {
+      throw new BizException(30010, '群聊不存在');
+    }
+    const members = await this.prisma.anonGroupMember.findMany({
+      where: { groupId: id },
+      orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }], // OWNER/ADMIN/MEMBER
+    });
+    const isMember = members.some((m) => m.anonId === anonId);
+    // 私密群非成员不可见详情
+    if (group.isPrivate && !isMember) {
+      throw new BizException(30007, '私密群聊，需申请加入', HttpStatus.FORBIDDEN);
+    }
+    // 批量取匿名展示信息
+    const anonIds = members.map((m) => m.anonId);
+    const profiles = anonIds.length
+      ? await this.prisma.anonymousProfile.findMany({
+          where: { anonId: { in: anonIds } },
+          select: { anonId: true, nickname: true, avatar: true },
+        })
+      : [];
+    const profileMap = new Map(profiles.map((p) => [p.anonId, p]));
+    return {
+      ...this.toGroupVo(group, isMember),
+      announcement: group.announcement,
+      members: members.map((m) => {
+        const p = profileMap.get(m.anonId);
+        return {
+          anonId: m.anonId,
+          nickname: p?.nickname ?? '匿名',
+          avatar: p?.avatar ?? null,
+          role: m.role,
+          mutedUntil: m.mutedUntil?.toISOString() ?? null,
+          joinedAt: m.joinedAt.toISOString(),
+        };
+      }),
+    };
+  }
+
+  // 加入公开群（私密群走申请 P2-12）
+  async joinGroup(anonId: string, id: string) {
+    const group = await this.prisma.anonGroup.findUnique({ where: { id } });
+    if (!group || group.status === 'DISBANDED') {
+      throw new BizException(30010, '群聊不存在');
+    }
+    if (group.isPrivate) {
+      throw new BizException(30007, '私密群聊，需申请加入', HttpStatus.FORBIDDEN);
+    }
+    const existing = await this.prisma.anonGroupMember.findUnique({
+      where: { groupId_anonId: { groupId: id, anonId } },
+    });
+    if (existing) throw new BizException(30009, '已加入该群', HttpStatus.CONFLICT);
+    if (group.memberCount >= group.maxMembers) {
+      throw new BizException(30008, '群聊已满员', HttpStatus.CONFLICT);
+    }
+    await this.prisma.$transaction([
+      this.prisma.anonGroupMember.create({ data: { groupId: id, anonId, role: 'MEMBER' } }),
+      this.prisma.anonGroup.update({ where: { id }, data: { memberCount: { increment: 1 } } }),
+    ]);
+    return { joined: true };
+  }
+
+  // 退出群聊；OWNER 退出则解散群
+  async leaveGroup(anonId: string, id: string) {
+    const member = await this.prisma.anonGroupMember.findUnique({
+      where: { groupId_anonId: { groupId: id, anonId } },
+    });
+    if (!member) throw new BizException(30009, '未加入该群', HttpStatus.NOT_FOUND);
+    if (member.role === 'OWNER') {
+      // 群主退出 = 解散
+      await this.prisma.anonGroup.update({ where: { id }, data: { status: 'DISBANDED', memberCount: 0 } });
+      await this.prisma.anonGroupMember.deleteMany({ where: { groupId: id } });
+      return { left: true, disbanded: true };
+    }
+    await this.prisma.$transaction([
+      this.prisma.anonGroupMember.delete({ where: { id: member.id } }),
+      this.prisma.anonGroup.update({ where: { id }, data: { memberCount: { decrement: 1 } } }),
+    ]);
+    return { left: true };
+  }
+
+  // P2-14 我的群聊列表（加入/创建的）
+  async listMyGroups(anonId: string) {
+    const members = await this.prisma.anonGroupMember.findMany({
+      where: { anonId, group: { status: 'ACTIVE' } },
+      orderBy: { joinedAt: 'desc' },
+      include: { group: true },
+    });
+    return members.map((m) => this.toGroupVo(m.group, true));
+  }
+
+  private toGroupVo(
+    g: {
+      id: string;
+      name: string;
+      avatarUrl: string | null;
+      description: string | null;
+      tags: string[];
+      maxMembers: number;
+      isPrivate: boolean;
+      ownerAnonId: string;
+      status: string;
+      memberCount: number;
+      createdAt: Date;
+    },
+    isMember: boolean,
+  ) {
+    return {
+      id: g.id,
+      name: g.name,
+      avatarUrl: g.avatarUrl,
+      description: g.description,
+      tags: g.tags,
+      maxMembers: g.maxMembers,
+      isPrivate: g.isPrivate,
+      ownerAnonId: g.ownerAnonId,
+      status: g.status,
+      memberCount: g.memberCount,
+      isMember,
+      createdAt: g.createdAt.toISOString(),
+    };
+  }
 }

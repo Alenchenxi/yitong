@@ -1,0 +1,41 @@
+<view class="page">
+  <!-- 我的群聊入口 + 创建入口 -->
+  <view class="ops">
+    <view class="ops-btn" bindtap="goMyGroups">
+      <text class="ops-emoji">💬</text><text>我的群聊 ({{myGroups.length}})</text>
+    </view>
+    <view class="ops-btn ops-create" bindtap="goCreate">
+      <text class="ops-emoji">＋</text><text>创建群聊</text>
+    </view>
+  </view>
+
+  <!-- tab：推荐/最新/热门 -->
+  <view class="sort-tabs">
+    <view class="sort-tab {{activeSort === 'recommend' ? 'active' : ''}}" data-sort="recommend" bindtap="switchSort">推荐</view>
+    <view class="sort-tab {{activeSort === 'latest' ? 'active' : ''}}" data-sort="latest" bindtap="switchSort">最新</view>
+    <view class="sort-tab {{activeSort === 'hot' ? 'active' : ''}}" data-sort="hot" bindtap="switchSort">热门</view>
+  </view>
+
+  <!-- 群列表 -->
+  <view class="list" wx:if="{{groups.length > 0}}">
+    <view class="group-item" wx:for="{{groups}}" wx:key="id" data-id="{{item.id}}" bindtap="goGroup">
+      <view class="group-avatar">{{item.name.slice(0, 1)}}</view>
+      <view class="group-info">
+        <view class="group-name">
+          <text>{{item.name}}</text>
+          <text class="group-private" wx:if="{{item.isPrivate}}">🔒</text>
+          <text class="group-joined" wx:if="{{item.isMember}}">已加入</text>
+        </view>
+        <view class="group-desc" wx:if="{{item.description}}">{{item.description}}</view>
+        <view class="group-meta">
+          <text class="group-count">👥 {{item.memberCount}}/{{item.maxMembers}}</text>
+          <text class="group-tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="yt-empty" wx:elif="{{!loading}}">
+    <view class="yt-empty-emoji">💬</view>
+    <view class="yt-empty-text">暂无群聊</view>
+  </view>
+</view>

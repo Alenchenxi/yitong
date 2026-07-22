@@ -243,6 +243,49 @@ enum MatchStatus {
   CLOSED
 }
 
+// ===== P2-07~P2-14 树洞群聊 =====
+enum GroupStatus {
+  ACTIVE
+  DISBANDED
+}
+enum GroupMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+model AnonGroup {
+  id           String      @id @default(cuid())
+  name         String
+  avatarUrl    String?     @map("avatar_url")
+  description  String?
+  tags         String[]    @default([])
+  announcement String?
+  maxMembers   Int         @default(100) @map("max_members")
+  isPrivate    Boolean     @default(false) @map("is_private")
+  ownerAnonId  String      @map("owner_anon_id")
+  status       GroupStatus @default(ACTIVE)
+  memberCount  Int         @default(0) @map("member_count")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  members      AnonGroupMember[]
+  @@index([isPrivate, status, memberCount])
+  @@index([isPrivate, status, createdAt])
+  @@map("anon_groups")
+}
+model AnonGroupMember {
+  id         String          @id @default(cuid())
+  groupId    String          @map("group_id")
+  anonId     String          @map("anon_id")
+  role       GroupMemberRole @default(MEMBER)
+  mutedUntil DateTime?       @map("muted_until")
+  joinedAt   DateTime        @default(now()) @map("joined_at")
+  group      AnonGroup       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@unique([groupId, anonId])
+  @@index([groupId])
+  @@index([anonId])
+  @@map("anon_group_members")
+}
+
 // ===== 聊天（1v1，通用）=====
 // fromId/toId 为标识符：实名场景用 uid，树洞匿名场景用 anonId（不存 uid，匿名隔离）
 model ChatMessage {

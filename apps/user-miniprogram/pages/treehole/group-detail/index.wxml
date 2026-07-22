@@ -1,0 +1,36 @@
+<view class="page" wx:if="{{group}}">
+  <view class="header">
+    <view class="group-avatar">{{group.name.slice(0, 1)}}</view>
+    <view class="group-name">{{group.name}}</view>
+    <view class="group-meta">
+      <text class="group-private" wx:if="{{group.isPrivate}}">🔒 私密</text>
+      <text class="group-count">👥 {{group.memberCount}}/{{group.maxMembers}}</text>
+    </view>
+    <view class="group-desc" wx:if="{{group.description}}">{{group.description}}</view>
+    <view class="group-tags" wx:if="{{group.tags.length > 0}}">
+      <text class="group-tag" wx:for="{{group.tags}}" wx:key="*this">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="announce" wx:if="{{group.announcement}}">
+    <view class="announce-title">📢 群公告</view>
+    <view class="announce-body">{{group.announcement}}</view>
+  </view>
+
+  <view class="action-row">
+    <button wx:if="{{!group.isMember && !group.isPrivate}}" class="btn btn-primary" bindtap="join" disabled="{{acting}}">加入群聊</button>
+    <button wx:if="{{group.isPrivate && !group.isMember}}" class="btn btn-disabled" disabled>私密群，需申请</button>
+    <button wx:if="{{group.isMember}}" class="btn btn-danger" bindtap="leave" disabled="{{acting}}">{{group.ownerAnonId && members[0].anonId === group.ownerAnonId ? '解散群聊' : '退出群聊'}}</button>
+  </view>
+
+  <view class="members-section">
+    <view class="members-title">成员 ({{members.length}})</view>
+    <view class="member" wx:for="{{members}}" wx:key="anonId">
+      <view class="member-avatar">{{item.nickname.slice(0, 1)}}</view>
+      <view class="member-info">
+        <view class="member-name">{{item.nickname}}</view>
+        <view class="member-role {{item.role}}">{{item.roleText}}</view>
+      </view>
+    </view>
+  </view>
+</view>

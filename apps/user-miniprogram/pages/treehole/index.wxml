@@ -27,7 +27,7 @@
       <view class="entry-icon">📋</view>
       <view class="entry-text">匹配历史</view>
     </view>
-    <view class="entry" bindtap="goParty">
+    <view class="entry" bindtap="goGroups">
       <view class="entry-icon">👥</view>
       <view class="entry-text">群聊广场</view>
     </view>

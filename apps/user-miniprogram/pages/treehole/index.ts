@@ -107,6 +107,9 @@ Page({
   goParty() {
     wx.navigateTo({ url: '/pages/treehole/party/index' });
   },
+  goGroups() {
+    wx.navigateTo({ url: '/pages/treehole/groups/index' });
+  },
   goProfile() {
     wx.navigateTo({ url: '/pages/treehole/profile/index' });
   },

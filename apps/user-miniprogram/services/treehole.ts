@@ -182,6 +182,69 @@ export function joinParty(): Promise<PartyResp> {
   return anonRequest({ url: '/treehole/party/join', method: 'POST' });
 }
 
+// ===== P2-07~P2-09 树洞群聊 =====
+export interface AnonGroupVo {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  description: string | null;
+  tags: string[];
+  maxMembers: number;
+  isPrivate: boolean;
+  ownerAnonId: string;
+  status: string;
+  memberCount: number;
+  isMember: boolean;
+  createdAt: string;
+}
+
+export interface AnonGroupMemberVo {
+  anonId: string;
+  nickname: string;
+  avatar: string | null;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+  mutedUntil: string | null;
+  joinedAt: string;
+}
+
+export interface AnonGroupDetailVo extends AnonGroupVo {
+  announcement: string | null;
+  members: AnonGroupMemberVo[];
+}
+
+export function listAnonGroups(sort: 'recommend' | 'latest' | 'hot' = 'recommend', tag?: string, limit = 20): Promise<AnonGroupVo[]> {
+  const qs = `?sort=${sort}&limit=${limit}${tag ? `&tag=${encodeURIComponent(tag)}` : ''}`;
+  return anonRequest({ url: `/treehole/groups${qs}`, method: 'GET' });
+}
+
+export function createAnonGroup(data: {
+  name: string;
+  avatarUrl?: string;
+  description?: string;
+  tags?: string[];
+  announcement?: string;
+  maxMembers?: number;
+  isPrivate?: boolean;
+}): Promise<AnonGroupVo> {
+  return anonRequest({ url: '/treehole/groups', method: 'POST', data });
+}
+
+export function getAnonGroup(id: string): Promise<AnonGroupDetailVo> {
+  return anonRequest({ url: `/treehole/groups/${id}`, method: 'GET' });
+}
+
+export function joinAnonGroup(id: string): Promise<{ joined: boolean }> {
+  return anonRequest({ url: `/treehole/groups/${id}/join`, method: 'POST' });
+}
+
+export function leaveAnonGroup(id: string): Promise<{ left: boolean; disbanded?: boolean }> {
+  return anonRequest({ url: `/treehole/groups/${id}/leave`, method: 'POST' });
+}
+
+export function listMyAnonGroups(): Promise<AnonGroupVo[]> {
+  return anonRequest({ url: '/treehole/groups/mine', method: 'GET' });
+}
+
 export function sendAnonMessage(
   peerAnonId: string,
   content: string,

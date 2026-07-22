@@ -1,0 +1,31 @@
+<view class="page">
+  <view class="form-row">
+    <text class="label">群头像</text>
+    <view class="avatar-preview">{{avatarEmoji}}</view>
+  </view>
+  <view class="emoji-row">
+    <view class="emoji-opt" wx:for="{{emojis}}" wx:key="*this" data-emoji="{{item}}" bindtap="pickEmoji">
+      <text class="emoji {{avatarEmoji === item ? 'on' : ''}}">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="block">
+    <view class="row"><text class="label">群名称</text><input class="input" placeholder="1-30 字" value="{{name}}" data-field="name" bindinput="onInput" maxlength="30" /></view>
+    <view class="row"><text class="label">简介</text><textarea class="textarea" placeholder="群简介（选填）" value="{{description}}" data-field="description" bindinput="onInput" maxlength="500" auto-height /></view>
+    <view class="row"><text class="label">公告</text><textarea class="textarea" placeholder="群公告（选填）" value="{{announcement}}" data-field="announcement" bindinput="onInput" maxlength="500" auto-height /></view>
+    <view class="row"><text class="label">人数上限</text><input class="input" type="number" value="{{maxMembers}}" data-field="maxMembers" bindinput="onInput" /></view>
+    <view class="row">
+      <text class="label">私密群</text>
+      <switch checked="{{isPrivate}}" bindchange="togglePrivate" color="#F9C801" />
+    </view>
+  </view>
+
+  <view class="block">
+    <text class="label">群标签（最多 5 个）</text>
+    <view class="tags">
+      <view class="tag {{item.selected ? 'on' : ''}}" wx:for="{{tags}}" wx:key="name" data-name="{{item.name}}" bindtap="toggleTag">{{item.name}}</view>
+    </view>
+  </view>
+
+  <button class="submit" bindtap="submit" disabled="{{submitting}}">{{submitting ? '创建中...' : '创建群聊'}}</button>
+</view>
