@@ -349,6 +349,75 @@ export class AdminService {
     return { id, featured };
   }
 
+  // ===== P2-20 工单管理（admin）=====
+  async listTickets(status?: string) {
+    const where: Prisma.SupportTicketWhereInput = {};
+    if (status === 'OPEN' || status === 'IN_PROGRESS' || status === 'CLOSED') where.status = status;
+    const list = await this.prisma.supportTicket.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    const userIds = [...new Set(list.map((t) => t.userId))];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, nickname: true } })
+      : [];
+    const userMap = new Map(users.map((u) => [u.id, u.nickname]));
+    return list.map((t) => ({
+      id: t.id,
+      userId: t.userId,
+      userNickname: userMap.get(t.userId) ?? '',
+      role: t.role,
+      title: t.title,
+      content: t.content,
+      status: t.status,
+      reply: t.reply,
+      repliedAt: t.repliedAt?.toISOString() ?? null,
+      createdAt: t.createdAt.toISOString(),
+    }));
+  }
+
+  async replyTicket(id: string, reviewerId: string, reply: string, close: boolean) {
+    const t = await this.prisma.supportTicket.findUnique({ where: { id } });
+    if (!t) throw new BizException(20003, '工单不存在', HttpStatus.NOT_FOUND);
+    const r = reply?.trim();
+    if (!r) throw new BizException(20003, '回复内容不能为空', HttpStatus.BAD_REQUEST);
+    return this.prisma.supportTicket.update({
+      where: { id },
+      data: {
+        reply: r,
+        repliedBy: reviewerId,
+        repliedAt: new Date(),
+        status: close ? 'CLOSED' : 'IN_PROGRESS',
+      },
+    });
+  }
+
+  // ===== 用户列表（admin，用于封禁/禁言；ban/mute 见 banUser/muteUser）=====
+  async listUsers(keyword?: string, limit = 50) {
+    const where: Prisma.UserWhereInput = {};
+    if (keyword?.trim()) {
+      where.OR = [
+        { nickname: { contains: keyword.trim(), mode: 'insensitive' } },
+        { id: keyword.trim() },
+      ];
+    }
+    const users = await this.prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(100, Math.max(1, limit)),
+      select: { id: true, nickname: true, avatarUrl: true, deletedAt: true, mutedUntil: true, createdAt: true },
+    });
+    return users.map((u) => ({
+      id: u.id,
+      nickname: u.nickname,
+      avatarUrl: u.avatarUrl,
+      banned: !!u.deletedAt,
+      mutedUntil: u.mutedUntil?.toISOString() ?? null,
+      createdAt: u.createdAt.toISOString(),
+    }));
+  }
+
   // 批量审核商家
   async batchMerchants(ids: string[], action: 'approve' | 'reject', reviewerId: string, reason?: string) {
     let processed = 0;
@@ -404,13 +473,17 @@ export class AdminService {
     return { id, banned: true };
   }
 
-  // P1-12 禁言（参数 days；0 或 undefined = 解除）
+  // P1-12 禁言（参数 days；0 或 undefined = 解除；1-365 天）
   async muteUser(id: string, days?: number) {
     const u = await this.prisma.user.findUnique({ where: { id } });
     if (!u) throw new BizException(10001, '用户不存在', HttpStatus.NOT_FOUND);
-    const mutedUntil = days && days > 0
-      ? new Date(Date.now() + days * 24 * 60 * 60 * 1000)
-      : null;
+    let mutedUntil: Date | null = null;
+    if (days !== undefined && days !== 0) {
+      if (!Number.isInteger(days) || days < 1 || days > 365) {
+        throw new BizException(10003, '禁言天数无效（1-365）', HttpStatus.BAD_REQUEST);
+      }
+      mutedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    }
     await this.prisma.user.update({ where: { id }, data: { mutedUntil } });
     void this.notification
       .create({
@@ -487,6 +560,9 @@ export class AdminService {
   }
 
   // ===== P2-03 活动专题管理 =====
+  async listActivityTopicsAll() {
+    return this.prisma.activityTopic.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }] });
+  }
   async createActivityTopic(dto: { title: string; coverUrl?: string; description?: string; status?: string; sortOrder?: number }) {
     return this.prisma.activityTopic.create({
       data: {
@@ -538,6 +614,9 @@ export class AdminService {
   }
 
   // ===== P2-04 话题管理 =====
+  async listTopicsAll() {
+    return this.prisma.topic.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }] });
+  }
   async createTopic(dto: { name: string; description?: string; coverUrl?: string; status?: string; sortOrder?: number }) {
     try {
       return await this.prisma.topic.create({

@@ -98,6 +98,27 @@ export class AdminController {
     return ok(await this.admin.featureJob(id, uid, body?.featured !== false));
   }
 
+  // ===== P2-20 工单管理 =====
+  @Get('tickets')
+  async listTickets(@Query('status') status: string | undefined) {
+    return ok(await this.admin.listTickets(status));
+  }
+  @Post('tickets/:id/reply')
+  async replyTicket(
+    @Param('id') id: string,
+    @Body() body: { reply?: string; close?: boolean },
+    @Req() req: Request,
+  ) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.replyTicket(id, uid, body.reply ?? '', body.close !== false));
+  }
+
+  // ===== 用户管理 =====
+  @Get('users')
+  async listUsers(@Query('keyword') keyword: string | undefined, @Query('limit') limit: string | undefined) {
+    return ok(await this.admin.listUsers(keyword, limit ? Number(limit) : 50));
+  }
+
   @Get('pricing')
   async getPricing() {
     return ok(await this.admin.getPricing());
@@ -141,6 +162,10 @@ export class AdminController {
   }
 
   // ===== P2-03 活动专题管理 =====
+  @Get('activity-topics')
+  async listActivityTopicsAll() {
+    return ok(await this.admin.listActivityTopicsAll());
+  }
   @Post('activity-topics')
   async createActivityTopic(@Body() body: { title: string; coverUrl?: string; description?: string; status?: string; sortOrder?: number }) {
     return ok(await this.admin.createActivityTopic(body));
@@ -163,6 +188,10 @@ export class AdminController {
   }
 
   // ===== P2-04 话题管理 =====
+  @Get('topics')
+  async listTopicsAll() {
+    return ok(await this.admin.listTopicsAll());
+  }
   @Post('topics')
   async createTopic(@Body() body: { name: string; description?: string; coverUrl?: string; status?: string; sortOrder?: number }) {
     return ok(await this.admin.createTopic(body));

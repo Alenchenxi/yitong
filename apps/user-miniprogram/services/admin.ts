@@ -89,3 +89,137 @@ export function getStats() {
 export function updatePricing(data: { duration: 'D30' | 'D90'; price: number }) {
   return request({ url: '/admin/pricing', method: 'PUT', data });
 }
+
+// ===== P1-28 举报处理 =====
+export interface AdminReportVo {
+  id: string;
+  targetType: string;
+  targetId: string;
+  targetSummary: string;
+  reason: string | null;
+  status: string;
+  result: string | null;
+  reporterId: string | null;
+  reporterNickname: string;
+  reviewerId: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+export function listReports(status?: string, page = 1, pageSize = 20) {
+  const qs = `?page=${page}&pageSize=${pageSize}${status ? `&status=${status}` : ''}`;
+  return request<{ list: AdminReportVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/reports${qs}` });
+}
+export function resolveReport(id: string, action: 'approve' | 'reject', result?: string, takedown?: boolean) {
+  return request({ url: `/admin/reports/${id}/resolve`, method: 'POST', data: { action, result, takedown } });
+}
+
+// ===== P2-05 置顶/加精 + P2-15 兼职精品 =====
+export function pinPost(id: string, pinned: boolean) {
+  return request({ url: `/admin/posts/${id}/pin`, method: 'POST', data: { pinned } });
+}
+export function featurePost(id: string, featured: boolean) {
+  return request({ url: `/admin/posts/${id}/feature`, method: 'POST', data: { featured } });
+}
+export function featureJob(id: string, featured: boolean) {
+  return request({ url: `/admin/job-posts/${id}/feature`, method: 'POST', data: { featured } });
+}
+
+// ===== P2-03 活动专题 =====
+export interface ActivityTopicVo {
+  id: string;
+  title: string;
+  coverUrl: string | null;
+  description: string | null;
+  status: string;
+  sortOrder: number;
+  createdAt: string;
+}
+export function listActivityTopicsAdmin() {
+  return request<ActivityTopicVo[]>({ url: '/admin/activity-topics' });
+}
+export function createActivityTopic(data: { title: string; coverUrl?: string; description?: string; status?: string; sortOrder?: number }) {
+  return request({ url: '/admin/activity-topics', method: 'POST', data });
+}
+export function deleteActivityTopic(id: string) {
+  return request({ url: `/admin/activity-topics/${id}`, method: 'DELETE' });
+}
+
+// ===== P2-04 话题 =====
+export interface TopicVo {
+  id: string;
+  name: string;
+  description: string | null;
+  coverUrl: string | null;
+  status: string;
+  sortOrder: number;
+  createdAt: string;
+}
+export function listTopicsAdmin() {
+  return request<TopicVo[]>({ url: '/admin/topics' });
+}
+export function createTopic(data: { name: string; description?: string; coverUrl?: string; status?: string; sortOrder?: number }) {
+  return request({ url: '/admin/topics', method: 'POST', data });
+}
+export function deleteTopic(id: string) {
+  return request({ url: `/admin/topics/${id}`, method: 'DELETE' });
+}
+
+// ===== P2-20 工单 =====
+export interface AdminTicketVo {
+  id: string;
+  userId: string;
+  userNickname: string;
+  role: string;
+  title: string;
+  content: string;
+  status: string;
+  reply: string | null;
+  repliedAt: string | null;
+  createdAt: string;
+}
+export function listTickets(status?: string) {
+  const qs = status ? `?status=${status}` : '';
+  return request<AdminTicketVo[]>({ url: `/admin/tickets${qs}` });
+}
+export function replyTicket(id: string, reply: string, close: boolean) {
+  return request({ url: `/admin/tickets/${id}/reply`, method: 'POST', data: { reply, close } });
+}
+
+// ===== P1-13 树洞标签 =====
+export interface AnonTagVo {
+  id: string;
+  name: string;
+  category: string;
+  sortOrder: number;
+  active: boolean;
+}
+export function listAnonTagsAdmin(category?: string) {
+  const qs = category ? `?category=${category}` : '';
+  return request<AnonTagVo[]>({ url: `/admin/anon-tags${qs}` });
+}
+export function createAnonTag(data: { name: string; category: string; sortOrder?: number; active?: boolean }) {
+  return request({ url: '/admin/anon-tags', method: 'POST', data });
+}
+export function deleteAnonTag(id: string) {
+  return request({ url: `/admin/anon-tags/${id}`, method: 'DELETE' });
+}
+
+// ===== 用户管理 =====
+export interface AdminUserVo {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+  banned: boolean;
+  mutedUntil: string | null;
+  createdAt: string;
+}
+export function listUsers(keyword?: string) {
+  const qs = keyword ? `?keyword=${encodeURIComponent(keyword)}` : '';
+  return request<AdminUserVo[]>({ url: `/admin/users${qs}` });
+}
+export function banUser(id: string) {
+  return request({ url: `/admin/users/${id}/ban`, method: 'POST' });
+}
+export function muteUser(id: string, days: number) {
+  return request({ url: `/admin/users/${id}/mute`, method: 'POST', data: { days } });
+}

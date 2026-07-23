@@ -1,10 +1,16 @@
 <view class="page">
-  <view class="tabs">
+  <scroll-view scroll-x class="tabs" enhanced show-scrollbar="{{false}}">
     <view class="tab {{tab === 'queue' ? 'active' : ''}}" data-tab="queue" bindtap="switchTab">审核</view>
     <view class="tab {{tab === 'stats' ? 'active' : ''}}" data-tab="stats" bindtap="switchTab">看板</view>
     <view class="tab {{tab === 'pricing' ? 'active' : ''}}" data-tab="pricing" bindtap="switchTab">单价</view>
     <view class="tab {{tab === 'announce' ? 'active' : ''}}" data-tab="announce" bindtap="switchTab">公告</view>
-  </view>
+    <view class="tab {{tab === 'reports' ? 'active' : ''}}" data-tab="reports" bindtap="switchTab">举报</view>
+    <view class="tab {{tab === 'tickets' ? 'active' : ''}}" data-tab="tickets" bindtap="switchTab">工单</view>
+    <view class="tab {{tab === 'users' ? 'active' : ''}}" data-tab="users" bindtap="switchTab">用户</view>
+    <view class="tab {{tab === 'activity' ? 'active' : ''}}" data-tab="activity" bindtap="switchTab">专题</view>
+    <view class="tab {{tab === 'topic' ? 'active' : ''}}" data-tab="topic" bindtap="switchTab">话题</view>
+    <view class="tab {{tab === 'tags' ? 'active' : ''}}" data-tab="tags" bindtap="switchTab">标签</view>
+  </scroll-view>
 
   <!-- 审核队列 -->
   <block wx:if="{{tab === 'queue' && queue}}">
@@ -124,5 +130,133 @@
       <button size="mini" bindtap="savePrice">保存</button>
       <button size="mini" bindtap="cancelEdit">取消</button>
     </view>
+  </block>
+
+  <!-- 举报处理 -->
+  <block wx:if="{{tab === 'reports'}}">
+    <view class="filter-row">
+      <view class="filter-btn {{reportStatus === 'PENDING' ? 'on' : ''}}" data-s="PENDING" bindtap="switchReportStatus">待处理</view>
+      <view class="filter-btn {{reportStatus === 'APPROVED' ? 'on' : ''}}" data-s="APPROVED" bindtap="switchReportStatus">成立</view>
+      <view class="filter-btn {{reportStatus === 'REJECTED' ? 'on' : ''}}" data-s="REJECTED" bindtap="switchReportStatus">驳回</view>
+    </view>
+    <view class="item" wx:for="{{reports}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.targetSummary || item.targetType}}</text>
+        <text class="item-sub">举报人：{{item.reporterNickname || '匿名'}} · {{item.status}} · {{item.createdAt}}</text>
+        <text class="item-sub" wx:if="{{item.reason}}">理由：{{item.reason}}</text>
+      </view>
+      <view class="item-actions" wx:if="{{item.status === 'PENDING'}}">
+        <button size="mini" data-id="{{item.id}}" data-action="approve" bindtap="resolveReportTap">成立</button>
+        <button size="mini" data-id="{{item.id}}" data-action="reject" bindtap="resolveReportTap">驳回</button>
+      </view>
+    </view>
+    <view class="empty-tip" wx:if="{{reports.length === 0}}">暂无举报</view>
+  </block>
+
+  <!-- 工单 -->
+  <block wx:if="{{tab === 'tickets'}}">
+    <view class="filter-row">
+      <view class="filter-btn {{ticketStatus === 'OPEN' ? 'on' : ''}}" data-s="OPEN" bindtap="switchTicketStatus">待处理</view>
+      <view class="filter-btn {{ticketStatus === 'IN_PROGRESS' ? 'on' : ''}}" data-s="IN_PROGRESS" bindtap="switchTicketStatus">处理中</view>
+      <view class="filter-btn {{ticketStatus === 'CLOSED' ? 'on' : ''}}" data-s="CLOSED" bindtap="switchTicketStatus">已关闭</view>
+    </view>
+    <view class="item" wx:for="{{tickets}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.title}}</text>
+        <text class="item-sub">{{item.userNickname}}（{{item.role === 'merchant' ? '商家' : '用户'}}）· {{item.status}} · {{item.createdAt}}</text>
+        <text class="item-sub">内容：{{item.content}}</text>
+        <text class="item-sub" wx:if="{{item.reply}}">回复：{{item.reply}}</text>
+      </view>
+      <view class="item-actions" wx:if="{{item.status !== 'CLOSED'}}">
+        <button size="mini" data-id="{{item.id}}" bindtap="replyTicketTap">回复</button>
+      </view>
+    </view>
+    <view class="empty-tip" wx:if="{{tickets.length === 0}}">暂无工单</view>
+  </block>
+
+  <!-- 用户管理 -->
+  <block wx:if="{{tab === 'users'}}">
+    <view class="search-row">
+      <input class="search-input" placeholder="搜索昵称/用户ID" value="{{userKeyword}}" bindinput="onUserKeywordInput" bindconfirm="searchUsers" />
+      <button size="mini" bindtap="searchUsers">搜索</button>
+    </view>
+    <view class="item" wx:for="{{users}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.nickname}}</text>
+        <text class="item-sub">{{item.banned ? '已封禁' : '正常'}}{{item.mutedUntil ? ' · 禁言至' + item.mutedUntil : ''}}</text>
+      </view>
+      <view class="item-actions">
+        <button wx:if="{{!item.banned}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="banUserTap">封禁</button>
+        <button size="mini" data-id="{{item.id}}" data-muted="{{item.mutedUntil}}" bindtap="muteUserTap">{{item.mutedUntil ? '解除禁言' : '禁言'}}</button>
+      </view>
+    </view>
+    <view class="empty-tip" wx:if="{{users.length === 0}}">暂无用户</view>
+  </block>
+
+  <!-- 活动专题 -->
+  <block wx:if="{{tab === 'activity'}}">
+    <view class="section-title">新建专题</view>
+    <view class="ann-form">
+      <input class="ann-input" placeholder="专题标题" value="{{actTitle}}" data-field="actTitle" bindinput="onActInput" />
+      <textarea class="ann-textarea" placeholder="简介（选填）" value="{{actDesc}}" data-field="actDesc" bindinput="onActInput" auto-height />
+      <button class="ann-submit" bindtap="createAct">发布（PUBLISHED）</button>
+    </view>
+    <view class="section-title">专题列表 ({{activityTopics.length}})</view>
+    <view class="item" wx:for="{{activityTopics}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.title}}</text>
+        <text class="item-sub">{{item.status}} · {{item.createdAt}}</text>
+      </view>
+      <view class="item-actions">
+        <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteAct">删除</button>
+      </view>
+    </view>
+    <view class="empty-tip" wx:if="{{activityTopics.length === 0}}">暂无专题</view>
+  </block>
+
+  <!-- 话题 -->
+  <block wx:if="{{tab === 'topic'}}">
+    <view class="section-title">新建话题</view>
+    <view class="ann-form">
+      <input class="ann-input" placeholder="话题名称" value="{{topicName}}" data-field="topicName" bindinput="onTopicInput" />
+      <textarea class="ann-textarea" placeholder="描述（选填）" value="{{topicDesc}}" data-field="topicDesc" bindinput="onTopicInput" auto-height />
+      <button class="ann-submit" bindtap="createTopic">发布（PUBLISHED）</button>
+    </view>
+    <view class="section-title">话题列表 ({{topics.length}})</view>
+    <view class="item" wx:for="{{topics}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">#{{item.name}}</text>
+        <text class="item-sub">{{item.status}} · {{item.createdAt}}</text>
+      </view>
+      <view class="item-actions">
+        <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteTopic">删除</button>
+      </view>
+    </view>
+    <view class="empty-tip" wx:if="{{topics.length === 0}}">暂无话题</view>
+  </block>
+
+  <!-- 树洞标签 -->
+  <block wx:if="{{tab === 'tags'}}">
+    <view class="section-title">新建标签</view>
+    <view class="ann-form">
+      <input class="ann-input" placeholder="标签名" value="{{tagName}}" data-field="tagName" bindinput="onTagInput" />
+      <view class="tag-cat-row">
+        <text class="tag-cat {{tagCategory === 'personality' ? 'on' : ''}}" data-c="personality" bindtap="pickTagCat">性格</text>
+        <text class="tag-cat {{tagCategory === 'interest' ? 'on' : ''}}" data-c="interest" bindtap="pickTagCat">兴趣</text>
+        <text class="tag-cat {{tagCategory === 'mood' ? 'on' : ''}}" data-c="mood" bindtap="pickTagCat">心情</text>
+      </view>
+      <button class="ann-submit" bindtap="createTag">创建</button>
+    </view>
+    <view class="section-title">标签列表 ({{anonTags.length}})</view>
+    <view class="item" wx:for="{{anonTags}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.name}}</text>
+        <text class="item-sub">{{item.category}} · {{item.active ? '启用' : '停用'}}</text>
+      </view>
+      <view class="item-actions">
+        <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteTag">删除</button>
+      </view>
+    </view>
+    <view class="empty-tip" wx:if="{{anonTags.length === 0}}">暂无标签</view>
   </block>
 </view>
