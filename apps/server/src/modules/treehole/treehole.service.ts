@@ -940,9 +940,12 @@ export class TreeholeService {
         })
       : [];
     const profileMap = new Map(profiles.map((p) => [p.anonId, p]));
+    // P2-11 群消息实时推送：成员连 WS 需要 imCredential
+    const imCredential = isMember ? await this.im.getImCredential(anonId) : null;
     return {
       ...this.toGroupVo(group, isMember),
       announcement: group.announcement,
+      imCredential,
       members: members.map((m) => {
         const p = profileMap.get(m.anonId);
         return {

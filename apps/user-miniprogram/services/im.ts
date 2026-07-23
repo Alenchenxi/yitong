@@ -263,8 +263,8 @@ export function joinRoom(roomId: string) {
 export function leaveRoom(roomId: string) {
   enqueueOrSend({ type: 'leave', roomId });
 }
-export function sendRoomMessage(roomId: string, content: string) {
-  enqueueOrSend({ type: 'room-msg', roomId, content });
+export function sendRoomMessage(roomId: string, content: string, msgType?: string) {
+  enqueueOrSend({ type: 'room-msg', roomId, content, msgType });
 }
 
 export function sendWsMessage(toId: string, content: string, msgType?: string, duration?: number) {

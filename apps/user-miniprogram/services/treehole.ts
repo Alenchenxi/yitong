@@ -209,6 +209,7 @@ export interface AnonGroupMemberVo {
 
 export interface AnonGroupDetailVo extends AnonGroupVo {
   announcement: string | null;
+  imCredential: ImCredential | null; // P2-11 成员连 WS 用
   members: AnonGroupMemberVo[];
 }
 

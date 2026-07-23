@@ -10,6 +10,7 @@ import {
   type GroupMessageVo,
 } from '../../../services/treehole';
 import { getAnonId } from '../../../services/treehole';
+import { connectIm, joinRoom, leaveRoom, onRoomMessage, sendRoomMessage, type WsMessage } from '../../../services/im';
 
 const ROLE_TEXT: Record<string, string> = { OWNER: '群主', ADMIN: '管理员', MEMBER: '成员' };
 
@@ -43,7 +44,47 @@ Page({
       this.setData({ myAnonId: getAnonId() });
       await this.load();
       await this.loadMessages();
+      this.joinRoomRealtime();
     }
+  },
+
+  // P2-11 群消息实时推送：连 WS + join group room + 监听 room-msg
+  async joinRoomRealtime() {
+    const detail = this.data.group;
+    if (!detail?.isMember || !detail.imCredential) return;
+    try {
+      await connectIm(detail.imCredential);
+      joinRoom(`group:${this.groupId}`);
+      onRoomMessage((m: WsMessage) => {
+        if (m.type === 'room-msg' && m.roomId === `group:${this.groupId}` && m.fromId) {
+          const memberMap = new Map(this.data.members.map((mb) => [mb.anonId, mb]));
+          this.setData({
+            messages: [
+              {
+                id: `ws_${m.ts ?? Date.now()}_${m.fromId}`,
+                fromId: m.fromId,
+                toId: null,
+                content: m.content ?? '',
+                type: m.msgType === 'image' ? 'image' : 'text',
+                duration: null,
+                groupId: this.groupId,
+                deleted: false,
+                createdAt: m.ts ? new Date(m.ts).toISOString() : new Date().toISOString(),
+                nickname: memberMap.get(m.fromId)?.nickname ?? '匿名',
+                isMine: m.fromId === this.data.myAnonId,
+              },
+              ...this.data.messages,
+            ],
+          });
+        }
+      });
+    } catch {
+      /* IM 连接失败不影响 HTTP 收发 */
+    }
+  },
+
+  onUnload() {
+    leaveRoom(`group:${this.groupId}`);
   },
 
   async load() {
@@ -103,6 +144,8 @@ Page({
     this.setData({ sending: true });
     try {
       const m = await sendGroupMessage(this.groupId, content, 'text');
+      // P2-11 WS 实时广播给群内其他成员
+      sendRoomMessage(`group:${this.groupId}`, content, 'text');
       this.setData({
         messages: [
           {

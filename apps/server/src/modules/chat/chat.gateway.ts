@@ -88,13 +88,13 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
         void this.handleMsg(ws, m);
         break;
       case 'join':
-        this.handleJoin(ws, m);
+        void this.handleJoin(ws, m);
         break;
       case 'leave':
         this.handleLeave(ws, m);
         break;
       case 'room-msg':
-        this.handleRoomMsg(ws, m);
+        void this.handleRoomMsg(ws, m);
         break;
     }
   }
@@ -158,10 +158,10 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private handleJoin(ws: WebSocket, m: ClientMsg) {
+  private async handleJoin(ws: WebSocket, m: ClientMsg) {
     const id = this.meta.get(ws)?.identifier ?? '';
     if (!id || !m.roomId) return;
-    if (!this.canJoinRoom(m.roomId)) {
+    if (!(await this.canJoinRoom(m.roomId, id))) {
       this.send(ws, { type: 'join_failed', roomId: m.roomId, reason: 'invalid_room' });
       return;
     }
@@ -179,10 +179,10 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
     this.broadcastRoom(m.roomId, { type: 'room_event', roomId: m.roomId, event: 'leave', memberId: id });
   }
 
-  private handleRoomMsg(ws: WebSocket, m: ClientMsg) {
+  private async handleRoomMsg(ws: WebSocket, m: ClientMsg) {
     const id = this.meta.get(ws)?.identifier ?? '';
     if (!id || !m.roomId || m.content == null) return;
-    if (!this.canJoinRoom(m.roomId)) return;
+    if (!(await this.canJoinRoom(m.roomId, id))) return;
     if (!this.rooms.get(m.roomId)?.has(id)) return; // 未加入房间不能发
     this.broadcastRoom(
       m.roomId,
@@ -191,6 +191,7 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
         roomId: m.roomId,
         fromId: id,
         content: m.content,
+        msgType: m.msgType,
         ts: Date.now(),
       },
       id,
@@ -271,8 +272,18 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
     return id.startsWith('anon_');
   }
 
-  private canJoinRoom(roomId: string): boolean {
-    return roomId === 'treehole-party-main';
+  // P2-11 群 room：'group:'+groupId，校验成员关系；派对房直接允许
+  private async canJoinRoom(roomId: string, id: string): Promise<boolean> {
+    if (roomId === 'treehole-party-main') return true;
+    if (roomId.startsWith('group:')) {
+      const groupId = roomId.slice(6);
+      const member = await this.prisma.anonGroupMember.findUnique({
+        where: { groupId_anonId: { groupId, anonId: id } },
+        select: { id: true },
+      });
+      return !!member;
+    }
+    return false;
   }
 
   private checkHeartbeat() {
