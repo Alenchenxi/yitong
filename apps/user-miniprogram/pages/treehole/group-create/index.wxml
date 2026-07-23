@@ -1,11 +1,15 @@
 <view class="page">
   <view class="form-row">
     <text class="label">群头像</text>
-    <view class="avatar-preview">{{avatarEmoji}}</view>
+    <view class="avatar-preview" bindtap="pickAvatarImage">
+      <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill"></image>
+      <text wx:else class="avatar-emoji-text">{{avatarEmoji || '🌙'}}</text>
+    </view>
+    <view class="avatar-tip">点击上传/选择</view>
   </view>
   <view class="emoji-row">
     <view class="emoji-opt" wx:for="{{emojis}}" wx:key="*this" data-emoji="{{item}}" bindtap="pickEmoji">
-      <text class="emoji {{avatarEmoji === item ? 'on' : ''}}">{{item}}</text>
+      <text class="emoji {{!avatarUrl && avatarEmoji === item ? 'on' : ''}}">{{item}}</text>
     </view>
   </view>
 

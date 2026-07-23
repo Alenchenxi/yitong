@@ -10,6 +10,7 @@ import {
   type GroupMessageVo,
 } from '../../../services/treehole';
 import { getAnonId } from '../../../services/treehole';
+import { uploadImage } from '../../../services/upload';
 import { connectIm, joinRoom, leaveRoom, onRoomMessage, sendRoomMessage, type WsMessage } from '../../../services/im';
 
 const ROLE_TEXT: Record<string, string> = { OWNER: '群主', ADMIN: '管理员', MEMBER: '成员' };
@@ -162,6 +163,51 @@ Page({
     } finally {
       this.setData({ sending: false });
     }
+  },
+
+  // B1 群图片消息：选图 -> 上传(anon) -> 落库 + WS 广播
+  async sendImage() {
+    if (this.data.sending || !this.data.group?.isMember) return;
+    this.setData({ sending: true });
+    wx.showLoading({ title: '发送中...', mask: true });
+    try {
+      const res: WechatMiniprogram.ChooseMediaSuccessCallbackResult = await new Promise((resolve, reject) => {
+        wx.chooseMedia({
+          count: 1,
+          mediaType: ['image'],
+          sizeType: ['compressed'],
+          sourceType: ['album', 'camera'],
+          success: resolve,
+          fail: reject,
+        } as any);
+      });
+      const f = res.tempFiles?.[0];
+      if (!f) return;
+      const url = await uploadImage(f.tempFilePath);
+      const m = await sendGroupMessage(this.groupId, url, 'image');
+      sendRoomMessage(`group:${this.groupId}`, url, 'image');
+      this.setData({
+        messages: [
+          {
+            ...m,
+            nickname: this.data.members.find((x) => x.anonId === m.fromId)?.nickname ?? '我',
+            isMine: true,
+          },
+          ...this.data.messages,
+        ],
+      });
+    } catch (e) {
+      wx.showToast({ title: (e as { message?: string })?.message ?? '发送失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+      this.setData({ sending: false });
+    }
+  },
+
+  // P2-11 群图片消息点击预览全屏
+  previewImg(e: WechatMiniprogram.TouchEvent) {
+    const url = e.currentTarget.dataset.url as string;
+    if (url) wx.previewImage({ urls: [url] });
   },
 
   async revokeMsg(e: WechatMiniprogram.TouchEvent) {

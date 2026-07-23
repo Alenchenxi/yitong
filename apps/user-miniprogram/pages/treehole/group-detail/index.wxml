@@ -1,6 +1,9 @@
 <view class="page" wx:if="{{group}}">
   <view class="header">
-    <view class="group-avatar">{{group.name.slice(0, 1)}}</view>
+    <view class="group-avatar">
+      <image wx:if="{{group.avatarUrl}}" class="group-avatar-img" src="{{group.avatarUrl}}" mode="aspectFill"></image>
+      <text wx:else>{{group.name.slice(0, 1)}}</text>
+    </view>
     <view class="group-name">{{group.name}}</view>
     <view class="group-meta">
       <text class="group-private" wx:if="{{group.isPrivate}}">🔒 私密</text>
@@ -43,7 +46,15 @@
           <text class="chat-nick">{{item.nickname}}</text>
           <text class="chat-time">{{item.createdAt}}</text>
         </view>
-        <view class="chat-content">{{item.content}}</view>
+        <image
+          wx:if="{{item.type === 'image' && !item.deleted}}"
+          class="chat-img"
+          src="{{item.content}}"
+          mode="widthFix"
+          data-url="{{item.content}}"
+          bindtap="previewImg"
+        ></image>
+        <view wx:else class="chat-content">{{item.content}}</view>
         <view wx:if="{{item.isMine && !item.deleted}}" class="chat-revoke" data-id="{{item.id}}" bindtap="revokeMsg">撤回</view>
       </view>
       <view class="chat-tip" wx:if="{{hasMoreMsg}}" bindtap="loadMore">加载更多</view>
@@ -54,6 +65,7 @@
 
   <!-- 发送输入（仅成员） -->
   <view class="chat-input" wx:if="{{group.isMember}}">
+    <view class="img-btn" bindtap="sendImage">📷</view>
     <input class="input" placeholder="发消息…" value="{{draft}}" bindinput="onDraft" confirm-type="send" bindconfirm="send" />
     <button class="send-btn" size="mini" bindtap="send" disabled="{{sending || !draft.trim()}}">发送</button>
   </view>
