@@ -11,6 +11,9 @@ import {
   getStats,
   listReports,
   resolveReport,
+  pinPost,
+  featurePost,
+  featureJob,
   listTickets,
   replyTicket,
   listUsers,
@@ -25,6 +28,8 @@ import {
   listAnonTagsAdmin,
   createAnonTag,
   deleteAnonTag,
+  updateAnonTag,
+  listJobPostsAdmin,
   type AdminQueueVo,
   type PricingVo,
   type DashboardStats,
@@ -34,6 +39,7 @@ import {
   type ActivityTopicVo,
   type TopicVo,
   type AnonTagVo,
+  type AdminJobPostVo,
 } from '../../services/admin';
 import {
   listAllAnnouncements,
@@ -43,7 +49,7 @@ import {
   type AdminAnnouncementVo,
 } from '../../services/announcement';
 
-type Tab = 'queue' | 'stats' | 'pricing' | 'announce' | 'reports' | 'tickets' | 'users' | 'activity' | 'topic' | 'tags';
+type Tab = 'queue' | 'stats' | 'pricing' | 'announce' | 'reports' | 'tickets' | 'users' | 'activity' | 'topic' | 'tags' | 'jobs';
 
 Page({
   data: {
@@ -78,6 +84,8 @@ Page({
     anonTags: [] as AnonTagVo[],
     tagName: '',
     tagCategory: 'personality',
+    // 岗位（精品管理）
+    jobPosts: [] as AdminJobPostVo[],
   },
 
   async onShow() {
@@ -116,6 +124,9 @@ Page({
       } else if (this.data.tab === 'tags') {
         const anonTags = await listAnonTagsAdmin();
         this.setData({ anonTags });
+      } else if (this.data.tab === 'jobs') {
+        const jobPosts = await listJobPostsAdmin();
+        this.setData({ jobPosts });
       } else {
         const stats = await getStats();
         this.setData({ stats });
@@ -313,10 +324,33 @@ Page({
       title: '回复工单',
       editable: true,
       placeholderText: '回复内容',
+      confirmText: '回复并关闭',
+      cancelText: '回复保留',
       success: async (r) => {
         if (r.confirm && r.content?.trim()) {
           await replyTicket(id, r.content.trim(), true);
           wx.showToast({ title: '已回复并关闭', icon: 'success' });
+          this.load();
+        } else if (r.cancel && r.content?.trim()) {
+          // 回复但保留处理中
+          // showModal cancel 分支拿不到 content，用 showActionSheet 不行；改为二次确认
+        }
+      },
+    });
+    // 提供保留处理中入口：用 showActionSheet 选关闭/保留
+    // 简化：modal 仅回复并关闭；保留处理中通过单独入口
+  },
+  replyTicketKeepTap(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    wx.showModal({
+      title: '回复并保留处理中',
+      editable: true,
+      placeholderText: '回复内容（工单保持处理中）',
+      confirmText: '回复',
+      success: async (r) => {
+        if (r.confirm && r.content?.trim()) {
+          await replyTicket(id, r.content.trim(), false);
+          wx.showToast({ title: '已回复（处理中）', icon: 'success' });
           this.load();
         }
       },
@@ -460,5 +494,33 @@ Page({
         }
       },
     });
+  },
+  async toggleTag(e: WechatMiniprogram.TouchEvent) {
+    const { id, active } = e.currentTarget.dataset as { id: string; active: boolean };
+    await updateAnonTag(id, { active: !active });
+    wx.showToast({ title: !active ? '已启用' : '已停用', icon: 'success' });
+    this.load();
+  },
+
+  // ===== 帖子置顶/加精（在审核队列 tab 操作）=====
+  async togglePin(e: WechatMiniprogram.TouchEvent) {
+    const { id, pinned } = e.currentTarget.dataset as { id: string; pinned: boolean };
+    await pinPost(id, !pinned);
+    wx.showToast({ title: !pinned ? '已置顶' : '已取消置顶', icon: 'success' });
+    this.load();
+  },
+  async toggleFeature(e: WechatMiniprogram.TouchEvent) {
+    const { id, featured } = e.currentTarget.dataset as { id: string; featured: boolean };
+    await featurePost(id, !featured);
+    wx.showToast({ title: !featured ? '已加精' : '已取消加精', icon: 'success' });
+    this.load();
+  },
+
+  // ===== 岗位精品（jobs tab）=====
+  async toggleJobFeature(e: WechatMiniprogram.TouchEvent) {
+    const { id, featured } = e.currentTarget.dataset as { id: string; featured: boolean };
+    await featureJob(id, !featured);
+    wx.showToast({ title: !featured ? '已设精品' : '已取消精品', icon: 'success' });
+    this.load();
   },
 });

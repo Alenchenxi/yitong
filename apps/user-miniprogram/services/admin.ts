@@ -17,6 +17,8 @@ export interface AdminQueueVo {
     status: string;
     authorNickname: string;
     circleName: string;
+    pinned: boolean;
+    featured: boolean;
     createdAt: string;
   }>;
   anonPosts: Array<{
@@ -202,6 +204,23 @@ export function createAnonTag(data: { name: string; category: string; sortOrder?
 }
 export function deleteAnonTag(id: string) {
   return request({ url: `/admin/anon-tags/${id}`, method: 'DELETE' });
+}
+export function updateAnonTag(id: string, data: { active?: boolean }) {
+  return request({ url: `/admin/anon-tags/${id}`, method: 'PUT', data });
+}
+
+// ===== 兼职岗位列表（admin，精品管理）=====
+export interface AdminJobPostVo {
+  id: string;
+  title: string;
+  status: string;
+  urgent: boolean;
+  featured: boolean;
+  merchantShopName: string;
+  createdAt: string;
+}
+export function listJobPostsAdmin(limit = 50) {
+  return request<AdminJobPostVo[]>({ url: `/admin/job-posts?limit=${limit}` });
 }
 
 // ===== 用户管理 =====

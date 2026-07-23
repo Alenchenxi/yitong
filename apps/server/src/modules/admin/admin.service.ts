@@ -58,6 +58,8 @@ export class AdminService {
         status: p.status,
         authorNickname: p.author?.nickname ?? '',
         circleName: p.circle?.name ?? '',
+        pinned: p.pinned,
+        featured: p.featured,
         createdAt: p.createdAt.toISOString(),
       })),
       anonPosts: anonPosts.map((p) => ({
@@ -391,6 +393,24 @@ export class AdminService {
         status: close ? 'CLOSED' : 'IN_PROGRESS',
       },
     });
+  }
+
+  // ===== 兼职岗位列表（admin，含 featured，用于精品管理）=====
+  async listJobPostsAdmin(limit = 50) {
+    const posts = await this.prisma.jobPost.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(100, Math.max(1, limit)),
+      include: { merchant: { select: { shopName: true } } },
+    });
+    return posts.map((p) => ({
+      id: p.id,
+      title: p.title,
+      status: p.status,
+      urgent: p.urgent,
+      featured: p.featured,
+      merchantShopName: p.merchant?.shopName ?? '',
+      createdAt: p.createdAt.toISOString(),
+    }));
   }
 
   // ===== 用户列表（admin，用于封禁/禁言；ban/mute 见 banUser/muteUser）=====

@@ -119,6 +119,12 @@ export class AdminController {
     return ok(await this.admin.listUsers(keyword, limit ? Number(limit) : 50));
   }
 
+  // ===== 兼职岗位列表（admin，精品管理）=====
+  @Get('job-posts')
+  async listJobPostsAdmin(@Query('limit') limit: string | undefined) {
+    return ok(await this.admin.listJobPostsAdmin(limit ? Number(limit) : 50));
+  }
+
   @Get('pricing')
   async getPricing() {
     return ok(await this.admin.getPricing());

@@ -10,6 +10,7 @@
     <view class="tab {{tab === 'activity' ? 'active' : ''}}" data-tab="activity" bindtap="switchTab">专题</view>
     <view class="tab {{tab === 'topic' ? 'active' : ''}}" data-tab="topic" bindtap="switchTab">话题</view>
     <view class="tab {{tab === 'tags' ? 'active' : ''}}" data-tab="tags" bindtap="switchTab">标签</view>
+    <view class="tab {{tab === 'jobs' ? 'active' : ''}}" data-tab="jobs" bindtap="switchTab">岗位</view>
   </scroll-view>
 
   <!-- 审核队列 -->
@@ -31,9 +32,11 @@
     <view class="item" wx:for="{{queue.posts}}" wx:key="id">
       <view class="item-main">
         <text class="item-title">{{item.content}}</text>
-        <text class="item-sub">{{item.authorNickname}} · {{item.circleName}} · {{item.status}}</text>
+        <text class="item-sub">{{item.authorNickname}} · {{item.circleName}} · {{item.status}}{{item.pinned ? ' · 置顶' : ''}}{{item.featured ? ' · 精' : ''}}</text>
       </view>
       <view class="item-actions">
+        <button size="mini" data-id="{{item.id}}" data-pinned="{{item.pinned}}" bindtap="togglePin">{{item.pinned ? '取消置顶' : '置顶'}}</button>
+        <button size="mini" data-id="{{item.id}}" data-featured="{{item.featured}}" bindtap="toggleFeature">{{item.featured ? '取消加精' : '加精'}}</button>
         <button wx:if="{{item.status === 'APPROVED'}}" size="mini" data-id="{{item.id}}" bindtap="takedown">下架</button>
       </view>
     </view>
@@ -168,7 +171,8 @@
         <text class="item-sub" wx:if="{{item.reply}}">回复：{{item.reply}}</text>
       </view>
       <view class="item-actions" wx:if="{{item.status !== 'CLOSED'}}">
-        <button size="mini" data-id="{{item.id}}" bindtap="replyTicketTap">回复</button>
+        <button size="mini" data-id="{{item.id}}" bindtap="replyTicketTap">回复关闭</button>
+        <button size="mini" data-id="{{item.id}}" bindtap="replyTicketKeepTap">保留处理</button>
       </view>
     </view>
     <view class="empty-tip" wx:if="{{tickets.length === 0}}">暂无工单</view>
@@ -254,9 +258,25 @@
         <text class="item-sub">{{item.category}} · {{item.active ? '启用' : '停用'}}</text>
       </view>
       <view class="item-actions">
+        <button size="mini" data-id="{{item.id}}" data-active="{{item.active}}" bindtap="toggleTag">{{item.active ? '停用' : '启用'}}</button>
         <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteTag">删除</button>
       </view>
     </view>
     <view class="empty-tip" wx:if="{{anonTags.length === 0}}">暂无标签</view>
+  </block>
+
+  <!-- 岗位精品管理 -->
+  <block wx:if="{{tab === 'jobs'}}">
+    <view class="section-title">岗位列表 ({{jobPosts.length}})</view>
+    <view class="item" wx:for="{{jobPosts}}" wx:key="id">
+      <view class="item-main">
+        <text class="item-title">{{item.title}}</text>
+        <text class="item-sub">{{item.merchantShopName}} · {{item.status}}{{item.urgent ? ' · 急招' : ''}}{{item.featured ? ' · 精品' : ''}}</text>
+      </view>
+      <view class="item-actions">
+        <button size="mini" data-id="{{item.id}}" data-featured="{{item.featured}}" bindtap="toggleJobFeature">{{item.featured ? '取消精品' : '设精品'}}</button>
+      </view>
+    </view>
+    <view class="empty-tip" wx:if="{{jobPosts.length === 0}}">暂无岗位</view>
   </block>
 </view>
