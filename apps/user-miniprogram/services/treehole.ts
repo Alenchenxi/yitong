@@ -242,6 +242,11 @@ export function leaveAnonGroup(id: string): Promise<{ left: boolean; disbanded?:
   return anonRequest({ url: `/treehole/groups/${id}/leave`, method: 'POST' });
 }
 
+// B3 群主转交
+export function transferGroupOwner(id: string, targetAnonId: string): Promise<{ newOwner: string }> {
+  return anonRequest({ url: `/treehole/groups/${id}/transfer`, method: 'POST', data: { targetAnonId } });
+}
+
 export function listMyAnonGroups(): Promise<AnonGroupVo[]> {
   return anonRequest({ url: '/treehole/groups/mine', method: 'GET' });
 }

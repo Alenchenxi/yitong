@@ -23,6 +23,8 @@
 
 .members-section { background: var(--yt-card); border-radius: 16rpx; margin: 0 24rpx 24rpx; padding: 20rpx; }
 .members-title { font-size: 28rpx; font-weight: 600; color: var(--yt-text-main); margin-bottom: 16rpx; }
+.members-hint { font-size: 22rpx; font-weight: 400; color: var(--yt-text-sub); }
+.member-transfer { font-size: 32rpx; color: var(--yt-text-sub); margin-left: auto; }
 .member { display: flex; align-items: center; gap: 16rpx; padding: 14rpx 0; border-bottom: 1rpx solid var(--yt-border); }
 .member:last-child { border-bottom: none; }
 .member-avatar { width: 64rpx; height: 64rpx; border-radius: 50%; background: var(--yt-primary-lighter); display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 600; color: var(--yt-primary-dark); flex-shrink: 0; }

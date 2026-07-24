@@ -23,17 +23,18 @@
   <view class="action-row">
     <button wx:if="{{!group.isMember && !group.isPrivate}}" class="btn btn-primary" bindtap="join" disabled="{{acting}}">加入群聊</button>
     <button wx:if="{{group.isPrivate && !group.isMember}}" class="btn btn-disabled" disabled>私密群，需申请</button>
-    <button wx:if="{{group.isMember}}" class="btn btn-danger" bindtap="leave" disabled="{{acting}}">{{group.ownerAnonId && members[0].anonId === group.ownerAnonId ? '解散群聊' : '退出群聊'}}</button>
+    <button wx:if="{{group.isMember}}" class="btn btn-danger" bindtap="leave" disabled="{{acting}}">{{isOwner ? '解散群聊' : '退出群聊'}}</button>
   </view>
 
   <view class="members-section">
-    <view class="members-title">成员 ({{members.length}})</view>
-    <view class="member" wx:for="{{members}}" wx:key="anonId">
+    <view class="members-title">成员 ({{members.length}})<text class="members-hint" wx:if="{{isOwner}}"> · 点击成员可转交群主</text></view>
+    <view class="member" wx:for="{{members}}" wx:key="anonId" bindtap="onTapMember" data-anon-id="{{item.anonId}}" data-nickname="{{item.nickname}}" data-role="{{item.role}}">
       <view class="member-avatar">{{item.nickname.slice(0, 1)}}</view>
       <view class="member-info">
         <view class="member-name">{{item.nickname}}</view>
         <view class="member-role {{item.role}}">{{item.roleText}}</view>
       </view>
+      <text wx:if="{{isOwner && item.role !== 'OWNER'}}" class="member-transfer">⇄</text>
     </view>
   </view>
 

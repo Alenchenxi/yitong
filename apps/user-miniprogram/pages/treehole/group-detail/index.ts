@@ -6,6 +6,7 @@ import {
   sendGroupMessage,
   listGroupMessages,
   revokeGroupMessage,
+  transferGroupOwner,
   type AnonGroupDetailVo,
   type GroupMessageVo,
 } from '../../../services/treehole';
@@ -23,6 +24,7 @@ Page({
     draft: '',
     sending: false,
     myAnonId: '',
+    isOwner: false,
     hasMoreMsg: true,
     msgCursor: '',
     loading: false,
@@ -94,6 +96,7 @@ Page({
       const detail = await getAnonGroup(this.groupId);
       this.setData({
         group: detail,
+        isOwner: detail.isMember && detail.ownerAnonId === this.data.myAnonId,
         members: detail.members.map((m) => ({ ...m, roleText: ROLE_TEXT[m.role] ?? m.role })),
       });
     } catch {
@@ -239,13 +242,44 @@ Page({
     }
   },
 
+  // B3 群主转交：群主点非群主成员 -> 确认 -> 转交后刷新
+  onTapMember(e: WechatMiniprogram.TouchEvent) {
+    if (!this.data.isOwner) return;
+    const anonId = e.currentTarget.dataset.anonId as string;
+    const nickname = e.currentTarget.dataset.nickname as string;
+    const role = e.currentTarget.dataset.role as string;
+    if (!anonId || anonId === this.data.myAnonId || role === 'OWNER') return;
+    wx.showActionSheet({
+      itemList: ['转交群主'],
+      success: (res) => {
+        if (res.tapIndex !== 0) return;
+        wx.showModal({
+          title: '转交群主',
+          content: `确定把群主转交给「${nickname}」吗？转交后你将变为普通成员。`,
+          confirmColor: '#E63946',
+          success: async (modal) => {
+            if (!modal.confirm) return;
+            this.setData({ acting: true });
+            try {
+              await transferGroupOwner(this.groupId, anonId);
+              wx.showToast({ title: '已转交', icon: 'success' });
+              await this.load();
+            } catch (err) {
+              wx.showToast({ title: (err as Error).message ?? '转交失败', icon: 'none' });
+            } finally {
+              this.setData({ acting: false });
+            }
+          },
+        });
+      },
+    });
+  },
+
   async leave() {
     if (this.data.acting) return;
     const g = this.data.group;
     if (!g) return;
-    const tip = g.isMember && g.ownerAnonId && g.members.find((m) => m.role === 'OWNER' && m.anonId === g.ownerAnonId)
-      ? '群主退出将解散群聊，确定吗？'
-      : '确定退出该群？';
+    const tip = this.data.isOwner ? '群主退出将解散群聊，确定吗？' : '确定退出该群？';
     wx.showModal({
       title: '退出群聊',
       content: tip,

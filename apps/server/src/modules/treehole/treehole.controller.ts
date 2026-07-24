@@ -244,6 +244,14 @@ export class TreeholeController {
     const operatorAnonId = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.treehole.setMemberRole(operatorAnonId, id, targetAnonId, body.role));
   }
+  // B3 群主转交
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('groups/:id/transfer')
+  async transferOwner(@Param('id') id: string, @Body() body: { targetAnonId?: string }, @Req() req: Request) {
+    const operatorAnonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.transferOwner(operatorAnonId, id, body.targetAnonId ?? ''));
+  }
   @Public()
   @UseGuards(AnonGuard)
   @Post('groups/:id/members/:anonId/kick')

@@ -1054,6 +1054,23 @@ export class TreeholeService {
     return { anonId: targetAnonId, role };
   }
 
+  // B3 群主转交：OWNER 把群主转给某成员，自己降为 MEMBER；仅 OWNER 可操作
+  async transferOwner(operatorAnonId: string, groupId: string, targetAnonId: string) {
+    const operator = await this.getMember(groupId, operatorAnonId);
+    if (!operator || operator.role !== 'OWNER') {
+      throw new BizException(10003, '仅群主可转交', HttpStatus.FORBIDDEN);
+    }
+    const target = await this.getMember(groupId, targetAnonId);
+    if (!target) throw new BizException(30009, '目标非群成员', HttpStatus.NOT_FOUND);
+    if (target.role === 'OWNER') throw new BizException(30004, '目标已是群主', HttpStatus.BAD_REQUEST);
+    await this.prisma.$transaction([
+      this.prisma.anonGroupMember.update({ where: { id: operator.id }, data: { role: 'MEMBER' } }),
+      this.prisma.anonGroupMember.update({ where: { id: target.id }, data: { role: 'OWNER' } }),
+      this.prisma.anonGroup.update({ where: { id: groupId }, data: { ownerAnonId: targetAnonId } }),
+    ]);
+    return { newOwner: targetAnonId };
+  }
+
   // P2-10 踢出成员（OWNER/ADMIN 可踢 MEMBER；ADMIN 不能踢 ADMIN；OWNER 不能踢 OWNER）
   async kickMember(operatorAnonId: string, groupId: string, targetAnonId: string) {
     await this.assertCanManage(groupId, operatorAnonId, 'kick');
