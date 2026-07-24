@@ -60,3 +60,4 @@
 .chat-input .send-btn { background: var(--yt-primary) !important; color: var(--yt-text-main) !important; border-radius: 28rpx !important; font-size: 26rpx !important; padding: 8rpx 24rpx !important; }
 .chat-input .send-btn[disabled] { background: var(--yt-disabled-bg) !important; color: var(--yt-text-sub) !important; }
 .chat-input-disabled { padding: 24rpx; text-align: center; color: var(--yt-text-sub); font-size: 24rpx; background: var(--yt-card); border-top: 1rpx solid var(--yt-border); }
+.chat-input-muted { padding: 24rpx; text-align: center; color: #E63946; font-size: 24rpx; background: var(--yt-card); border-top: 1rpx solid var(--yt-border); }

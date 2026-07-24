@@ -71,10 +71,11 @@
   </view>
 
   <!-- 发送输入（仅成员） -->
-  <view class="chat-input" wx:if="{{group.isMember}}">
+  <view class="chat-input" wx:if="{{group.isMember && !myMutedText}}">
     <view class="img-btn" bindtap="sendImage">📷</view>
     <input class="input" placeholder="发消息…" value="{{draft}}" bindinput="onDraft" confirm-type="send" bindconfirm="send" />
     <button class="send-btn" size="mini" bindtap="send" disabled="{{sending || !draft.trim()}}">发送</button>
   </view>
+  <view class="chat-input-muted" wx:elif="{{group.isMember && myMutedText}}">🔇 {{myMutedText}}</view>
   <view class="chat-input-disabled" wx:else>加入群聊后可发送消息</view>
 </view>

@@ -52,6 +52,13 @@ function buildContentText(msg: { type: string; content: string }): string {
   return msg.type === 'system' ? buildSystemText(msg.content) : msg.content;
 }
 
+// 禁言到期时间格式化：ISO -> "MM-DD HH:MM"
+function fmtMutedTime(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 Page({
   data: {
     group: null as AnonGroupDetailVo | null,
@@ -63,12 +70,15 @@ Page({
     myRole: '',
     isOwner: false,
     canManage: false,
+    myMutedUntil: '',
+    myMutedText: '',
     hasMoreMsg: true,
     msgCursor: '',
     loading: false,
     acting: false,
   },
   groupId: '',
+  mutedTimer: null as ReturnType<typeof setTimeout> | null,
 
   onLoad(options: { id?: string }) {
     if (!options?.id) {
@@ -120,6 +130,20 @@ Page({
               ...this.data.messages,
             ],
           });
+          // 禁言/解禁作用于自己时，刷新自己的禁言状态（输入区置灰/恢复）
+          if (msgType === 'system') {
+            try {
+              const d = JSON.parse(content) as { action?: string; target?: { anonId?: string } };
+              if (
+                (d.action === 'member_muted' || d.action === 'member_unmuted') &&
+                d.target?.anonId === this.data.myAnonId
+              ) {
+                void this.load();
+              }
+            } catch {
+              /* ignore */
+            }
+          }
         }
       });
     } catch {
@@ -129,6 +153,10 @@ Page({
 
   onUnload() {
     leaveRoom(`group:${this.groupId}`);
+    if (this.mutedTimer) {
+      clearTimeout(this.mutedTimer);
+      this.mutedTimer = null;
+    }
   },
 
   async load() {
@@ -142,13 +170,29 @@ Page({
       }));
       const myRole = members.find((m) => m.anonId === this.data.myAnonId)?.role ?? '';
       const isOwner = detail.isMember && detail.ownerAnonId === this.data.myAnonId;
+      const myMember = members.find((m) => m.anonId === this.data.myAnonId);
+      const myMutedUntil =
+        myMember?.mutedUntil && new Date(myMember.mutedUntil).getTime() > Date.now()
+          ? myMember.mutedUntil
+          : '';
       this.setData({
         group: detail,
         myRole,
         isOwner,
         canManage: isOwner || myRole === 'ADMIN',
         members,
+        myMutedUntil,
+        myMutedText: myMutedUntil ? `你已被禁言，${fmtMutedTime(myMutedUntil)} 解除` : '',
       });
+      // 禁言到期自动恢复输入区
+      if (this.mutedTimer) {
+        clearTimeout(this.mutedTimer);
+        this.mutedTimer = null;
+      }
+      if (myMutedUntil) {
+        const remain = new Date(myMutedUntil).getTime() - Date.now();
+        if (remain > 0) this.mutedTimer = setTimeout(() => { void this.load(); }, remain);
+      }
     } catch {
       /* toast */
     } finally {
