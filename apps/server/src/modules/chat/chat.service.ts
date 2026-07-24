@@ -3,6 +3,7 @@ import { MatchStatus, Prisma, type ChatMessage } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { ChatGateway } from './chat.gateway';
 
 export interface MessageVo {
   id: string;
@@ -35,6 +36,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
+    private readonly gateway: ChatGateway,
   ) {}
 
   // 发消息：存 ChatMessage + 双向更新 ChatSession（双方都能看到）
@@ -140,6 +142,35 @@ export class ChatService {
     const m = await this.prisma.chatMessage.create({
       data: { fromId, toId: null, groupId, content, type: msgType },
     });
+    return this.toMsgVo(m);
+  }
+
+  // 群系统消息：落库 ChatMessage(type='system', fromId='system') + WS 广播给在线成员。
+  // actor/target 用 anonId + nick 快照（退群后历史文案仍可显示）；fromId='system' 不含真实 uid（匿名红线）。
+  async sendGroupSystemMessage(
+    groupId: string,
+    action: string,
+    actor: { anonId: string; nick: string },
+    target?: { anonId: string; nick: string },
+    extra?: Record<string, unknown>,
+  ): Promise<MessageVo> {
+    const content = JSON.stringify({ action, actor, target, extra });
+    const m = await this.prisma.chatMessage.create({
+      data: { fromId: 'system', toId: null, groupId, content, type: 'system' },
+    });
+    // 实时广播给群房间在线成员（离线成员靠历史拉取补偿）
+    try {
+      this.gateway.broadcastToRoom(`group:${groupId}`, {
+        type: 'room-msg',
+        roomId: `group:${groupId}`,
+        fromId: 'system',
+        content,
+        msgType: 'system',
+        ts: Date.now(),
+      });
+    } catch {
+      /* 广播失败不影响落库 */
+    }
     return this.toMsgVo(m);
   }
 

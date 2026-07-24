@@ -19,11 +19,44 @@ import { connectIm, joinRoom, leaveRoom, onRoomMessage, sendRoomMessage, type Ws
 
 const ROLE_TEXT: Record<string, string> = { OWNER: '群主', ADMIN: '管理员', MEMBER: '成员' };
 
+// 群系统消息文案拼接（按 action 模板，用落库时的 nick 快照）
+function buildSystemText(content: string): string {
+  try {
+    const d = JSON.parse(content) as {
+      action?: string;
+      actor?: { nick?: string };
+      target?: { nick?: string };
+      extra?: { days?: number };
+    };
+    const a = d.actor?.nick ?? '某成员';
+    const t = d.target?.nick ?? '某成员';
+    switch (d.action) {
+      case 'group_created': return '群聊已创建';
+      case 'member_joined': return `${a} 加入了群聊`;
+      case 'member_left': return `${a} 退出了群聊`;
+      case 'member_kicked': return `${a} 将 ${t} 移出群聊`;
+      case 'member_muted': return `${a} 禁言了 ${t}（${d.extra?.days ?? 0} 天）`;
+      case 'member_unmuted': return `${a} 解除了 ${t} 的禁言`;
+      case 'role_admin': return `${a} 将 ${t} 设为管理员`;
+      case 'role_member': return `${a} 取消了 ${t} 的管理员身份`;
+      case 'owner_transferred': return `${a} 把群主转交给了 ${t}`;
+      case 'group_disbanded': return '群聊已解散';
+      default: return '系统消息';
+    }
+  } catch {
+    return '系统消息';
+  }
+}
+
+function buildContentText(msg: { type: string; content: string }): string {
+  return msg.type === 'system' ? buildSystemText(msg.content) : msg.content;
+}
+
 Page({
   data: {
     group: null as AnonGroupDetailVo | null,
     members: [] as (AnonGroupDetailVo['members'][number] & { roleText: string; muted: boolean })[],
-    messages: [] as Array<GroupMessageVo & { nickname: string; isMine: boolean }>,
+    messages: [] as Array<GroupMessageVo & { nickname: string; isMine: boolean; contentText: string }>,
     draft: '',
     sending: false,
     myAnonId: '',
@@ -66,20 +99,23 @@ Page({
       onRoomMessage((m: WsMessage) => {
         if (m.type === 'room-msg' && m.roomId === `group:${this.groupId}` && m.fromId) {
           const memberMap = new Map(this.data.members.map((mb) => [mb.anonId, mb]));
+          const msgType = m.msgType === 'image' ? 'image' : m.msgType === 'system' ? 'system' : 'text';
+          const content = m.content ?? '';
           this.setData({
             messages: [
               {
                 id: `ws_${m.ts ?? Date.now()}_${m.fromId}`,
                 fromId: m.fromId,
                 toId: null,
-                content: m.content ?? '',
-                type: m.msgType === 'image' ? 'image' : 'text',
+                content,
+                type: msgType,
                 duration: null,
                 groupId: this.groupId,
                 deleted: false,
                 createdAt: m.ts ? new Date(m.ts).toISOString() : new Date().toISOString(),
-                nickname: memberMap.get(m.fromId)?.nickname ?? '匿名',
+                nickname: msgType === 'system' ? '' : (memberMap.get(m.fromId)?.nickname ?? '匿名'),
                 isMine: m.fromId === this.data.myAnonId,
+                contentText: buildContentText({ type: msgType, content }),
               },
               ...this.data.messages,
             ],
@@ -128,8 +164,9 @@ Page({
       const memberMap = new Map(this.data.members.map((m) => [m.anonId, m]));
       const list = r.list.map((msg) => ({
         ...msg,
-        nickname: memberMap.get(msg.fromId)?.nickname ?? '匿名',
+        nickname: msg.type === 'system' ? '' : (memberMap.get(msg.fromId)?.nickname ?? '匿名'),
         isMine: msg.fromId === this.data.myAnonId,
+        contentText: buildContentText(msg),
       }));
       this.setData({
         messages: append ? [...list, ...this.data.messages] : list,
@@ -175,6 +212,7 @@ Page({
             ...m,
             nickname: this.data.members.find((x) => x.anonId === m.fromId)?.nickname ?? '我',
             isMine: true,
+            contentText: m.content,
           },
           ...this.data.messages,
         ],
@@ -214,6 +252,7 @@ Page({
             ...m,
             nickname: this.data.members.find((x) => x.anonId === m.fromId)?.nickname ?? '我',
             isMine: true,
+            contentText: m.content,
           },
           ...this.data.messages,
         ],
@@ -238,7 +277,7 @@ Page({
     try {
       await revokeGroupMessage(this.groupId, id);
       this.setData({
-        messages: this.data.messages.map((m) => (m.id === id ? { ...m, deleted: true, content: '[已撤回]' } : m)),
+        messages: this.data.messages.map((m) => (m.id === id ? { ...m, deleted: true, content: '[已撤回]', contentText: '[已撤回]' } : m)),
       });
     } catch {
       wx.showToast({ title: '撤回失败', icon: 'none' });

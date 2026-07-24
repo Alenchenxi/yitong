@@ -271,7 +271,7 @@ export interface GroupMessageVo {
   fromId: string;
   toId: string | null;
   content: string;
-  type: string;
+  type: string; // text / image / system
   duration: number | null;
   groupId: string | null;
   deleted: boolean;

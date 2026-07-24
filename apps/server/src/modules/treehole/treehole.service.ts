@@ -613,6 +613,7 @@ export class TreeholeService {
         }),
         this.prisma.anonGroup.update({ where: { id: groupId }, data: { memberCount: { increment: 1 } } }),
       ]);
+      await this.emitGroupSystem(groupId, 'member_joined', req.anonId);
     } else {
       await this.prisma.anonGroupJoinRequest.update({
         where: { id: requestId },
@@ -881,6 +882,7 @@ export class TreeholeService {
     await this.prisma.anonGroupMember.create({
       data: { groupId: group.id, anonId, role: 'OWNER' },
     });
+    await this.emitGroupSystem(group.id, 'group_created', anonId);
     return this.toGroupVo(group, true);
   }
 
@@ -980,6 +982,7 @@ export class TreeholeService {
       this.prisma.anonGroupMember.create({ data: { groupId: id, anonId, role: 'MEMBER' } }),
       this.prisma.anonGroup.update({ where: { id }, data: { memberCount: { increment: 1 } } }),
     ]);
+    await this.emitGroupSystem(id, 'member_joined', anonId);
     return { joined: true };
   }
 
@@ -993,12 +996,14 @@ export class TreeholeService {
       // 群主退出 = 解散
       await this.prisma.anonGroup.update({ where: { id }, data: { status: 'DISBANDED', memberCount: 0 } });
       await this.prisma.anonGroupMember.deleteMany({ where: { groupId: id } });
+      await this.emitGroupSystem(id, 'group_disbanded', anonId);
       return { left: true, disbanded: true };
     }
     await this.prisma.$transaction([
       this.prisma.anonGroupMember.delete({ where: { id: member.id } }),
       this.prisma.anonGroup.update({ where: { id }, data: { memberCount: { decrement: 1 } } }),
     ]);
+    await this.emitGroupSystem(id, 'member_left', anonId);
     return { left: true };
   }
 
@@ -1019,6 +1024,34 @@ export class TreeholeService {
     return this.prisma.anonGroupMember.findUnique({
       where: { groupId_anonId: { groupId, anonId } },
     });
+  }
+
+  // 取匿名昵称（群系统消息 actor/target 展示用）
+  private async getNick(anonId: string): Promise<string> {
+    const p = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { nickname: true },
+    });
+    return p?.nickname ?? '匿名';
+  }
+
+  // 群系统消息：业务动作后发（落库 + WS 广播），失败不影响已完成的业务动作
+  private async emitGroupSystem(
+    groupId: string,
+    action: string,
+    actorAnonId: string,
+    targetAnonId?: string,
+    extra?: Record<string, unknown>,
+  ) {
+    try {
+      const actor = { anonId: actorAnonId, nick: await this.getNick(actorAnonId) };
+      const target = targetAnonId
+        ? { anonId: targetAnonId, nick: await this.getNick(targetAnonId) }
+        : undefined;
+      await this.chat.sendGroupSystemMessage(groupId, action, actor, target, extra);
+    } catch {
+      /* 系统消息失败不影响业务动作 */
+    }
   }
 
   // 操作权限校验：OWNER 可做所有；ADMIN 可踢人/禁言但不能设角色；MEMBER 无权限
@@ -1051,6 +1084,7 @@ export class TreeholeService {
       where: { id: target.id },
       data: { role },
     });
+    await this.emitGroupSystem(groupId, role === 'ADMIN' ? 'role_admin' : 'role_member', operatorAnonId, targetAnonId);
     return { anonId: targetAnonId, role };
   }
 
@@ -1068,6 +1102,7 @@ export class TreeholeService {
       this.prisma.anonGroupMember.update({ where: { id: target.id }, data: { role: 'OWNER' } }),
       this.prisma.anonGroup.update({ where: { id: groupId }, data: { ownerAnonId: targetAnonId } }),
     ]);
+    await this.emitGroupSystem(groupId, 'owner_transferred', operatorAnonId, targetAnonId);
     return { newOwner: targetAnonId };
   }
 
@@ -1085,6 +1120,7 @@ export class TreeholeService {
       this.prisma.anonGroupMember.delete({ where: { id: target.id } }),
       this.prisma.anonGroup.update({ where: { id: groupId }, data: { memberCount: { decrement: 1 } } }),
     ]);
+    await this.emitGroupSystem(groupId, 'member_kicked', operatorAnonId, targetAnonId);
     return { kicked: true, anonId: targetAnonId };
   }
 
@@ -1106,6 +1142,13 @@ export class TreeholeService {
       where: { id: target.id },
       data: { mutedUntil },
     });
+    await this.emitGroupSystem(
+      groupId,
+      days > 0 ? 'member_muted' : 'member_unmuted',
+      operatorAnonId,
+      targetAnonId,
+      days > 0 ? { days } : undefined,
+    );
     return { mutedUntil: mutedUntil?.toISOString() ?? null };
   }
 
