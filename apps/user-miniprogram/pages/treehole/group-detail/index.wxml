@@ -52,14 +52,9 @@
             <text class="chat-nick">{{item.nickname}}</text>
             <text class="chat-time">{{item.createdAt}}</text>
           </view>
-          <image
-            wx:if="{{item.type === 'image' && !item.deleted}}"
-            class="chat-img"
-            src="{{item.content}}"
-            mode="widthFix"
-            data-url="{{item.content}}"
-            bindtap="previewImg"
-          ></image>
+          <view wx:if="{{item.type === 'image' && !item.deleted}}" class="chat-img-wrap" data-url="{{item.content}}" bindtap="previewImg">
+            <image class="chat-img-inner" src="{{item.content}}" mode="aspectFill"></image>
+          </view>
           <view wx:else class="chat-content">{{item.contentText}}</view>
           <view wx:if="{{item.isMine && !item.deleted}}" class="chat-revoke" data-id="{{item.id}}" bindtap="revokeMsg">撤回</view>
         </view>

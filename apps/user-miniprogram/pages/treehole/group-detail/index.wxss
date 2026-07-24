@@ -49,7 +49,8 @@
 .chat-nick { font-size: 24rpx; color: var(--yt-text-sub); }
 .chat-time { font-size: 20rpx; color: #C9CDD4; }
 .chat-content { font-size: 28rpx; color: var(--yt-text-main); line-height: 1.5; word-break: break-word; }
-.chat-img { width: 100%; max-width: 400rpx; border-radius: 12rpx; display: block; }
+.chat-img-wrap { max-width: 320rpx; max-height: 320rpx; border-radius: 12rpx; overflow: hidden; background: #f5f6f8; display: flex; align-items: center; justify-content: center; }
+.chat-img-inner { width: 100%; height: 100%; }
 .chat-revoke { position: absolute; right: 12rpx; top: 10rpx; font-size: 22rpx; color: #1677ff; padding: 2rpx 10rpx; }
 .chat-tip { text-align: center; color: var(--yt-text-sub); font-size: 22rpx; padding: 8rpx 0; }
 .chat-empty { text-align: center; color: #C9CDD4; font-size: 24rpx; padding: 20rpx 0; }

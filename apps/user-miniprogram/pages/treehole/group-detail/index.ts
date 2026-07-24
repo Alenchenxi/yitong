@@ -52,11 +52,27 @@ function buildContentText(msg: { type: string; content: string }): string {
   return msg.type === 'system' ? buildSystemText(msg.content) : msg.content;
 }
 
-// 禁言到期时间格式化：ISO -> "MM-DD HH:MM"
-function fmtMutedTime(iso: string): string {
-  const d = new Date(iso);
+// 禁言剩余时间格式化：>1天 "剩余 X 天 Y 小时"，>1小时 "剩余 Y 小时 Z 分钟"，否则 "剩余 MM:SS"；到期返回空串
+function fmtMutedCountdown(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  let ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return '';
+  const days = Math.floor(ms / 86400000);
+  if (days >= 1) {
+    ms -= days * 86400000;
+    const hours = Math.floor(ms / 3600000);
+    return `剩余 ${days} 天 ${hours} 小时`;
+  }
+  const hours = Math.floor(ms / 3600000);
+  ms -= hours * 3600000;
+  if (hours >= 1) {
+    const mins = Math.floor(ms / 60000);
+    return `剩余 ${hours} 小时 ${mins} 分钟`;
+  }
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `剩余 ${pad(m)}:${pad(s)}`;
 }
 
 Page({
@@ -79,6 +95,7 @@ Page({
   },
   groupId: '',
   mutedTimer: null as ReturnType<typeof setTimeout> | null,
+  mutedCountdownTimer: null as ReturnType<typeof setInterval> | null,
 
   onLoad(options: { id?: string }) {
     if (!options?.id) {
@@ -157,6 +174,10 @@ Page({
       clearTimeout(this.mutedTimer);
       this.mutedTimer = null;
     }
+    if (this.mutedCountdownTimer) {
+      clearInterval(this.mutedCountdownTimer);
+      this.mutedCountdownTimer = null;
+    }
   },
 
   async load() {
@@ -182,16 +203,33 @@ Page({
         canManage: isOwner || myRole === 'ADMIN',
         members,
         myMutedUntil,
-        myMutedText: myMutedUntil ? `你已被禁言，${fmtMutedTime(myMutedUntil)} 解除` : '',
+        myMutedText: myMutedUntil ? `你已被禁言，${fmtMutedCountdown(myMutedUntil)}` : '',
       });
-      // 禁言到期自动恢复输入区
+      // 禁言到期自动恢复输入区 + 每分钟更新倒计时文案
       if (this.mutedTimer) {
         clearTimeout(this.mutedTimer);
         this.mutedTimer = null;
       }
+      if (this.mutedCountdownTimer) {
+        clearInterval(this.mutedCountdownTimer);
+        this.mutedCountdownTimer = null;
+      }
       if (myMutedUntil) {
         const remain = new Date(myMutedUntil).getTime() - Date.now();
-        if (remain > 0) this.mutedTimer = setTimeout(() => { void this.load(); }, remain);
+        if (remain > 0) {
+          this.mutedTimer = setTimeout(() => { void this.load(); }, remain);
+          this.mutedCountdownTimer = setInterval(() => {
+            const txt = fmtMutedCountdown(myMutedUntil);
+            if (!txt) {
+              if (this.mutedCountdownTimer) {
+                clearInterval(this.mutedCountdownTimer);
+                this.mutedCountdownTimer = null;
+              }
+              return;
+            }
+            this.setData({ myMutedText: `你已被禁言，${txt}` });
+          }, 60000);
+        }
       }
     } catch {
       /* toast */
