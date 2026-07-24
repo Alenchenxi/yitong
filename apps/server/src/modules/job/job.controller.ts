@@ -122,11 +122,13 @@ export class JobController {
     return ok(await this.job.listMyApplications(uid));
   }
 
-  // P2-16 商家招聘数据看板
+  // P2-16 商家招聘数据看板（range=day|week|month|all）
   @Get('merchant/dashboard')
-  async merchantDashboard(@Req() req: Request) {
+  async merchantDashboard(@Query('range') range: string | undefined, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.job.getMerchantDashboard(uid));
+    const r: 'day' | 'week' | 'month' | 'all' =
+      range === 'day' || range === 'week' || range === 'month' ? range : 'all';
+    return ok(await this.job.getMerchantDashboard(uid, r));
   }
 
   // 状态流转：accept(PENDING->ACCEPTED) / complete(ACCEPTED->DONE)

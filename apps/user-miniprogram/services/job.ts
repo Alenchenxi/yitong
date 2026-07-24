@@ -245,3 +245,22 @@ export function reviewApp(appId: string, data: { rating: number; content: string
 export function merchantReviewApp(appId: string, data: { rating: number; content: string }) {
   return request<JobReviewVo>({ url: `/applications/${appId}/merchant-review`, method: 'POST', data });
 }
+
+// P2-16 商家招聘数据看板（时间范围筛选）
+export type DashboardRange = 'day' | 'week' | 'month' | 'all';
+
+export interface MerchantDashboardVo {
+  viewCount: number;
+  applicationCount: number;
+  pendingCount: number;
+  acceptedCount: number;
+  completedCount: number;
+  rejectedCount: number;
+  cancelledCount: number;
+  conversionRate: number;
+  range: DashboardRange;
+}
+
+export function getMerchantDashboard(range: DashboardRange = 'all') {
+  return request<MerchantDashboardVo>({ url: `/merchant/dashboard?range=${range}` });
+}

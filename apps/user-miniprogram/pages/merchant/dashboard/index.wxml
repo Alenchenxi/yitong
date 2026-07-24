@@ -1,0 +1,57 @@
+<view class="page">
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab {{item.key === range ? 'active' : ''}}"
+      data-range="{{item.key}}"
+      bindtap="switchRange"
+    >{{item.label}}</view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载中...</view>
+
+  <block wx:elif="{{data}}">
+    <view class="hero">
+      <view class="hero-num">{{data.conversionRate}}%</view>
+      <view class="hero-label">录用/完成 转化率</view>
+    </view>
+
+    <view class="grid">
+      <view class="card">
+        <view class="card-num">{{data.viewCount}}</view>
+        <view class="card-label">浏览量</view>
+      </view>
+      <view class="card">
+        <view class="card-num">{{data.applicationCount}}</view>
+        <view class="card-label">报名总数</view>
+      </view>
+    </view>
+
+    <view class="section-title">报名状态分布</view>
+    <view class="grid">
+      <view class="card status-card">
+        <view class="card-num status-pending">{{data.pendingCount}}</view>
+        <view class="card-label">待处理</view>
+      </view>
+      <view class="card status-card">
+        <view class="card-num status-accepted">{{data.acceptedCount}}</view>
+        <view class="card-label">已录用</view>
+      </view>
+      <view class="card status-card">
+        <view class="card-num status-completed">{{data.completedCount}}</view>
+        <view class="card-label">已完成</view>
+      </view>
+      <view class="card status-card">
+        <view class="card-num status-rejected">{{data.rejectedCount}}</view>
+        <view class="card-label">已拒绝</view>
+      </view>
+      <view class="card status-card">
+        <view class="card-num status-cancelled">{{data.cancelledCount}}</view>
+        <view class="card-label">已取消</view>
+      </view>
+    </view>
+  </block>
+
+  <view class="empty" wx:elif="{{!loading}}">暂无数据</view>
+</view>

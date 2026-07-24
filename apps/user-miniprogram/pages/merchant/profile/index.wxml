@@ -33,6 +33,7 @@
   <view class="tip" wx:elif="{{merchant.status === 'PENDING'}}">审核中，请耐心等待</view>
 
   <view class="extra-actions" wx:if="{{merchant.status === 'APPROVED'}}">
+    <view class="action-btn" bindtap="goDashboard">数据看板</view>
     <view class="action-btn" bindtap="goReviews">评价管理</view>
     <view class="action-btn" bindtap="goOrders">订单记录</view>
   </view>

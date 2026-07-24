@@ -18,6 +18,7 @@
     "pages/merchant/profile/index",
     "pages/merchant/reviews/index",
     "pages/merchant/orders/index",
+    "pages/merchant/dashboard/index",
     "pages/job/detail/index",
     "pages/job/post/index",
     "pages/job/my-applications/index",

@@ -75,4 +75,8 @@ Page({
   goOrders() {
     wx.navigateTo({ url: '/pages/merchant/orders/index' });
   },
+
+  goDashboard() {
+    wx.navigateTo({ url: '/pages/merchant/dashboard/index' });
+  },
 });

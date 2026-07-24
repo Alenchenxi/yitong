@@ -15,6 +15,13 @@ import { NotificationService, NotificationType } from '../notification/notificat
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
 import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto } from './dto/job.dto';
 
+// 看板时间范围 -> since 阈值（day=24h, week=7d, month=30d, all=不限）
+function rangeToSince(range: 'day' | 'week' | 'month' | 'all'): Date | null {
+  if (range === 'all') return null;
+  const ms = range === 'day' ? 86_400_000 : range === 'week' ? 7 * 86_400_000 : 30 * 86_400_000;
+  return new Date(Date.now() - ms);
+}
+
 // 错误码 4xxxx 兼职段（API 规范 §3）：40001 岗位不存在 / 40002 重复报名 / 40003 已下架 / 40004 状态非法流转 / 40005 不能评价
 @Injectable()
 export class JobService {
@@ -147,19 +154,22 @@ export class JobService {
     return posts.map((p) => this.toPostVo(p));
   }
 
-  // P2-16 商家招聘数据看板：浏览 / 报名 / 录用 / 完成 / 转化率
-  async getMerchantDashboard(merchantUid: string) {
+  // P2-16 商家招聘数据看板：浏览 / 报名 / 录用 / 完成 / 转化率 + 时间范围筛选
+  async getMerchantDashboard(merchantUid: string, range: 'day' | 'week' | 'month' | 'all' = 'all') {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
-    const where = { jobPost: { merchantId: merchant.id } };
+    const since = rangeToSince(range);
+    const baseWhere = since
+      ? { jobPost: { merchantId: merchant.id }, createdAt: { gte: since } }
+      : { jobPost: { merchantId: merchant.id } };
     const [viewCount, total, pending, accepted, completed, rejected, cancelled] = await Promise.all([
-      this.prisma.jobView.count({ where }),
-      this.prisma.jobApplication.count({ where }),
-      this.prisma.jobApplication.count({ where: { ...where, status: 'PENDING' } }),
-      this.prisma.jobApplication.count({ where: { ...where, status: 'ACCEPTED' } }),
-      this.prisma.jobApplication.count({ where: { ...where, status: 'DONE' } }),
-      this.prisma.jobApplication.count({ where: { ...where, status: 'REJECTED' } }),
-      this.prisma.jobApplication.count({ where: { ...where, status: 'CANCELLED' } }),
+      this.prisma.jobView.count({ where: baseWhere }),
+      this.prisma.jobApplication.count({ where: baseWhere }),
+      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'PENDING' } }),
+      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'ACCEPTED' } }),
+      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'DONE' } }),
+      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'REJECTED' } }),
+      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'CANCELLED' } }),
     ]);
     return {
       viewCount,
@@ -170,6 +180,7 @@ export class JobService {
       rejectedCount: rejected,
       cancelledCount: cancelled,
       conversionRate: total > 0 ? Math.round(((accepted + completed) / total) * 100) : 0,
+      range,
     };
   }
 

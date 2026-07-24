@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "数据看板",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#F9C801",
+  "backgroundTextStyle": "light"
+}
