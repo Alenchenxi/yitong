@@ -27,14 +27,17 @@
   </view>
 
   <view class="members-section">
-    <view class="members-title">成员 ({{members.length}})<text class="members-hint" wx:if="{{isOwner}}"> · 点击成员可转交群主</text></view>
+    <view class="members-title">成员 ({{members.length}})<text class="members-hint" wx:if="{{canManage}}"> · 点击成员可管理</text></view>
     <view class="member" wx:for="{{members}}" wx:key="anonId" bindtap="onTapMember" data-anon-id="{{item.anonId}}" data-nickname="{{item.nickname}}" data-role="{{item.role}}">
       <view class="member-avatar">{{item.nickname.slice(0, 1)}}</view>
       <view class="member-info">
         <view class="member-name">{{item.nickname}}</view>
-        <view class="member-role {{item.role}}">{{item.roleText}}</view>
+        <view class="member-role-row">
+          <view class="member-role {{item.role}}">{{item.roleText}}</view>
+          <text wx:if="{{item.muted}}" class="member-muted">已禁言</text>
+        </view>
       </view>
-      <text wx:if="{{isOwner && item.role !== 'OWNER'}}" class="member-transfer">⇄</text>
+      <text wx:if="{{canManage && item.role !== 'OWNER' && item.anonId !== myAnonId}}" class="member-transfer">›</text>
     </view>
   </view>
 

@@ -247,6 +247,20 @@ export function transferGroupOwner(id: string, targetAnonId: string): Promise<{ 
   return anonRequest({ url: `/treehole/groups/${id}/transfer`, method: 'POST', data: { targetAnonId } });
 }
 
+// P2-10 群成员管理
+export function setGroupMemberRole(id: string, anonId: string, role: 'ADMIN' | 'MEMBER'): Promise<{ anonId: string; role: string }> {
+  return anonRequest({ url: `/treehole/groups/${id}/members/${anonId}/role`, method: 'POST', data: { role } });
+}
+
+export function kickGroupMember(id: string, anonId: string): Promise<{ kicked: boolean; anonId: string }> {
+  return anonRequest({ url: `/treehole/groups/${id}/members/${anonId}/kick`, method: 'POST' });
+}
+
+// days=0 解除禁言
+export function muteGroupMember(id: string, anonId: string, days: number): Promise<{ mutedUntil: string | null }> {
+  return anonRequest({ url: `/treehole/groups/${id}/members/${anonId}/mute`, method: 'POST', data: { days } });
+}
+
 export function listMyAnonGroups(): Promise<AnonGroupVo[]> {
   return anonRequest({ url: '/treehole/groups/mine', method: 'GET' });
 }

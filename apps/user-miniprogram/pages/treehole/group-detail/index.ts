@@ -7,6 +7,9 @@ import {
   listGroupMessages,
   revokeGroupMessage,
   transferGroupOwner,
+  setGroupMemberRole,
+  kickGroupMember,
+  muteGroupMember,
   type AnonGroupDetailVo,
   type GroupMessageVo,
 } from '../../../services/treehole';
@@ -19,12 +22,14 @@ const ROLE_TEXT: Record<string, string> = { OWNER: '群主', ADMIN: '管理员',
 Page({
   data: {
     group: null as AnonGroupDetailVo | null,
-    members: [] as (AnonGroupDetailVo['members'][number] & { roleText: string })[],
+    members: [] as (AnonGroupDetailVo['members'][number] & { roleText: string; muted: boolean })[],
     messages: [] as Array<GroupMessageVo & { nickname: string; isMine: boolean }>,
     draft: '',
     sending: false,
     myAnonId: '',
+    myRole: '',
     isOwner: false,
+    canManage: false,
     hasMoreMsg: true,
     msgCursor: '',
     loading: false,
@@ -94,10 +99,19 @@ Page({
     this.setData({ loading: true });
     try {
       const detail = await getAnonGroup(this.groupId);
+      const members = detail.members.map((m) => ({
+        ...m,
+        roleText: ROLE_TEXT[m.role] ?? m.role,
+        muted: !!m.mutedUntil && new Date(m.mutedUntil).getTime() > Date.now(),
+      }));
+      const myRole = members.find((m) => m.anonId === this.data.myAnonId)?.role ?? '';
+      const isOwner = detail.isMember && detail.ownerAnonId === this.data.myAnonId;
       this.setData({
         group: detail,
-        isOwner: detail.isMember && detail.ownerAnonId === this.data.myAnonId,
-        members: detail.members.map((m) => ({ ...m, roleText: ROLE_TEXT[m.role] ?? m.role })),
+        myRole,
+        isOwner,
+        canManage: isOwner || myRole === 'ADMIN',
+        members,
       });
     } catch {
       /* toast */
@@ -135,6 +149,11 @@ Page({
   },
 
   onReachBottom() {
+    if (this.data.hasMoreMsg) this.loadMessages(true);
+  },
+
+  // 点击「加载更多」手动翻页（wxml chat-tip 绑定）
+  loadMore() {
     if (this.data.hasMoreMsg) this.loadMessages(true);
   },
 
@@ -242,35 +261,113 @@ Page({
     }
   },
 
-  // B3 群主转交：群主点非群主成员 -> 确认 -> 转交后刷新
+  // P2-10 群成员管理：点成员弹操作菜单（按操作者/目标角色过滤；OWNER 可设角色/转交，OWNER+ADMIN 可禁言/踢人，ADMIN 不能管 ADMIN）
   onTapMember(e: WechatMiniprogram.TouchEvent) {
-    if (!this.data.isOwner) return;
+    const myRole = this.data.myRole;
+    if (myRole !== 'OWNER' && myRole !== 'ADMIN') return;
     const anonId = e.currentTarget.dataset.anonId as string;
     const nickname = e.currentTarget.dataset.nickname as string;
     const role = e.currentTarget.dataset.role as string;
     if (!anonId || anonId === this.data.myAnonId || role === 'OWNER') return;
+    const isOwner = myRole === 'OWNER';
+    const canModerate = isOwner || role === 'MEMBER'; // ADMIN 只能管 MEMBER
+    const target = this.data.members.find((m) => m.anonId === anonId);
+    const items: string[] = [];
+    const actions: Array<() => void> = [];
+    if (isOwner) {
+      items.push(role === 'ADMIN' ? '取消管理员' : '设为管理员');
+      actions.push(() => this.doSetRole(anonId, role === 'ADMIN' ? 'MEMBER' : 'ADMIN'));
+    }
+    if (canModerate) {
+      if (target?.muted) {
+        items.push('解除禁言');
+        actions.push(() => this.doMute(anonId, 0, '已解除禁言'));
+      } else {
+        items.push('禁言');
+        actions.push(() => this.pickMuteDays(anonId));
+      }
+      items.push('踢出群聊');
+      actions.push(() => this.confirmKick(anonId, nickname));
+    }
+    if (isOwner) {
+      items.push('转交群主');
+      actions.push(() => this.confirmTransfer(anonId, nickname));
+    }
+    if (!items.length) return;
     wx.showActionSheet({
-      itemList: ['转交群主'],
+      itemList: items,
+      success: (res) => actions[res.tapIndex]?.(),
+    });
+  },
+
+  async doSetRole(anonId: string, role: 'ADMIN' | 'MEMBER') {
+    try {
+      await setGroupMemberRole(this.groupId, anonId, role);
+      wx.showToast({ title: role === 'ADMIN' ? '已设为管理员' : '已取消管理员', icon: 'success' });
+      await this.load();
+    } catch (err) {
+      wx.showToast({ title: (err as Error).message ?? '操作失败', icon: 'none' });
+    }
+  },
+
+  // 禁言天数选择（1/3/7/30 天）
+  pickMuteDays(anonId: string) {
+    const days = [1, 3, 7, 30];
+    wx.showActionSheet({
+      itemList: days.map((d) => `禁言 ${d} 天`),
       success: (res) => {
-        if (res.tapIndex !== 0) return;
-        wx.showModal({
-          title: '转交群主',
-          content: `确定把群主转交给「${nickname}」吗？转交后你将变为普通成员。`,
-          confirmColor: '#E63946',
-          success: async (modal) => {
-            if (!modal.confirm) return;
-            this.setData({ acting: true });
-            try {
-              await transferGroupOwner(this.groupId, anonId);
-              wx.showToast({ title: '已转交', icon: 'success' });
-              await this.load();
-            } catch (err) {
-              wx.showToast({ title: (err as Error).message ?? '转交失败', icon: 'none' });
-            } finally {
-              this.setData({ acting: false });
-            }
-          },
-        });
+        const d = days[res.tapIndex];
+        if (d) this.doMute(anonId, d, `已禁言 ${d} 天`);
+      },
+    });
+  },
+
+  async doMute(anonId: string, days: number, tip: string) {
+    try {
+      await muteGroupMember(this.groupId, anonId, days);
+      wx.showToast({ title: tip, icon: 'success' });
+      await this.load();
+    } catch (err) {
+      wx.showToast({ title: (err as Error).message ?? '操作失败', icon: 'none' });
+    }
+  },
+
+  confirmKick(anonId: string, nickname: string) {
+    wx.showModal({
+      title: '踢出群聊',
+      content: `确定把「${nickname}」踢出群聊吗？`,
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await kickGroupMember(this.groupId, anonId);
+          wx.showToast({ title: '已踢出', icon: 'success' });
+          await this.load();
+        } catch (err) {
+          wx.showToast({ title: (err as Error).message ?? '踢出失败', icon: 'none' });
+        }
+      },
+    });
+  },
+
+  // B3 群主转交：确认 -> 转交后刷新
+  confirmTransfer(anonId: string, nickname: string) {
+    wx.showModal({
+      title: '转交群主',
+      content: `确定把群主转交给「${nickname}」吗？转交后你将变为普通成员。`,
+      confirmColor: '#E63946',
+      success: async (modal) => {
+        if (!modal.confirm) return;
+        this.setData({ acting: true });
+        try {
+          await transferGroupOwner(this.groupId, anonId);
+          wx.showToast({ title: '已转交', icon: 'success' });
+          await this.load();
+        } catch (err) {
+          wx.showToast({ title: (err as Error).message ?? '转交失败', icon: 'none' });
+        } finally {
+          this.setData({ acting: false });
+        }
       },
     });
   },
