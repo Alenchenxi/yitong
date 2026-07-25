@@ -30,6 +30,12 @@
     </view>
 
     <view class="section-title">表白墙帖子 ({{posts.length}})</view>
+    <view class="filter-row">
+      <view class="filter-btn {{postStatus === '' ? 'on' : ''}}" data-s="" bindtap="switchPostStatus">全部</view>
+      <view class="filter-btn {{postStatus === 'PENDING' ? 'on' : ''}}" data-s="PENDING" bindtap="switchPostStatus">待审核</view>
+      <view class="filter-btn {{postStatus === 'APPROVED' ? 'on' : ''}}" data-s="APPROVED" bindtap="switchPostStatus">已通过</view>
+      <view class="filter-btn {{postStatus === 'REJECTED' ? 'on' : ''}}" data-s="REJECTED" bindtap="switchPostStatus">已拒绝</view>
+    </view>
     <view class="search-row">
       <input class="search-input" placeholder="搜索帖子内容" value="{{postKeyword}}" bindinput="onPostKeywordInput" bindconfirm="searchPosts" />
       <button size="mini" bindtap="searchPosts">搜索</button>
@@ -179,6 +185,9 @@
         <text class="item-sub">内容：{{item.content}}</text>
         <text class="item-sub" wx:if="{{item.reply}}">回复：{{item.reply}}</text>
       </view>
+      <view class="item-actions" wx:if="{{item.status === 'CLOSED'}}">
+        <button size="mini" type="warn" data-id="{{item.id}}" bindtap="reopenTicketTap">重开工单</button>
+      </view>
       <view class="item-actions" wx:if="{{item.status !== 'CLOSED'}}">
         <button size="mini" data-id="{{item.id}}" bindtap="replyTicketTap">回复关闭</button>
         <button size="mini" data-id="{{item.id}}" bindtap="replyTicketKeepTap">保留处理</button>
@@ -252,7 +261,7 @@
   <block wx:if="{{tab === 'tags'}}">
     <view class="section-title">新建标签</view>
     <view class="ann-form">
-      <input class="ann-input" placeholder="标签名" value="{{tagName}}" data-field="tagName" bindinput="onTagInput" />
+      <input class="ann-input" placeholder="标签名（最多 12 字）" maxlength="12" value="{{tagName}}" data-field="tagName" bindinput="onTagInput" />
       <input class="ann-input" placeholder="排序（数字，选填）" type="digit" value="{{tagSort}}" data-field="tagSort" bindinput="onTagInput" />
       <view class="tag-cat-row">
         <text class="tag-cat {{tagCategory === 'personality' ? 'on' : ''}}" data-c="personality" bindtap="pickTagCat">性格</text>
@@ -282,7 +291,7 @@
     <view class="empty-tip" wx:if="{{anonTags.length === 0}}">暂无标签</view>
     <view class="edit-row" wx:if="{{editingTagId}}">
       <text>编辑标签</text>
-      <input class="ann-input" placeholder="标签名" value="{{editingTagName}}" data-field="editingTagName" bindinput="onEditTagInput" />
+      <input class="ann-input" placeholder="标签名（最多 12 字）" maxlength="12" value="{{editingTagName}}" data-field="editingTagName" bindinput="onEditTagInput" />
       <input class="price-input" type="digit" placeholder="排序" value="{{editingTagSort}}" data-field="editingTagSort" bindinput="onEditTagInput" />
       <button size="mini" bindtap="saveTag">保存</button>
       <button size="mini" bindtap="cancelEditTag">取消</button>
@@ -308,6 +317,7 @@
   <block wx:if="{{tab === 'comments'}}">
     <view class="search-row">
       <input class="search-input" placeholder="按帖子ID筛选（选填）" value="{{commentPostId}}" bindinput="onCommentPostIdInput" bindconfirm="searchComments" />
+      <input class="search-input" placeholder="按内容搜索（选填）" value="{{commentKeyword}}" bindinput="onCommentKeywordInput" bindconfirm="searchComments" />
       <button size="mini" bindtap="searchComments">筛选</button>
     </view>
     <view class="item" wx:for="{{comments}}" wx:key="id">

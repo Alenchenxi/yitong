@@ -127,8 +127,8 @@ export interface AdminAnonPostVo {
   status: string;
   createdAt: string;
 }
-export function listPostsAdmin(page = 1, pageSize = 20, keyword?: string) {
-  const qs = `?page=${page}&pageSize=${pageSize}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`;
+export function listPostsAdmin(page = 1, pageSize = 20, keyword?: string, status?: string) {
+  const qs = `?page=${page}&pageSize=${pageSize}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}${status ? `&status=${status}` : ''}`;
   return request<{ list: AdminPostVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/posts${qs}` });
 }
 export function listAnonPostsAdmin(page = 1, pageSize = 20) {
@@ -146,8 +146,8 @@ export interface AdminCommentVo {
   pinned: boolean;
   createdAt: string;
 }
-export function listCommentsAdmin(postId?: string, page = 1, pageSize = 20) {
-  const qs = `?page=${page}&pageSize=${pageSize}${postId ? `&postId=${encodeURIComponent(postId)}` : ''}`;
+export function listCommentsAdmin(postId?: string, page = 1, pageSize = 20, keyword?: string) {
+  const qs = `?page=${page}&pageSize=${pageSize}${postId ? `&postId=${encodeURIComponent(postId)}` : ''}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`;
   return request<{ list: AdminCommentVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/comments${qs}` });
 }
 export function pinComment(id: string, pinned: boolean) {
@@ -213,6 +213,9 @@ export function listTickets(status?: string) {
 }
 export function replyTicket(id: string, reply: string, close: boolean) {
   return request({ url: `/admin/tickets/${id}/reply`, method: 'POST', data: { reply, close } });
+}
+export function reopenTicket(id: string) {
+  return request({ url: `/admin/tickets/${id}/reopen`, method: 'POST' });
 }
 
 // ===== P1-13 树洞标签 =====

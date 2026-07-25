@@ -16,6 +16,7 @@ import {
   featureJob,
   listTickets,
   replyTicket,
+  reopenTicket,
   listUsers,
   banUser,
   muteUser,
@@ -112,6 +113,10 @@ Page({
     editingTagId: '',
     editingTagName: '',
     editingTagSort: '',
+    // C 帖子状态筛选
+    postStatus: '',
+    // B 评论 keyword 筛选
+    commentKeyword: '',
   },
 
   async onShow() {
@@ -381,6 +386,23 @@ Page({
     });
   },
 
+  async reopenTicketTap(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    if (!id) return;
+    wx.showModal({
+      title: '重开工单',
+      content: '重开后回复内容将被清空，需重新回复。确定？',
+      confirmColor: '#F9C801',
+      success: async (r) => {
+        if (r.confirm) {
+          await reopenTicket(id);
+          wx.showToast({ title: '已重开', icon: 'success' });
+          this.load();
+        }
+      },
+    });
+  },
+
   // ===== 用户管理 =====
   onUserKeywordInput(e: WechatMiniprogram.Input) {
     this.setData({ userKeyword: e.detail.value });
@@ -552,12 +574,16 @@ Page({
   // ===== C 帖子分页 =====
   async loadPosts(append = false) {
     const page = append ? this.data.postPage + 1 : 1;
-    const r = await listPostsAdmin(page, 20, this.data.postKeyword || undefined);
+    const r = await listPostsAdmin(page, 20, this.data.postKeyword || undefined, this.data.postStatus || undefined);
     const posts = append ? [...this.data.posts, ...r.list] : r.list;
     this.setData({ posts, postPage: page, postHasMore: posts.length < r.total });
   },
   loadMorePosts() {
     if (this.data.postHasMore) this.loadPosts(true);
+  },
+  switchPostStatus(e: WechatMiniprogram.TouchEvent) {
+    this.setData({ postStatus: e.currentTarget.dataset.s as string });
+    this.loadPosts(false);
   },
   onPostKeywordInput(e: WechatMiniprogram.Input) {
     this.setData({ postKeyword: e.detail.value });
@@ -578,12 +604,15 @@ Page({
   // ===== F 评论管理 =====
   async loadComments(append = false) {
     const page = append ? this.data.commentPage + 1 : 1;
-    const r = await listCommentsAdmin(this.data.commentPostId || undefined, page, 20);
+    const r = await listCommentsAdmin(this.data.commentPostId || undefined, page, 20, this.data.commentKeyword || undefined);
     const comments = append ? [...this.data.comments, ...r.list] : r.list;
     this.setData({ comments, commentPage: page, commentHasMore: comments.length < r.total });
   },
   loadMoreComments() {
     if (this.data.commentHasMore) this.loadComments(true);
+  },
+  onCommentKeywordInput(e: WechatMiniprogram.Input) {
+    this.setData({ commentKeyword: e.detail.value });
   },
   onCommentPostIdInput(e: WechatMiniprogram.Input) {
     this.setData({ commentPostId: e.detail.value });

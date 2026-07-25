@@ -53,9 +53,10 @@ export class AdminService {
   // ===== C 帖子分页管理（getQueue 精简掉 posts/anonPosts，改用独立分页接口）=====
 
   // 表白墙帖子分页（keyword 模糊搜 content）
-  async listPostsAdmin(page = 1, pageSize = 20, keyword?: string) {
+  async listPostsAdmin(page = 1, pageSize = 20, keyword?: string, status?: string) {
     const where: Prisma.PostWhereInput = {};
     if (keyword?.trim()) where.content = { contains: keyword.trim(), mode: 'insensitive' };
+    if (status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED') where.status = status;
     const [list, total] = await Promise.all([
       this.prisma.post.findMany({
         where,
@@ -110,9 +111,10 @@ export class AdminService {
   // ===== F 评论管理（人工置顶，Comment.pinned 字段已有）=====
 
   // 评论分页（可按 postId 筛选；pinned 优先 + 热度 + 时间排序）
-  async listCommentsAdmin(postId?: string, page = 1, pageSize = 20) {
+  async listCommentsAdmin(postId?: string, page = 1, pageSize = 20, keyword?: string) {
     const where: Prisma.CommentWhereInput = {};
     if (postId) where.postId = postId;
+    if (keyword?.trim()) where.content = { contains: keyword.trim(), mode: 'insensitive' };
     const [list, total] = await Promise.all([
       this.prisma.comment.findMany({
         where,
@@ -486,6 +488,19 @@ export class AdminService {
     return updated;
   }
 
+  // D 工单 reopen：CLOSED 重开为 IN_PROGRESS 并清回复（重新回复）
+  async reopenTicket(id: string, reviewerId: string) {
+    const t = await this.prisma.supportTicket.findUnique({ where: { id } });
+    if (!t) throw new BizException(20003, '工单不存在', HttpStatus.NOT_FOUND);
+    if (t.status !== 'CLOSED') throw new BizException(40004, '只能重开已关闭工单', HttpStatus.CONFLICT);
+    void reviewerId;
+    await this.prisma.supportTicket.update({
+      where: { id },
+      data: { status: 'IN_PROGRESS', reply: null, repliedBy: null, repliedAt: null },
+    });
+    return { id, status: 'IN_PROGRESS' as const };
+  }
+
   // ===== 兼职岗位列表（admin，含 featured，用于精品管理）=====
   async listJobPostsAdmin(limit = 50) {
     const posts = await this.prisma.jobPost.findMany({
@@ -666,7 +681,10 @@ export class AdminService {
   async deleteAnonTag(id: string) {
     const existing = await this.prisma.anonTag.findUnique({ where: { id } });
     if (!existing) throw new BizException(30006, '标签不存在', HttpStatus.NOT_FOUND);
-    await this.prisma.anonTag.delete({ where: { id } });
+    // 软删：置 active=false（复用 active 字段，零 schema 改动）
+    // 树洞前端 listTags 只返 active=true，停用后自动从用户画像消失；
+    // AnonymousProfile 中的历史标签字符串保留但不再被认为是有效标签，新发内容不能再选
+    await this.prisma.anonTag.update({ where: { id }, data: { active: false } });
     return { id, deleted: true };
   }
 

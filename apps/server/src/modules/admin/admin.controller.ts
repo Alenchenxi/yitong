@@ -113,6 +113,12 @@ export class AdminController {
     return ok(await this.admin.replyTicket(id, uid, body.reply ?? '', body.close !== false));
   }
 
+  @Post('tickets/:id/reopen')
+  async reopenTicket(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.reopenTicket(id, uid));
+  }
+
   // ===== 用户管理 =====
   @Get('users')
   async listUsers(@Query('keyword') keyword: string | undefined, @Query('limit') limit: string | undefined) {
@@ -131,12 +137,14 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('keyword') keyword?: string,
+    @Query('status') status?: string,
   ) {
     return ok(
       await this.admin.listPostsAdmin(
         Math.max(1, Number(page) || 1),
         Math.min(100, Math.max(1, Number(pageSize) || 20)),
         keyword,
+        status,
       ),
     );
   }
@@ -157,12 +165,14 @@ export class AdminController {
     @Query('postId') postId?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('keyword') keyword?: string,
   ) {
     return ok(
       await this.admin.listCommentsAdmin(
         postId,
         Math.max(1, Number(page) || 1),
         Math.min(100, Math.max(1, Number(pageSize) || 20)),
+        keyword,
       ),
     );
   }
