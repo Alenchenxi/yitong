@@ -111,9 +111,10 @@ export class AdminService {
   // ===== F 评论管理（人工置顶，Comment.pinned 字段已有）=====
 
   // 评论分页（可按 postId 筛选；pinned 优先 + 热度 + 时间排序）
-  async listCommentsAdmin(postId?: string, page = 1, pageSize = 20, keyword?: string) {
+  async listCommentsAdmin(postId?: string, page = 1, pageSize = 20, keyword?: string, authorId?: string) {
     const where: Prisma.CommentWhereInput = {};
     if (postId) where.postId = postId;
+    if (authorId) where.authorId = authorId;
     if (keyword?.trim()) where.content = { contains: keyword.trim(), mode: 'insensitive' };
     const [list, total] = await Promise.all([
       this.prisma.comment.findMany({
@@ -641,10 +642,14 @@ export class AdminService {
     if (!validCats.includes(dto.category)) {
       throw new BizException(30004, '标签分类不合法（personality/interest/mood）');
     }
+    const name = dto.name?.trim() ?? '';
+    if (!name || name.length > 12) {
+      throw new BizException(30004, '标签名长度需在 1-12 字符之间');
+    }
     try {
       return await this.prisma.anonTag.create({
         data: {
-          name: dto.name,
+          name,
           category: dto.category,
           sortOrder: dto.sortOrder ?? 0,
           active: dto.active ?? true,
@@ -661,11 +666,18 @@ export class AdminService {
   async updateAnonTag(id: string, dto: { name?: string; sortOrder?: number; active?: boolean }) {
     const existing = await this.prisma.anonTag.findUnique({ where: { id } });
     if (!existing) throw new BizException(30006, '标签不存在', HttpStatus.NOT_FOUND);
+    let name = dto.name;
+    if (name !== undefined) {
+      name = name.trim();
+      if (!name || name.length > 12) {
+        throw new BizException(30004, '标签名长度需在 1-12 字符之间');
+      }
+    }
     try {
       return await this.prisma.anonTag.update({
         where: { id },
         data: {
-          ...(dto.name !== undefined ? { name: dto.name } : {}),
+          ...(name !== undefined ? { name } : {}),
           ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
           ...(dto.active !== undefined ? { active: dto.active } : {}),
         },

@@ -166,6 +166,7 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('keyword') keyword?: string,
+    @Query('authorId') authorId?: string,
   ) {
     return ok(
       await this.admin.listCommentsAdmin(
@@ -173,6 +174,7 @@ export class AdminController {
         Math.max(1, Number(page) || 1),
         Math.min(100, Math.max(1, Number(pageSize) || 20)),
         keyword,
+        authorId,
       ),
     );
   }

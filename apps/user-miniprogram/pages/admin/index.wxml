@@ -285,7 +285,7 @@
       <view class="item-actions">
         <button size="mini" data-id="{{item.id}}" data-name="{{item.name}}" data-sort="{{item.sortOrder}}" bindtap="startEditTag">编辑</button>
         <button size="mini" data-id="{{item.id}}" data-active="{{item.active}}" bindtap="toggleTag">{{item.active ? '停用' : '启用'}}</button>
-        <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteTag">删除</button>
+        <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteTag">停用</button>
       </view>
     </view>
     <view class="empty-tip" wx:if="{{anonTags.length === 0}}">暂无标签</view>
@@ -318,6 +318,7 @@
     <view class="search-row">
       <input class="search-input" placeholder="按帖子ID筛选（选填）" value="{{commentPostId}}" bindinput="onCommentPostIdInput" bindconfirm="searchComments" />
       <input class="search-input" placeholder="按内容搜索（选填）" value="{{commentKeyword}}" bindinput="onCommentKeywordInput" bindconfirm="searchComments" />
+      <input class="search-input" placeholder="按作者ID筛选（选填）" value="{{commentAuthorId}}" bindinput="onCommentAuthorIdInput" bindconfirm="searchComments" />
       <button size="mini" bindtap="searchComments">筛选</button>
     </view>
     <view class="item" wx:for="{{comments}}" wx:key="id">

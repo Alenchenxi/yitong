@@ -117,6 +117,7 @@ Page({
     postStatus: '',
     // B 评论 keyword 筛选
     commentKeyword: '',
+    commentAuthorId: '',
   },
 
   async onShow() {
@@ -531,12 +532,12 @@ Page({
   deleteTag(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
     wx.showModal({
-      title: '删除标签',
-      content: '确定删除？',
+      title: '停用标签',
+      content: '停用后标签将从用户画像消失，历史标签字符串保留但不再有效。确定？',
       success: async (r) => {
         if (r.confirm) {
           await deleteAnonTag(id);
-          wx.showToast({ title: '已删除', icon: 'success' });
+          wx.showToast({ title: '已停用', icon: 'success' });
           this.load();
         }
       },
@@ -604,7 +605,7 @@ Page({
   // ===== F 评论管理 =====
   async loadComments(append = false) {
     const page = append ? this.data.commentPage + 1 : 1;
-    const r = await listCommentsAdmin(this.data.commentPostId || undefined, page, 20, this.data.commentKeyword || undefined);
+    const r = await listCommentsAdmin(this.data.commentPostId || undefined, page, 20, this.data.commentKeyword || undefined, this.data.commentAuthorId || undefined);
     const comments = append ? [...this.data.comments, ...r.list] : r.list;
     this.setData({ comments, commentPage: page, commentHasMore: comments.length < r.total });
   },
@@ -613,6 +614,9 @@ Page({
   },
   onCommentKeywordInput(e: WechatMiniprogram.Input) {
     this.setData({ commentKeyword: e.detail.value });
+  },
+  onCommentAuthorIdInput(e: WechatMiniprogram.Input) {
+    this.setData({ commentAuthorId: e.detail.value });
   },
   onCommentPostIdInput(e: WechatMiniprogram.Input) {
     this.setData({ commentPostId: e.detail.value });

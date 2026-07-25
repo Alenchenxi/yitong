@@ -146,8 +146,8 @@ export interface AdminCommentVo {
   pinned: boolean;
   createdAt: string;
 }
-export function listCommentsAdmin(postId?: string, page = 1, pageSize = 20, keyword?: string) {
-  const qs = `?page=${page}&pageSize=${pageSize}${postId ? `&postId=${encodeURIComponent(postId)}` : ''}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`;
+export function listCommentsAdmin(postId?: string, page = 1, pageSize = 20, keyword?: string, authorId?: string) {
+  const qs = `?page=${page}&pageSize=${pageSize}${postId ? `&postId=${encodeURIComponent(postId)}` : ''}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}${authorId ? `&authorId=${encodeURIComponent(authorId)}` : ''}`;
   return request<{ list: AdminCommentVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/comments${qs}` });
 }
 export function pinComment(id: string, pinned: boolean) {
