@@ -110,11 +110,40 @@ export class AdminService {
 
   // ===== F 评论管理（人工置顶，Comment.pinned 字段已有）=====
 
-  // 评论分页（可按 postId 筛选；pinned 优先 + 热度 + 时间排序）
-  async listCommentsAdmin(postId?: string, page = 1, pageSize = 20, keyword?: string, authorId?: string) {
+  // 评论分页（可按 postId/authorId 精确 + keyword 内容/authorNickname 用户昵称/postTitleKw 帖子内容模糊）
+  // 精确筛选（postId/authorId）与模糊筛选（postTitleKw/authorNickname）互斥：传精确则忽略模糊
+  async listCommentsAdmin(
+    postId?: string,
+    page = 1,
+    pageSize = 20,
+    keyword?: string,
+    authorId?: string,
+    authorNickname?: string,
+    postTitleKw?: string,
+  ) {
     const where: Prisma.CommentWhereInput = {};
-    if (postId) where.postId = postId;
-    if (authorId) where.authorId = authorId;
+    if (postId) {
+      where.postId = postId;
+    } else if (postTitleKw?.trim()) {
+      const posts = await this.prisma.post.findMany({
+        where: { content: { contains: postTitleKw.trim(), mode: 'insensitive' } },
+        select: { id: true },
+      });
+      const ids = posts.map((p) => p.id);
+      if (ids.length === 0) return { list: [], total: 0, page, pageSize };
+      where.postId = { in: ids };
+    }
+    if (authorId) {
+      where.authorId = authorId;
+    } else if (authorNickname?.trim()) {
+      const authors = await this.prisma.user.findMany({
+        where: { nickname: { contains: authorNickname.trim(), mode: 'insensitive' } },
+        select: { id: true },
+      });
+      const ids = authors.map((a) => a.id);
+      if (ids.length === 0) return { list: [], total: 0, page, pageSize };
+      where.authorId = { in: ids };
+    }
     if (keyword?.trim()) where.content = { contains: keyword.trim(), mode: 'insensitive' };
     const [list, total] = await Promise.all([
       this.prisma.comment.findMany({

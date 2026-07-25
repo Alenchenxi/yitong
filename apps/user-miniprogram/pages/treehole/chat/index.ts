@@ -415,8 +415,9 @@ Page({
                 m.id === msg.id ? { ...m, deleted: true, content: '[已撤回]' } : m,
               ),
             });
-          } catch {
-            wx.showToast({ title: '撤回失败', icon: 'none' });
+          } catch (err) {
+            // 显示后端具体消息（如 40004「只能撤回 X 分钟内的消息」），便于前端解释原因
+            wx.showToast({ title: (err as { message?: string })?.message ?? '撤回失败', icon: 'none' });
           }
         }
       },

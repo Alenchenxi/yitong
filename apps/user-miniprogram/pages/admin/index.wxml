@@ -316,9 +316,13 @@
   <!-- F 评论管理（人工置顶）-->
   <block wx:if="{{tab === 'comments'}}">
     <view class="search-row">
-      <input class="search-input" placeholder="按帖子ID筛选（选填）" value="{{commentPostId}}" bindinput="onCommentPostIdInput" bindconfirm="searchComments" />
-      <input class="search-input" placeholder="按内容搜索（选填）" value="{{commentKeyword}}" bindinput="onCommentKeywordInput" bindconfirm="searchComments" />
-      <input class="search-input" placeholder="按作者ID筛选（选填）" value="{{commentAuthorId}}" bindinput="onCommentAuthorIdInput" bindconfirm="searchComments" />
+      <input class="search-input" placeholder="按帖子ID筛选" value="{{commentPostId}}" bindinput="onCommentPostIdInput" bindconfirm="searchComments" />
+      <input class="search-input" placeholder="按内容搜索" value="{{commentKeyword}}" bindinput="onCommentKeywordInput" bindconfirm="searchComments" />
+    </view>
+    <view class="search-row">
+      <input class="search-input" placeholder="按作者ID筛选" value="{{commentAuthorId}}" bindinput="onCommentAuthorIdInput" bindconfirm="searchComments" />
+      <input class="search-input" placeholder="按作者昵称筛选" value="{{commentAuthorNickname}}" bindinput="onAuthorNicknameInput" bindconfirm="searchComments" />
+      <input class="search-input" placeholder="按帖子内容筛选" value="{{commentPostTitleKw}}" bindinput="onPostTitleKwInput" bindconfirm="searchComments" />
       <button size="mini" bindtap="searchComments">筛选</button>
     </view>
     <view class="item" wx:for="{{comments}}" wx:key="id">

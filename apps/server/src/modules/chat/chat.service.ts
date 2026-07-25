@@ -31,6 +31,9 @@ export interface SessionVo {
 
 // 聊天业务层：消息持久化 + 会话列表 + 历史拉取。
 // fromId/toId 为标识符（实名 uid 或树洞 anonId），不假设与 User 表关联，匿名隔离由调用方保证。
+// 撤回时效：仅 N 分钟内的消息可撤回（覆盖 1v1 + 群消息；超过返 40004）
+const REVOKE_WINDOW_MS = 2 * 60 * 1000;
+
 @Injectable()
 export class ChatService {
   constructor(
@@ -239,11 +242,31 @@ export class ChatService {
     const m = await this.prisma.chatMessage.findUnique({ where: { id: messageId } });
     if (!m) throw new BizException(30010, '消息不存在');
     if (m.fromId !== operatorId) throw new BizException(10003, '只能撤回自己的消息', HttpStatus.FORBIDDEN);
+    // 撤回时效：仅 2 分钟内的消息可撤（防止事后翻旧账误撤）
+    if (Date.now() - m.createdAt.getTime() > REVOKE_WINDOW_MS) {
+      throw new BizException(40004, `只能撤回 ${REVOKE_WINDOW_MS / 60000} 分钟内的消息`, HttpStatus.FORBIDDEN);
+    }
     if (m.deletedAt) return this.toMsgVo(m);
     const updated = await this.prisma.chatMessage.update({
       where: { id: messageId },
       data: { deletedAt: new Date(), content: '[已撤回]' },
     });
+    // 清 1v1 双方 ChatSession.lastMessage（会话列表展示用）
+    if (!m.groupId && m.toId) {
+      try {
+        await this.prisma.chatSession.updateMany({
+          where: {
+            OR: [
+              { ownerId: m.fromId, peerId: m.toId },
+              { ownerId: m.toId, peerId: m.fromId },
+            ],
+          },
+          data: { lastMessage: '[已撤回]' },
+        });
+      } catch {
+        /* 清 lastMessage 失败不影响撤回落库 */
+      }
+    }
     // P2-11 撤回实时同步：群消息广播 room 排除操作方；1v1 forward 给 m.toId（对方在线才发，不在线靠历史拉取看到[已撤回]）
     if (m.groupId) {
       try {

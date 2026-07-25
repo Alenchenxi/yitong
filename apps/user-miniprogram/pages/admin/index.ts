@@ -118,6 +118,8 @@ Page({
     // B 评论 keyword 筛选
     commentKeyword: '',
     commentAuthorId: '',
+    commentAuthorNickname: '',
+    commentPostTitleKw: '',
   },
 
   async onShow() {
@@ -605,7 +607,15 @@ Page({
   // ===== F 评论管理 =====
   async loadComments(append = false) {
     const page = append ? this.data.commentPage + 1 : 1;
-    const r = await listCommentsAdmin(this.data.commentPostId || undefined, page, 20, this.data.commentKeyword || undefined, this.data.commentAuthorId || undefined);
+    const r = await listCommentsAdmin(
+      this.data.commentPostId || undefined,
+      page,
+      20,
+      this.data.commentKeyword || undefined,
+      this.data.commentAuthorId || undefined,
+      this.data.commentAuthorNickname || undefined,
+      this.data.commentPostTitleKw || undefined,
+    );
     const comments = append ? [...this.data.comments, ...r.list] : r.list;
     this.setData({ comments, commentPage: page, commentHasMore: comments.length < r.total });
   },
@@ -617,6 +627,12 @@ Page({
   },
   onCommentAuthorIdInput(e: WechatMiniprogram.Input) {
     this.setData({ commentAuthorId: e.detail.value });
+  },
+  onAuthorNicknameInput(e: WechatMiniprogram.Input) {
+    this.setData({ commentAuthorNickname: e.detail.value });
+  },
+  onPostTitleKwInput(e: WechatMiniprogram.Input) {
+    this.setData({ commentPostTitleKw: e.detail.value });
   },
   onCommentPostIdInput(e: WechatMiniprogram.Input) {
     this.setData({ commentPostId: e.detail.value });
