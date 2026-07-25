@@ -33,6 +33,8 @@ export interface WsMessage {
   reason?: string;
   id?: string; // P2-11 群消息真实 DB id（后端广播带，撤回匹配用）
   messageId?: string; // P2-11 撤回广播带
+  peerId?: string; // 未读推送带：会话对方
+  unreadCount?: number; // 未读推送带：当前未读数（前端可显示红点）
   [k: string]: unknown;
 }
 
@@ -146,6 +148,7 @@ function handleMessage(m: WsMessage) {
       break;
     case 'msg':
     case 'msg-revoke':
+    case 'unread-update':
       onMessageCb?.(m);
       break;
     case 'room-msg':

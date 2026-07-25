@@ -8,6 +8,7 @@ import {
   sendAnonMessage,
   listAnonMessages,
   revokeAnonChatMessage,
+  readAnonChat,
   blockAnon,
   type MatchResp,
 } from '../../../services/treehole';
@@ -105,6 +106,8 @@ Page({
       messages: [],
     });
     this.startCountdown(r.expireAt ?? '');
+    // 进入 1v1 聊天：清零对方会话未读（fire-and-forget，失败不阻塞）
+    readAnonChat(r.peerAnonId).catch(() => {});
     onMessage((m: WsMessage) => {
       if (m.type === 'msg' && m.fromId === this.data.peerAnonId) {
         this.setData({

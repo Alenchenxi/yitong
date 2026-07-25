@@ -27,6 +27,7 @@ export interface SessionVo {
   peerId: string;
   lastMessage: string;
   lastAt: string;
+  unreadCount: number; // 未读消息数（前端列表显示红点）
 }
 
 // 聊天业务层：消息持久化 + 会话列表 + 历史拉取。
@@ -69,7 +70,7 @@ export class ChatService {
     } else if (msgType === 'text') {
       await this.moderation.checkText(content);
     }
-    const msg = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const m = await tx.chatMessage.create({
         data: { fromId, toId, content, type: msgType, duration: msgDuration },
       });
@@ -77,30 +78,38 @@ export class ChatService {
       await tx.chatSession.upsert({
         where: { ownerId_peerId: { ownerId: fromId, peerId: toId } },
         update: { lastMessage, lastAt: m.createdAt },
-        create: { ownerId: fromId, peerId: toId, lastMessage, lastAt: m.createdAt },
+        create: { ownerId: fromId, peerId: toId, lastMessage, lastAt: m.createdAt, unreadCount: 0 },
       });
-      await tx.chatSession.upsert({
+      // 接收方会话未读 +1；create 分支首次置 1
+      const toSession = await tx.chatSession.upsert({
         where: { ownerId_peerId: { ownerId: toId, peerId: fromId } },
-        update: { lastMessage, lastAt: m.createdAt },
-        create: { ownerId: toId, peerId: fromId, lastMessage, lastAt: m.createdAt },
+        update: { lastMessage, lastAt: m.createdAt, unreadCount: { increment: 1 } },
+        create: { ownerId: toId, peerId: fromId, lastMessage, lastAt: m.createdAt, unreadCount: 1 },
       });
-      return m;
+      return { msg: m, toUnread: toSession.unreadCount };
     });
     // 主动 forward 给对方（含真实 id 让对方能撤回匹配），不依赖发送方前端 WS 双发；对方不在线丢
     try {
       this.gateway.sendToUser(toId, {
         type: 'msg',
         fromId,
-        content: msg.content,
+        content: result.msg.content,
         msgType,
-        duration: msg.duration ?? undefined,
-        id: msg.id,
-        ts: msg.createdAt.getTime(),
+        duration: result.msg.duration ?? undefined,
+        id: result.msg.id,
+        ts: result.msg.createdAt.getTime(),
+      });
+      // 未读数推送：让对方会话列表实时刷新（前端可显示红点）
+      this.gateway.sendToUser(toId, {
+        type: 'unread-update',
+        peerId: fromId,
+        unreadCount: result.toUnread,
+        ts: Date.now(),
       });
     } catch {
       /* forward 失败不影响落库 */
     }
-    return this.toMsgVo(msg);
+    return this.toMsgVo(result.msg);
   }
 
   // 消息历史（双向，游标分页；游标 = 上一页最早一条的 createdAt，往更旧拉）
@@ -143,7 +152,16 @@ export class ChatService {
       peerId: s.peerId,
       lastMessage: s.lastMessage,
       lastAt: s.lastAt.toISOString(),
+      unreadCount: s.unreadCount,
     }));
+  }
+
+  // 未读清零（进入聊天页面时调，会话不存在则 updateMany 静默返回 count=0 不报错）
+  async resetUnread(ownerId: string, peerId: string): Promise<void> {
+    await this.prisma.chatSession.updateMany({
+      where: { ownerId, peerId },
+      data: { unreadCount: 0 },
+    });
   }
 
   // ===== P2-11 群聊消息 =====

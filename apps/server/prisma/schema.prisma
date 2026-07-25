@@ -334,6 +334,7 @@ model ChatSession {
   peerId      String   @map("peer_id")
   lastMessage String   @map("last_message")
   lastAt      DateTime @default(now()) @map("last_at")
+  unreadCount Int      @default(0)         @map("unread_count") // 未读消息数（接收方按 lastAt 累计；进入聊天清零）
   @@unique([ownerId, peerId])
   @@index([ownerId, lastAt])
   @@map("chat_sessions")

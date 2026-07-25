@@ -555,6 +555,11 @@ export class TreeholeService {
     return this.chat.revokeMessage(anonId, messageId);
   }
 
+  // 进入 1v1 聊天时调，清零对方会话未读（前端 fire-and-forget）
+  async readAnonChat(anonId: string, peerAnonId: string): Promise<void> {
+    await this.chat.resetUnread(anonId, peerAnonId);
+  }
+
   // ===== P2-12 加入申请 =====
 
   // 申请加入私密群

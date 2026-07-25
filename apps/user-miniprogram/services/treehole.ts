@@ -301,6 +301,11 @@ export function revokeAnonChatMessage(chatId: string, msgId: string): Promise<An
   return anonRequest({ url: `/treehole/chats/${chatId}/messages/${msgId}/revoke`, method: 'POST' });
 }
 
+// 进入 1v1 聊天时调：清零对方会话未读
+export function readAnonChat(peerAnonId: string): Promise<void> {
+  return anonRequest({ url: `/treehole/chats/${peerAnonId}/read`, method: 'POST' });
+}
+
 export function sendAnonMessage(
   peerAnonId: string,
   content: string,

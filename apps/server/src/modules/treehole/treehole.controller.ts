@@ -326,6 +326,16 @@ export class TreeholeController {
     return ok(await this.treehole.revokeAnonChatMessage(anonId, chatId, msgId));
   }
 
+  // 进入 1v1 聊天时调：清零对方会话未读（前端 fire-and-forget）
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('chats/:peerAnonId/read')
+  async readAnonChat(@Param('peerAnonId') peerAnonId: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    await this.treehole.readAnonChat(anonId, peerAnonId);
+    return ok({});
+  }
+
   // ===== P2-12 加入申请 =====
   @Public()
   @UseGuards(AnonGuard)
