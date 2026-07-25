@@ -18,21 +18,9 @@ export class AdminService {
 
   // 审核队列：待审核商家 + 近期帖子（含已发布，管理员可下架）
   async getQueue() {
-    const [merchants, posts, anonPosts, reports] = await Promise.all([
+    const [merchants, reports] = await Promise.all([
       this.prisma.merchant.findMany({
         orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-        take: 50,
-      }),
-      this.prisma.post.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-        include: {
-          author: { select: { nickname: true } },
-          circle: { select: { name: true } },
-        },
-      }),
-      this.prisma.anonymousPost.findMany({
-        orderBy: { createdAt: 'desc' },
         take: 50,
       }),
       this.prisma.moderationRecord.findMany({
@@ -52,7 +40,34 @@ export class AdminService {
         userNickname: '',
         createdAt: m.createdAt.toISOString(),
       })),
-      posts: posts.map((p) => ({
+      reports: reports.map((r) => ({
+        id: r.id,
+        targetType: r.targetType,
+        targetId: r.targetId,
+        reason: r.reason,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  // ===== C 帖子分页管理（getQueue 精简掉 posts/anonPosts，改用独立分页接口）=====
+
+  // 表白墙帖子分页（keyword 模糊搜 content）
+  async listPostsAdmin(page = 1, pageSize = 20, keyword?: string) {
+    const where: Prisma.PostWhereInput = {};
+    if (keyword?.trim()) where.content = { contains: keyword.trim(), mode: 'insensitive' };
+    const [list, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { author: { select: { nickname: true } }, circle: { select: { name: true } } },
+      }),
+      this.prisma.post.count({ where }),
+    ]);
+    return {
+      list: list.map((p) => ({
         id: p.id,
         content: p.content,
         status: p.status,
@@ -62,21 +77,83 @@ export class AdminService {
         featured: p.featured,
         createdAt: p.createdAt.toISOString(),
       })),
-      anonPosts: anonPosts.map((p) => ({
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  // 树洞匿名帖分页
+  async listAnonPostsAdmin(page = 1, pageSize = 20) {
+    const [list, total] = await Promise.all([
+      this.prisma.anonymousPost.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.anonymousPost.count(),
+    ]);
+    return {
+      list: list.map((p) => ({
         id: p.id,
         content: p.content,
         anonId: p.anonId,
         status: p.status,
         createdAt: p.createdAt.toISOString(),
       })),
-      reports: reports.map((r) => ({
-        id: r.id,
-        targetType: r.targetType,
-        targetId: r.targetId,
-        reason: r.reason,
-        createdAt: r.createdAt.toISOString(),
-      })),
+      total,
+      page,
+      pageSize,
     };
+  }
+
+  // ===== F 评论管理（人工置顶，Comment.pinned 字段已有）=====
+
+  // 评论分页（可按 postId 筛选；pinned 优先 + 热度 + 时间排序）
+  async listCommentsAdmin(postId?: string, page = 1, pageSize = 20) {
+    const where: Prisma.CommentWhereInput = {};
+    if (postId) where.postId = postId;
+    const [list, total] = await Promise.all([
+      this.prisma.comment.findMany({
+        where,
+        orderBy: [{ pinned: 'desc' }, { likeCount: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { post: { select: { id: true, content: true } } },
+      }),
+      this.prisma.comment.count({ where }),
+    ]);
+    return {
+      list: list.map((c) => ({
+        id: c.id,
+        content: c.content,
+        postId: c.postId,
+        postTitle: c.post?.content.slice(0, 20) ?? '',
+        likeCount: c.likeCount,
+        pinned: c.pinned,
+        createdAt: c.createdAt.toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  // 人工置顶/取消置顶评论 + 留痕
+  async pinComment(id: string, reviewerId: string, pinned: boolean) {
+    const c = await this.prisma.comment.findUnique({ where: { id } });
+    if (!c) throw new BizException(40001, '评论不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.comment.update({ where: { id }, data: { pinned } });
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'comment',
+        targetId: id,
+        reason: pinned ? '管理员置顶评论' : '取消置顶评论',
+        status: 'APPROVED',
+        reviewerId,
+      },
+    });
+    return { id, pinned };
   }
 
   // ===== P1-28 举报处理队列 =====
@@ -384,7 +461,7 @@ export class AdminService {
     if (!t) throw new BizException(20003, '工单不存在', HttpStatus.NOT_FOUND);
     const r = reply?.trim();
     if (!r) throw new BizException(20003, '回复内容不能为空', HttpStatus.BAD_REQUEST);
-    return this.prisma.supportTicket.update({
+    const updated = await this.prisma.supportTicket.update({
       where: { id },
       data: {
         reply: r,
@@ -393,6 +470,20 @@ export class AdminService {
         status: close ? 'CLOSED' : 'IN_PROGRESS',
       },
     });
+    // B 工单回复通知用户（对比封禁/下架都有通知，工单回复原先静默）
+    void this.notification
+      .create({
+        userId: t.userId,
+        type: NotificationType.TICKET_REPLY,
+        title: close ? '工单 · 已回复并关闭' : '工单 · 已回复',
+        content: r,
+        targetType: 'support_ticket',
+        targetId: id,
+      })
+      .catch((e: unknown) =>
+        this.logger.warn(`notify ticket reply failed: ${e instanceof Error ? e.message : String(e)}`),
+      );
+    return updated;
   }
 
   // ===== 兼职岗位列表（admin，含 featured，用于精品管理）=====

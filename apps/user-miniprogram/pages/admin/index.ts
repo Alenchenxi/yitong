@@ -30,7 +30,14 @@ import {
   deleteAnonTag,
   updateAnonTag,
   listJobPostsAdmin,
+  listPostsAdmin,
+  listAnonPostsAdmin,
+  listCommentsAdmin,
+  pinComment,
   type AdminQueueVo,
+  type AdminPostVo,
+  type AdminAnonPostVo,
+  type AdminCommentVo,
   type PricingVo,
   type DashboardStats,
   type AdminReportVo,
@@ -49,7 +56,7 @@ import {
   type AdminAnnouncementVo,
 } from '../../services/announcement';
 
-type Tab = 'queue' | 'stats' | 'pricing' | 'announce' | 'reports' | 'tickets' | 'users' | 'activity' | 'topic' | 'tags' | 'jobs';
+type Tab = 'queue' | 'stats' | 'pricing' | 'announce' | 'reports' | 'tickets' | 'users' | 'activity' | 'topic' | 'tags' | 'jobs' | 'comments';
 
 Page({
   data: {
@@ -86,6 +93,25 @@ Page({
     tagCategory: 'personality',
     // 岗位（精品管理）
     jobPosts: [] as AdminJobPostVo[],
+    // C 帖子分页
+    posts: [] as AdminPostVo[],
+    postPage: 0,
+    postHasMore: false,
+    postKeyword: '',
+    anonPosts: [] as AdminAnonPostVo[],
+    anonPostPage: 0,
+    anonPostHasMore: false,
+    // F 评论管理
+    comments: [] as AdminCommentVo[],
+    commentPage: 0,
+    commentHasMore: false,
+    commentPostId: '',
+    // D 标签编辑
+    tagFilterCat: '',
+    tagSort: '',
+    editingTagId: '',
+    editingTagName: '',
+    editingTagSort: '',
   },
 
   async onShow() {
@@ -100,6 +126,8 @@ Page({
       if (this.data.tab === 'queue') {
         const queue = await getQueue();
         this.setData({ queue });
+        void this.loadPosts();
+        void this.loadAnonPosts();
       } else if (this.data.tab === 'pricing') {
         const pricing = await getPricing();
         this.setData({ pricing });
@@ -122,11 +150,13 @@ Page({
         const topics = await listTopicsAdmin();
         this.setData({ topics });
       } else if (this.data.tab === 'tags') {
-        const anonTags = await listAnonTagsAdmin();
+        const anonTags = await listAnonTagsAdmin(this.data.tagFilterCat || undefined);
         this.setData({ anonTags });
       } else if (this.data.tab === 'jobs') {
         const jobPosts = await listJobPostsAdmin();
         this.setData({ jobPosts });
+      } else if (this.data.tab === 'comments') {
+        void this.loadComments();
       } else {
         const stats = await getStats();
         this.setData({ stats });
@@ -325,20 +355,14 @@ Page({
       editable: true,
       placeholderText: '回复内容',
       confirmText: '回复并关闭',
-      cancelText: '回复保留',
       success: async (r) => {
         if (r.confirm && r.content?.trim()) {
           await replyTicket(id, r.content.trim(), true);
           wx.showToast({ title: '已回复并关闭', icon: 'success' });
           this.load();
-        } else if (r.cancel && r.content?.trim()) {
-          // 回复但保留处理中
-          // showModal cancel 分支拿不到 content，用 showActionSheet 不行；改为二次确认
         }
       },
     });
-    // 提供保留处理中入口：用 showActionSheet 选关闭/保留
-    // 简化：modal 仅回复并关闭；保留处理中通过单独入口
   },
   replyTicketKeepTap(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
@@ -466,7 +490,8 @@ Page({
 
   // ===== 树洞标签 =====
   onTagInput(e: WechatMiniprogram.Input) {
-    this.setData({ tagName: e.detail.value });
+    const field = e.currentTarget.dataset.field as 'tagName' | 'tagSort';
+    this.setData({ [field]: e.detail.value } as Record<string, string>);
   },
   pickTagCat(e: WechatMiniprogram.TouchEvent) {
     this.setData({ tagCategory: e.currentTarget.dataset.c as string });
@@ -476,9 +501,9 @@ Page({
       wx.showToast({ title: '请填标签名', icon: 'none' });
       return;
     }
-    await createAnonTag({ name: this.data.tagName.trim(), category: this.data.tagCategory });
+    await createAnonTag({ name: this.data.tagName.trim(), category: this.data.tagCategory, sortOrder: Number(this.data.tagSort) || 0 });
     wx.showToast({ title: '已创建', icon: 'success' });
-    this.setData({ tagName: '' });
+    this.setData({ tagName: '', tagSort: '' });
     this.load();
   },
   deleteTag(e: WechatMiniprogram.TouchEvent) {
@@ -522,5 +547,82 @@ Page({
     await featureJob(id, !featured);
     wx.showToast({ title: !featured ? '已设精品' : '已取消精品', icon: 'success' });
     this.load();
+  },
+
+  // ===== C 帖子分页 =====
+  async loadPosts(append = false) {
+    const page = append ? this.data.postPage + 1 : 1;
+    const r = await listPostsAdmin(page, 20, this.data.postKeyword || undefined);
+    const posts = append ? [...this.data.posts, ...r.list] : r.list;
+    this.setData({ posts, postPage: page, postHasMore: posts.length < r.total });
+  },
+  loadMorePosts() {
+    if (this.data.postHasMore) this.loadPosts(true);
+  },
+  onPostKeywordInput(e: WechatMiniprogram.Input) {
+    this.setData({ postKeyword: e.detail.value });
+  },
+  searchPosts() {
+    this.loadPosts(false);
+  },
+  async loadAnonPosts(append = false) {
+    const page = append ? this.data.anonPostPage + 1 : 1;
+    const r = await listAnonPostsAdmin(page, 20);
+    const anonPosts = append ? [...this.data.anonPosts, ...r.list] : r.list;
+    this.setData({ anonPosts, anonPostPage: page, anonPostHasMore: anonPosts.length < r.total });
+  },
+  loadMoreAnonPosts() {
+    if (this.data.anonPostHasMore) this.loadAnonPosts(true);
+  },
+
+  // ===== F 评论管理 =====
+  async loadComments(append = false) {
+    const page = append ? this.data.commentPage + 1 : 1;
+    const r = await listCommentsAdmin(this.data.commentPostId || undefined, page, 20);
+    const comments = append ? [...this.data.comments, ...r.list] : r.list;
+    this.setData({ comments, commentPage: page, commentHasMore: comments.length < r.total });
+  },
+  loadMoreComments() {
+    if (this.data.commentHasMore) this.loadComments(true);
+  },
+  onCommentPostIdInput(e: WechatMiniprogram.Input) {
+    this.setData({ commentPostId: e.detail.value });
+  },
+  searchComments() {
+    this.setData({ comments: [], commentPage: 0 });
+    this.loadComments(false);
+  },
+  async pinCommentTap(e: WechatMiniprogram.TouchEvent) {
+    const { id, pinned } = e.currentTarget.dataset as { id: string; pinned: boolean };
+    await pinComment(id, !pinned);
+    wx.showToast({ title: !pinned ? '已置顶' : '已取消置顶', icon: 'success' });
+    this.loadComments(false);
+  },
+
+  // ===== D 标签编辑/筛选 =====
+  switchTagCat(e: WechatMiniprogram.TouchEvent) {
+    this.setData({ tagFilterCat: e.currentTarget.dataset.c as string });
+    this.load();
+  },
+  startEditTag(e: WechatMiniprogram.TouchEvent) {
+    const { id, name, sort } = e.currentTarget.dataset as { id: string; name: string; sort: number };
+    this.setData({ editingTagId: id, editingTagName: name, editingTagSort: String(sort) });
+  },
+  onEditTagInput(e: WechatMiniprogram.Input) {
+    const field = e.currentTarget.dataset.field as 'editingTagName' | 'editingTagSort';
+    this.setData({ [field]: e.detail.value } as Record<string, string>);
+  },
+  async saveTag() {
+    if (!this.data.editingTagName.trim()) {
+      wx.showToast({ title: '请填标签名', icon: 'none' });
+      return;
+    }
+    await updateAnonTag(this.data.editingTagId, { name: this.data.editingTagName.trim(), sortOrder: Number(this.data.editingTagSort) || 0 });
+    wx.showToast({ title: '已保存', icon: 'success' });
+    this.setData({ editingTagId: '', editingTagName: '', editingTagSort: '' });
+    this.load();
+  },
+  cancelEditTag() {
+    this.setData({ editingTagId: '', editingTagName: '', editingTagSort: '' });
   },
 });

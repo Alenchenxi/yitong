@@ -5,7 +5,6 @@
   "description": "燚桐 - 校园生活聚合小程序（表白墙 / 树洞 / 兼职）",
   "scripts": {
     "dev:server": "pnpm --filter @yitong/shared-types build && pnpm --filter @yitong/shared-utils build && pnpm --filter @yitong/server dev",
-    "dev:admin": "pnpm --filter @yitong/admin-web dev",
     "build": "pnpm -r build",
     "build:packages": "pnpm --filter @yitong/shared-types build && pnpm --filter @yitong/shared-utils build",
     "lint": "eslint .",

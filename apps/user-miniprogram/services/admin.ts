@@ -11,23 +11,6 @@ export interface AdminQueueVo {
     userNickname: string;
     createdAt: string;
   }>;
-  posts: Array<{
-    id: string;
-    content: string;
-    status: string;
-    authorNickname: string;
-    circleName: string;
-    pinned: boolean;
-    featured: boolean;
-    createdAt: string;
-  }>;
-  anonPosts: Array<{
-    id: string;
-    content: string;
-    anonId: string;
-    status: string;
-    createdAt: string;
-  }>;
   reports: Array<{
     id: string;
     targetType: string;
@@ -126,6 +109,51 @@ export function featureJob(id: string, featured: boolean) {
   return request({ url: `/admin/job-posts/${id}/feature`, method: 'POST', data: { featured } });
 }
 
+// ===== C 帖子分页管理（getQueue 精简后独立分页接口）=====
+export interface AdminPostVo {
+  id: string;
+  content: string;
+  status: string;
+  authorNickname: string;
+  circleName: string;
+  pinned: boolean;
+  featured: boolean;
+  createdAt: string;
+}
+export interface AdminAnonPostVo {
+  id: string;
+  content: string;
+  anonId: string;
+  status: string;
+  createdAt: string;
+}
+export function listPostsAdmin(page = 1, pageSize = 20, keyword?: string) {
+  const qs = `?page=${page}&pageSize=${pageSize}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`;
+  return request<{ list: AdminPostVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/posts${qs}` });
+}
+export function listAnonPostsAdmin(page = 1, pageSize = 20) {
+  const qs = `?page=${page}&pageSize=${pageSize}`;
+  return request<{ list: AdminAnonPostVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/anon-posts${qs}` });
+}
+
+// ===== F 评论管理（人工置顶）=====
+export interface AdminCommentVo {
+  id: string;
+  content: string;
+  postId: string;
+  postTitle: string;
+  likeCount: number;
+  pinned: boolean;
+  createdAt: string;
+}
+export function listCommentsAdmin(postId?: string, page = 1, pageSize = 20) {
+  const qs = `?page=${page}&pageSize=${pageSize}${postId ? `&postId=${encodeURIComponent(postId)}` : ''}`;
+  return request<{ list: AdminCommentVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/comments${qs}` });
+}
+export function pinComment(id: string, pinned: boolean) {
+  return request({ url: `/admin/comments/${id}/pin`, method: 'POST', data: { pinned } });
+}
+
 // ===== P2-03 活动专题 =====
 export interface ActivityTopicVo {
   id: string;
@@ -205,7 +233,7 @@ export function createAnonTag(data: { name: string; category: string; sortOrder?
 export function deleteAnonTag(id: string) {
   return request({ url: `/admin/anon-tags/${id}`, method: 'DELETE' });
 }
-export function updateAnonTag(id: string, data: { active?: boolean }) {
+export function updateAnonTag(id: string, data: { name?: string; sortOrder?: number; active?: boolean }) {
   return request({ url: `/admin/anon-tags/${id}`, method: 'PUT', data });
 }
 

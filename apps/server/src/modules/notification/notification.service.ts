@@ -37,6 +37,8 @@ export const NotificationType = {
   USER_MUTED: 'user_muted',
   // P1-28 举报处理结果
   REPORT_RESULT: 'report_result',
+  // B 工单回复
+  TICKET_REPLY: 'ticket_reply',
 } as const;
 
 @Injectable()

@@ -125,6 +125,54 @@ export class AdminController {
     return ok(await this.admin.listJobPostsAdmin(limit ? Number(limit) : 50));
   }
 
+  // C 帖子分页管理（getQueue 精简掉 posts/anonPosts 后的独立分页接口）
+  @Get('posts')
+  async listPostsAdmin(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('keyword') keyword?: string,
+  ) {
+    return ok(
+      await this.admin.listPostsAdmin(
+        Math.max(1, Number(page) || 1),
+        Math.min(100, Math.max(1, Number(pageSize) || 20)),
+        keyword,
+      ),
+    );
+  }
+
+  @Get('anon-posts')
+  async listAnonPostsAdmin(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return ok(
+      await this.admin.listAnonPostsAdmin(
+        Math.max(1, Number(page) || 1),
+        Math.min(100, Math.max(1, Number(pageSize) || 20)),
+      ),
+    );
+  }
+
+  // F 评论管理（人工置顶）
+  @Get('comments')
+  async listCommentsAdmin(
+    @Query('postId') postId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return ok(
+      await this.admin.listCommentsAdmin(
+        postId,
+        Math.max(1, Number(page) || 1),
+        Math.min(100, Math.max(1, Number(pageSize) || 20)),
+      ),
+    );
+  }
+
+  @Post('comments/:id/pin')
+  async pinComment(@Param('id') id: string, @Body() body: { pinned?: boolean }, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.pinComment(id, uid, body?.pinned !== false));
+  }
+
   @Get('pricing')
   async getPricing() {
     return ok(await this.admin.getPricing());
