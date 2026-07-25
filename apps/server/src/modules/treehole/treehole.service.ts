@@ -540,6 +540,21 @@ export class TreeholeService {
     return this.chat.revokeMessage(anonId, messageId);
   }
 
+  // 撤回 1v1 匿名聊天消息：chatId 实际是 matchId（路径占位）
+  // 校验顺序：先校验消息是否存在+是 1v1（30010），再校验消息双方都属于该 match（防 chatId 错配，30010），
+  // 然后委托 chat.revokeMessage 校验 fromId === operatorId（撤他人返 10003，自己返成功）。
+  async revokeAnonChatMessage(anonId: string, chatId: string, messageId: string) {
+    const m = await this.prisma.chatMessage.findUnique({ where: { id: messageId } });
+    if (!m || m.groupId) throw new BizException(30010, '消息不存在或非 1v1 消息', HttpStatus.NOT_FOUND);
+    const match = await this.prisma.chatMatch.findUnique({ where: { id: chatId } });
+    if (!match) throw new BizException(30010, '匹配不存在', HttpStatus.NOT_FOUND);
+    const memberIds = [match.anonIdA, match.anonIdB];
+    if (!m.toId || !memberIds.includes(m.fromId) || !memberIds.includes(m.toId)) {
+      throw new BizException(30010, '消息不属于该匹配', HttpStatus.NOT_FOUND);
+    }
+    return this.chat.revokeMessage(anonId, messageId);
+  }
+
   // ===== P2-12 加入申请 =====
 
   // 申请加入私密群

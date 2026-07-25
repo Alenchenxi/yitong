@@ -83,6 +83,20 @@ export class ChatService {
       });
       return m;
     });
+    // 主动 forward 给对方（含真实 id 让对方能撤回匹配），不依赖发送方前端 WS 双发；对方不在线丢
+    try {
+      this.gateway.sendToUser(toId, {
+        type: 'msg',
+        fromId,
+        content: msg.content,
+        msgType,
+        duration: msg.duration ?? undefined,
+        id: msg.id,
+        ts: msg.createdAt.getTime(),
+      });
+    } catch {
+      /* forward 失败不影响落库 */
+    }
     return this.toMsgVo(msg);
   }
 
@@ -230,7 +244,7 @@ export class ChatService {
       where: { id: messageId },
       data: { deletedAt: new Date(), content: '[已撤回]' },
     });
-    // P2-11 群消息撤回实时同步：广播给群房间其他在线成员（排除操作方）；1v1 消息无 groupId 不广播
+    // P2-11 撤回实时同步：群消息广播 room 排除操作方；1v1 forward 给 m.toId（对方在线才发，不在线靠历史拉取看到[已撤回]）
     if (m.groupId) {
       try {
         this.gateway.broadcastToRoom(
@@ -245,6 +259,17 @@ export class ChatService {
         );
       } catch {
         /* 广播失败不影响撤回落库 */
+      }
+    } else if (m.toId) {
+      try {
+        this.gateway.sendToUser(m.toId, {
+          type: 'msg-revoke',
+          fromId: m.fromId,
+          messageId: m.id,
+          ts: Date.now(),
+        });
+      } catch {
+        /* forward 失败不影响撤回落库 */
       }
     }
     return this.toMsgVo(updated);

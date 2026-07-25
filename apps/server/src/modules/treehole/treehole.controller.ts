@@ -317,6 +317,15 @@ export class TreeholeController {
     return ok(await this.treehole.revokeGroupMessage(anonId, id, msgId));
   }
 
+  // 1v1 匿名聊天撤回（chatId 路径占位；chat.service.revokeMessage 校验 fromId === operatorId）
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('chats/:chatId/messages/:msgId/revoke')
+  async revokeAnonChatMessage(@Param('chatId') chatId: string, @Param('msgId') msgId: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.revokeAnonChatMessage(anonId, chatId, msgId));
+  }
+
   // ===== P2-12 加入申请 =====
   @Public()
   @UseGuards(AnonGuard)

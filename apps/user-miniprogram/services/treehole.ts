@@ -48,6 +48,7 @@ export interface AnonMessageVo {
   content: string;
   type: string; // P0-14 text / image；P1-18 + voice
   duration: number | null; // P1-18 语音时长（秒），仅 type=voice
+  deleted: boolean; // 是否已撤回（服务端 deletedAt 标记）
   createdAt: string;
 }
 
@@ -293,6 +294,11 @@ export function listGroupMessages(
 
 export function revokeGroupMessage(groupId: string, msgId: string): Promise<GroupMessageVo> {
   return anonRequest({ url: `/treehole/groups/${groupId}/messages/${msgId}/revoke`, method: 'POST' });
+}
+
+// 1v1 匿名聊天撤回（chatId 路径占位）
+export function revokeAnonChatMessage(chatId: string, msgId: string): Promise<AnonMessageVo> {
+  return anonRequest({ url: `/treehole/chats/${chatId}/messages/${msgId}/revoke`, method: 'POST' });
 }
 
 export function sendAnonMessage(

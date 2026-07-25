@@ -145,6 +145,7 @@ function handleMessage(m: WsMessage) {
       scheduleReconnect();
       break;
     case 'msg':
+    case 'msg-revoke':
       onMessageCb?.(m);
       break;
     case 'room-msg':

@@ -226,6 +226,11 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
     this.broadcastRoom(roomId, payload, exclude);
   }
 
+  // 对外逐用户推送（如 1v1 撤回同步）：不在线则丢，下次进聊天拉历史会看到撤回标记
+  sendToUser(identifier: string, payload: unknown) {
+    this.forward(identifier, payload);
+  }
+
   private broadcastRoom(roomId: string, payload: unknown, exclude?: string) {
     const members = this.rooms.get(roomId);
     if (!members) return;

@@ -7,10 +7,11 @@ import {
   getAnonId,
   sendAnonMessage,
   listAnonMessages,
+  revokeAnonChatMessage,
   blockAnon,
   type MatchResp,
 } from '../../../services/treehole';
-import { connectIm, onMessage, sendWsMessage, type WsMessage } from '../../../services/im';
+import { connectIm, onMessage, type WsMessage } from '../../../services/im';
 import { uploadImage, uploadVoice } from '../../../services/upload';
 
 interface Msg {
@@ -19,6 +20,8 @@ interface Msg {
   mine: boolean;
   type: 'text' | 'image' | 'voice';
   duration?: number; // P1-18 语音时长（秒）
+  id?: string; // 服务端消息 id（撤回匹配用，含 HTTP 返回值；远端 WS 推送的消息会带 id）
+  deleted?: boolean; // 撤回标记
 }
 
 Page({
@@ -113,8 +116,17 @@ Page({
               mine: false,
               type: m.msgType === 'image' ? 'image' : m.msgType === 'voice' ? 'voice' : 'text',
               duration: m.msgType === 'voice' ? m.duration : undefined,
+              id: typeof m.id === 'string' ? m.id : undefined,
             },
           ],
+        });
+      } else if (m.type === 'msg-revoke' && m.fromId === this.data.peerAnonId && m.messageId) {
+        // 1v1 撤回实时同步：对方撤回消息时按 messageId 标记本地消息为已撤回
+        const mid = m.messageId;
+        this.setData({
+          messages: this.data.messages.map((msg) =>
+            msg.id === mid ? { ...msg, deleted: true, content: '[已撤回]' } : msg,
+          ),
         });
       }
     });
@@ -200,11 +212,13 @@ Page({
       const resp = await listAnonMessages(this.data.peerAnonId);
       const me = getAnonId();
       const history: Msg[] = resp.list.map((m) => ({
+        id: m.id,
         fromId: m.fromId,
-        content: m.content,
+        content: m.deleted ? '[已撤回]' : m.content,
         mine: m.fromId === me,
         type: m.type === 'image' ? 'image' : m.type === 'voice' ? 'voice' : 'text',
         duration: m.type === 'voice' ? (m.duration ?? undefined) : undefined,
+        deleted: m.deleted,
       }));
       this.setData({ messages: [...history, ...this.data.messages] });
     } catch {
@@ -222,10 +236,12 @@ Page({
     const peerAnonId = this.data.peerAnonId;
     this.setData({ sending: true });
     try {
-      await sendAnonMessage(peerAnonId, c);
-      sendWsMessage(peerAnonId, c);
+      const m = await sendAnonMessage(peerAnonId, c);
       this.setData({
-        messages: [...this.data.messages, { fromId: getAnonId(), content: c, mine: true, type: 'text' }],
+        messages: [
+          ...this.data.messages,
+          { fromId: getAnonId(), content: c, mine: true, type: 'text', id: m.id },
+        ],
         input: '',
       });
     } catch {
@@ -251,10 +267,9 @@ Page({
         wx.showLoading({ title: '发送中...', mask: true });
         try {
           const url = await uploadImage(f.tempFilePath, 'anon');
-          await sendAnonMessage(peerAnonId, url, 'image');
-          sendWsMessage(peerAnonId, url, 'image');
+          const m = await sendAnonMessage(peerAnonId, url, 'image');
           this.setData({
-            messages: [...this.data.messages, { fromId: getAnonId(), content: url, mine: true, type: 'image' }],
+            messages: [...this.data.messages, { fromId: getAnonId(), content: url, mine: true, type: 'image', id: m.id }],
           });
         } catch {
           wx.showToast({ title: '发送失败', icon: 'none' });
@@ -337,10 +352,9 @@ Page({
     wx.showLoading({ title: '发送中...', mask: true });
     try {
       const url = await uploadVoice(tempFilePath);
-      await sendAnonMessage(peerAnonId, url, 'voice', secs);
-      sendWsMessage(peerAnonId, url, 'voice', secs);
+      const m = await sendAnonMessage(peerAnonId, url, 'voice', secs);
       this.setData({
-        messages: [...this.data.messages, { fromId: getAnonId(), content: url, mine: true, type: 'voice', duration: secs }],
+        messages: [...this.data.messages, { fromId: getAnonId(), content: url, mine: true, type: 'voice', duration: secs, id: m.id }],
       });
     } catch {
       wx.showToast({ title: '发送失败', icon: 'none' });
@@ -382,6 +396,31 @@ Page({
     this.audioCtx = ctx;
     this.setData({ playingIdx: idx });
     ctx.play();
+  },
+
+  // 1v1 撤回：长按自己消息弹确认（实时同步由后端 chat.service.revokeMessage 1v1 forward 完成，对方收 msg-revoke 自动标记）
+  onMsgLongPress(e: WechatMiniprogram.TouchEvent) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const msg = this.data.messages[idx];
+    if (!msg || !msg.mine || msg.deleted || !msg.id) return;
+    wx.showModal({
+      title: '撤回消息',
+      content: '确定撤回这条消息？',
+      success: async (r) => {
+        if (r.confirm && msg.id) {
+          try {
+            await revokeAnonChatMessage(this.data.matchId, msg.id);
+            this.setData({
+              messages: this.data.messages.map((m) =>
+                m.id === msg.id ? { ...m, deleted: true, content: '[已撤回]' } : m,
+              ),
+            });
+          } catch {
+            wx.showToast({ title: '撤回失败', icon: 'none' });
+          }
+        }
+      },
+    });
   },
 
   // P0-16 拉黑对方：屏蔽后互相隔离（广场/匹配/聊天），拉黑即离场
