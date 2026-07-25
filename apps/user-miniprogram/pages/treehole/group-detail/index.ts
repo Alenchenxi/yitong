@@ -15,7 +15,7 @@ import {
 } from '../../../services/treehole';
 import { getAnonId } from '../../../services/treehole';
 import { uploadImage } from '../../../services/upload';
-import { connectIm, joinRoom, leaveRoom, onRoomMessage, sendRoomMessage, type WsMessage } from '../../../services/im';
+import { connectIm, joinRoom, leaveRoom, onRoomMessage, type WsMessage } from '../../../services/im';
 
 const ROLE_TEXT: Record<string, string> = { OWNER: '群主', ADMIN: '管理员', MEMBER: '成员' };
 
@@ -124,14 +124,15 @@ Page({
       await connectIm(detail.imCredential);
       joinRoom(`group:${this.groupId}`);
       onRoomMessage((m: WsMessage) => {
-        if (m.type === 'room-msg' && m.roomId === `group:${this.groupId}` && m.fromId) {
+        const roomId = `group:${this.groupId}`;
+        if (m.type === 'room-msg' && m.roomId === roomId && m.fromId) {
           const memberMap = new Map(this.data.members.map((mb) => [mb.anonId, mb]));
           const msgType = m.msgType === 'image' ? 'image' : m.msgType === 'system' ? 'system' : 'text';
           const content = m.content ?? '';
           this.setData({
             messages: [
               {
-                id: `ws_${m.ts ?? Date.now()}_${m.fromId}`,
+                id: m.id ?? `ws_${m.ts ?? Date.now()}_${m.fromId}`,
                 fromId: m.fromId,
                 toId: null,
                 content,
@@ -161,6 +162,15 @@ Page({
               /* ignore */
             }
           }
+        } else if (m.type === 'room-revoke' && m.roomId === roomId && m.messageId) {
+          // P2-11 撤回实时同步：其他成员撤回消息时，本地标记[已撤回]
+          this.setData({
+            messages: this.data.messages.map((msg) =>
+              msg.id === m.messageId
+                ? { ...msg, deleted: true, content: '[已撤回]', contentText: '[已撤回]' }
+                : msg,
+            ),
+          });
         }
       });
     } catch {
@@ -286,8 +296,7 @@ Page({
     this.setData({ sending: true });
     try {
       const m = await sendGroupMessage(this.groupId, content, 'text');
-      // P2-11 WS 实时广播给群内其他成员
-      sendRoomMessage(`group:${this.groupId}`, content, 'text');
+      // P2-11 后端 sendGroupMessage 已主动广播给群内其他成员，前端不再 WS 双发
       this.setData({
         messages: [
           {
@@ -327,7 +336,7 @@ Page({
       if (!f) return;
       const url = await uploadImage(f.tempFilePath);
       const m = await sendGroupMessage(this.groupId, url, 'image');
-      sendRoomMessage(`group:${this.groupId}`, url, 'image');
+      // P2-11 后端已主动广播，前端不双发
       this.setData({
         messages: [
           {

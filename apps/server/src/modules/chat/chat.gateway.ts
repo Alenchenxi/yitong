@@ -221,9 +221,9 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
     for (const c of set) this.send(c, payload);
   }
 
-  // 对外广播（业务层系统消息等）：向房间所有在线成员推帧，不排除任何人
-  broadcastToRoom(roomId: string, payload: unknown) {
-    this.broadcastRoom(roomId, payload);
+  // 对外广播（业务层消息/系统消息）：向房间在线成员推帧，可排除指定 identifier（如发送方）
+  broadcastToRoom(roomId: string, payload: unknown, exclude?: string) {
+    this.broadcastRoom(roomId, payload, exclude);
   }
 
   private broadcastRoom(roomId: string, payload: unknown, exclude?: string) {

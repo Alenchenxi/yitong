@@ -31,6 +31,8 @@ export interface WsMessage {
   duration?: number; // P1-18 语音时长（秒），仅 msgType=voice
   ts?: number;
   reason?: string;
+  id?: string; // P2-11 群消息真实 DB id（后端广播带，撤回匹配用）
+  messageId?: string; // P2-11 撤回广播带
   [k: string]: unknown;
 }
 
@@ -146,6 +148,7 @@ function handleMessage(m: WsMessage) {
       onMessageCb?.(m);
       break;
     case 'room-msg':
+    case 'room-revoke':
       onRoomMessageCb?.(m);
       break;
     case 'joined':

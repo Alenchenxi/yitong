@@ -142,6 +142,26 @@ export class ChatService {
     const m = await this.prisma.chatMessage.create({
       data: { fromId, toId: null, groupId, content, type: msgType },
     });
+    // P2-11 实时广播给群房间在线成员（排除发送方，发送方靠前端乐观更新）；离线成员靠历史拉取。
+    // 由后端主动广播，不依赖发送方前端 WS 双发，避免发送方 WS 断连时其他人收不到实时推送。
+    // payload 带 id（真实 DB id），前端撤回广播靠它匹配。
+    try {
+      this.gateway.broadcastToRoom(
+        `group:${groupId}`,
+        {
+          type: 'room-msg',
+          roomId: `group:${groupId}`,
+          id: m.id,
+          fromId: m.fromId,
+          content: m.content,
+          msgType,
+          ts: Date.now(),
+        },
+        m.fromId,
+      );
+    } catch {
+      /* 广播失败不影响落库 */
+    }
     return this.toMsgVo(m);
   }
 
@@ -210,6 +230,23 @@ export class ChatService {
       where: { id: messageId },
       data: { deletedAt: new Date(), content: '[已撤回]' },
     });
+    // P2-11 群消息撤回实时同步：广播给群房间其他在线成员（排除操作方）；1v1 消息无 groupId 不广播
+    if (m.groupId) {
+      try {
+        this.gateway.broadcastToRoom(
+          `group:${m.groupId}`,
+          {
+            type: 'room-revoke',
+            roomId: `group:${m.groupId}`,
+            messageId: m.id,
+            ts: Date.now(),
+          },
+          operatorId,
+        );
+      } catch {
+        /* 广播失败不影响撤回落库 */
+      }
+    }
     return this.toMsgVo(updated);
   }
 
