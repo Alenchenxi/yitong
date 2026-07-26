@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../../app';
 import { listJobPosts, type JobPostVo } from '../../../services/job';
+import { getMerchantProfile } from '../../../services/merchant';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '待发布',
@@ -12,11 +13,29 @@ Page({
   data: {
     posts: [] as Array<JobPostVo & { statusText: string }>,
     loading: false,
+    settled: false, // 入驻探测完成（已入驻 true / 未入驻将跳走）
   },
 
-  async onShow() {
+  onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    // 商家首页：未入驻直接跳入驻页（getMerchantProfile 未入驻抛 60002）
+    getMerchantProfile()
+      .then(() => {
+        this.setData({ settled: true });
+        this.load();
+      })
+      .catch(() => {
+        wx.redirectTo({ url: '/pages/merchant/register/index' });
+      });
+  },
+
+  onShow() {
+    if (this.data.settled) this.load();
+  },
+
+  async load() {
+    this.setData({ loading: true });
     try {
       const resp = await listJobPosts({ mine: true });
       this.setData({
@@ -24,6 +43,8 @@ Page({
       });
     } catch {
       /* toast */
+    } finally {
+      this.setData({ loading: false });
     }
   },
 
