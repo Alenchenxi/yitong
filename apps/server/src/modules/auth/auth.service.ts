@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { MerchantStatus, Role, type User } from '@prisma/client';
+import { Role, type User } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReferralService } from '../referral/referral.service';
@@ -134,24 +134,17 @@ export class AuthService {
     const role = ROLE_MAP[roleKey];
     if (!role) throw new BizException(10004, '角色不合法');
 
-    if (role === Role.ADMIN) {
+    // 运行模式：MODE !== 'prod' 视为 dev，跳过 admin 权限校验，方便本地直接点角色进入；
+    // prod 保留 admin 校验（openid 预绑定）。merchant 登录不校验入驻：未入驻也可进商家端，
+    // 由前端商家首页探测 getMerchantProfile 跳入驻页 + 各商家接口校验 Merchant 存在性（60002）兜底。
+    const isDev = this.config.get<string>('MODE') !== 'prod';
+
+    if (!isDev && role === Role.ADMIN) {
       const admin = await this.prisma.adminUser.findFirst({ where: { openid } });
       if (!admin) {
         throw new BizException(
           10003,
           '该微信号未绑定管理员，无权以管理员身份登录',
-          HttpStatus.FORBIDDEN,
-        );
-      }
-    }
-
-    if (role === Role.MERCHANT) {
-      // 商家角色需 Merchant 审核通过（入驻由 feat/merchant，审核由 feat/admin）
-      const m = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-      if (!m || m.status !== MerchantStatus.APPROVED) {
-        throw new BizException(
-          60003,
-          '未入驻或商家资质未审核通过，无权以商家身份登录',
           HttpStatus.FORBIDDEN,
         );
       }
