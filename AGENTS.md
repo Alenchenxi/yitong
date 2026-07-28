@@ -100,3 +100,13 @@
 3. 只报告事实（通过 / 失败 + 命令输出证据），**不做合并 / 提交决策**。
 4. 测试起 server 用 `npx nest start`，测完 `kill` 进程；**不碰 docker、不碰 git**。
 5. 不确定就停下问主代理，不要自作主张。
+6. **测试数据清理（强制）**：测试过程中**子代理插入的所有测试数据**（prisma.create / SQL INSERT / API POST 创建的记录），**测试完毕必须清理**（deleteMany / DELETE SQL / API DELETE / seed 重置），不留任何残留。覆盖范围至少包括：
+   - 业务流水：User / Post / Comment / AnonymousProfile / AnonymousPost / ChatMatch / ChatMessage / JobPost / JobApplication / PaymentOrder / Notification 等
+   - 配置类：AnonTag / HotSearch / SearchHistory / PricingConfig / AdminUser 等（即使 seed 也会重建，测试中手工插入的脏词也必须清）
+   - 副作用类：触发的搜索行为写入 `search_histories`、点赞 / 评论 / 关注等计数（库内 likeCount / followerCount 等需在删除主记录前先归零或级联删除）
+   - 文件类：测试中上传到 COS / 本地的图片 / 文件，删记录的同时删文件
+7. **清理后必须自验证**：用 prisma client / SQL 复查目标表，确认测试数据已不存在；自验证通过后再报告「清理完成」。
+8. **清理失败必须上报**：若因 FK 约束、级联失败等导致部分记录未清，**不得静默跳过**——列出失败项 + 原因，请求主代理决策（人工 SQL 清理 / 改 schema 级联 / 接受残留）。
+9. **报告格式**：测试报告必须包含独立的「清理清单」一节，逐项列出 `表名 / 操作 / 涉及行数 / 验证结果`；缺这一节视为测试未完成。
+
+> 起因：2026-07-28 用户发现树洞心情 chips 有 `ok / 优e25ozm / 优trrsra / t07w3nzc3t7` 4 条非 seed 脏数据 + `pricing_config.D30` 被改 120 + `hot_searches` 有 `kw_xxxxxxxx` 测试残留，排查溯源为此前某轮测试子代理未清理数据库。本次明确写入强制约束并要求清理报告入测试产出。
