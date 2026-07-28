@@ -25,14 +25,8 @@ Page({
     const app = getApp<AppInstance>();
     try {
       await app.loginWithRole(role, this.data.referralCode || undefined);
-      // 按角色分流落地页：user 进表白墙(tabBar)，merchant 进招聘列表(商家首页)，admin 进管理端
-      if (role === 'merchant') {
-        wx.reLaunch({ url: '/pages/job/manage/index' });
-      } else if (role === 'admin') {
-        wx.reLaunch({ url: '/pages/admin/index' });
-      } else {
-        wx.switchTab({ url: '/pages/confession/index' });
-      }
+      // 按角色分流落地页（与 onLaunch 恢复登录态共用 routeToRoleHome，避免逻辑漂移）
+      app.routeToRoleHome(role);
     } catch {
       // toast 已在 loginWithRole 内
     } finally {
