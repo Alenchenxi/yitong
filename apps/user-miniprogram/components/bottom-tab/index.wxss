@@ -1,0 +1,33 @@
+.bt {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: #ffffff;
+  border-top: 1rpx solid var(--yt-border, #f0f0f0);
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100;
+}
+.bt-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14rpx 0 10rpx;
+  color: var(--yt-text-weak, #86909c);
+  font-size: 22rpx;
+}
+.bt-item.bt-active {
+  color: var(--yt-primary, #f9c801);
+  font-weight: 600;
+}
+.bt-icon {
+  width: 44rpx;
+  height: 44rpx;
+  margin-bottom: 4rpx;
+}
+.bt-label {
+  line-height: 1.2;
+}

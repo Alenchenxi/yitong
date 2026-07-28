@@ -1,17 +1,8 @@
 import type { AppInstance } from '../../app';
 import { listNotifications } from '../../services/notification';
 
-interface RoleItem {
-  key: 'user' | 'merchant' | 'admin';
-  label: string;
-  current: boolean;
-}
-
 function roleLabel(r: string): string {
   return r === 'USER' ? '普通用户' : r === 'MERCHANT' ? '商家' : r === 'ADMIN' ? '管理员' : r;
-}
-function roleKey(r: string): 'user' | 'merchant' | 'admin' {
-  return r === 'USER' ? 'user' : r === 'MERCHANT' ? 'merchant' : 'admin';
 }
 
 Page({
@@ -20,7 +11,6 @@ Page({
     avatarChar: '?',
     currentRole: '',
     roleText: '',
-    roleList: [] as RoleItem[],
     unreadCount: 0,
   },
 
@@ -29,13 +19,11 @@ Page({
     if (!app.requireAuth()) return;
     const u = app.globalData.user;
     const currentRole = app.globalData.currentRole;
-    const roles = u?.roles ?? [];
     this.setData({
       user: u,
       avatarChar: u ? u.nickname.slice(0, 1) : '?',
       currentRole,
       roleText: roleLabel(currentRole),
-      roleList: roles.map((r) => ({ key: roleKey(r), label: roleLabel(r), current: r === currentRole })),
     });
     try {
       const resp = await listNotifications(false, 1);
@@ -92,31 +80,6 @@ Page({
 
   goAdmin() {
     wx.navigateTo({ url: '/pages/admin/index' });
-  },
-
-  async switchRole(e: WechatMiniprogram.TouchEvent) {
-    const role = e.currentTarget.dataset.role as 'user' | 'merchant' | 'admin';
-    const app = getApp<AppInstance>();
-    if (role === roleKey(app.globalData.currentRole)) return;
-    wx.showLoading({ title: '切换中…', mask: true });
-    try {
-      await app.switchRole(role);
-      const cur = app.globalData.currentRole;
-      this.setData({
-        currentRole: cur,
-        roleText: roleLabel(cur),
-        roleList: (app.globalData.user?.roles ?? []).map((r) => ({
-          key: roleKey(r),
-          label: roleLabel(r),
-          current: r === cur,
-        })),
-      });
-      wx.showToast({ title: '已切换', icon: 'success' });
-    } catch {
-      // toast 已弹
-    } finally {
-      wx.hideLoading();
-    }
   },
 
   logout() {

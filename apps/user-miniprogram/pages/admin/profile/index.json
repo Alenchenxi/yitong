@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "我的岗位",
+  "navigationBarTitleText": "我的",
   "usingComponents": {
     "bottom-tab": "/components/bottom-tab/index"
   }

@@ -9,20 +9,6 @@
     </view>
   </view>
 
-  <!-- 切换角色 -->
-  <view class="section yt-card" wx:if="{{roleList.length > 0}}">
-    <view class="section-title">切换角色</view>
-    <view class="role-list">
-      <view
-        wx:for="{{roleList}}"
-        wx:key="key"
-        class="role-item {{item.current ? 'current' : ''}}"
-        data-role="{{item.key}}"
-        bindtap="switchRole"
-      >{{item.label}}{{item.current ? ' · 当前' : ''}}</view>
-    </view>
-  </view>
-
   <!-- 我的内容 -->
   <view class="section yt-card">
     <view class="section-title">我的内容</view>

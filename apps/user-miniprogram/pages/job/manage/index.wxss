@@ -1,4 +1,4 @@
-.page { padding: 24rpx; }
+.page { padding: 24rpx; padding-bottom: 160rpx; box-sizing: border-box; min-height: 100vh; }
 .hint { color: #999; font-size: 24rpx; margin-bottom: 16rpx; }
 .card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
 .title { font-size: 30rpx; font-weight: 600; color: #222; }

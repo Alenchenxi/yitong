@@ -59,9 +59,23 @@ import {
 
 type Tab = 'queue' | 'stats' | 'pricing' | 'announce' | 'reports' | 'tickets' | 'users' | 'activity' | 'topic' | 'tags' | 'jobs' | 'comments';
 
+// 管理端底部 tab：审核 / 看板 / 岗位 / 我的
+// 注：跳转路径带 ?tab=xxx，进入时通过 onLoad options.tab 设置默认 tab，
+// 与页面内已有横向 scroll-view tab 配合：底部 tab 控制入口，内部横向 tab 控细粒度。
+const ADMIN_TABS = [
+  { path: '/pages/admin/index', label: '审核' },
+  { path: '/pages/admin/index?tab=stats', label: '看板' },
+  { path: '/pages/admin/index?tab=jobs', label: '岗位' },
+  { path: '/pages/admin/profile/index', label: '我的' },
+];
+
+const ALLOWED_TABS: Tab[] = ['queue', 'stats', 'pricing', 'announce', 'reports', 'tickets', 'users', 'activity', 'topic', 'tags', 'jobs', 'comments'];
+
 Page({
   data: {
     tab: 'queue' as Tab,
+    tabs: ADMIN_TABS,
+    current: 'pages/admin/index',
     queue: null as AdminQueueVo | null,
     pricing: [] as PricingVo[],
     stats: null as DashboardStats | null,
@@ -120,6 +134,17 @@ Page({
     commentAuthorId: '',
     commentAuthorNickname: '',
     commentPostTitleKw: '',
+  },
+
+  onLoad(options?: { tab?: string }) {
+    // 支持从底部 tab 跳转过来带 ?tab=stats / ?tab=jobs / ...
+    // 同步更新 current 让 BottomTab 正确高亮（?tab=stats → "看板"高亮，?tab=jobs → "岗位"高亮）
+    const t = options?.tab as Tab | undefined;
+    if (t && ALLOWED_TABS.includes(t)) {
+      this.setData({ tab: t, current: `pages/admin/index?tab=${t}` });
+    } else {
+      this.setData({ current: 'pages/admin/index' });
+    }
   },
 
   async onShow() {

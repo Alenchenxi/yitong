@@ -10,4 +10,8 @@
     <button wx:if="{{item.status === 'PENDING'}}" class="pay-btn" size="mini" catchtap="goPay" data-id="{{item.id}}" data-dur="{{item.duration}}">付费发布</button>
   </view>
   <view class="empty" wx:if="{{posts.length === 0}}">还没发布过岗位</view>
+  <bottom-tab
+    tabs="{{tabs}}"
+    current="{{current}}"
+  ></bottom-tab>
 </view>
