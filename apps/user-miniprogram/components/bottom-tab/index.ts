@@ -34,11 +34,10 @@ Component({
   },
 
   observers: {
-    'current, tabs': function (current: string, tabs: TabItem[]) {
-      // this.data 在 observers 中已同步，参数仅用于触发监听
-      void tabs;
+    // 仅监听 current；tabs 在 attached 时一次性计算高亮，避免 observer 触发 recompute 后
+    // setData({ tabs }) 改变 tabs 引用再次触发 observer 造成无限 setData 卡死。
+    current: function () {
       this.recompute();
-      void current;
     },
   },
 
