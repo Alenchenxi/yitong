@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../../app';
-import { listJobPosts, type JobPostVo } from '../../../services/job';
+import { listJobPosts, getMerchantDashboard, type JobPostVo, type MerchantDashboardVo } from '../../../services/job';
 import { getMerchantProfile } from '../../../services/merchant';
 
 const STATUS_TEXT: Record<string, string> = {
@@ -21,6 +21,7 @@ const MERCHANT_TABS = [
 Page({
   data: {
     posts: [] as Array<JobPostVo & { statusText: string }>,
+    dashboard: null as MerchantDashboardVo | null,
     loading: false,
     settled: false, // 入驻探测完成（已入驻 true / 未入驻将跳走）
     tabs: MERCHANT_TABS,
@@ -48,12 +49,14 @@ Page({
   async load() {
     this.setData({ loading: true });
     try {
-      const resp = await listJobPosts({ mine: true });
+      const [postsResp, dashboard] = await Promise.all([
+        listJobPosts({ mine: true }).catch(() => ({ list: [] as JobPostVo[] })),
+        getMerchantDashboard('all').catch(() => null),
+      ]);
       this.setData({
-        posts: resp.list.map((p) => ({ ...p, statusText: STATUS_TEXT[p.status] ?? p.status })),
+        posts: postsResp.list.map((p) => ({ ...p, statusText: STATUS_TEXT[p.status] ?? p.status })),
+        dashboard,
       });
-    } catch {
-      /* toast */
     } finally {
       this.setData({ loading: false });
     }
@@ -67,5 +70,9 @@ Page({
   goPay(e: WechatMiniprogram.TouchEvent) {
     const { id, dur } = e.currentTarget.dataset as { id: string; dur: string };
     wx.navigateTo({ url: `/pages/payment/index?jobPostId=${id}&duration=${dur}` });
+  },
+
+  goPost() {
+    wx.navigateTo({ url: '/pages/job/post/index' });
   },
 });

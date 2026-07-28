@@ -26,8 +26,18 @@ Page({
     });
   },
 
-  goProfile() {
-    wx.navigateTo({ url: '/pages/profile/index' });
+  // 管理快捷入口：跳到 admin/index 并指定默认 tab
+  goAdmin(e: WechatMiniprogram.TouchEvent) {
+    const tab = e.currentTarget.dataset.tab as string;
+    if (!tab) {
+      wx.reLaunch({ url: '/pages/admin/index' });
+      return;
+    }
+    wx.reLaunch({ url: `/pages/admin/index?tab=${tab}` });
+  },
+
+  goAccountSecurity() {
+    wx.navigateTo({ url: '/pages/account-security/index' });
   },
 
   logout() {

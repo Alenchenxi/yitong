@@ -1,12 +1,137 @@
 .page { padding: 24rpx; padding-bottom: 160rpx; box-sizing: border-box; min-height: 100vh; }
-.hint { color: #999; font-size: 24rpx; margin-bottom: 16rpx; }
-.card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
-.title { font-size: 30rpx; font-weight: 600; color: #222; }
-.meta { display: flex; justify-content: space-between; align-items: center; margin-top: 12rpx; }
-.salary { color: #ff4d6d; font-size: 28rpx; font-weight: 600; }
-.status { font-size: 22rpx; padding: 4rpx 14rpx; border-radius: 20rpx; background: #f5f6f8; color: #666; }
-.status-PUBLISHED { color: #fff; background: #52c41a; }
-.status-EXPIRED, .status-TAKEN_DOWN { color: #999; }
-.dur { font-size: 22rpx; color: #999; margin-top: 8rpx; }
-.pay-btn { margin-top: 16rpx; background: #ff4d6d !important; color: #fff !important; border-radius: 32rpx !important; font-size: 24rpx !important; }
-.empty { text-align: center; color: #999; padding-top: 200rpx; font-size: 28rpx; }
+
+/* 顶部 banner */
+.banner {
+  background: linear-gradient(135deg, #ffe27a, var(--yt-primary, #f9c801));
+  border-radius: 20rpx;
+  padding: 36rpx 32rpx;
+  margin-bottom: 24rpx;
+  color: var(--yt-text-main, #1d2129);
+}
+.banner-title {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+.banner-sub {
+  font-size: 24rpx;
+  margin-top: 8rpx;
+  opacity: 0.8;
+}
+.post-btn {
+  margin-top: 24rpx;
+  background: var(--yt-text-main, #1d2129) !important;
+  color: #fff !important;
+  border-radius: 999rpx !important;
+  font-size: 28rpx !important;
+  height: 72rpx !important;
+  line-height: 72rpx !important;
+}
+
+/* 数据概览 */
+.stats {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+.stat {
+  flex: 1;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.stat-num {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--yt-text-main, #1d2129);
+}
+.stat-num.highlight {
+  color: var(--yt-danger, #e63946);
+}
+.stat-label {
+  font-size: 22rpx;
+  color: var(--yt-text-weak, #86909c);
+  margin-top: 4rpx;
+}
+
+/* 列表区 */
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--yt-text-main, #1d2129);
+  margin-bottom: 16rpx;
+}
+.section-extra {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: var(--yt-text-weak, #86909c);
+}
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+}
+.title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--yt-text-main, #1d2129);
+}
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12rpx;
+}
+.salary {
+  color: var(--yt-danger, #e63946);
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.status {
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+  background: var(--yt-disabled-bg, #f5f6f8);
+  color: var(--yt-text-body, #666);
+}
+.status-PUBLISHED {
+  color: #fff;
+  background: #52c41a;
+}
+.status-EXPIRED,
+.status-TAKEN_DOWN {
+  color: var(--yt-text-weak, #86909c);
+}
+.dur {
+  font-size: 22rpx;
+  color: var(--yt-text-weak, #86909c);
+  margin-top: 8rpx;
+}
+.pay-btn {
+  margin-top: 16rpx;
+  background: var(--yt-danger, #e63946) !important;
+  color: #fff !important;
+  border-radius: 32rpx !important;
+  font-size: 24rpx !important;
+}
+
+/* 空状态 */
+.empty {
+  text-align: center;
+  padding: 80rpx 0 200rpx;
+}
+.empty-title {
+  font-size: 30rpx;
+  color: var(--yt-text-main, #1d2129);
+  margin-bottom: 8rpx;
+}
+.empty-sub {
+  font-size: 24rpx;
+  color: var(--yt-text-weak, #86909c);
+}

@@ -1,8 +1,35 @@
 <view class="page">
-  <view class="empty">
-    <view class="empty-title">候选人管理开发中</view>
-    <view class="empty-sub">敬请期待</view>
+  <view class="banner">
+    <view class="banner-title">候选人管理</view>
+    <view class="banner-sub">查看报名学生、录用、标记完成</view>
   </view>
+
+  <view class="section yt-card">
+    <view class="section-title">候选人从哪里来</view>
+    <view class="row">
+      <text class="row-num">1</text>
+      <view class="row-main">
+        <view class="row-title">从已发布的岗位报名</view>
+        <view class="row-sub">用户在「兼职」tab 看到你的岗位并报名</view>
+      </view>
+    </view>
+    <view class="row">
+      <text class="row-num">2</text>
+      <view class="row-main">
+        <view class="row-title">进入「职位」tab 查看</view>
+        <view class="row-sub">点岗位 → 进入详情 → 报名管理</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section yt-card">
+    <view class="section-title">候选人筛选（开发中）</view>
+    <view class="placeholder">
+      <view class="placeholder-title">统一候选人列表</view>
+      <view class="placeholder-sub">跨岗位聚合候选人 · 状态筛选 · 录用进度</view>
+    </view>
+  </view>
+
   <bottom-tab
     tabs="{{tabs}}"
     current="{{current}}"

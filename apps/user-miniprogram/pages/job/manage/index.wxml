@@ -1,5 +1,35 @@
 <view class="page">
-  <view class="hint">点击岗位进入报名管理（录用 / 标记完成）</view>
+  <!-- 顶部 banner + 发岗按钮 -->
+  <view class="banner">
+    <view class="banner-title">商家招聘工作台</view>
+    <view class="banner-sub">发布岗位 · 收到报名 · 录用学生</view>
+    <button class="post-btn" bindtap="goPost">+ 发布新岗位</button>
+  </view>
+
+  <!-- 数据概览 -->
+  <view class="stats" wx:if="{{dashboard}}">
+    <view class="stat">
+      <text class="stat-num">{{dashboard.viewCount}}</text>
+      <text class="stat-label">浏览</text>
+    </view>
+    <view class="stat">
+      <text class="stat-num">{{dashboard.applicationCount}}</text>
+      <text class="stat-label">总报名</text>
+    </view>
+    <view class="stat">
+      <text class="stat-num highlight">{{dashboard.pendingCount}}</text>
+      <text class="stat-label">待处理</text>
+    </view>
+    <view class="stat">
+      <text class="stat-num">{{dashboard.acceptedCount}}</text>
+      <text class="stat-label">已录用</text>
+    </view>
+  </view>
+
+  <view class="section-title">
+    <text>我的岗位</text>
+    <text class="section-extra">{{posts.length}} 个</text>
+  </view>
   <view class="card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
     <view class="title">{{item.title}}</view>
     <view class="meta">
@@ -9,7 +39,11 @@
     <view class="dur">{{item.duration === 'D90' ? '90 天' : '30 天'}} · {{item.location}}</view>
     <button wx:if="{{item.status === 'PENDING'}}" class="pay-btn" size="mini" catchtap="goPay" data-id="{{item.id}}" data-dur="{{item.duration}}">付费发布</button>
   </view>
-  <view class="empty" wx:if="{{posts.length === 0}}">还没发布过岗位</view>
+  <view class="empty" wx:if="{{posts.length === 0}}">
+    <view class="empty-title">还没有岗位</view>
+    <view class="empty-sub">点上方按钮发布第一个岗位</view>
+  </view>
+
   <bottom-tab
     tabs="{{tabs}}"
     current="{{current}}"
