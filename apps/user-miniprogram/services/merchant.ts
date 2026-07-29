@@ -55,3 +55,41 @@ export function getMerchantReviews() {
 export function getMerchantOrders() {
   return request<MerchantOrderVo[]>({ url: '/merchant/orders' });
 }
+
+// M2-01 跨岗位候选人聚合
+export interface MerchantCandidateVo {
+  id: string;
+  jobPostId: string;
+  jobPostTitle: string;
+  userId: string;
+  userNickname: string;
+  resumeId: string | null;
+  resume: { name: string; phone: string; selfIntro: string | null; skills: string[] } | null;
+  status: 'PENDING' | 'ACCEPTED' | 'DONE' | 'CANCELLED' | 'REJECTED';
+  createdAt: string;
+}
+
+export interface MerchantCandidatePage {
+  list: MerchantCandidateVo[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface MerchantCandidateFilter {
+  jobPostId?: string;
+  status?: MerchantCandidateVo['status'];
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export function listMerchantCandidates(filter: MerchantCandidateFilter = {}) {
+  const params: string[] = [];
+  if (filter.jobPostId) params.push(`jobPostId=${encodeURIComponent(filter.jobPostId)}`);
+  if (filter.status) params.push(`status=${filter.status}`);
+  if (filter.keyword) params.push(`keyword=${encodeURIComponent(filter.keyword)}`);
+  params.push(`page=${filter.page ?? 1}`);
+  params.push(`pageSize=${filter.pageSize ?? 20}`);
+  return request<MerchantCandidatePage>({ url: `/merchant/candidates?${params.join('&')}` });
+}

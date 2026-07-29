@@ -3,9 +3,10 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { MerchantStatus, Role } from '@prisma/client';
+import { AppStatus, MerchantStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { ListCandidatesDto } from './dto/list-candidates.dto';
 import type { RegisterMerchantDto } from './dto/register-merchant.dto';
 import type { UpdateMerchantDto } from './dto/update-merchant.dto';
 
@@ -86,6 +87,76 @@ export class MerchantService {
       jobPostTitle: postMap.get(r.application.jobPostId) ?? '',
       reviewerNickname: r.application.user?.nickname ?? '',
     }));
+  }
+
+  // M2-01 跨岗位候选人聚合：商家按岗位 / 状态 / 关键词分页查询自己所有岗位的报名候选人
+  async listCandidates(uid: string, dto: ListCandidatesDto) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+
+    const keyword = dto.keyword?.trim();
+    const where: Prisma.JobApplicationWhereInput = {
+      jobPost: { merchantId: merchant.id },
+      ...(dto.jobPostId ? { jobPostId: dto.jobPostId } : {}),
+      ...(dto.status ? { status: dto.status as AppStatus } : {}),
+      ...(keyword
+        ? {
+            OR: [
+              { user: { nickname: { contains: keyword, mode: 'insensitive' } } },
+              { jobPost: { title: { contains: keyword, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+
+    const page = dto.page ?? 1;
+    const pageSize = dto.pageSize ?? 20;
+    const [total, apps] = await Promise.all([
+      this.prisma.jobApplication.count({ where }),
+      this.prisma.jobApplication.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          user: { select: { nickname: true } },
+          jobPost: { select: { title: true } },
+        },
+      }),
+    ]);
+
+    // 简历快照（与 job.service listApplications 同口径：name/phone/selfIntro/skills）
+    const resumeIds = [...new Set(apps.map((a) => a.resumeId).filter((id): id is string => !!id))];
+    const resumes =
+      resumeIds.length > 0
+        ? await this.prisma.resume.findMany({
+            where: { id: { in: resumeIds } },
+            select: { id: true, name: true, phone: true, selfIntro: true, skills: true },
+          })
+        : [];
+    const resumeMap = new Map(resumes.map((r) => [r.id, r]));
+
+    return {
+      list: apps.map((a) => {
+        const resume = a.resumeId ? (resumeMap.get(a.resumeId) ?? null) : null;
+        return {
+          id: a.id,
+          jobPostId: a.jobPostId,
+          jobPostTitle: a.jobPost?.title ?? '',
+          userId: a.userId,
+          userNickname: a.user?.nickname ?? '',
+          resumeId: a.resumeId,
+          resume: resume
+            ? { name: resume.name, phone: resume.phone, selfIntro: resume.selfIntro, skills: resume.skills }
+            : null,
+          status: a.status,
+          createdAt: a.createdAt.toISOString(),
+        };
+      }),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   // 商家订单记录（付费发布历史）
