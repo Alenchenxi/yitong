@@ -6,6 +6,7 @@ import {
 import { AppStatus, FitMark, MerchantStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationType } from '../notification/notification.service';
 import type {
   BatchMarkDto,
   ListCandidatesDto,
@@ -324,6 +325,139 @@ export class MerchantService {
       jobPostTitle,
       contactedAt: a.contactedAt?.toISOString() ?? null,
       fitMark: a.fitMark,
+    };
+  }
+
+  // M2-07 候选人详情：简历 + 报名问题 + 岗位信息 + 处理记录（通知历史 + 当前标记）
+  // 处理记录说明：状态流转来自通知表（JOB_ACCEPT/JOB_REJECT/JOB_COMPLETE），联系时间取 contactedAt；fitMark 仅当前态无历史故不入时间线
+  async getCandidateDetail(uid: string, appId: string) {
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: appId },
+      include: {
+        user: { select: { id: true, nickname: true, avatarUrl: true } },
+        jobPost: {
+          select: {
+            id: true,
+            merchantId: true,
+            title: true,
+            description: true,
+            requirements: true,
+            salary: true,
+            location: true,
+            category: true,
+            settlement: true,
+            workDates: true,
+            workPeriods: true,
+            headcount: true,
+            urgent: true,
+            online: true,
+            questions: true,
+            expireAt: true,
+            status: true,
+          },
+        },
+      },
+    });
+    if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
+
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    if (app.jobPost.merchantId !== merchant.id) {
+      throw new BizException(10003, '无权查看此报名', HttpStatus.FORBIDDEN);
+    }
+
+    // 简历无 Prisma relation，需单独查
+    const resumeRow = app.resumeId
+      ? await this.prisma.resume.findUnique({ where: { id: app.resumeId } })
+      : null;
+    const resumeVo = resumeRow ? this.toResumeVo(resumeRow) : null;
+
+    // 状态流转历史：商家发给学生的通知（JOB_ACCEPT/REJECT/COMPLETE），targetType=application, targetId=appId
+    const statusNotifs = await this.prisma.notification.findMany({
+      where: {
+        targetType: 'application',
+        targetId: appId,
+        type: { in: [NotificationType.JOB_ACCEPT, NotificationType.JOB_REJECT, NotificationType.JOB_COMPLETE] },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { type: true, createdAt: true },
+    });
+
+    const history: Array<{ type: 'STATUS' | 'CONTACT'; action: string; label: string; at: string }> = [
+      { type: 'STATUS', action: 'APPLY', label: '提交报名', at: app.createdAt.toISOString() },
+      ...statusNotifs.map((n) => {
+        const label =
+          n.type === NotificationType.JOB_ACCEPT
+            ? '商家录用'
+            : n.type === NotificationType.JOB_REJECT
+              ? '商家未录用'
+              : '商家标记完成';
+        return { type: 'STATUS' as const, action: n.type, label, at: n.createdAt.toISOString() };
+      }),
+      ...(app.contactedAt
+        ? [{ type: 'CONTACT' as const, action: 'CONTACT', label: '已标记联系', at: app.contactedAt.toISOString() }]
+        : []),
+    ];
+
+    // 报名问题回答：answers 是 JSON（与 questions 顺序对齐）；统一成 [{question, answer}]
+    const rawAnswers = app.answers;
+    const answers: Array<{ question: string; answer: string }> | null = Array.isArray(rawAnswers)
+      ? (rawAnswers as Array<{ question?: string; answer?: string }>).map((a, i) => ({
+          question: a?.question ?? app.jobPost.questions?.[i] ?? `问题 ${i + 1}`,
+          answer: a?.answer ?? '',
+        }))
+      : null;
+
+    return {
+      id: app.id,
+      status: app.status,
+      createdAt: app.createdAt.toISOString(),
+      contactedAt: app.contactedAt?.toISOString() ?? null,
+      fitMark: app.fitMark,
+      user: app.user,
+      jobPost: {
+        ...app.jobPost,
+        expireAt: app.jobPost.expireAt.toISOString(),
+      },
+      resume: resumeVo,
+      answers,
+      history,
+    };
+  }
+
+  // 简历完整度计算（与 job.service toResumeVo 同步口径）
+  private toResumeVo(r: {
+    id: string;
+    name: string;
+    phone: string;
+    selfIntro: string | null;
+    skills: string[];
+    availabilities: string[];
+    experience: string | null;
+    updatedAt: Date;
+  }) {
+    const fields: Array<{ key: keyof typeof r; label: string; filled: boolean }> = [
+      { key: 'name', label: '姓名', filled: !!r.name?.trim() },
+      { key: 'phone', label: '联系方式', filled: !!r.phone?.trim() },
+      { key: 'selfIntro', label: '自我介绍', filled: !!r.selfIntro?.trim() },
+      { key: 'skills', label: '技能', filled: r.skills.length > 0 },
+      { key: 'availabilities', label: '空闲时间', filled: r.availabilities.length > 0 },
+      { key: 'experience', label: '工作经历', filled: !!r.experience?.trim() },
+    ];
+    const filledCount = fields.filter((f) => f.filled).length;
+    const completeness = Math.round((filledCount / fields.length) * 100);
+    const missingFields = fields.filter((f) => !f.filled).map((f) => f.label);
+    return {
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      selfIntro: r.selfIntro,
+      skills: r.skills,
+      availabilities: r.availabilities,
+      experience: r.experience,
+      completeness,
+      missingFields,
+      updatedAt: r.updatedAt.toISOString(),
     };
   }
 

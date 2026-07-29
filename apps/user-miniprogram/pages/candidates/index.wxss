@@ -283,11 +283,6 @@
   background: #ffece8;
   color: var(--yt-danger, #f53f3f);
 }
-.act-btn-link {
-  background: var(--yt-primary, #f9c801);
-  color: var(--yt-text-main, #1d2129);
-  font-weight: 600;
-}
 
 .empty {
   text-align: center;

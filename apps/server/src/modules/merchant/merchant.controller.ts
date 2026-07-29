@@ -70,6 +70,13 @@ export class MerchantController {
     return ok(await this.merchant.batchMark(uid, dto));
   }
 
+  // M2-07 候选人详情：简历 + 报名问题 + 岗位 + 处理记录（时间线）
+  @Get('candidates/:id')
+  async candidateDetail(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.merchant.getCandidateDetail(uid, id));
+  }
+
   @Get('orders')
   async orders(@Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;

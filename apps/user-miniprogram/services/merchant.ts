@@ -157,3 +157,56 @@ export function batchMarkCandidates(data: {
 }) {
   return request<BatchMarkResult>({ url: '/merchant/candidates/batch-mark', method: 'POST', data });
 }
+
+// M2-07 候选人详情
+export interface CandidateHistoryItem {
+  type: 'STATUS' | 'CONTACT';
+  action: string;
+  label: string;
+  at: string;
+}
+
+export interface MerchantCandidateDetailVo {
+  id: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DONE' | 'CANCELLED' | 'REJECTED';
+  createdAt: string;
+  contactedAt: string | null;
+  fitMark: 'FIT' | 'UNFIT' | null;
+  user: { id: string; nickname: string; avatarUrl: string | null };
+  jobPost: {
+    id: string;
+    title: string;
+    description: string;
+    requirements: string | null;
+    salary: string;
+    location: string;
+    category: string | null;
+    settlement: string | null;
+    workDates: string[];
+    workPeriods: string[];
+    headcount: number;
+    urgent: boolean;
+    online: boolean;
+    questions: string[];
+    expireAt: string;
+    status: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
+  };
+  resume: {
+    id: string;
+    name: string;
+    phone: string;
+    selfIntro: string | null;
+    skills: string[];
+    availabilities: string[];
+    experience: string | null;
+    completeness: number;
+    missingFields: string[];
+    updatedAt: string;
+  } | null;
+  answers: Array<{ question: string; answer: string }> | null;
+  history: CandidateHistoryItem[];
+}
+
+export function getMerchantCandidateDetail(id: string) {
+  return request<MerchantCandidateDetailVo>({ url: `/merchant/candidates/${id}` });
+}

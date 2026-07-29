@@ -236,9 +236,10 @@ Page({
       this.toggleSelect(e);
       return;
     }
-    const { jobPostId } = e.currentTarget.dataset as { jobPostId?: string };
-    if (!jobPostId) return;
-    wx.navigateTo({ url: `/pages/job/detail/index?id=${jobPostId}` });
+    // 非批量：跳候选人详情（M2-07）
+    const { id } = e.currentTarget.dataset as { id: string; jobPostId?: string };
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/candidates/detail/index?id=${id}` });
   },
 
   // M2-04 标记/取消 已联系

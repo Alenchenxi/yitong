@@ -99,11 +99,10 @@
       <view class="card-foot">
         <text>报名时间：{{item.createdAtText}}</text>
       </view>
-      <!-- 单条标记操作（非批量模式） -->
-      <view class="card-actions" wx:if="{{!batchMode}}" catchtap="onCardTap" data-job-post-id="{{item.jobPostId}}">
+      <!-- 单条标记操作（非批量模式）；卡片其他区域点击会跳详情 -->
+      <view class="card-actions" wx:if="{{!batchMode}}">
         <view class="act-btn {{item.contacted ? 'act-btn-on' : ''}}" data-id="{{item.id}}" data-idx="{{index}}" catchtap="onContactTap">已联系</view>
         <view class="act-btn {{item.fitMark === 'FIT' ? 'act-btn-fit' : item.fitMark === 'UNFIT' ? 'act-btn-unfit' : ''}}" data-id="{{item.id}}" data-idx="{{index}}" catchtap="onFitMarkTap">合适度</view>
-        <view class="act-btn act-btn-link">处理报名</view>
       </view>
     </view>
 

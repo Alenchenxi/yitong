@@ -26,6 +26,7 @@
     "pages/job/search/index",
     "pages/job/apply/index",
     "pages/candidates/index",
+    "pages/candidates/detail/index",
     "pages/resume/index",
     "pages/payment/index",
     "pages/treehole/post/index",

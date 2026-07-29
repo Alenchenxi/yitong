@@ -1,0 +1,111 @@
+<view class="page" wx:if="{{detail}}">
+  <!-- 头部：候选人 + 状态 + 标记 -->
+  <view class="header yt-card">
+    <view class="header-row">
+      <text class="nick">{{detail.user.nickname || '匿名用户'}}</text>
+      <text class="tag tag-{{detail.status}}">{{statusLabels[detail.status]}}</text>
+    </view>
+    <view class="marks">
+      <text wx:if="{{detail.contactedAt}}" class="mark mark-contacted">已联系</text>
+      <text wx:if="{{detail.fitMark === 'FIT'}}" class="mark mark-fit">合适</text>
+      <text wx:if="{{detail.fitMark === 'UNFIT'}}" class="mark mark-unfit">不合适</text>
+    </view>
+  </view>
+
+  <!-- 标记操作（独立区） -->
+  <view class="action-row">
+    <view class="action-btn {{detail.contactedAt ? 'action-on' : ''}}" catchtap="onContact">已联系</view>
+    <view class="action-btn {{detail.fitMark === 'FIT' ? 'action-fit' : detail.fitMark === 'UNFIT' ? 'action-unfit' : ''}}" catchtap="onFit">合适度</view>
+  </view>
+
+  <!-- 岗位信息 -->
+  <view class="section yt-card">
+    <view class="section-title">报名岗位</view>
+    <view class="line-bold" catchtap="onJobPost">{{detail.jobPost.title}}</view>
+    <view class="line-sub">薪资：{{detail.jobPost.salary}} · {{detail.jobPost.location}}</view>
+    <view class="line-sub" wx:if="{{detail.jobPost.settlement}}">结算：{{detail.jobPost.settlement === 'DAILY' ? '日结' : detail.jobPost.settlement === 'WEEKLY' ? '周结' : detail.jobPost.settlement === 'MONTHLY' ? '月结' : '完工结'}}</view>
+    <view class="line-sub" wx:if="{{detail.jobPost.workDates && detail.jobPost.workDates.length}}">日期：{{detail.jobPost.workDates.join('、')}}</view>
+    <view class="line-sub" wx:if="{{detail.jobPost.workPeriods && detail.jobPost.workPeriods.length}}">时段：{{detail.jobPost.workPeriods.join('、')}}</view>
+    <view class="line-sub" wx:if="{{detail.jobPost.headcount}}">人数：{{detail.jobPost.headcount}}</view>
+    <view class="block">
+      <view class="block-title">工作内容</view>
+      <view class="block-text">{{detail.jobPost.description}}</view>
+    </view>
+    <view class="block" wx:if="{{detail.jobPost.requirements}}">
+      <view class="block-title">任职要求</view>
+      <view class="block-text">{{detail.jobPost.requirements}}</view>
+    </view>
+  </view>
+
+  <!-- 简历 -->
+  <view class="section yt-card" wx:if="{{detail.resume}}">
+    <view class="section-title">简历</view>
+    <view class="resume-top">
+      <view>
+        <view class="resume-name">{{detail.resume.name}}</view>
+        <view class="line-sub" catchtap="onPhoneCall">{{detail.resume.phone}}</view>
+      </view>
+      <view class="resume-score">
+        <view class="resume-score-num">{{detail.resume.completeness}}%</view>
+        <view class="resume-score-text">完整度</view>
+      </view>
+    </view>
+    <view class="block" wx:if="{{detail.resume.skills && detail.resume.skills.length}}">
+      <view class="block-title">技能</view>
+      <view class="tag-row">
+        <text wx:for="{{detail.resume.skills}}" wx:key="*this" class="chip">{{item}}</text>
+      </view>
+    </view>
+    <view class="block" wx:if="{{detail.resume.availabilities && detail.resume.availabilities.length}}">
+      <view class="block-title">空闲时间</view>
+      <view class="tag-row">
+        <text wx:for="{{detail.resume.availabilities}}" wx:key="*this" class="chip">{{item}}</text>
+      </view>
+    </view>
+    <view class="block" wx:if="{{detail.resume.selfIntro}}">
+      <view class="block-title">自我介绍</view>
+      <view class="block-text">{{detail.resume.selfIntro}}</view>
+    </view>
+    <view class="block" wx:if="{{detail.resume.experience}}">
+      <view class="block-title">工作经历</view>
+      <view class="block-text">{{detail.resume.experience}}</view>
+    </view>
+    <view class="block" wx:if="{{detail.resume.missingFields && detail.resume.missingFields.length}}">
+      <view class="block-title missing">未填写</view>
+      <view class="line-sub">{{detail.resume.missingFields.join(' · ')}}</view>
+    </view>
+  </view>
+
+  <!-- 报名问题回答 -->
+  <view class="section yt-card" wx:if="{{detail.answers && detail.answers.length}}">
+    <view class="section-title">报名问题回答</view>
+    <view wx:for="{{detail.answers}}" wx:key="question" class="qa">
+      <view class="qa-q">问：{{item.question}}</view>
+      <view class="qa-a">{{item.answer || '（未填写）'}}</view>
+    </view>
+  </view>
+
+  <!-- 处理记录（时间线） -->
+  <view class="section yt-card" wx:if="{{detail.history && detail.history.length}}">
+    <view class="section-title">处理记录</view>
+    <view wx:for="{{detail.history}}" wx:key="at" class="timeline-item">
+      <view class="dot {{item.type === 'CONTACT' ? 'dot-contact' : 'dot-status'}}"></view>
+      <view class="timeline-main">
+        <view class="timeline-label">{{item.label}}</view>
+        <view class="timeline-time">{{item.at}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 状态流转操作 -->
+  <view class="status-actions" wx:if="{{detail.status === 'PENDING' || detail.status === 'ACCEPTED'}}">
+    <view class="status-action status-action-reject" wx:if="{{detail.status === 'PENDING'}}" catchtap="onReject">未录用</view>
+    <view class="status-action status-action-accept" wx:if="{{detail.status === 'PENDING'}}" catchtap="onAccept">录用</view>
+    <view class="status-action status-action-complete" wx:if="{{detail.status === 'ACCEPTED'}}" catchtap="onComplete">标记完成</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="bottom-tip">加载中…</view>
+</view>
+
+<view class="loading" wx:elif="{{!loaded}}">加载中…</view>
+<view class="loading" wx:elif="{{loaded && !detail}}">暂无数据</view>
