@@ -3,10 +3,16 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { AppStatus, MerchantStatus, Prisma, Role } from '@prisma/client';
+import { AppStatus, FitMark, MerchantStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { ListCandidatesDto } from './dto/list-candidates.dto';
+import type {
+  BatchMarkDto,
+  ListCandidatesDto,
+  ListViewersDto,
+  MarkContactedDto,
+  MarkFitDto,
+} from './dto/list-candidates.dto';
 import type { RegisterMerchantDto } from './dto/register-merchant.dto';
 import type { UpdateMerchantDto } from './dto/update-merchant.dto';
 
@@ -99,6 +105,14 @@ export class MerchantService {
       jobPost: { merchantId: merchant.id },
       ...(dto.jobPostId ? { jobPostId: dto.jobPostId } : {}),
       ...(dto.status ? { status: dto.status as AppStatus } : {}),
+      // M2-04 已联系筛选：1=已联系(not null)，0=未联系(null)
+      ...(dto.contacted !== undefined
+        ? dto.contacted === 1
+          ? { contactedAt: { not: null } }
+          : { contactedAt: null }
+        : {}),
+      // M2-05 合适度筛选
+      ...(dto.fitMark ? { fitMark: dto.fitMark as FitMark } : {}),
       ...(keyword
         ? {
             OR: [
@@ -150,12 +164,166 @@ export class MerchantService {
             ? { name: resume.name, phone: resume.phone, selfIntro: resume.selfIntro, skills: resume.skills }
             : null,
           status: a.status,
+          // M2-04/05 标记字段
+          contactedAt: a.contactedAt?.toISOString() ?? null,
+          fitMark: a.fitMark,
           createdAt: a.createdAt.toISOString(),
         };
       }),
       total,
       page,
       pageSize,
+    };
+  }
+
+  // M2-03 看过我：基于 JobView 展示看过商家岗位的用户（不接附近/地图）
+  // 同一用户对同一岗位多次浏览只取最近一次，按最近浏览时间倒序
+  async listViewers(uid: string, dto: ListViewersDto) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+
+    const postWhere: Prisma.JobPostWhereInput = { merchantId: merchant.id };
+    if (dto.jobPostId) postWhere.id = dto.jobPostId;
+
+    // 先拿到商家岗位 id 集合（用于过滤 JobView，并防传入他人岗位）
+    const posts = await this.prisma.jobPost.findMany({
+      where: postWhere,
+      select: { id: true, title: true },
+    });
+    const postMap = new Map(posts.map((p) => [p.id, p.title]));
+    if (posts.length === 0) return { list: [], total: 0, page: dto.page ?? 1, pageSize: dto.pageSize ?? 20 };
+
+    const postIds = posts.map((p) => p.id);
+    // 用 groupBy 取每个 (userId, jobPostId) 的最近浏览时间，再分页
+    const page = dto.page ?? 1;
+    const pageSize = dto.pageSize ?? 20;
+
+    const grouped = await this.prisma.jobView.groupBy({
+      by: ['userId', 'jobPostId'],
+      where: { jobPostId: { in: postIds } },
+      _max: { createdAt: true },
+      orderBy: { _max: { createdAt: 'desc' } },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    const total = await this.prisma.jobView.groupBy({
+      by: ['userId', 'jobPostId'],
+      where: { jobPostId: { in: postIds } },
+      _max: { createdAt: true },
+    });
+
+    const userIds = [...new Set(grouped.map((g) => g.userId))];
+    const users =
+      userIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, nickname: true },
+          })
+        : [];
+    const userMap = new Map(users.map((u) => [u.id, u.nickname]));
+
+    // 是否也报名了该岗位（补全候选人来源信息）
+    const appPairs = grouped.map((g) => ({ userId: g.userId, jobPostId: g.jobPostId }));
+    const apps =
+      appPairs.length > 0
+        ? await this.prisma.jobApplication.findMany({
+            where: { OR: appPairs },
+            select: { userId: true, jobPostId: true, status: true },
+          })
+        : [];
+    const appSet = new Set(apps.map((a) => `${a.userId}:${a.jobPostId}`));
+
+    return {
+      list: grouped.map((g) => ({
+        userId: g.userId,
+        userNickname: userMap.get(g.userId) ?? '',
+        jobPostId: g.jobPostId,
+        jobPostTitle: postMap.get(g.jobPostId) ?? '',
+        viewedAt: (g._max.createdAt ?? new Date(0)).toISOString(),
+        applied: appSet.has(`${g.userId}:${g.jobPostId}`),
+      })),
+      total: total.length,
+      page,
+      pageSize,
+    };
+  }
+
+  // M2-04 标记已联系 / 清除（contacted=true 置 contactedAt，false 置 null）
+  async markContacted(uid: string, appId: string, dto: MarkContactedDto) {
+    const app = await this.assertOwnsApplication(uid, appId);
+    const updated = await this.prisma.jobApplication.update({
+      where: { id: appId },
+      data: { contactedAt: dto.contacted ? new Date() : null },
+    });
+    return this.toMarkVo(updated, app.jobPostTitle);
+  }
+
+  // M2-05 标记合适/不合适 / 清除（fitMark=null 清除）
+  async markFit(uid: string, appId: string, dto: MarkFitDto) {
+    const app = await this.assertOwnsApplication(uid, appId);
+    const updated = await this.prisma.jobApplication.update({
+      where: { id: appId },
+      data: { fitMark: dto.fitMark as FitMark | null },
+    });
+    return this.toMarkVo(updated, app.jobPostTitle);
+  }
+
+  // M2-06 批量标记已联系 / 合适度（逐条校验归属，不属于自己的跳过并记录）
+  async batchMark(uid: string, dto: BatchMarkDto) {
+    if (dto.mark === 'contacted' && dto.contacted === undefined) {
+      throw new BizException(40000, 'mark=contacted 时需传 contacted', HttpStatus.BAD_REQUEST);
+    }
+    if (dto.mark === 'fit' && dto.fitMark === undefined) {
+      throw new BizException(40000, 'mark=fit 时需传 fitMark', HttpStatus.BAD_REQUEST);
+    }
+
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+
+    const apps = await this.prisma.jobApplication.findMany({
+      where: { id: { in: dto.ids } },
+      include: { jobPost: { select: { merchantId: true, title: true } } },
+    });
+
+    const data =
+      dto.mark === 'contacted'
+        ? { contactedAt: dto.contacted ? new Date() : null }
+        : { fitMark: (dto.fitMark as FitMark | null) ?? null };
+
+    const results = await Promise.all(
+      apps.map(async (a) => {
+        if (a.jobPost.merchantId !== merchant.id) {
+          return { id: a.id, ok: false, error: '无权操作该报名' };
+        }
+        await this.prisma.jobApplication.update({ where: { id: a.id }, data });
+        return { id: a.id, ok: true };
+      }),
+    );
+    return { processed: results };
+  }
+
+  // 校验报名归属当前商家，返回带岗位标题的报名
+  private async assertOwnsApplication(uid: string, appId: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    const app = await this.prisma.jobApplication.findUnique({
+      where: { id: appId },
+      include: { jobPost: { select: { merchantId: true, title: true } } },
+    });
+    if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
+    if (app.jobPost.merchantId !== merchant.id) {
+      throw new BizException(10003, '无权操作此报名', HttpStatus.FORBIDDEN);
+    }
+    return { ...app, jobPostTitle: app.jobPost.title };
+  }
+
+  private toMarkVo(a: { id: string; contactedAt: Date | null; fitMark: FitMark | null }, jobPostTitle: string) {
+    return {
+      id: a.id,
+      jobPostTitle,
+      contactedAt: a.contactedAt?.toISOString() ?? null,
+      fitMark: a.fitMark,
     };
   }
 

@@ -1,10 +1,16 @@
 <view class="page">
   <view class="banner">
     <view class="banner-title">候选人管理</view>
-    <view class="banner-sub">跨岗位查看报名学生，点卡片进岗位处理</view>
+    <view class="banner-sub">跨岗位查看报名学生，标记联系与合适度</view>
   </view>
 
-  <!-- M2-02 筛选区：岗位 / 状态 / 关键词 -->
+  <!-- M2-03 顶部子 tab：已报名 / 看过我 -->
+  <view class="subtabs">
+    <view class="subtab {{subTab === 'applied' ? 'subtab-active' : ''}}" data-tab="applied" catchtap="onSubTabTap">已报名</view>
+    <view class="subtab {{subTab === 'viewed' ? 'subtab-active' : ''}}" data-tab="viewed" catchtap="onSubTabTap">看过我</view>
+  </view>
+
+  <!-- 筛选区 -->
   <view class="filter yt-card">
     <picker class="post-picker" range="{{postOptions}}" value="{{postIndex}}" bindchange="onPostChange">
       <view class="post-picker-inner">
@@ -12,57 +18,126 @@
         <text class="post-picker-arrow">▾</text>
       </view>
     </picker>
-    <scroll-view class="status-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-      <view class="status-row">
-        <view
-          wx:for="{{statusFilters}}"
-          wx:key="value"
-          class="status-chip {{activeStatus === item.value ? 'status-chip-active' : ''}}"
-          data-value="{{item.value}}"
-          catchtap="onStatusTap"
-        >{{item.label}}</view>
-      </view>
-    </scroll-view>
+
+    <block wx:if="{{subTab === 'applied'}}">
+      <scroll-view class="status-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="status-row">
+          <view
+            wx:for="{{statusFilters}}"
+            wx:key="value"
+            class="status-chip {{activeStatus === item.value ? 'status-chip-active' : ''}}"
+            data-value="{{item.value}}"
+            catchtap="onStatusTap"
+          >{{item.label}}</view>
+        </view>
+      </scroll-view>
+      <scroll-view class="status-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="status-row">
+          <view
+            wx:for="{{fitFilters}}"
+            wx:key="value"
+            class="status-chip {{activeFit === item.value ? 'status-chip-active' : ''}}"
+            data-value="{{item.value}}"
+            catchtap="onFitFilterTap"
+          >{{item.label}}</view>
+        </view>
+      </scroll-view>
+    </block>
+
     <view class="search-row">
       <input
         class="search-input"
-        placeholder="搜索学生昵称 / 岗位标题"
+        placeholder="{{subTab === 'applied' ? '搜索学生昵称 / 岗位标题' : '搜索仅支持岗位筛选'}}"
         value="{{keyword}}"
         confirm-type="search"
         bindinput="onKeywordInput"
         bindconfirm="onSearch"
+        disabled="{{subTab === 'viewed'}}"
       />
-      <view class="search-btn" catchtap="onSearch">搜索</view>
+      <view class="search-btn" catchtap="onSearch" wx:if="{{subTab === 'applied'}}">搜索</view>
     </view>
   </view>
 
-  <!-- M2-02 候选人列表 -->
-  <view class="summary" wx:if="{{loaded}}">共 {{total}} 条报名</view>
+  <!-- 批量操作条（仅已报名 tab） -->
+  <view class="batch-bar yt-card" wx:if="{{subTab === 'applied'}}">
+    <view class="batch-toggle" catchtap="onBatchToggle">{{batchMode ? '退出批量' : '批量操作'}}</view>
+    <block wx:if="{{batchMode}}">
+      <view class="batch-select" catchtap="selectAll">{{selectedIds.length === list.length && list.length > 0 ? '取消全选' : '全选'}}</view>
+      <view class="batch-action" data-action="contact" catchtap="batchAction">批量已联系</view>
+      <view class="batch-action" data-action="fit-fit" catchtap="batchAction">合适</view>
+      <view class="batch-action" data-action="fit-unfit" catchtap="batchAction">不合适</view>
+    </block>
+  </view>
 
-  <view
-    wx:for="{{list}}"
-    wx:key="id"
-    class="card yt-card"
-    data-job-post-id="{{item.jobPostId}}"
-    catchtap="onCardTap"
-  >
-    <view class="card-head">
-      <text class="card-name">{{item.userNickname || '匿名用户'}}</text>
-      <text class="tag tag-{{item.status}}">{{item.statusLabel}}</text>
+  <view class="summary" wx:if="{{loaded}}">共 {{total}} 条{{subTab === 'viewed' ? '浏览' : '报名'}}</view>
+
+  <!-- 已报名列表 -->
+  <block wx:if="{{subTab === 'applied'}}">
+    <view
+      wx:for="{{list}}"
+      wx:key="id"
+      class="card yt-card {{batchMode && item.selected ? 'card-selected' : ''}}"
+      data-job-post-id="{{item.jobPostId}}"
+      data-id="{{item.id}}"
+      data-idx="{{index}}"
+      catchtap="onCardTap"
+    >
+      <view class="card-head">
+        <view class="card-head-left">
+          <text wx:if="{{batchMode}}" class="checkbox {{item.selected ? 'checkbox-on' : ''}}">{{item.selected ? '✓' : ''}}</text>
+          <text class="card-name">{{item.userNickname || '匿名用户'}}</text>
+        </view>
+        <text class="tag tag-{{item.status}}">{{item.statusLabel}}</text>
+      </view>
+      <view class="card-line">岗位：{{item.jobPostTitle}}</view>
+      <view class="card-line">简历：{{item.resumeSummary}}</view>
+      <view class="card-marks">
+        <text wx:if="{{item.contacted}}" class="mark mark-contacted">已联系</text>
+        <text wx:if="{{item.fitMark === 'FIT'}}" class="mark mark-fit">合适</text>
+        <text wx:if="{{item.fitMark === 'UNFIT'}}" class="mark mark-unfit">不合适</text>
+      </view>
+      <view class="card-foot">
+        <text>报名时间：{{item.createdAtText}}</text>
+      </view>
+      <!-- 单条标记操作（非批量模式） -->
+      <view class="card-actions" wx:if="{{!batchMode}}" catchtap="onCardTap" data-job-post-id="{{item.jobPostId}}">
+        <view class="act-btn {{item.contacted ? 'act-btn-on' : ''}}" data-id="{{item.id}}" data-idx="{{index}}" catchtap="onContactTap">已联系</view>
+        <view class="act-btn {{item.fitMark === 'FIT' ? 'act-btn-fit' : item.fitMark === 'UNFIT' ? 'act-btn-unfit' : ''}}" data-id="{{item.id}}" data-idx="{{index}}" catchtap="onFitMarkTap">合适度</view>
+        <view class="act-btn act-btn-link">处理报名</view>
+      </view>
     </view>
-    <view class="card-line">岗位：{{item.jobPostTitle}}</view>
-    <view class="card-line">简历：{{item.resumeSummary}}</view>
-    <view class="card-foot">报名时间：{{item.createdAtText}}</view>
-  </view>
 
-  <view wx:if="{{loaded && list.length === 0}}" class="empty yt-card">
-    <view class="empty-title">暂无候选人</view>
-    <view class="empty-sub">用户在「兼职」tab 报名你的岗位后会出现在这里</view>
-  </view>
+    <view wx:if="{{loaded && list.length === 0}}" class="empty yt-card">
+      <view class="empty-title">暂无候选人</view>
+      <view class="empty-sub">用户在「兼职」tab 报名你的岗位后会出现在这里</view>
+    </view>
+  </block>
+
+  <!-- 看过我列表 -->
+  <block wx:if="{{subTab === 'viewed'}}">
+    <view
+      wx:for="{{viewerList}}"
+      wx:key="userId"
+      class="card yt-card"
+      data-job-post-id="{{item.jobPostId}}"
+      catchtap="onCardTap"
+    >
+      <view class="card-head">
+        <text class="card-name">{{item.userNickname || '匿名用户'}}</text>
+        <text class="tag tag-{{item.applied ? 'ACCEPTED' : 'PENDING'}}">{{item.applied ? '已报名' : '仅浏览'}}</text>
+      </view>
+      <view class="card-line">浏览岗位：{{item.jobPostTitle}}</view>
+      <view class="card-foot">最近浏览：{{item.viewedAtText}}</view>
+    </view>
+    <view wx:if="{{loaded && viewerList.length === 0}}" class="empty yt-card">
+      <view class="empty-title">暂无浏览记录</view>
+      <view class="empty-sub">用户在「兼职」tab 浏览你的岗位后会出现在这里</view>
+    </view>
+  </block>
 
   <view wx:if="{{loading}}" class="more">加载中…</view>
-  <view wx:elif="{{loaded && list.length > 0 && list.length < total}}" class="more" catchtap="loadMore">加载更多</view>
-  <view wx:elif="{{loaded && list.length >= total && total > 0}}" class="more more-end">没有更多了</view>
+  <view wx:elif="{{loaded && ((subTab === 'applied' && list.length > 0 && list.length < total) || (subTab === 'viewed' && viewerList.length > 0 && viewerList.length < total))}}" class="more" catchtap="loadMore">加载更多</view>
+  <view wx:elif="{{loaded && ((subTab === 'applied' && list.length >= total && total > 0) || (subTab === 'viewed' && viewerList.length >= total && total > 0))}}" class="more more-end">没有更多了</view>
 
   <bottom-tab
     tabs="{{tabs}}"

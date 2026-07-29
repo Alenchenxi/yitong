@@ -606,16 +606,19 @@ enum Settlement {
 }
 
 model JobApplication {
-  id        String    @id @default(cuid())
-  jobPostId String    @map("job_post_id")
-  userId    String    @map("user_id")
-  resumeId  String?   @map("resume_id")                               // P0-21 报名所附简历
-  answers   Json?     @map("answers")                                 // P0-21 报名问题回答 [{question, answer}]
-  status    AppStatus @default(PENDING)
-  createdAt DateTime  @default(now()) @map("created_at")
-  jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
-  review    JobReview[] @relation("AppReview")
+  id           String    @id @default(cuid())
+  jobPostId    String    @map("job_post_id")
+  userId       String    @map("user_id")
+  resumeId     String?   @map("resume_id")                               // P0-21 报名所附简历
+  answers      Json?     @map("answers")                                 // P0-21 报名问题回答 [{question, answer}]
+  status       AppStatus @default(PENDING)
+  // M2-04/05 商家标记：已联系时间（null=未联系）；合适/不合适标记（null=未标记，可修改可清除）
+  contactedAt  DateTime? @map("contacted_at")
+  fitMark      FitMark?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  jobPost      JobPost   @relation(fields: [jobPostId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+  review       JobReview[] @relation("AppReview")
   @@unique([jobPostId, userId])
   @@map("job_applications")
 }
@@ -625,6 +628,12 @@ enum AppStatus {
   DONE
   CANCELLED
   REJECTED
+}
+
+// M2-05 候选人合适度标记
+enum FitMark {
+  FIT
+  UNFIT
 }
 
 model JobReview {

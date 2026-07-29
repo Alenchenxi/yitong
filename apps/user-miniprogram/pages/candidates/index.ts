@@ -1,6 +1,14 @@
 import type { AppInstance } from '../../app';
 import { listJobPosts } from '../../services/job';
-import { listMerchantCandidates, type MerchantCandidateVo } from '../../services/merchant';
+import {
+  batchMarkCandidates,
+  listMerchantCandidates,
+  listMerchantViewers,
+  markCandidateContacted,
+  markCandidateFit,
+  type MerchantCandidateVo,
+  type MerchantViewerVo,
+} from '../../services/merchant';
 
 // 商家端底部 tab：候选人 / 职位 / 发布 / 消息 / 我的
 const MERCHANT_TABS = [
@@ -21,6 +29,13 @@ const STATUS_FILTERS = [
   { value: 'CANCELLED', label: '已取消' },
 ] as const;
 
+// M2-05 合适度筛选
+const FIT_FILTERS = [
+  { value: '', label: '全部' },
+  { value: 'FIT', label: '合适' },
+  { value: 'UNFIT', label: '不合适' },
+] as const;
+
 const STATUS_LABELS: Record<MerchantCandidateVo['status'], string> = {
   PENDING: '待处理',
   ACCEPTED: '已录用',
@@ -29,29 +44,46 @@ const STATUS_LABELS: Record<MerchantCandidateVo['status'], string> = {
   CANCELLED: '已取消',
 };
 
+// M2-03 顶部 tab：已报名 / 看过我
+type SubTab = 'applied' | 'viewed';
+
 interface CandidateItem extends MerchantCandidateVo {
   statusLabel: string;
   createdAtText: string;
   resumeSummary: string;
+  contacted: boolean;
+  fitLabel: string;
+  selected: boolean;
+}
+
+interface ViewerItem extends MerchantViewerVo {
+  viewedAtText: string;
 }
 
 Page({
   data: {
     tabs: MERCHANT_TABS,
     current: 'pages/candidates/index',
+    subTab: 'applied' as SubTab,
     statusFilters: STATUS_FILTERS,
+    fitFilters: FIT_FILTERS,
     activeStatus: '',
+    activeFit: '',
     // 岗位筛选（picker）
     postOptions: ['全部岗位'] as string[],
     postIds: [''] as string[],
     postIndex: 0,
     keyword: '',
     list: [] as CandidateItem[],
+    viewerList: [] as ViewerItem[],
     total: 0,
     page: 1,
     pageSize: 20,
     loading: false,
     loaded: false,
+    // 批量模式
+    batchMode: false,
+    selectedIds: [] as string[],
   },
 
   onShow() {
@@ -76,9 +108,7 @@ Page({
       const ids: string[] = [''];
       let cursor: string | undefined;
       for (let i = 0; i < 5; i += 1) {
-        const res: Awaited<ReturnType<typeof listJobPosts>> = await listJobPosts(
-          cursor ? { mine: true, cursor } : { mine: true },
-        );
+        const res = await listJobPosts(cursor ? { mine: true, cursor } : { mine: true });
         res.list.forEach((p) => {
           names.push(p.title);
           ids.push(p.id);
@@ -93,13 +123,14 @@ Page({
   },
 
   async refresh() {
-    this.setData({ page: 1, list: [], loaded: false });
+    this.setData({ page: 1, list: [], viewerList: [], loaded: false, selectedIds: [] });
     await this.loadList(1);
   },
 
   async loadMore() {
-    const { loading, list, total, page } = this.data;
-    if (loading || !this.data.loaded || list.length >= total) return;
+    const { loading, loaded, total, page, subTab } = this.data;
+    const count = subTab === 'viewed' ? this.data.viewerList.length : this.data.list.length;
+    if (loading || !loaded || count >= total) return;
     await this.loadList(page + 1);
   },
 
@@ -107,10 +138,27 @@ Page({
     if (this.data.loading) return;
     this.setData({ loading: true });
     try {
-      const { activeStatus, postIds, postIndex, keyword, pageSize } = this.data;
+      const { activeStatus, activeFit, postIds, postIndex, keyword, pageSize, subTab } = this.data;
+      if (subTab === 'viewed') {
+        const res = await listMerchantViewers({
+          jobPostId: postIds[postIndex] || undefined,
+          page,
+          pageSize,
+        });
+        const items: ViewerItem[] = res.list.map((v) => ({ ...v, viewedAtText: formatTime(v.viewedAt) }));
+        // 看过我列表复用 list 渲染会有差异，单独存 viewerList
+        this.setData({
+          viewerList: page === 1 ? items : [...(this.data.viewerList ?? []), ...items],
+          total: res.total,
+          page: res.page,
+          loaded: true,
+        });
+        return;
+      }
       const res = await listMerchantCandidates({
         jobPostId: postIds[postIndex] || undefined,
         status: (activeStatus || undefined) as MerchantCandidateVo['status'] | undefined,
+        fitMark: (activeFit || undefined) as 'FIT' | 'UNFIT' | undefined,
         keyword: keyword.trim() || undefined,
         page,
         pageSize,
@@ -139,13 +187,31 @@ Page({
       statusLabel: STATUS_LABELS[a.status] ?? a.status,
       createdAtText: formatTime(a.createdAt),
       resumeSummary,
+      contacted: !!a.contactedAt,
+      fitLabel: a.fitMark === 'FIT' ? '合适' : a.fitMark === 'UNFIT' ? '不合适' : '',
+      selected: false,
     };
+  },
+
+  // 顶部子 tab 切换：已报名 / 看过我
+  onSubTabTap(e: WechatMiniprogram.TouchEvent) {
+    const subTab = e.currentTarget.dataset.tab as SubTab;
+    if (subTab === this.data.subTab) return;
+    this.setData({ subTab, activeStatus: '', activeFit: '', keyword: '', batchMode: false, selectedIds: [] });
+    this.refresh();
   },
 
   onStatusTap(e: WechatMiniprogram.TouchEvent) {
     const value = e.currentTarget.dataset.value as string;
     if (value === this.data.activeStatus) return;
     this.setData({ activeStatus: value });
+    this.refresh();
+  },
+
+  onFitFilterTap(e: WechatMiniprogram.TouchEvent) {
+    const value = e.currentTarget.dataset.value as string;
+    if (value === this.data.activeFit) return;
+    this.setData({ activeFit: value });
     this.refresh();
   },
 
@@ -165,9 +231,113 @@ Page({
   },
 
   onCardTap(e: WechatMiniprogram.TouchEvent) {
+    // 批量模式下点卡片=选中/取消
+    if (this.data.batchMode) {
+      this.toggleSelect(e);
+      return;
+    }
     const { jobPostId } = e.currentTarget.dataset as { jobPostId?: string };
     if (!jobPostId) return;
     wx.navigateTo({ url: `/pages/job/detail/index?id=${jobPostId}` });
+  },
+
+  // M2-04 标记/取消 已联系
+  async onContactTap(e: WechatMiniprogram.TouchEvent) {
+    const { id, idx } = e.currentTarget.dataset as { id: string; idx: number };
+    const item = this.data.list[idx];
+    if (!item) return;
+    const next = !item.contacted;
+    try {
+      const r = await markCandidateContacted(id, next);
+      this.patchItem(idx, { contacted: next, contactedAt: r.contactedAt });
+      wx.showToast({ title: next ? '已标记联系' : '已取消联系', icon: 'none' });
+    } catch (e) {
+      wx.showToast({ title: e instanceof Error ? e.message : '操作失败', icon: 'none' });
+    }
+  },
+
+  // M2-05 标记合适/不合适（循环：未标记->合适->不合适->清除）
+  async onFitMarkTap(e: WechatMiniprogram.TouchEvent) {
+    const { id, idx } = e.currentTarget.dataset as { id: string; idx: number };
+    const item = this.data.list[idx];
+    if (!item) return;
+    const next: 'FIT' | 'UNFIT' | null =
+      item.fitMark === null ? 'FIT' : item.fitMark === 'FIT' ? 'UNFIT' : null;
+    try {
+      const r = await markCandidateFit(id, next);
+      this.patchItem(idx, {
+        fitMark: r.fitMark,
+        fitLabel: r.fitMark === 'FIT' ? '合适' : r.fitMark === 'UNFIT' ? '不合适' : '',
+      });
+      wx.showToast({ title: next ? (next === 'FIT' ? '已标记合适' : '已标记不合适') : '已清除标记', icon: 'none' });
+    } catch (e) {
+      wx.showToast({ title: e instanceof Error ? e.message : '操作失败', icon: 'none' });
+    }
+  },
+
+  patchItem(idx: number, patch: Partial<CandidateItem>) {
+    const list = this.data.list.slice();
+    const cur = list[idx];
+    if (!cur) return;
+    list[idx] = { ...cur, ...patch };
+    this.setData({ list });
+  },
+
+  // ---- 批量模式 ----
+  onBatchToggle() {
+    const batchMode = !this.data.batchMode;
+    this.setData({
+      batchMode,
+      selectedIds: [],
+      list: this.data.list.map((it) => ({ ...it, selected: false })),
+    });
+  },
+
+  toggleSelect(e: WechatMiniprogram.TouchEvent) {
+    const { id } = e.currentTarget.dataset as { id: string };
+    const selectedIds = this.data.selectedIds.slice();
+    const idx = selectedIds.indexOf(id);
+    if (idx >= 0) selectedIds.splice(idx, 1);
+    else selectedIds.push(id);
+    const list = this.data.list.map((it) => ({ ...it, selected: selectedIds.includes(it.id) }));
+    this.setData({ selectedIds, list });
+  },
+
+  selectAll() {
+    const all = this.data.list.map((it) => it.id);
+    const selectedIds = this.data.selectedIds.length === all.length ? [] : all;
+    const list = this.data.list.map((it) => ({ ...it, selected: selectedIds.includes(it.id) }));
+    this.setData({ selectedIds, list });
+  },
+
+  async batchAction(e: WechatMiniprogram.TouchEvent) {
+    const action = e.currentTarget.dataset.action as 'contact' | 'fit-fit' | 'fit-unfit';
+    const { selectedIds } = this.data;
+    if (selectedIds.length === 0) {
+      wx.showToast({ title: '请先选择候选人', icon: 'none' });
+      return;
+    }
+    const payload =
+      action === 'contact'
+        ? { ids: selectedIds, mark: 'contacted' as const, contacted: true }
+        : action === 'fit-fit'
+          ? { ids: selectedIds, mark: 'fit' as const, fitMark: 'FIT' as const }
+          : { ids: selectedIds, mark: 'fit' as const, fitMark: 'UNFIT' as const };
+    try {
+      const res = await batchMarkCandidates(payload);
+      const failed = res.processed.filter((p) => !p.ok);
+      wx.showToast({
+        title:
+          failed.length === 0
+            ? `已处理 ${res.processed.length} 条`
+            : `成功 ${res.processed.length - failed.length} 失败 ${failed.length}`,
+        icon: 'none',
+      });
+      this.setData({ batchMode: false });
+      this.refresh();
+    } catch (e) {
+      wx.showToast({ title: e instanceof Error ? e.message : '批量操作失败', icon: 'none' });
+    }
   },
 });
 

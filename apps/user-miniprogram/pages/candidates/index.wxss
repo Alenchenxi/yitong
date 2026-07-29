@@ -22,6 +22,29 @@
   opacity: 0.8;
 }
 
+/* 顶部子 tab */
+.subtabs {
+  display: flex;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 8rpx;
+  margin-bottom: 16rpx;
+  border: 1rpx solid var(--yt-border, #e5e6eb);
+}
+.subtab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  color: var(--yt-text-body, #4e5969);
+  border-radius: 12rpx;
+}
+.subtab-active {
+  background: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
+  font-weight: 600;
+}
+
 /* 筛选区 */
 .filter {
   margin-bottom: 16rpx;
@@ -94,6 +117,32 @@
   font-weight: 600;
 }
 
+/* 批量操作条 */
+.batch-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  padding: 16rpx 20rpx;
+}
+.batch-toggle {
+  font-size: 26rpx;
+  color: var(--yt-primary-dark, #c59a00);
+  font-weight: 600;
+}
+.batch-select {
+  font-size: 26rpx;
+  color: var(--yt-info, #2f80ed);
+}
+.batch-action {
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: var(--yt-primary-light, #fff7d1);
+  color: var(--yt-text-main, #1d2129);
+}
+
 .summary {
   font-size: 22rpx;
   color: var(--yt-text-sub, #86909c);
@@ -104,10 +153,36 @@
 .card {
   margin-bottom: 16rpx;
 }
+.card-selected {
+  border-color: var(--yt-primary, #f9c801);
+  box-shadow: 0 0 0 2rpx var(--yt-primary, #f9c801);
+}
 .card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+.card-head-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  line-height: 36rpx;
+  text-align: center;
+  border-radius: 50%;
+  border: 2rpx solid var(--yt-border, #e5e6eb);
+  font-size: 24rpx;
+  color: #fff;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+.checkbox-on {
+  background: var(--yt-primary, #f9c801);
+  border-color: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
 }
 .card-name {
   font-size: 30rpx;
@@ -152,10 +227,66 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.card-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+.mark {
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+}
+.mark-contacted {
+  background: #e8f3ff;
+  color: var(--yt-info, #2f80ed);
+}
+.mark-fit {
+  background: #e8f7ee;
+  color: var(--yt-success, #00b42a);
+}
+.mark-unfit {
+  background: #ffece8;
+  color: var(--yt-danger, #f53f3f);
+}
 .card-foot {
   font-size: 22rpx;
   color: var(--yt-text-sub, #86909c);
   margin-top: 12rpx;
+}
+.card-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--yt-border, #e5e6eb);
+}
+.act-btn {
+  flex: 1;
+  text-align: center;
+  font-size: 24rpx;
+  padding: 14rpx 0;
+  border-radius: 10rpx;
+  background: var(--yt-bg, #f6f7fb);
+  color: var(--yt-text-body, #4e5969);
+}
+.act-btn-on {
+  background: #e8f3ff;
+  color: var(--yt-info, #2f80ed);
+}
+.act-btn-fit {
+  background: #e8f7ee;
+  color: var(--yt-success, #00b42a);
+}
+.act-btn-unfit {
+  background: #ffece8;
+  color: var(--yt-danger, #f53f3f);
+}
+.act-btn-link {
+  background: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
+  font-weight: 600;
 }
 
 .empty {
