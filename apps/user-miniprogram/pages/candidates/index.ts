@@ -84,6 +84,14 @@ Page({
     // 批量模式
     batchMode: false,
     selectedIds: [] as string[],
+    // M3-06 来自 manage 页 badge 跳转的预筛选 jobPostId
+    incomingJobPostId: '' as string,
+  },
+
+  onLoad(options: { jobPostId?: string }) {
+    if (options?.jobPostId) {
+      this.setData({ incomingJobPostId: options.jobPostId });
+    }
   },
 
   onShow() {
@@ -116,7 +124,14 @@ Page({
         if (!res.hasMore || !res.nextCursor) break;
         cursor = res.nextCursor;
       }
-      this.setData({ postOptions: names, postIds: ids });
+      // M3-06: 如果来自 manage 页带 incomingJobPostId，定位到对应 picker index
+      const target = this.data.incomingJobPostId;
+      let postIndex = 0;
+      if (target) {
+        const idx = ids.indexOf(target);
+        if (idx >= 0) postIndex = idx;
+      }
+      this.setData({ postOptions: names, postIds: ids, postIndex });
     } catch {
       // 岗位筛选加载失败不阻塞候选人列表
     }
@@ -138,10 +153,16 @@ Page({
     if (this.data.loading) return;
     this.setData({ loading: true });
     try {
-      const { activeStatus, activeFit, postIds, postIndex, keyword, pageSize, subTab } = this.data;
+      const { activeStatus, activeFit, postIds, postIndex, keyword, pageSize, subTab, incomingJobPostId } = this.data;
+      // M3-06：来自 manage 的预筛选 jobPostId 优先级高于 picker（首次进入页面时 loadPosts 异步还未回，
+      // 此处仍需用 incomingJobPostId 正确筛选；用完即清，让手动 picker 切换生效）
+      const effectiveJobPostId = incomingJobPostId || (postIds[postIndex] || undefined);
+      if (incomingJobPostId && page === 1) {
+        this.setData({ incomingJobPostId: '' });
+      }
       if (subTab === 'viewed') {
         const res = await listMerchantViewers({
-          jobPostId: postIds[postIndex] || undefined,
+          jobPostId: effectiveJobPostId || undefined,
           page,
           pageSize,
         });
@@ -156,7 +177,7 @@ Page({
         return;
       }
       const res = await listMerchantCandidates({
-        jobPostId: postIds[postIndex] || undefined,
+        jobPostId: effectiveJobPostId || undefined,
         status: (activeStatus || undefined) as MerchantCandidateVo['status'] | undefined,
         fitMark: (activeFit || undefined) as 'FIT' | 'UNFIT' | undefined,
         keyword: keyword.trim() || undefined,
@@ -218,7 +239,8 @@ Page({
   onPostChange(e: WechatMiniprogram.PickerChange) {
     const postIndex = Number(e.detail.value);
     if (postIndex === this.data.postIndex) return;
-    this.setData({ postIndex });
+    // 手动切换 picker 清掉 M3-06 预筛选，让 picker 真正生效
+    this.setData({ postIndex, incomingJobPostId: '' });
     this.refresh();
   },
 

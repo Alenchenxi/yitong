@@ -55,6 +55,8 @@ export interface JobPostVo {
   expireAt: string;
   status: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
   createdAt: string;
+  // M3-06 仅 mine=1 列表返回：当前岗的 PENDING 报名数
+  pendingApplicationCount?: number;
 }
 
 export interface JobListResult {
@@ -141,6 +143,7 @@ export interface JobListFilter {
   salaryMin?: number; // P0-18 薪资下限
   salaryMax?: number; // P0-18 薪资上限
   online?: boolean; // P0-18 仅看线上
+  status?: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED'; // M3-03 商家岗位状态筛选
 }
 
 export function listJobPosts(filter: JobListFilter = {}) {
@@ -154,6 +157,7 @@ export function listJobPosts(filter: JobListFilter = {}) {
   if (filter.location) params.push(`location=${encodeURIComponent(filter.location)}`);
   if (filter.salaryMin !== undefined) params.push(`salaryMin=${filter.salaryMin}`);
   if (filter.salaryMax !== undefined) params.push(`salaryMax=${filter.salaryMax}`);
+  if (filter.status) params.push(`status=${filter.status}`);
   params.push('limit=20');
   if (filter.cursor) params.push(`cursor=${encodeURIComponent(filter.cursor)}`);
   return request<JobListResult>({ url: `/job-posts?${params.join('&')}` });

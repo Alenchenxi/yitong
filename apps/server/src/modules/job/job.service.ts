@@ -84,6 +84,8 @@ export class JobService {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
       if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
       where.merchantId = merchant.id;
+      // M3-03 商家岗位状态筛选（仅 mine 模式生效；公开列表硬约束 PUBLISHED+未过期）
+      if (q.status) where.status = q.status as JobPostStatus;
     } else {
       where.status = JobPostStatus.PUBLISHED;
       where.expireAt = { gt: new Date() };
@@ -123,7 +125,26 @@ export class JobService {
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
     const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1]!.createdAt.toISOString() : null;
-    return { list: slice.map((p) => this.toPostVo(p)), nextCursor, hasMore };
+
+    // M3-06 mine 模式：每岗附带待处理报名数（独立 groupBy，避免 N+1）
+    let pendingMap = new Map<string, number>();
+    if (q.mine === 1 && slice.length > 0) {
+      const groups = await this.prisma.jobApplication.groupBy({
+        by: ['jobPostId'],
+        where: { jobPostId: { in: slice.map((p) => p.id) }, status: AppStatus.PENDING },
+        _count: { _all: true },
+      });
+      pendingMap = new Map(groups.map((g) => [g.jobPostId, g._count._all]));
+    }
+
+    return {
+      list: slice.map((p) => ({
+        ...this.toPostVo(p),
+        pendingApplicationCount: q.mine === 1 ? pendingMap.get(p.id) ?? 0 : undefined,
+      })),
+      nextCursor,
+      hasMore,
+    };
   }
 
   async getPost(id: string) {

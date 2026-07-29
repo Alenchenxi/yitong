@@ -1,5 +1,10 @@
 import type { AppInstance } from '../../../app';
-import { listJobPosts, getMerchantDashboard, type JobPostVo, type MerchantDashboardVo } from '../../../services/job';
+import {
+  getMerchantDashboard,
+  listJobPosts,
+  type JobPostVo,
+  type MerchantDashboardVo,
+} from '../../../services/job';
 import { getMerchantProfile } from '../../../services/merchant';
 
 const STATUS_TEXT: Record<string, string> = {
@@ -8,6 +13,25 @@ const STATUS_TEXT: Record<string, string> = {
   TAKEN_DOWN: '已下架',
   EXPIRED: '已过期',
 };
+
+// M3-03 状态筛选 chips（与后端 JobPostStatus 对齐）
+const STATUS_FILTERS = [
+  { value: '', label: '全部' },
+  { value: 'PENDING', label: '待发布' },
+  { value: 'PUBLISHED', label: '已发布' },
+  { value: 'TAKEN_DOWN', label: '已下架' },
+  { value: 'EXPIRED', label: '已过期' },
+] as const;
+
+// M3-01 数据看板时间范围 tab
+const RANGE_FILTERS = [
+  { value: 'day', label: '今日' },
+  { value: 'week', label: '本周' },
+  { value: 'month', label: '本月' },
+  { value: 'all', label: '全部' },
+] as const;
+
+type RangeValue = (typeof RANGE_FILTERS)[number]['value'];
 
 // 商家端底部 tab：候选人 / 职位 / 发布 / 消息 / 我的
 const MERCHANT_TABS = [
@@ -18,20 +42,29 @@ const MERCHANT_TABS = [
   { path: '/pages/merchant/profile/index', label: '我的' },
 ];
 
+interface PostItem extends JobPostVo {
+  statusText: string;
+  pendingCount: number;
+}
+
 Page({
   data: {
-    posts: [] as Array<JobPostVo & { statusText: string }>,
-    dashboard: null as MerchantDashboardVo | null,
-    loading: false,
-    settled: false, // 入驻探测完成（已入驻 true / 未入驻将跳走）
     tabs: MERCHANT_TABS,
     current: 'pages/job/manage/index',
+    statusFilters: STATUS_FILTERS,
+    rangeFilters: RANGE_FILTERS,
+    activeStatus: '' as string,
+    activeRange: 'all' as RangeValue,
+    keyword: '' as string,
+    posts: [] as PostItem[],
+    dashboard: null as MerchantDashboardVo | null,
+    loading: false,
+    settled: false,
   },
 
   onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    // 商家首页：未入驻直接跳入驻页（getMerchantProfile 未入驻抛 60002）
     getMerchantProfile()
       .then(() => {
         this.setData({ settled: true });
@@ -46,20 +79,56 @@ Page({
     if (this.data.settled) this.load();
   },
 
+  onPullDownRefresh() {
+    this.load().finally(() => wx.stopPullDownRefresh());
+  },
+
   async load() {
+    if (this.data.loading) return;
     this.setData({ loading: true });
     try {
+      const { activeStatus, keyword, activeRange } = this.data;
       const [postsResp, dashboard] = await Promise.all([
-        listJobPosts({ mine: true }).catch(() => ({ list: [] as JobPostVo[] })),
-        getMerchantDashboard('all').catch(() => null),
+        listJobPosts({
+          mine: true,
+          status: (activeStatus || undefined) as JobPostVo['status'] | undefined,
+          keyword: keyword.trim() || undefined,
+        }).catch(() => ({ list: [] as JobPostVo[], hasMore: false, nextCursor: null })),
+        getMerchantDashboard(activeRange).catch(() => null),
       ]);
-      this.setData({
-        posts: postsResp.list.map((p) => ({ ...p, statusText: STATUS_TEXT[p.status] ?? p.status })),
-        dashboard,
-      });
+      const posts: PostItem[] = postsResp.list.map((p) => ({
+        ...p,
+        statusText: STATUS_TEXT[p.status] ?? p.status,
+        pendingCount: p.pendingApplicationCount ?? 0,
+      }));
+      this.setData({ posts, dashboard });
     } finally {
       this.setData({ loading: false });
     }
+  },
+
+  // M3-03 状态筛选切换
+  onStatusTap(e: WechatMiniprogram.TouchEvent) {
+    const value = (e.currentTarget.dataset.value as string) ?? '';
+    if (value === this.data.activeStatus) return;
+    this.setData({ activeStatus: value });
+    this.load();
+  },
+
+  // M3-01 看板时间范围切换
+  onRangeTap(e: WechatMiniprogram.TouchEvent) {
+    const value = e.currentTarget.dataset.value as RangeValue;
+    if (value === this.data.activeRange) return;
+    this.setData({ activeRange: value });
+    this.load();
+  },
+
+  // M3-02 搜索
+  onKeywordInput(e: WechatMiniprogram.Input) {
+    this.setData({ keyword: e.detail.value });
+  },
+  onSearch() {
+    this.load();
   },
 
   goDetail(e: WechatMiniprogram.TouchEvent) {
@@ -74,5 +143,11 @@ Page({
 
   goPost() {
     wx.navigateTo({ url: '/pages/job/post/index' });
+  },
+
+  // M3-06 待处理报名数 badge 跳转（带预筛选）
+  goCandidates(e: WechatMiniprogram.TouchEvent) {
+    const jobPostId = e.currentTarget.dataset.id as string;
+    wx.switchTab({ url: `/pages/candidates/index?jobPostId=${jobPostId}` });
   },
 });

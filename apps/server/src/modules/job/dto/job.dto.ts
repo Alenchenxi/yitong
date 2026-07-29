@@ -157,6 +157,11 @@ export class JobListQueryDto {
   @Min(0)
   @Max(1)
   online?: number;
+
+  /** M3-03 商家岗位状态筛选（仅 mine=1 时生效；公开列表总是 PUBLISHED+未过期） */
+  @IsOptional()
+  @IsIn(['PENDING', 'PUBLISHED', 'TAKEN_DOWN', 'EXPIRED'])
+  status?: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
 }
 
 export class TransitionDto {
