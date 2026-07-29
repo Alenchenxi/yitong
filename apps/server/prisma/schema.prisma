@@ -140,6 +140,8 @@ model Post {
   @@index([status, createdAt])
   @@index([authorId, deletedAt])
   @@index([authorId, visibility, createdAt])
+  @@index([publishAt])
+  @@index([topicId])
   @@map("posts")
 }
 enum PostStatus {
@@ -480,7 +482,7 @@ model SupportTicket {
   repliedAt   DateTime?    @map("replied_at")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
-  user        User         @relation(fields: [userId], references: [id])
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
   @@index([status, createdAt])
   @@map("support_tickets")
