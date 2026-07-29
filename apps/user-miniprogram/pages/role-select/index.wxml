@@ -1,8 +1,15 @@
 <view class="page">
-  <view class="logo">燚桐</view>
-  <view class="subtitle">选择角色进入</view>
+  <view class="brand">
+    <view class="brand-mark">燚</view>
+    <view class="brand-main">
+      <view class="logo">燚桐</view>
+      <view class="subtitle">统一校园生活平台</view>
+    </view>
+  </view>
 
-  <view class="referral-tip" wx:if="{{referralTip}}">🎁 {{referralTip}}</view>
+  <view class="section-title">选择进入身份</view>
+
+  <view class="referral-tip" wx:if="{{referralTip}}">{{referralTip}}</view>
 
   <view class="roles">
     <view
@@ -10,9 +17,12 @@
       data-role="user"
       bindtap="chooseRole"
     >
-      <view class="role-emoji">🙋</view>
-      <view class="role-name">普通用户</view>
-      <view class="role-desc">表白墙 · 树洞 · 兼职</view>
+      <view class="role-mark">用</view>
+      <view class="role-main">
+        <view class="role-name">用户端</view>
+        <view class="role-desc">表白墙 · 树洞 · 兼职</view>
+      </view>
+      <view class="role-arrow">›</view>
     </view>
 
     <view
@@ -20,9 +30,12 @@
       data-role="merchant"
       bindtap="chooseRole"
     >
-      <view class="role-emoji">🏪</view>
-      <view class="role-name">商家</view>
-      <view class="role-desc">入驻 · 发岗 · 报名管理</view>
+      <view class="role-mark">商</view>
+      <view class="role-main">
+        <view class="role-name">商家端</view>
+        <view class="role-desc">入驻 · 发岗 · 报名管理</view>
+      </view>
+      <view class="role-arrow">›</view>
     </view>
 
     <view
@@ -30,9 +43,12 @@
       data-role="admin"
       bindtap="chooseRole"
     >
-      <view class="role-emoji">🛡️</view>
-      <view class="role-name">管理员</view>
-      <view class="role-desc">审核 · 单价 · 封禁</view>
+      <view class="role-mark">管</view>
+      <view class="role-main">
+        <view class="role-name">管理端</view>
+        <view class="role-desc">审核 · 单价 · 封禁</view>
+      </view>
+      <view class="role-arrow">›</view>
     </view>
   </view>
 
