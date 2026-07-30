@@ -3,27 +3,43 @@ import {
   listNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  getUnreadCounts,
   type NotificationVo,
+  type NotificationCategory,
+  type UnreadCounts,
 } from '../../services/notification';
+import { requestJobApplySubscribe, requestJobStatusSubscribe } from '../../services/subscribe-message';
 import { formatTime } from '../../utils/auth';
+
+const CATEGORIES: Array<{ value: '' | NotificationCategory; label: string }> = [
+  { value: '', label: '全部' },
+  { value: 'apply', label: '报名' },
+  { value: 'system', label: '系统' },
+  { value: 'order', label: '订单' },
+];
 
 Page({
   data: {
+    activeCategory: '' as '' | NotificationCategory,
+    categories: CATEGORIES,
     notifications: [] as Array<NotificationVo & { timeText: string }>,
     unreadCount: 0,
+    unreadCounts: { apply: 0, system: 0, order: 0 } as UnreadCounts,
     loading: false,
+    isMerchant: false,
   },
 
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    await this.load();
+    this.setData({ isMerchant: app.globalData.currentRole === 'merchant' });
+    await Promise.all([this.load(), this.loadUnreadCounts()]);
   },
 
   async load() {
     this.setData({ loading: true });
     try {
-      const resp = await listNotifications(false, 1);
+      const resp = await listNotifications(false, 1, this.data.activeCategory || undefined);
       this.setData({
         notifications: resp.list.map((n) => ({ ...n, timeText: formatTime(n.createdAt) })),
         unreadCount: resp.unreadCount,
@@ -35,16 +51,38 @@ Page({
     }
   },
 
+  async loadUnreadCounts() {
+    try {
+      const counts = await getUnreadCounts();
+      this.setData({ unreadCounts: counts });
+    } catch {
+      /* 忽略 */
+    }
+  },
+
+  async onCategoryTap(e: WechatMiniprogram.TouchEvent) {
+    const value = e.currentTarget.dataset.value as '' | NotificationCategory;
+    if (value === this.data.activeCategory) return;
+    this.setData({ activeCategory: value });
+    await this.load();
+  },
+
   async tapNotification(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
     const item = this.data.notifications.find((n) => n.id === id);
     if (item && !item.read) {
       await markNotificationRead(id);
+      const newUnread = Math.max(0, this.data.unreadCount - 1);
+      const cat = this.categoryForType(item.type);
       this.setData({
         notifications: this.data.notifications.map((n) =>
           n.id === id ? { ...n, read: true } : n,
         ),
-        unreadCount: Math.max(0, this.data.unreadCount - 1),
+        unreadCount: newUnread,
+        unreadCounts: {
+          ...this.data.unreadCounts,
+          [cat]: Math.max(0, this.data.unreadCounts[cat] - 1),
+        } as UnreadCounts,
       });
     }
     if (item?.targetType && item.targetId) {
@@ -52,13 +90,18 @@ Page({
     }
   },
 
+  categoryForType(type: string): NotificationCategory {
+    if (['job_apply', 'job_accept', 'job_complete', 'job_reject', 'job_review_from_merchant'].includes(type)) {
+      return 'apply';
+    }
+    return 'system';
+  },
+
   goTarget(targetType: string, targetId: string, extraId?: string | null) {
     if (targetType === 'post') {
-      // P1-01：评论/回复通知带 commentId，详情页定位到具体评论
       const anchor = extraId ? `&commentId=${extraId}` : '';
       wx.navigateTo({ url: `/pages/post-detail/index?id=${targetId}${anchor}` });
     } else if (targetType === 'user') {
-      // P1-12 封禁/禁言：去账号与安全
       wx.navigateTo({ url: '/pages/account-security/index' });
     } else if (targetType === 'anon_post' || targetType === 'anon-post') {
       wx.navigateTo({ url: `/pages/treehole/detail/index?id=${targetId}` });
@@ -75,7 +118,25 @@ Page({
     this.setData({
       notifications: this.data.notifications.map((n) => ({ ...n, read: true })),
       unreadCount: 0,
+      unreadCounts: { apply: 0, system: 0, order: 0 },
     });
     wx.showToast({ title: '全部已读', icon: 'success' });
+  },
+
+  // M4-04 微信订阅授权入口
+  async enableApplySubscribe() {
+    const ok = await requestJobApplySubscribe();
+    wx.showToast({
+      title: ok ? '已开启报名提醒' : '授权未生效',
+      icon: ok ? 'success' : 'none',
+    });
+  },
+
+  async enableStatusSubscribe() {
+    const ok = await requestJobStatusSubscribe();
+    wx.showToast({
+      title: ok ? '已开启状态提醒' : '授权未生效',
+      icon: ok ? 'success' : 'none',
+    });
   },
 });

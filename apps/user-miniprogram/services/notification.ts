@@ -20,9 +20,21 @@ export interface NotificationListResult {
   pageSize: number;
 }
 
-export function listNotifications(unreadOnly = false, page = 1) {
-  const qs = `?unreadOnly=${unreadOnly ? 1 : 0}&page=${page}&pageSize=20`;
+export type NotificationCategory = 'apply' | 'system' | 'order';
+
+export type UnreadCounts = Record<NotificationCategory, number>;
+
+export function listNotifications(
+  unreadOnly = false,
+  page = 1,
+  category?: NotificationCategory,
+) {
+  const qs = `?unreadOnly=${unreadOnly ? 1 : 0}&page=${page}&pageSize=20${category ? `&category=${category}` : ''}`;
   return request<NotificationListResult>({ url: `/notifications${qs}` });
+}
+
+export function getUnreadCounts() {
+  return request<UnreadCounts>({ url: '/notifications/unread-counts' });
 }
 
 export function markNotificationRead(id: string) {

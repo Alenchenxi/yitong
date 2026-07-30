@@ -109,10 +109,53 @@ export class NotificationService {
     return this.wxSubscribe.getTemplates();
   }
 
-  // 列表（分页 + 未读数）
-  async list(userId: string, unreadOnly: boolean, page: number, pageSize: number) {
+  // M4-01 商家消息分类：按 type 映射到 category（不改 schema，查询时 in 过滤）
+  private static CATEGORY_TYPE_MAP: Record<string, string[]> = {
+    apply: [
+      'job_apply',
+      'job_accept',
+      'job_complete',
+      'job_reject',
+      'job_review_from_merchant',
+    ],
+    system: [
+      'post_like',
+      'post_comment',
+      'comment_reply',
+      'post_follow',
+      'comment_like',
+      'comment_mention',
+      'post_takedown',
+      'user_banned',
+      'user_muted',
+      'report_result',
+      'ticket_reply',
+    ],
+    // order 类暂无 type，M6 支付接入后补 payment_paid / payment_refunded 等
+    order: [] as string[],
+  };
+
+  static readonly CATEGORIES = ['apply', 'system', 'order'] as const;
+
+  // 列表（分页 + 未读数，M4-01 支持 category 筛选）
+  async list(
+    userId: string,
+    unreadOnly: boolean,
+    page: number,
+    pageSize: number,
+    category?: 'apply' | 'system' | 'order',
+  ) {
     const where: Prisma.NotificationWhereInput = { userId };
     if (unreadOnly) where.read = false;
+    if (category) {
+      const types = NotificationService.CATEGORY_TYPE_MAP[category];
+      if (types && types.length > 0) {
+        where.type = { in: types };
+      } else {
+        // order 类暂无 type，返回空
+        where.type = { in: ['__none__'] };
+      }
+    }
 
     const [list, total, unreadCount] = await Promise.all([
       this.prisma.notification.findMany({
@@ -132,6 +175,23 @@ export class NotificationService {
       page,
       pageSize,
     };
+  }
+
+  // M4-01 各分类未读数（供前端 tab 角标）
+  async unreadCountByCategory(userId: string) {
+    const entries = await Promise.all(
+      NotificationService.CATEGORIES.map(async (cat) => {
+        const types = NotificationService.CATEGORY_TYPE_MAP[cat] ?? [];
+        const count =
+          types.length > 0
+            ? await this.prisma.notification.count({
+                where: { userId, read: false, type: { in: types } },
+              })
+            : 0;
+        return [cat, count] as const;
+      }),
+    );
+    return Object.fromEntries(entries) as Record<'apply' | 'system' | 'order', number>;
   }
 
   async markRead(id: string, userId: string) {

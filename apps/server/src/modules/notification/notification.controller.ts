@@ -13,20 +13,31 @@ export class NotificationController {
     return ok(this.notification.getSubscribeTemplates());
   }
 
+  // M4-01 各分类未读数（供前端 tab 角标）
+  @Get('unread-counts')
+  async unreadCounts(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.notification.unreadCountByCategory(uid));
+  }
+
   @Get()
   async list(
     @Query('unreadOnly') unreadOnly?: string,
+    @Query('category') category?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Req() req?: Request,
   ) {
     const uid = (req as AuthenticatedRequest).user!.uid;
+    const validCategories = ['apply', 'system', 'order'] as const;
+    const cat = validCategories.find((c) => c === category);
     return ok(
       await this.notification.list(
         uid,
         unreadOnly === '1',
         parsePositiveInt(page, 1, 1, 10_000),
         parsePositiveInt(pageSize, 20, 1, 50),
+        cat,
       ),
     );
   }
