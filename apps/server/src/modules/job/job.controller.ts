@@ -5,7 +5,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import type { AuthenticatedRequest } from '../auth/types';
 import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
-import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto } from './dto/job.dto';
+import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto } from './dto/job.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -164,5 +164,19 @@ export class JobController {
       throw new BizException(10003, 'prod 禁止手动触发', HttpStatus.FORBIDDEN);
     }
     return ok(await this.scheduler.expireJobPosts());
+  }
+
+  // M3-04 编辑岗位（商家可编辑未下架且属于自己的岗位；PUBLISHED 编辑后回退 PENDING 需重新发布）
+  @Put('job-posts/:id')
+  async updatePost(@Param('id') id: string, @Body() dto: UpdateJobPostDto, @Req() req: Request) {
+    const u = (req as AuthenticatedRequest).user!;
+    return ok(await this.job.updatePost(u.uid, id, dto, u.openid));
+  }
+
+  // M3-05 主动下架岗位（仅 PUBLISHED 可下架；保留下架时间）
+  @Post('job-posts/:id/take-down')
+  async takeDown(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.takeDownPost(uid, id));
   }
 }

@@ -1,10 +1,13 @@
 import type { AppInstance } from '../../../app';
 import {
   createJobPost,
+  updateJobPost,
+  getJobPost,
   JOB_CATEGORY_LABELS,
   SETTLEMENT_LABELS,
   type JobCategory,
   type Settlement,
+  type JobPostVo,
 } from '../../../services/job';
 
 interface Opt {
@@ -40,6 +43,11 @@ const WORK_PERIOD_OPTIONS: TagOpt[] = ['上午', '下午', '晚上', '全天', '
 
 Page({
   data: {
+    // M3-04 编辑模式
+    editId: '' as string,
+    isEdit: false as boolean,
+    editingDuration: '' as string, // 编辑模式 duration 只读
+    // 表单字段
     title: '',
     description: '',
     requirements: '',
@@ -58,9 +66,50 @@ Page({
     submitting: false,
   },
 
-  onLoad() {
+  onLoad(options: Record<string, string | undefined>) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    // M3-04 编辑模式：?id=xxx 回填表单
+    const id = options.id;
+    if (id) {
+      this.setData({ editId: id, isEdit: true });
+      wx.setNavigationBarTitle({ title: '编辑岗位' });
+      this.loadPost(id);
+    }
+  },
+
+  // M3-04 加载岗位详情回填表单
+  async loadPost(id: string) {
+    wx.showLoading({ title: '加载中' });
+    try {
+      const post: JobPostVo = await getJobPost(id);
+      // 回填单选/多选状态
+      const categoryOptions = this.data.categoryOptions.map((o) => ({ ...o, selected: o.value === post.category }));
+      const settlementOptions = this.data.settlementOptions.map((o) => ({ ...o, selected: o.value === post.settlement }));
+      const workDateOptions = this.data.workDateOptions.map((o) => ({ ...o, selected: post.workDates.includes(o.label) }));
+      const workPeriodOptions = this.data.workPeriodOptions.map((o) => ({ ...o, selected: post.workPeriods.includes(o.label) }));
+      this.setData({
+        title: post.title,
+        description: post.description,
+        requirements: post.requirements ?? '',
+        salary: post.salary,
+        location: post.location,
+        categoryOptions,
+        settlementOptions,
+        workDateOptions,
+        workPeriodOptions,
+        headcount: String(post.headcount),
+        urgent: post.urgent,
+        online: post.online,
+        questions: post.questions ?? [],
+        duration: post.duration,
+        editingDuration: post.duration,
+      });
+    } catch {
+      wx.showToast({ title: '加载岗位失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+    }
   },
 
   onInput(e: WechatMiniprogram.Input) {
@@ -69,6 +118,8 @@ Page({
   },
 
   pickDuration(e: WechatMiniprogram.TouchEvent) {
+    // M3-04 编辑模式 duration 不可改
+    if (this.data.isEdit) return;
     this.setData({ duration: e.currentTarget.dataset.d as 'D30' | 'D90' });
   },
 
@@ -129,7 +180,7 @@ Page({
 
   async submit() {
     if (this.data.submitting) return;
-    const { title, description, requirements, salary, location, duration, headcount, urgent, online } = this.data;
+    const { title, description, requirements, salary, location, duration, headcount, urgent, online, isEdit, editId } = this.data;
     const category = this.data.categoryOptions.find((o) => o.selected)?.value;
     const settlement = this.data.settlementOptions.find((o) => o.selected)?.value;
     if (!title.trim() || !description.trim() || !salary.trim() || !location.trim()) {
@@ -145,27 +196,49 @@ Page({
     const hc = Math.max(1, Math.min(999, Number(headcount) || 1));
     this.setData({ submitting: true });
     try {
-      const post = await createJobPost({
-        title: title.trim(),
-        description: description.trim(),
-        requirements: requirements.trim() || undefined,
-        salary: salary.trim(),
-        location: location.trim(),
-        category: category as JobCategory,
-        settlement: settlement as Settlement,
-        workDates,
-        workPeriods,
-        headcount: hc,
-        urgent,
-        online,
-        questions: this.data.questions.length > 0 ? this.data.questions : undefined,
-        duration: duration as 'D30' | 'D90',
-      });
-      wx.showToast({ title: '创建成功', icon: 'success' });
-      // 创建为草稿，跳付费发布（feat/payment）
-      setTimeout(() => {
-        wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${duration}` });
-      }, 600);
+      if (isEdit && editId) {
+        // M3-04 编辑岗位
+        await updateJobPost(editId, {
+          title: title.trim(),
+          description: description.trim(),
+          requirements: requirements.trim() || undefined,
+          salary: salary.trim(),
+          location: location.trim(),
+          category: category as JobCategory,
+          settlement: settlement as Settlement,
+          workDates,
+          workPeriods,
+          headcount: hc,
+          urgent,
+          online,
+          questions: this.data.questions,
+        });
+        wx.showToast({ title: '已保存', icon: 'success' });
+        setTimeout(() => wx.navigateBack(), 600);
+      } else {
+        // 创建草稿
+        const post = await createJobPost({
+          title: title.trim(),
+          description: description.trim(),
+          requirements: requirements.trim() || undefined,
+          salary: salary.trim(),
+          location: location.trim(),
+          category: category as JobCategory,
+          settlement: settlement as Settlement,
+          workDates,
+          workPeriods,
+          headcount: hc,
+          urgent,
+          online,
+          questions: this.data.questions.length > 0 ? this.data.questions : undefined,
+          duration: duration as 'D30' | 'D90',
+        });
+        wx.showToast({ title: '创建成功', icon: 'success' });
+        // 创建为草稿，跳付费发布（feat/payment）
+        setTimeout(() => {
+          wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${duration}` });
+        }, 600);
+      }
     } catch {
       /* toast */
     } finally {

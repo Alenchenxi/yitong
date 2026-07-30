@@ -564,6 +564,7 @@ model JobPost {
   duration     JobDuration
   expireAt     DateTime      @map("expire_at")
   status       JobPostStatus @default(PENDING)
+  takenDownAt  DateTime?     @map("taken_down_at") // M3-05 商家主动下架时间（null=未下架或非下架状态）
   createdAt    DateTime      @default(now()) @map("created_at")
   merchant     Merchant      @relation(fields: [merchantId], references: [id])
   applications JobApplication[]

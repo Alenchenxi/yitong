@@ -57,6 +57,11 @@ export interface JobPostVo {
   createdAt: string;
   // M3-06 仅 mine=1 列表返回：当前岗的 PENDING 报名数
   pendingApplicationCount?: number;
+  // M3-05 主动下架时间（null=未下架）
+  takenDownAt?: string | null;
+  // M3-04 编辑返回扩展：编辑前状态、是否需要重新发布
+  editedFromStatus?: string;
+  needsRepublish?: boolean;
 }
 
 export interface JobListResult {
@@ -169,6 +174,33 @@ export function recommendJobs() {
 
 export function getJobPost(id: string) {
   return request<JobPostVo>({ url: `/job-posts/${id}` });
+}
+
+// M3-04 编辑岗位（所有字段 optional，duration 不可改）
+export function updateJobPost(
+  id: string,
+  data: Partial<{
+    title: string;
+    description: string;
+    requirements: string;
+    salary: string;
+    location: string;
+    category: JobCategory;
+    settlement: Settlement;
+    workDates: string[];
+    workPeriods: string[];
+    headcount: number;
+    urgent: boolean;
+    online: boolean;
+    questions: string[];
+  }>,
+) {
+  return request<JobPostVo>({ url: `/job-posts/${id}`, method: 'PUT', data });
+}
+
+// M3-05 主动下架岗位（仅 PUBLISHED 可下架）
+export function takeDownJobPost(id: string) {
+  return request<JobPostVo>({ url: `/job-posts/${id}/take-down`, method: 'POST' });
 }
 
 export function applyJob(postId: string, data: { resumeId?: string; answers?: string[] } = {}) {

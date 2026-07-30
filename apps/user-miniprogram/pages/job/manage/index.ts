@@ -2,6 +2,7 @@ import type { AppInstance } from '../../../app';
 import {
   getMerchantDashboard,
   listJobPosts,
+  takeDownJobPost,
   type JobPostVo,
   type MerchantDashboardVo,
 } from '../../../services/job';
@@ -143,6 +144,37 @@ Page({
 
   goPost() {
     wx.navigateTo({ url: '/pages/job/post/index' });
+  },
+
+  // M3-04 跳编辑岗位
+  goEdit(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    wx.navigateTo({ url: `/pages/job/post/index?id=${id}` });
+  },
+
+  // M3-05 主动下架岗位
+  onTakeDown(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    const title = e.currentTarget.dataset.title as string;
+    wx.showModal({
+      title: '下架岗位',
+      content: `确定下架「${title}」吗？下架后学生将无法看到此岗位`,
+      confirmText: '下架',
+      confirmColor: '#e64340',
+      success: async (res) => {
+        if (!res.confirm) return;
+        wx.showLoading({ title: '下架中' });
+        try {
+          await takeDownJobPost(id);
+          wx.showToast({ title: '已下架', icon: 'success' });
+          this.load();
+        } catch {
+          wx.showToast({ title: '下架失败', icon: 'none' });
+        } finally {
+          wx.hideLoading();
+        }
+      },
+    });
   },
 
   // M3-06 待处理报名数 badge 跳转（带预筛选）

@@ -88,6 +88,76 @@ export class CreateJobPostDto {
   duration!: 'D30' | 'D90';
 }
 
+// M3-04 编辑岗位：所有字段 optional（duration 不可改，由 service 校验）
+export class UpdateJobPostDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  requirements?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  salary?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  location?: string;
+
+  @IsOptional()
+  @IsIn(JOB_CATEGORY_VALUES)
+  category?: (typeof JOB_CATEGORY_VALUES)[number];
+
+  @IsOptional()
+  @IsIn(SETTLEMENT_VALUES)
+  settlement?: (typeof SETTLEMENT_VALUES)[number];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  workDates?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  workPeriods?: string[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(999)
+  headcount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  urgent?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  online?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  questions?: string[];
+}
+
 export class JobListQueryDto {
   @IsOptional()
   @IsString()

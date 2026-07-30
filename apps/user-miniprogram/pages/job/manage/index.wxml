@@ -85,6 +85,23 @@
       data-id="{{item.id}}"
       catchtap="goCandidates"
     >{{item.pendingCount}} 条待处理报名</view>
+    <!-- M3-04 编辑 / M3-05 下架 -->
+    <view class="card-actions" wx:if="{{item.status === 'PENDING' || item.status === 'PUBLISHED'}}">
+      <button
+        class="action-btn edit-btn"
+        size="mini"
+        catchtap="goEdit"
+        data-id="{{item.id}}"
+      >编辑</button>
+      <button
+        wx:if="{{item.status === 'PUBLISHED'}}"
+        class="action-btn takedown-btn"
+        size="mini"
+        catchtap="onTakeDown"
+        data-id="{{item.id}}"
+        data-title="{{item.title}}"
+      >下架</button>
+    </view>
     <button
       wx:if="{{item.status === 'PENDING'}}"
       class="pay-btn"

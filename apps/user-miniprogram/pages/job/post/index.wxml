@@ -55,12 +55,14 @@
     <textarea class="textarea" placeholder="学历 / 技能 / 经验等（选填）" value="{{requirements}}" data-field="requirements" bindinput="onInput" maxlength="2000" auto-height show-confirm-bar="{{false}}" />
   </view>
   <view class="row">
-    <text class="label">下架时长</text>
+    <text class="label">发布时长</text>
     <view class="dur">
-      <view class="dur-opt {{duration === 'D30' ? 'active' : ''}}" data-d="D30" bindtap="pickDuration">30 天</view>
-      <view class="dur-opt {{duration === 'D90' ? 'active' : ''}}" data-d="D90" bindtap="pickDuration">90 天</view>
+      <view class="dur-opt {{duration === 'D30' ? 'active' : ''}} {{isEdit ? 'dur-readonly' : ''}}" data-d="D30" bindtap="pickDuration">30 天</view>
+      <view class="dur-opt {{duration === 'D90' ? 'active' : ''}} {{isEdit ? 'dur-readonly' : ''}}" data-d="D90" bindtap="pickDuration">90 天</view>
     </view>
   </view>
-  <button class="submit" bindtap="submit" disabled="{{submitting}}">{{submitting ? '发布中…' : '发布岗位'}}</button>
-  <view class="hint">创建为草稿，提交后需付费发布（30/90 天单价由后台配置）</view>
+  <view class="hint" wx:if="{{isEdit}}">发布时长创建后不可修改</view>
+  <button class="submit" bindtap="submit" disabled="{{submitting}}">{{submitting ? '保存中…' : (isEdit ? '保存修改' : '发布岗位')}}</button>
+  <view class="hint" wx:if="{{!isEdit}}">创建为草稿，提交后需付费发布（30/90 天单价由后台配置）</view>
+  <view class="hint" wx:if="{{isEdit}}">已发布岗位编辑后将回退为待发布，需重新付费发布</view>
 </view>

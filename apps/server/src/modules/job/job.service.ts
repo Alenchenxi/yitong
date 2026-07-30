@@ -13,7 +13,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
-import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto } from './dto/job.dto';
+import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto, UpdateJobPostDto } from './dto/job.dto';
 
 // 看板时间范围 -> since 阈值（day=24h, week=7d, month=30d, all=不限）
 function rangeToSince(range: 'day' | 'week' | 'month' | 'all'): Date | null {
@@ -74,6 +74,83 @@ export class JobService {
 
     // 发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）；此处保持 PENDING 草稿
     return this.toPostVo(await this.refreshPost(post.id));
+  }
+
+  // M3-04 编辑岗位：商家可编辑未下架且属于自己的岗位（PENDING / PUBLISHED 可编辑，TAKEN_DOWN / EXPIRED 不可编辑）；
+  // PUBLISHED 编辑后回退为 PENDING（需重新付费发布）；duration 不可改（影响支付与 expireAt）。
+  async updatePost(merchantUid: string, postId: string, dto: UpdateJobPostDto, openid?: string) {
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      include: { merchant: { select: { userId: true } } },
+    });
+    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (post.merchant.userId !== merchantUid) {
+      throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
+    }
+    if (post.status === JobPostStatus.TAKEN_DOWN || post.status === JobPostStatus.EXPIRED) {
+      throw new BizException(40003, '已下架或已过期岗位不可编辑', HttpStatus.CONFLICT);
+    }
+
+    // 内容安全审核（仅校验有改动的文本字段）
+    const texts = [dto.title, dto.description, dto.salary, dto.location].filter((t): t is string => !!t);
+    await Promise.all(texts.map((t) => this.moderation.checkText(t, openid)));
+
+    // 组装更新数据（只写入 dto 提供的字段）
+    const data: Prisma.JobPostUpdateInput = {};
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.requirements !== undefined) data.requirements = dto.requirements || null;
+    if (dto.salary !== undefined) {
+      data.salary = dto.salary;
+      data.salaryAmount = this.parseSalaryAmount(dto.salary);
+    }
+    if (dto.location !== undefined) data.location = dto.location;
+    if (dto.category !== undefined) data.category = dto.category;
+    if (dto.settlement !== undefined) data.settlement = dto.settlement;
+    if (dto.workDates !== undefined) data.workDates = this.filterWhitelist(dto.workDates, WORK_DATE_VALUES);
+    if (dto.workPeriods !== undefined) data.workPeriods = this.filterWhitelist(dto.workPeriods, WORK_PERIOD_VALUES);
+    if (dto.headcount !== undefined) data.headcount = dto.headcount;
+    if (dto.urgent !== undefined) data.urgent = dto.urgent;
+    if (dto.online !== undefined) data.online = dto.online;
+    if (dto.questions !== undefined) data.questions = dto.questions;
+
+    // PUBLISHED 编辑后回退 PENDING（需重新付费发布）
+    const wasPublished = post.status === JobPostStatus.PUBLISHED;
+    if (wasPublished) {
+      data.status = JobPostStatus.PENDING;
+    }
+
+    const updated = await this.prisma.jobPost.update({
+      where: { id: postId },
+      data,
+      include: { merchant: { select: { shopName: true } } },
+    });
+    const vo = this.toPostVo(updated);
+    vo.editedFromStatus = post.status;
+    vo.needsRepublish = wasPublished;
+    return vo;
+  }
+
+  // M3-05 主动下架岗位：仅 PUBLISHED 可下架（PENDING 是草稿无需下架；TAKEN_DOWN/EXPIRED 幂等报错）；保留下架时间。
+  async takeDownPost(merchantUid: string, postId: string) {
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      include: { merchant: { select: { userId: true } } },
+    });
+    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (post.merchant.userId !== merchantUid) {
+      throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
+    }
+    if (post.status !== JobPostStatus.PUBLISHED) {
+      throw new BizException(40004, `状态非法流转：${post.status} -> TAKEN_DOWN`, HttpStatus.CONFLICT);
+    }
+    const now = new Date();
+    const updated = await this.prisma.jobPost.update({
+      where: { id: postId },
+      data: { status: JobPostStatus.TAKEN_DOWN, takenDownAt: now },
+      include: { merchant: { select: { shopName: true } } },
+    });
+    return this.toPostVo(updated);
   }
 
   // 岗位列表：mine=1 商家自己的（含草稿）；否则 PUBLISHED 且未过期
@@ -626,6 +703,7 @@ export class JobService {
     duration: JobDuration;
     expireAt: Date;
     status: JobPostStatus;
+    takenDownAt?: Date | null;
     createdAt: Date;
     merchant?: { shopName: string };
   }) {
@@ -651,7 +729,11 @@ export class JobService {
       duration: p.duration,
       expireAt: p.expireAt.toISOString(),
       status: p.status,
+      takenDownAt: p.takenDownAt ? p.takenDownAt.toISOString() : null,
       createdAt: p.createdAt.toISOString(),
+      // M3-04 编辑返回扩展（仅 updatePost 设置）
+      editedFromStatus: undefined as string | undefined,
+      needsRepublish: undefined as boolean | undefined,
     };
   }
 
