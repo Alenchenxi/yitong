@@ -1,0 +1,24 @@
+.page { padding: 24rpx; }
+.section { margin-bottom: 24rpx; padding: 24rpx; }
+.section-title { font-size: 26rpx; color: var(--yt-text-sub); margin-bottom: 8rpx; }
+.menu-item {
+  padding: 24rpx 0;
+  display: flex;
+  align-items: center;
+  font-size: 28rpx;
+  color: var(--yt-text-main);
+  border-bottom: 1rpx solid var(--yt-border);
+}
+.menu-item:last-child { border-bottom: none; }
+.menu-item text:first-child { flex: 1; }
+.arrow { color: var(--yt-text-weak); font-size: 32rpx; }
+.logout-btn {
+  margin-top: 32rpx;
+  background: var(--yt-card) !important;
+  color: var(--yt-danger) !important;
+  border: 1rpx solid var(--yt-border) !important;
+  border-radius: 12rpx !important;
+  font-size: 28rpx !important;
+  height: 88rpx !important;
+  line-height: 88rpx !important;
+}

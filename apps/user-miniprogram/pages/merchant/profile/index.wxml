@@ -69,12 +69,14 @@
       <view class="section-title">消息与反馈</view>
       <view class="menu-item" bindtap="goNotifications"><text>消息中心</text><text wx:if="{{unreadCount > 0}}" class="badge">{{unreadCount}}</text><text class="arrow">›</text></view>
       <view class="menu-item" bindtap="goFeedback"><text>意见反馈</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goHelp"><text>帮助中心</text><text class="arrow">›</text></view>
     </view>
 
     <!-- 账号 -->
     <view class="section yt-card">
       <view class="section-title">账号</view>
       <view class="menu-item" bindtap="goAccountSecurity"><text>账号与安全</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goSettings"><text>设置</text><text class="arrow">›</text></view>
     </view>
   </block>
 

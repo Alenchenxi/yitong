@@ -114,6 +114,12 @@ Page({
   goFeedback() {
     wx.navigateTo({ url: '/pages/feedback/index' });
   },
+  goHelp() {
+    wx.navigateTo({ url: '/pages/help/index' });
+  },
+  goSettings() {
+    wx.navigateTo({ url: '/pages/settings/index' });
+  },
   goRegister() {
     wx.navigateTo({ url: '/pages/merchant/register/index' });
   },

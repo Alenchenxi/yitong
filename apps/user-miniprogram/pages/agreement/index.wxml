@@ -1,0 +1,34 @@
+<view class="page">
+  <view class="tabs">
+    <view class="tab {{active === 'service' ? 'tab-active' : ''}}" data-tab="service" bindtap="onTabTap">商家服务规则</view>
+    <view class="tab {{active === 'privacy' ? 'tab-active' : ''}}" data-tab="privacy" bindtap="onTabTap">隐私说明</view>
+    <view class="tab {{active === 'posting' ? 'tab-active' : ''}}" data-tab="posting" bindtap="onTabTap">岗位发布规范</view>
+  </view>
+
+  <view class="content yt-card" wx:if="{{active === 'service'}}">
+    <view class="para">1. 商家入驻需提交真实有效的营业执照号和联系电话，平台审核通过后方可发布岗位。</view>
+    <view class="para">2. 商家发布的岗位信息须真实准确，不得虚假宣传或误导求职者。</view>
+    <view class="para">3. 商家应按时支付约定薪资，薪资争议由平台介入协调。</view>
+    <view class="para">4. 商家不得发布违法、色情、暴力或歧视性内容，违者岗位将被下架。</view>
+    <view class="para">5. 商家录用候选人后，应按约定安排工作，不得无故取消。</view>
+    <view class="para">6. 岗位付费发布后，如需退款，在订单记录页申请，退款后岗位状态同步处理。</view>
+  </view>
+
+  <view class="content yt-card" wx:elif="{{active === 'privacy'}}">
+    <view class="para">1. 燚桐仅收集为提供兼职服务所必需的个人信息（昵称、手机号、简历等）。</view>
+    <view class="para">2. 商家仅可查看候选人主动投递的简历信息，未经授权不得外传。</view>
+    <view class="para">3. 平台不会向第三方出售用户个人信息。</view>
+    <view class="para">4. 匿名树洞内容不含真实身份信息，后台可追溯但前台不展示。</view>
+    <view class="para">5. 用户可在账号与安全页管理授权与个人信息。</view>
+  </view>
+
+  <view class="content yt-card" wx:elif="{{active === 'posting'}}">
+    <view class="para">1. 岗位标题须简明扼要，不得使用夸张或诱导性表述。</view>
+    <view class="para">2. 薪资须明确实时薪/日薪/月薪，禁止"面议"等模糊描述。</view>
+    <view class="para">3. 工作地点、工作时间、结算方式须如实填写。</view>
+    <view class="para">4. 招聘人数须合理，不得恶意刷量。</view>
+    <view class="para">5. 报名问题不得超过 5 个，每个问题答案长度限制 200 字。</view>
+    <view class="para">6. 岗位发布需付费，金额由平台定价配置计算，不支持自定义金额。</view>
+    <view class="para">7. 已发布岗位编辑后将回退为待发布，需重新付费发布。</view>
+  </view>
+</view>
