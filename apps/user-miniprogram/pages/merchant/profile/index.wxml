@@ -1,40 +1,82 @@
-<view class="page" wx:if="{{merchant}}">
-  <view class="card">
-    <view class="shop">{{merchant.shopName}}</view>
-    <view class="status status-{{merchant.status}}">{{statusText}}</view>
+<view class="page">
+  <!-- M5-02 认证状态卡 -->
+  <view class="auth-card" wx:if="{{merchant}}">
+    <view class="auth-head">
+      <view class="shop-name">{{merchant.shopName}}</view>
+      <view class="auth-badge auth-badge-{{merchant.status}}">{{statusText}}</view>
+    </view>
+    <view class="auth-tip" wx:if="{{merchant.status === 'PENDING'}}">资质审核中，通过后可发布岗位</view>
+    <view class="auth-tip" wx:elif="{{merchant.status === 'REJECTED'}}">资质未通过，请重新提交或联系平台</view>
+    <view class="auth-tip" wx:elif="{{merchant.status === 'APPROVED'}}">资质已认证</view>
   </view>
 
-  <view class="info">
-    <view class="row" wx:if="{{!editing}}">
-      <text class="label">店铺名称</text><text class="value">{{merchant.shopName}}</text>
+  <!-- 未入驻引导 -->
+  <view class="auth-card" wx:elif="{{notMerchant}}">
+    <view class="auth-head">
+      <view class="shop-name">未入驻商家</view>
+      <view class="auth-badge auth-badge-NONE">未认证</view>
     </view>
-    <view class="row" wx:else>
-      <text class="label">店铺名称</text>
-      <input class="input" value="{{shopName}}" data-field="shopName" bindinput="onInput" />
-    </view>
-
-    <view class="row">
-      <text class="label">营业执照号</text><text class="value">{{merchant.licenseNo}}</text>
-    </view>
-
-    <view class="row" wx:if="{{!editing}}">
-      <text class="label">联系电话</text><text class="value">{{merchant.contactPhone}}</text>
-    </view>
-    <view class="row" wx:else>
-      <text class="label">联系电话</text>
-      <input class="input" type="number" value="{{contactPhone}}" data-field="contactPhone" bindinput="onInput" maxlength="11" />
-    </view>
+    <view class="auth-tip">完成商家入驻并通过审核后可发布岗位</view>
+    <button class="register-btn" bindtap="goRegister">去入驻</button>
   </view>
 
-  <button class="btn" wx:if="{{!editing}}" bindtap="toggleEdit">编辑资料</button>
-  <button class="btn" wx:else bindtap="save" disabled="{{saving}}">{{saving ? '保存中…' : '保存'}}</button>
+  <!-- M5-01 商家工作台 -->
+  <block wx:if="{{merchant && merchant.status === 'APPROVED'}}">
+    <!-- 店铺资料 -->
+    <view class="section yt-card">
+      <view class="section-head">
+        <text class="section-title">店铺资料</text>
+        <text class="edit-link" bindtap="toggleEdit">{{editing ? '取消' : '编辑'}}</text>
+      </view>
+      <view class="row" wx:if="{{!editing}}">
+        <text class="label">店铺名称</text><text class="value">{{merchant.shopName}}</text>
+      </view>
+      <view class="row" wx:else>
+        <text class="label">店铺名称</text>
+        <input class="input" value="{{shopName}}" data-field="shopName" bindinput="onInput" />
+      </view>
+      <view class="row">
+        <text class="label">营业执照号</text><text class="value">{{merchant.licenseNo}}</text>
+      </view>
+      <view class="row" wx:if="{{!editing}}">
+        <text class="label">联系电话</text><text class="value">{{merchant.contactPhone}}</text>
+      </view>
+      <view class="row" wx:else>
+        <text class="label">联系电话</text>
+        <input class="input" type="number" value="{{contactPhone}}" data-field="contactPhone" bindinput="onInput" maxlength="11" />
+      </view>
+      <button class="save-btn" wx:if="{{editing}}" bindtap="save" disabled="{{saving}}">{{saving ? '保存中…' : '保存'}}</button>
+    </view>
 
-  <view class="tip" wx:if="{{merchant.status === 'APPROVED'}}">已通过审核，可到「我的-切换角色」切换为商家</view>
-  <view class="tip" wx:elif="{{merchant.status === 'PENDING'}}">审核中，请耐心等待</view>
+    <!-- 招聘管理 -->
+    <view class="section yt-card">
+      <view class="section-title">招聘管理</view>
+      <view class="menu-item" bindtap="goJobs"><text>我的岗位</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goCandidates"><text>候选人</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goPostJob"><text>发布岗位</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goDashboard"><text>数据看板</text><text class="arrow">›</text></view>
+    </view>
 
-  <view class="extra-actions" wx:if="{{merchant.status === 'APPROVED'}}">
-    <view class="action-btn" bindtap="goDashboard">数据看板</view>
-    <view class="action-btn" bindtap="goReviews">评价管理</view>
-    <view class="action-btn" bindtap="goOrders">订单记录</view>
-  </view>
+    <!-- 订单与评价 -->
+    <view class="section yt-card">
+      <view class="section-title">订单与评价</view>
+      <view class="menu-item" bindtap="goOrders"><text>订单记录</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goReviews"><text>评价管理</text><text class="arrow">›</text></view>
+    </view>
+
+    <!-- 消息与反馈 -->
+    <view class="section yt-card">
+      <view class="section-title">消息与反馈</view>
+      <view class="menu-item" bindtap="goNotifications"><text>消息中心</text><text wx:if="{{unreadCount > 0}}" class="badge">{{unreadCount}}</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goFeedback"><text>意见反馈</text><text class="arrow">›</text></view>
+    </view>
+
+    <!-- 账号 -->
+    <view class="section yt-card">
+      <view class="section-title">账号</view>
+      <view class="menu-item" bindtap="goAccountSecurity"><text>账号与安全</text><text class="arrow">›</text></view>
+    </view>
+  </block>
+
+  <button class="logout-btn" bindtap="logout">退出登录</button>
 </view>

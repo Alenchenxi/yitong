@@ -1,0 +1,31 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">提交反馈</view>
+    <view class="field">
+      <text class="label">标题</text>
+      <input class="input" value="{{title}}" placeholder="一句话描述问题" maxlength="100" bindinput="onTitleInput" />
+    </view>
+    <view class="field">
+      <text class="label">内容</text>
+      <textarea class="textarea" value="{{content}}" placeholder="详细描述（1-2000 字）" maxlength="2000" bindinput="onContentInput" />
+    </view>
+    <button class="btn" bindtap="submit" disabled="{{submitting}}">{{submitting ? '提交中…' : '提交'}}</button>
+  </view>
+
+  <view class="section-title">我的反馈</view>
+  <view class="list">
+    <view class="item" wx:for="{{tickets}}" wx:key="id">
+      <view class="item-head">
+        <text class="item-title">{{item.title}}</text>
+        <text class="item-status item-status-{{item.status}}">{{item.statusText}}</text>
+      </view>
+      <view class="item-content">{{item.content}}</view>
+      <view class="item-reply" wx:if="{{item.reply}}">
+        <text class="reply-label">回复：</text>
+        <text>{{item.reply}}</text>
+      </view>
+      <view class="item-time">{{item.createdAt}}</view>
+    </view>
+    <view class="empty" wx:if="{{tickets.length === 0 && !loading}}">暂无反馈记录</view>
+  </view>
+</view>

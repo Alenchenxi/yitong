@@ -1,0 +1,66 @@
+.page { padding: 24rpx; }
+
+.card {
+  background: var(--yt-card);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 32rpx;
+}
+.card-title { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); margin-bottom: 16rpx; }
+
+.field { margin-bottom: 20rpx; }
+.label { display: block; font-size: 24rpx; color: var(--yt-text-sub); margin-bottom: 8rpx; }
+.input {
+  height: 72rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  padding: 0 16rpx;
+  font-size: 28rpx;
+}
+.textarea {
+  width: 100%;
+  height: 200rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  padding: 16rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.btn {
+  background: var(--yt-primary) !important;
+  color: var(--yt-text-main) !important;
+  border-radius: 12rpx !important;
+  font-size: 30rpx !important;
+  margin-top: 8rpx;
+}
+
+.section-title { font-size: 26rpx; color: var(--yt-text-sub); margin-bottom: 16rpx; }
+
+.list { display: flex; flex-direction: column; gap: 16rpx; }
+.item {
+  background: var(--yt-card);
+  border-radius: 12rpx;
+  padding: 24rpx;
+}
+.item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.item-title { font-size: 28rpx; font-weight: 600; color: var(--yt-text-main); flex: 1; }
+.item-status { font-size: 22rpx; padding: 4rpx 12rpx; border-radius: 16rpx; }
+.item-status-OPEN { background: rgba(249, 200, 1, 0.15); color: #b8860b; }
+.item-status-IN_PROGRESS { background: rgba(34, 160, 85, 0.12); color: #22a055; }
+.item-status-CLOSED { background: rgba(134, 144, 156, 0.15); color: var(--yt-text-sub); }
+
+.item-content { font-size: 26rpx; color: var(--yt-text-main); line-height: 1.5; margin-bottom: 12rpx; }
+.item-reply {
+  background: var(--yt-bg);
+  border-radius: 8rpx;
+  padding: 16rpx;
+  font-size: 26rpx;
+  color: var(--yt-text-main);
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+}
+.reply-label { color: var(--yt-text-sub); margin-right: 8rpx; }
+.item-time { font-size: 22rpx; color: var(--yt-text-weak); }
+
+.empty { text-align: center; color: var(--yt-text-weak); padding: 48rpx 0; font-size: 26rpx; }
