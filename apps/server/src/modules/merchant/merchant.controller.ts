@@ -77,6 +77,13 @@ export class MerchantController {
     return ok(await this.merchant.getCandidateDetail(uid, id));
   }
 
+  // M4-02 报名处理提醒（懒检查）：商家进消息页触发，超时未联系 PENDING 报名产生站内提醒
+  @Post('apply-reminder')
+  async applyReminder(@Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.merchant.checkApplyReminder(uid));
+  }
+
   @Get('orders')
   async orders(@Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;

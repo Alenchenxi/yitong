@@ -22,6 +22,7 @@ export const NotificationType = {
   JOB_COMPLETE: 'job_complete',
   JOB_REJECT: 'job_reject',
   JOB_REVIEW_FROM_MERCHANT: 'job_review_from_merchant', // P1-26 商家评价学生
+  JOB_APPLY_REMINDER: 'job_apply_reminder', // M4-02 报名处理提醒（懒检查）
   POST_TAKEDOWN: 'post_takedown',
   // P0-11 表白墙来源化消息
   POST_LIKE: 'post_like',
@@ -117,6 +118,7 @@ export class NotificationService {
       'job_complete',
       'job_reject',
       'job_review_from_merchant',
+      'job_apply_reminder', // M4-02 报名处理提醒
     ],
     system: [
       'post_like',

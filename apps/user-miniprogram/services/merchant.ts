@@ -210,3 +210,13 @@ export interface MerchantCandidateDetailVo {
 export function getMerchantCandidateDetail(id: string) {
   return request<MerchantCandidateDetailVo>({ url: `/merchant/candidates/${id}` });
 }
+
+// M4-02 报名处理提醒（懒检查）：商家进消息页触发，超时未联系 PENDING 报名产生站内提醒
+export interface ApplyReminderResult {
+  created: boolean;
+  count: number;
+}
+
+export function checkApplyReminder() {
+  return request<ApplyReminderResult>({ url: '/merchant/apply-reminder', method: 'POST' });
+}

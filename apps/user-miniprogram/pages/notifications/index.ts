@@ -9,6 +9,7 @@ import {
   type UnreadCounts,
 } from '../../services/notification';
 import { requestJobApplySubscribe, requestJobStatusSubscribe } from '../../services/subscribe-message';
+import { checkApplyReminder } from '../../services/merchant';
 import { formatTime } from '../../utils/auth';
 
 const CATEGORIES: Array<{ value: '' | NotificationCategory; label: string }> = [
@@ -32,7 +33,12 @@ Page({
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    this.setData({ isMerchant: app.globalData.currentRole === 'merchant' });
+    const role = app.globalData.currentRole;
+    this.setData({ isMerchant: role === 'merchant' });
+    // M4-02 报名处理提醒（懒检查）：商家进消息页先检查，超时未联系 PENDING 报名产生站内提醒
+    if (role === 'merchant') {
+      try { await checkApplyReminder(); } catch { /* 不影响列表加载 */ }
+    }
     await Promise.all([this.load(), this.loadUnreadCounts()]);
   },
 
@@ -91,7 +97,7 @@ Page({
   },
 
   categoryForType(type: string): NotificationCategory {
-    if (['job_apply', 'job_accept', 'job_complete', 'job_reject', 'job_review_from_merchant'].includes(type)) {
+    if (['job_apply', 'job_accept', 'job_complete', 'job_reject', 'job_review_from_merchant', 'job_apply_reminder'].includes(type)) {
       return 'apply';
     }
     return 'system';
@@ -109,6 +115,9 @@ Page({
       wx.navigateTo({ url: `/pages/job/detail/index?id=${targetId}` });
     } else if (targetType === 'application') {
       wx.navigateTo({ url: '/pages/job/my-applications/index' });
+    } else if (targetType === 'merchant_candidates') {
+      // M4-02 报名处理提醒跳转：候选人 tabBar 页，必须 switchTab
+      wx.switchTab({ url: '/pages/candidates/index' });
     }
   },
 

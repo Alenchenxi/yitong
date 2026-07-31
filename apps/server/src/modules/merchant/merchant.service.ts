@@ -6,7 +6,7 @@ import {
 import { AppStatus, FitMark, MerchantStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotificationType } from '../notification/notification.service';
+import { NotificationService, NotificationType } from '../notification/notification.service';
 import type {
   BatchMarkDto,
   ListCandidatesDto,
@@ -22,7 +22,57 @@ import type { UpdateMerchantDto } from './dto/update-merchant.dto';
 export class MerchantService {
   private readonly logger = new Logger(MerchantService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  // M4-02 报名处理提醒（懒检查版）静态规则：平台配置
+  private static readonly STALE_THRESHOLD_HOURS = 24; // 未联系 + PENDING 超过该时长（小时）视为未及时处理
+  private static readonly REMINDER_COOLDOWN_HOURS = 24; // 同一商家该冷却窗内最多一条提醒，防刷屏
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notification: NotificationService,
+  ) {}
+
+  // M4-02 报名处理提醒（懒检查）：商家进消息页时前端调用。扫超时未联系 PENDING 报名，
+  // 若存在且冷却窗内未提醒过，创建一条站内提醒通知（type=job_apply_reminder，归 M4-01 apply 分类）。
+  // 规则静态配置（STALE_THRESHOLD_HOURS / REMINDER_COOLDOWN_HOURS）；不授权微信订阅也不影响站内消息。
+  async checkApplyReminder(merchantUid: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
+    if (!merchant || merchant.status !== MerchantStatus.APPROVED) {
+      return { created: false, count: 0 };
+    }
+    const staleBefore = new Date(Date.now() - MerchantService.STALE_THRESHOLD_HOURS * 3_600_000);
+    const count = await this.prisma.jobApplication.count({
+      where: {
+        status: AppStatus.PENDING,
+        contactedAt: null,
+        createdAt: { lt: staleBefore },
+        jobPost: { merchantId: merchant.id },
+      },
+    });
+    if (count === 0) return { created: false, count: 0 };
+
+    // 冷却：冷却窗内已有提醒则跳过，防刷屏
+    const cooldownBefore = new Date(Date.now() - MerchantService.REMINDER_COOLDOWN_HOURS * 3_600_000);
+    const recent = await this.prisma.notification.findFirst({
+      where: {
+        userId: merchantUid,
+        type: NotificationType.JOB_APPLY_REMINDER,
+        createdAt: { gt: cooldownBefore },
+      },
+      select: { id: true },
+    });
+    if (recent) return { created: false, count };
+
+    await this.notification.create({
+      userId: merchantUid,
+      type: NotificationType.JOB_APPLY_REMINDER,
+      title: '报名处理提醒',
+      content: `您有 ${count} 个报名待处理超过 ${MerchantService.STALE_THRESHOLD_HOURS} 小时，请尽快查看候选人。`,
+      targetType: 'merchant_candidates',
+      targetId: merchant.id,
+    });
+    this.logger.log(`M4-02 apply reminder created for merchant ${merchantUid}: ${count} stale apps`);
+    return { created: true, count };
+  }
 
   // 入驻：创建 Merchant(PENDING)。dev 模式自动审核通过 + 加 MERCHANT 角色（方便测试）；
   // 生产等 feat/admin 审核（approveInternal 由 admin 调用）。
