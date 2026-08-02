@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/.cache
+**/.git
+**/.vscode
+**/.idea
+*.log
+.env
+.env.*
+rebuild-docker.ps1
