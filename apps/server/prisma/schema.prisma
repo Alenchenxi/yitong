@@ -700,12 +700,17 @@ model PaymentOrder {
   paidAt     DateTime? @map("paid_at")
   refundedAt DateTime? @map("refunded_at")
   refundReason String? @map("refund_reason")
+  // M6：微信支付单号（回调写入）、退款单号（退款 API 返回）、退款状态（SUCCESS/PROCESSING/CLOSED/ABNORMAL）
+  wxTransactionId String? @map("wx_transaction_id")
+  wxRefundId      String? @map("wx_refund_id")
+  refundStatus    String? @map("refund_status")
   createdAt  DateTime  @default(now()) @map("created_at")
   @@map("payment_orders")
 }
 enum PayStatus {
   PENDING
   PAID
+  REFUNDING
   REFUNDED
   CLOSED
 }

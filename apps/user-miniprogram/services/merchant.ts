@@ -41,7 +41,7 @@ export interface MerchantOrderVo {
   jobPostTitle: string;
   duration: 'D30' | 'D90';
   amount: string;
-  status: 'PENDING' | 'PAID' | 'REFUNDED' | 'CLOSED';
+  status: 'PENDING' | 'PAID' | 'REFUNDING' | 'REFUNDED' | 'CLOSED';
   paidAt: string | null;
   refundedAt: string | null;
   refundReason: string | null;

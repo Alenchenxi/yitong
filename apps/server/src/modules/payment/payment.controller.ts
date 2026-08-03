@@ -17,11 +17,22 @@ export class PaymentController {
     return ok(await this.payment.createJobPublishOrder(uid, dto));
   }
 
-  // 微信支付回调（免鉴权）：验签 -> 置 PUBLISHED
+  // 微信支付回调（免鉴权）：验签 + 解密 -> 置 PUBLISHED
   @Public()
   @Post('notify')
-  async notify(@Body() body: unknown) {
-    return ok(await this.payment.notify(body));
+  async notify(@Req() req: Request) {
+    const headers = req.headers as unknown as Record<string, string | undefined>;
+    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody?.toString('utf8') ?? '';
+    return ok(await this.payment.notify(headers, rawBody));
+  }
+
+  // 微信退款回调（免鉴权）：验签 + 解密 -> 置 REFUNDED
+  @Public()
+  @Post('refund-notify')
+  async refundNotify(@Req() req: Request) {
+    const headers = req.headers as unknown as Record<string, string | undefined>;
+    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody?.toString('utf8') ?? '';
+    return ok(await this.payment.refundNotify(headers, rawBody));
   }
 
   // dev 专用：模拟支付完成（prod 禁止）
@@ -36,6 +47,13 @@ export class PaymentController {
   async getOrder(@Param('orderId') orderId: string, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.payment.getOrder(uid, orderId));
+  }
+
+  // M6-05 订单状态兜底查询：按微信真实状态对账本地
+  @Post(':orderId/sync')
+  async sync(@Param('orderId') orderId: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.payment.syncOrderStatus(uid, orderId));
   }
 
   @Post(':orderId/refund')

@@ -7,8 +7,12 @@
 .status { padding: 4rpx 14rpx; border-radius: 20rpx; }
 .status-PAID { color: #52c41a; }
 .status-PENDING { color: #faad14; }
+.status-REFUNDING { color: #1890ff; }
 .status-REFUNDED { color: #888; }
+.status-CLOSED { color: #bbb; }
 .time { font-size: 22rpx; color: #aaa; margin-top: 8rpx; }
 .refund-reason { font-size: 22rpx; color: #888; margin-top: 8rpx; }
-.refund { margin-top: 14rpx; margin-left: 0; background: #f5f6f8; color: #444; }
+.actions { margin-top: 14rpx; display: flex; gap: 16rpx; }
+.refund { margin: 0; background: #f5f6f8; color: #444; }
+.sync { margin: 0; background: #f5f6f8; color: #1890ff; }
 .empty { text-align: center; padding-top: 200rpx; color: #999; font-size: 28rpx; }

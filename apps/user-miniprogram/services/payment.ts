@@ -1,11 +1,21 @@
 import { request } from './request';
 
+export interface WxPayParams {
+  timeStamp: string;
+  nonceStr: string;
+  package: string;
+  signType: 'RSA';
+  paySign: string;
+}
+
 export interface PublishOrderVo {
   orderId: string;
   amount: string;
-  status: 'PENDING' | 'PAID' | 'REFUNDED' | 'CLOSED';
+  status: 'PENDING' | 'PAID' | 'REFUNDING' | 'REFUNDED' | 'CLOSED';
   jobPostId: string;
   jobPostStatus: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
+  // 生产环境拉起微信支付所需参数；dev mock 直接完成时为 null
+  wxPayParams: WxPayParams | null;
 }
 
 export interface PaymentOrderVo {
@@ -13,11 +23,18 @@ export interface PaymentOrderVo {
   jobPostId: string;
   duration: 'D30' | 'D90';
   amount: string;
-  status: 'PENDING' | 'PAID' | 'REFUNDED' | 'CLOSED';
+  status: 'PENDING' | 'PAID' | 'REFUNDING' | 'REFUNDED' | 'CLOSED';
   paidAt: string | null;
   refundedAt: string | null;
   refundReason: string | null;
+  wxTransactionId: string | null;
+  wxRefundId: string | null;
+  refundStatus: string | null;
   createdAt: string;
+}
+
+export interface SyncOrderVo extends PaymentOrderVo {
+  message: string;
 }
 
 export function publishJob(data: { jobPostId: string; duration: 'D30' | 'D90' }) {
@@ -30,4 +47,9 @@ export function refundPayment(orderId: string, reason?: string) {
     method: 'POST',
     data: { reason },
   });
+}
+
+// M6-05 订单状态兜底查询：按微信真实状态对账本地
+export function syncOrderStatus(orderId: string) {
+  return request<SyncOrderVo>({ url: `/payments/${orderId}/sync`, method: 'POST' });
 }

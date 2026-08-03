@@ -3,7 +3,7 @@
     <view class="title">付费发布岗位</view>
     <view class="row">展示时长：{{duration === 'D90' ? '90 天' : '30 天'}}</view>
     <view class="row" wx:if="{{result}}">支付金额：¥{{result.amount}}</view>
-    <view class="row" wx:if="{{result}}">岗位状态：{{result.jobPostStatus === 'PUBLISHED' ? '已发布' : result.jobPostStatus}}</view>
+    <view class="row" wx:if="{{result && result.status === 'PAID'}}">岗位状态：已发布</view>
   </view>
 
   <block wx:if="{{!result}}">
@@ -11,9 +11,29 @@
     <view class="hint">开发环境模拟支付，直接发布；生产环境拉起微信支付</view>
   </block>
 
-  <view wx:else class="success">
-    <view class="success-emoji">✅</view>
-    <view class="success-text">岗位已发布</view>
-    <button class="back-btn" bindtap="goBack">返回</button>
-  </view>
+  <block wx:elif="{{result.status === 'PAID'}}">
+    <view class="success">
+      <view class="success-emoji">✅</view>
+      <view class="success-text">岗位已发布</view>
+      <button class="back-btn" bindtap="goBack">返回</button>
+    </view>
+  </block>
+
+  <block wx:elif="{{failed}}">
+    <view class="success">
+      <view class="success-emoji">⚠️</view>
+      <view class="success-text">{{message || '支付未完成'}}</view>
+      <button class="pay-btn" bindtap="pay">重新支付</button>
+      <button class="back-btn" bindtap="goOrders">查看订单</button>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="success">
+      <view class="success-emoji">⏳</view>
+      <view class="success-text">{{message || '支付处理中'}}</view>
+      <view class="hint">可在订单页刷新确认状态</view>
+      <button class="back-btn" bindtap="goOrders">查看订单</button>
+    </view>
+  </block>
 </view>

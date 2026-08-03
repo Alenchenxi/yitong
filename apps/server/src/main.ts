@@ -5,7 +5,8 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody=true：微信支付/退款回调验签需要原始请求体（req.rawBody）
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
