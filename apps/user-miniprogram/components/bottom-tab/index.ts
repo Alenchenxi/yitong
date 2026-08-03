@@ -1,18 +1,12 @@
 interface TabItem {
-  /** 跳转路径（绝对路径，pages/ 前缀），如 /pages/job/manage/index */
-  path: string;
+  /** 受控模式 key：点击 triggerEvent('change', {key})，由 shell 切 tab */
+  key: string;
   /** 显示文字 */
   label: string;
-  /** 非选中图标（可选，相对路径如 assets/tabbar/job.png） */
+  /** 非选中图标（绝对路径如 /assets/tabbar/m-candidates.png） */
   iconPath?: string;
   /** 选中图标 */
   selectedIconPath?: string;
-  /** 内部用：高亮态 */
-  active?: boolean;
-}
-
-function stripSlash(p: string): string {
-  return (p || '').replace(/^\//, '');
 }
 
 Component({
@@ -26,42 +20,19 @@ Component({
       type: Array,
       value: [] as TabItem[],
     },
-    /** 当前页路径（含 / 前缀也可），如 "pages/job/manage/index" 或 "/pages/job/manage/index" */
+    /** 当前选中 key */
     current: {
       type: String,
       value: '',
     },
   },
 
-  observers: {
-    // 仅监听 current；tabs 在 attached 时一次性计算高亮，避免 observer 触发 recompute 后
-    // setData({ tabs }) 改变 tabs 引用再次触发 observer 造成无限 setData 卡死。
-    current: function () {
-      this.recompute();
-    },
-  },
-
-  lifetimes: {
-    attached() {
-      this.recompute();
-    },
-  },
-
   methods: {
-    recompute() {
-      const cur = stripSlash(this.data.current);
-      const tabs = (this.data.tabs || []).map((t) => ({
-        ...t,
-        active: stripSlash(t.path) === cur,
-      }));
-      this.setData({ tabs });
-    },
     onTap(e: WechatMiniprogram.TouchEvent) {
-      const path = e.currentTarget.dataset.path as string;
-      if (!path) return;
-      const cur = stripSlash(this.data.current);
-      if (stripSlash(path) === cur) return;
-      wx.reLaunch({ url: path });
+      const key = e.currentTarget.dataset.key as string;
+      if (!key || key === this.data.current) return;
+      // 受控模式：通知 shell 切 tab（shell 监听 bind:change）
+      this.triggerEvent('change', { key });
     },
   },
 });

@@ -1,0 +1,253 @@
+.page { padding: 24rpx; padding-bottom: 160rpx; box-sizing: border-box; min-height: 100vh; }
+
+/* 顶部 banner */
+.banner {
+  background: linear-gradient(135deg, #ffe27a, var(--yt-primary, #f9c801));
+  border-radius: 20rpx;
+  padding: 36rpx 32rpx;
+  margin-bottom: 24rpx;
+  color: var(--yt-text-main, #1d2129);
+}
+.banner-title {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+.banner-sub {
+  font-size: 24rpx;
+  margin-top: 8rpx;
+  opacity: 0.8;
+}
+.post-btn {
+  margin-top: 24rpx;
+  background: var(--yt-text-main, #1d2129) !important;
+  color: #fff !important;
+  border-radius: 999rpx !important;
+  font-size: 28rpx !important;
+  height: 72rpx !important;
+  line-height: 72rpx !important;
+}
+
+/* M3-01 数据看板：range tab + stats */
+.dashboard {
+  margin-bottom: 16rpx;
+}
+.range-scroll {
+  white-space: nowrap;
+  margin-bottom: 16rpx;
+}
+.range-row {
+  display: inline-flex;
+}
+.range-chip {
+  display: inline-block;
+  padding: 8rpx 24rpx;
+  margin-right: 12rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  background: var(--yt-bg, #f6f7fb);
+  color: var(--yt-text-body, #4e5969);
+}
+.range-chip-active {
+  background: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
+  font-weight: 600;
+}
+.stats {
+  display: flex;
+  gap: 16rpx;
+}
+.stat {
+  flex: 1;
+  background: var(--yt-bg, #f6f7fb);
+  border-radius: 12rpx;
+  padding: 20rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.stat-num {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--yt-text-main, #1d2129);
+}
+.stat-num.highlight {
+  color: var(--yt-danger, #e63946);
+}
+.stat-label {
+  font-size: 22rpx;
+  color: var(--yt-text-weak, #86909c);
+  margin-top: 4rpx;
+}
+
+/* M3-02 搜索 + M3-03 状态筛选 */
+.filter {
+  margin-bottom: 16rpx;
+}
+.search-row {
+  display: flex;
+  align-items: center;
+}
+.search-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--yt-bg, #f6f7fb);
+  border-radius: 12rpx;
+  height: 72rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+}
+.search-btn {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 32rpx;
+  border-radius: 12rpx;
+  background: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
+  font-size: 26rpx;
+  font-weight: 600;
+}
+.status-scroll {
+  margin-top: 16rpx;
+  white-space: nowrap;
+}
+.status-row {
+  display: inline-flex;
+}
+.status-chip {
+  display: inline-block;
+  padding: 8rpx 24rpx;
+  margin-right: 12rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  background: var(--yt-bg, #f6f7fb);
+  color: var(--yt-text-body, #4e5969);
+}
+.status-chip-active {
+  background: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
+  font-weight: 600;
+}
+
+/* 列表区 */
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--yt-text-main, #1d2129);
+  margin: 8rpx 4rpx 16rpx;
+}
+.section-extra {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: var(--yt-text-weak, #86909c);
+}
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  border: 1rpx solid var(--yt-border, #e5e6eb);
+}
+.card-main {
+  /* 卡片主体可点击 */
+}
+.title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--yt-text-main, #1d2129);
+}
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12rpx;
+}
+.salary {
+  color: var(--yt-danger, #e63946);
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.status {
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+  background: var(--yt-disabled-bg, #f5f6f8);
+  color: var(--yt-text-body, #666);
+}
+.status-PUBLISHED {
+  color: #fff;
+  background: #52c41a;
+}
+.status-EXPIRED,
+.status-TAKEN_DOWN {
+  color: var(--yt-text-weak, #86909c);
+}
+.dur {
+  font-size: 22rpx;
+  color: var(--yt-text-weak, #86909c);
+  margin-top: 8rpx;
+}
+
+/* M3-06 报名管理入口 */
+.pending-badge {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--yt-border, #f0f0f0);
+  display: inline-block;
+  font-size: 24rpx;
+  color: var(--yt-danger, #e63946);
+  background: #fff7e6;
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+}
+
+/* M3-04 编辑 / M3-05 下架 */
+.card-actions {
+  margin-top: 16rpx;
+  display: flex;
+  gap: 16rpx;
+}
+.action-btn {
+  margin: 0 !important;
+  border-radius: 32rpx !important;
+  font-size: 24rpx !important;
+  line-height: 64rpx !important;
+  height: 64rpx !important;
+  padding: 0 32rpx !important;
+}
+.edit-btn {
+  background: var(--yt-bg, #f6f7fb) !important;
+  color: var(--yt-text-main, #1d2129) !important;
+}
+.takedown-btn {
+  background: transparent !important;
+  color: var(--yt-danger, #e64340) !important;
+  border: 1rpx solid var(--yt-danger, #e64340) !important;
+}
+
+.pay-btn {
+  margin-top: 16rpx;
+  background: var(--yt-danger, #e63946) !important;
+  color: #fff !important;
+  border-radius: 32rpx !important;
+  font-size: 24rpx !important;
+}
+
+/* 空状态 */
+.empty {
+  text-align: center;
+  padding: 80rpx 0 200rpx;
+}
+.empty-title {
+  font-size: 30rpx;
+  color: var(--yt-text-main, #1d2129);
+  margin-bottom: 8rpx;
+}
+.empty-sub {
+  font-size: 24rpx;
+  color: var(--yt-text-weak, #86909c);
+}

@@ -1,15 +1,15 @@
 <view class="bt">
   <view
     wx:for="{{tabs}}"
-    wx:key="path"
-    class="bt-item {{item.active ? 'bt-active' : ''}}"
-    data-path="{{item.path}}"
+    wx:key="key"
+    class="bt-item {{item.key === current ? 'bt-active' : ''}}"
+    data-key="{{item.key}}"
     bindtap="onTap"
   >
     <image
       wx:if="{{item.iconPath}}"
       class="bt-icon"
-      src="{{item.active ? (item.selectedIconPath || item.iconPath) : item.iconPath}}"
+      src="{{item.key === current ? (item.selectedIconPath || item.iconPath) : item.iconPath}}"
       mode="aspectFit"
     ></image>
     <text class="bt-label">{{item.label}}</text>

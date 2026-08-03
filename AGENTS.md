@@ -57,7 +57,7 @@
 - 从 main 切 `feat/<scope>` 分支开发（scope 取模块名）。
 - 合并前：改动记录状态 = **已审查**，typecheck + smoke + 单测全过。
 - 合并：`git checkout main && git merge --squash feat/<x> && git commit`。
-- Conventional Commits：`feat(<scope>): 中文 subject`，结尾 `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`。
+- Conventional Commits：`feat(<scope>): 中文 subject`；**提交信息（subject + body）以中文为主，不得全英文**（技术术语如 tabBar/shell/Prisma 可保留英文，但整体须中文可读），结尾 `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`。
 - `git push origin main` 本机常超时（errno 10054 / Timed out），多重试 3-5 次；仍失败告知用户手动 `! git push origin main`。
 - 若 main 已前进，合并前先 `git rebase main`。
 

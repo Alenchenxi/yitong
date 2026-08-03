@@ -12,10 +12,12 @@
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
+    "@tabler/icons": "^3.46.0",
     "@types/node": "^20.14.0",
     "eslint": "^9.7.0",
     "miniprogram-api-typings": "^5.2.1",
     "prettier": "^3.3.0",
+    "sharp": "^0.35.3",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.0.0"
   },
@@ -27,7 +29,8 @@
       "@prisma/client",
       "@prisma/engines",
       "prisma",
-      "@nestjs/core"
+      "@nestjs/core",
+      "sharp"
     ]
   }
 }

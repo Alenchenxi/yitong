@@ -19,8 +19,9 @@
   color: var(--yt-text-weak, #86909c);
   font-size: 22rpx;
 }
+/* 选中态：图标品牌黄（selectedIconPath）+ 文字主黑 #1D2129（UI 规范 §6.5） */
 .bt-item.bt-active {
-  color: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1D2129);
   font-weight: 600;
 }
 .bt-icon {

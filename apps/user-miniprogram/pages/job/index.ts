@@ -88,10 +88,10 @@ Page({
     wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
   },
   goPost() {
-    wx.navigateTo({ url: '/pages/job/post/index' });
+    wx.navigateTo({ url: '/pages/merchant/index?tab=post' });
   },
   goManage() {
-    wx.navigateTo({ url: '/pages/job/manage/index' });
+    wx.navigateTo({ url: '/pages/merchant/index?tab=jobs' });
   },
   goMyApps() {
     wx.navigateTo({ url: '/pages/job/my-applications/index' });

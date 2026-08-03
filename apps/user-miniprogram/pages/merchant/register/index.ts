@@ -12,10 +12,10 @@ Page({
   onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    // 已入驻则跳资料页
+    // 已入驻则跳商家 shell「我的」tab
     getMerchantProfile()
       .then(() => {
-        wx.redirectTo({ url: '/pages/merchant/profile/index' });
+        wx.redirectTo({ url: '/pages/merchant/index?tab=profile' });
       })
       .catch(() => {
         /* 未入驻，留在本页 */
@@ -29,6 +29,7 @@ Page({
 
   async submit() {
     if (this.data.submitting) return;
+    const app = getApp<AppInstance>();
     const { shopName, licenseNo, contactPhone } = this.data;
     if (!shopName.trim() || !licenseNo.trim() || !contactPhone.trim()) {
       wx.showToast({ title: '请填完整', icon: 'none' });
@@ -42,19 +43,14 @@ Page({
         contactPhone: contactPhone.trim(),
       });
       wx.showToast({ title: '入驻成功', icon: 'success' });
-      // dev 模式自动审核通过，提示可切换商家角色
-      setTimeout(() => {
-        if (m.status === 'APPROVED') {
-          wx.showModal({
-            title: '入驻已通过',
-            content: '可到「我的-切换角色」切换为商家',
-            showCancel: false,
-            success: () => wx.navigateBack(),
-          });
-        } else {
-          wx.navigateBack();
-        }
-      }, 800);
+      if (m.status === 'APPROVED') {
+        // dev 自动审核通过：切商家角色 + 进商家 shell（switchRole await 落盘 token 后再 reLaunch，无弹窗）
+        await app.switchRole('merchant');
+        setTimeout(() => wx.reLaunch({ url: '/pages/merchant/index' }), 800);
+      } else {
+        // 待审核：返回上一页
+        setTimeout(() => wx.navigateBack(), 800);
+      }
     } catch {
       /* toast 已弹 */
     } finally {

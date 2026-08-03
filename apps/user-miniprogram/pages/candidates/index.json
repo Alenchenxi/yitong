@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "候选人",
-  "enablePullDownRefresh": true,
-  "usingComponents": {
-    "bottom-tab": "/components/bottom-tab/index"
-  }
-}

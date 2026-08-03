@@ -66,8 +66,8 @@ Page({
   },
 
   goMerchant() {
-    // 统一进商家端首页（招聘列表），未入驻由该页探测跳入驻
-    wx.navigateTo({ url: '/pages/job/manage/index' });
+    // 统一进商家 shell（未入驻由 shell 探测跳入驻）
+    wx.navigateTo({ url: '/pages/merchant/index' });
   },
 
   goAccountSecurity() {
@@ -79,7 +79,7 @@ Page({
   },
 
   goAdmin() {
-    wx.navigateTo({ url: '/pages/admin/dashboard/index' });
+    wx.navigateTo({ url: '/pages/admin/index' });
   },
 
   logout() {

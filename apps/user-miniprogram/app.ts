@@ -31,9 +31,9 @@ App({
   // onLaunch 恢复登录态后 + role-select 登录成功后共用此逻辑，保证「进哪个端展示哪个端」
   routeToRoleHome(role: string) {
     if (role === 'merchant') {
-      wx.reLaunch({ url: '/pages/job/manage/index' });
+      wx.reLaunch({ url: '/pages/merchant/index' });
     } else if (role === 'admin') {
-      wx.reLaunch({ url: '/pages/admin/dashboard/index' });
+      wx.reLaunch({ url: '/pages/admin/index' });
     } else {
       // user 落地表白墙(tabBar)：reLaunch 与 merchant/admin 统一，规避 onLaunch 阶段 switchTab 偶发失效
       wx.reLaunch({ url: '/pages/confession/index' });

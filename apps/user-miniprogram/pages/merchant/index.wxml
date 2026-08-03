@@ -1,0 +1,39 @@
+<view class="shell">
+  <candidates-panel
+    wx:if="{{loaded.candidates}}"
+    hidden="{{activeTab !== 'candidates'}}"
+    id="panel-candidates"
+    params="{{tabParams.candidates}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></candidates-panel>
+  <jobs-panel
+    wx:if="{{loaded.jobs}}"
+    hidden="{{activeTab !== 'jobs'}}"
+    id="panel-jobs"
+    params="{{tabParams.jobs}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></jobs-panel>
+  <post-panel
+    wx:if="{{loaded.post}}"
+    hidden="{{activeTab !== 'post'}}"
+    id="panel-post"
+    params="{{tabParams.post}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></post-panel>
+  <notifications-panel
+    wx:if="{{loaded.notifications}}"
+    hidden="{{activeTab !== 'notifications'}}"
+    id="panel-notifications"
+    params="{{tabParams.notifications}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></notifications-panel>
+  <profile-panel
+    wx:if="{{loaded.profile}}"
+    hidden="{{activeTab !== 'profile'}}"
+    id="panel-profile"
+    params="{{tabParams.profile}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></profile-panel>
+
+  <bottom-tab tabs="{{tabs}}" current="{{activeTab}}" bind:change="onTabChange" />
+</view>

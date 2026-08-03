@@ -1,0 +1,12 @@
+{
+  "navigationBarTitleText": "燚桐管理",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "bottom-tab": "/components/bottom-tab/index",
+    "dashboard-panel": "/components/admin-panels/dashboard/index",
+    "review-panel": "/components/admin-panels/review/index",
+    "ops-panel": "/components/admin-panels/ops/index",
+    "users-panel": "/components/admin-panels/users/index",
+    "profile-panel": "/components/admin-panels/profile/index"
+  }
+}

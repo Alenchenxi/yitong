@@ -1,0 +1,39 @@
+<view class="shell">
+  <dashboard-panel
+    wx:if="{{loaded.dashboard}}"
+    hidden="{{activeTab !== 'dashboard'}}"
+    id="panel-dashboard"
+    params="{{tabParams.dashboard}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></dashboard-panel>
+  <review-panel
+    wx:if="{{loaded.review}}"
+    hidden="{{activeTab !== 'review'}}"
+    id="panel-review"
+    params="{{tabParams.review}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></review-panel>
+  <ops-panel
+    wx:if="{{loaded.ops}}"
+    hidden="{{activeTab !== 'ops'}}"
+    id="panel-ops"
+    params="{{tabParams.ops}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></ops-panel>
+  <users-panel
+    wx:if="{{loaded.users}}"
+    hidden="{{activeTab !== 'users'}}"
+    id="panel-users"
+    params="{{tabParams.users}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></users-panel>
+  <profile-panel
+    wx:if="{{loaded.profile}}"
+    hidden="{{activeTab !== 'profile'}}"
+    id="panel-profile"
+    params="{{tabParams.profile}}"
+    bind:switchtab="onPanelSwitchTab"
+  ></profile-panel>
+
+  <bottom-tab tabs="{{tabs}}" current="{{activeTab}}" bind:change="onTabChange" />
+</view>

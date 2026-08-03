@@ -1,0 +1,45 @@
+<view class="page">
+  <!-- M4-04 微信订阅授权入口（商家角色展示） -->
+  <view class="subscribe-bar yt-card" wx:if="{{isMerchant}}">
+    <view class="subscribe-tip">开启微信提醒，第一时间收到报名/录用通知</view>
+    <view class="subscribe-actions">
+      <view class="subscribe-btn" bindtap="enableApplySubscribe">报名提醒</view>
+      <view class="subscribe-btn" bindtap="enableStatusSubscribe">状态提醒</view>
+    </view>
+  </view>
+
+  <view class="topbar" wx:if="{{unreadCount > 0}}">
+    <text class="unread-text">{{unreadCount}} 条未读</text>
+    <view class="read-all" bindtap="readAll">全部已读</view>
+  </view>
+
+  <!-- M4-01 分类 tab -->
+  <scroll-view class="category-tabs" scroll-x>
+    <view
+      wx:for="{{categories}}"
+      wx:key="value"
+      class="cat-tab {{activeCategory === item.value ? 'cat-tab-active' : ''}}"
+      data-value="{{item.value}}"
+      catchtap="onCategoryTap"
+    >
+      {{item.label}}
+      <text class="cat-badge" wx:if="{{item.value && unreadCounts[item.value] > 0}}">{{unreadCounts[item.value]}}</text>
+    </view>
+  </scroll-view>
+
+  <view class="list">
+    <view class="item {{item.read ? '' : 'unread'}}" wx:for="{{notifications}}" wx:key="id" data-id="{{item.id}}" bindtap="tapNotification">
+      <view class="dot" wx:if="{{!item.read}}"></view>
+      <view class="main">
+        <view class="title">{{item.title}}</view>
+        <view class="content">{{item.content}}</view>
+        <view class="time">{{item.timeText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{notifications.length === 0 && !loading}}">
+    <view class="empty-emoji">📭</view>
+    <view class="empty-text">暂无消息</view>
+  </view>
+</view>

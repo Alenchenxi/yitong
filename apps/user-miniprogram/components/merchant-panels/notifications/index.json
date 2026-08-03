@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "notifications-view": "/components/notifications-view/index"
+  }
+}

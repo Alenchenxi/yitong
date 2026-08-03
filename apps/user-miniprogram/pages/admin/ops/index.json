@@ -1,6 +1,0 @@
-{
-  "navigationBarTitleText": "运营",
-  "usingComponents": {
-    "bottom-tab": "/components/bottom-tab/index"
-  }
-}
