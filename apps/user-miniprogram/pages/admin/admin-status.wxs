@@ -1,7 +1,7 @@
-<!-- 管理端状态码 -> 状态色 class / 中文文案，供 5 个 admin 页 wxml 复用
-     用法：<wxs src="../admin-status.wxs" module="st" />
-     <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text>
--->
+/* 管理端状态码 -> 状态色 class / 中文文案，供 5 个 admin 页 wxml 复用
+   用法：<wxs src="../admin-status.wxs" module="st" />
+   <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text>
+*/
 var MAP = {
   PENDING: '待处理',
   APPROVED: '已通过',
