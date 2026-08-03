@@ -4,7 +4,7 @@ export interface WxPayParams {
   timeStamp: string;
   nonceStr: string;
   package: string;
-  signType: 'RSA';
+  signType: 'MD5';
   paySign: string;
 }
 

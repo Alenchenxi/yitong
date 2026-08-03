@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Header, Param, Post, Req, Get } from '@nestjs/common';
 import type { Request } from 'express';
 import { ok } from '../../common/dto/api-response';
 import { Public } from '../auth/public.decorator';
@@ -14,25 +14,28 @@ export class PaymentController {
   @Post('job-publish')
   async jobPublish(@Body() dto: PublishJobDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.payment.createJobPublishOrder(uid, dto));
+    const clientIp = req.ip ?? '8.8.8.8';
+    return ok(await this.payment.createJobPublishOrder(uid, dto, clientIp));
   }
 
-  // 微信支付回调（免鉴权）：验签 + 解密 -> 置 PUBLISHED
+  // 微信支付回调（V2 XML，免鉴权）：验签 -> 置 PUBLISHED，返回 V2 XML ack
   @Public()
   @Post('notify')
+  @Header('Content-Type', 'text/xml; charset=utf-8')
   async notify(@Req() req: Request) {
-    const headers = req.headers as unknown as Record<string, string | undefined>;
     const rawBody = (req as Request & { rawBody?: Buffer }).rawBody?.toString('utf8') ?? '';
-    return ok(await this.payment.notify(headers, rawBody));
+    const r = await this.payment.notify(rawBody);
+    return `<xml><return_code><![CDATA[${r.code}]]></return_code><return_msg><![CDATA[${r.message}]]></return_msg></xml>`;
   }
 
-  // 微信退款回调（免鉴权）：验签 + 解密 -> 置 REFUNDED
+  // 微信退款回调（V2 XML，免鉴权）：验签 -> 置 REFUNDED（退款当前隐藏，预留）
   @Public()
   @Post('refund-notify')
+  @Header('Content-Type', 'text/xml; charset=utf-8')
   async refundNotify(@Req() req: Request) {
-    const headers = req.headers as unknown as Record<string, string | undefined>;
     const rawBody = (req as Request & { rawBody?: Buffer }).rawBody?.toString('utf8') ?? '';
-    return ok(await this.payment.refundNotify(headers, rawBody));
+    const r = await this.payment.refundNotify(rawBody);
+    return `<xml><return_code><![CDATA[${r.code}]]></return_code><return_msg><![CDATA[${r.message}]]></return_msg></xml>`;
   }
 
   // dev 专用：模拟支付完成（prod 禁止）
