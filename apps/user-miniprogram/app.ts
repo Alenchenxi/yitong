@@ -17,16 +17,14 @@ App({
   },
 
   onLaunch() {
-    // 从 storage 恢复登录态；无 token 则跳角色选择页（启动页即角色选择，双重保险）
+    // 从 storage 恢复登录态；有 token 则按当前角色直进对应端首页
     if (restoreAuth(this)) {
       this.globalData.loginReady = true;
-      // 已登录：按当前角色直接进对应端首页，避免重启后停在默认启动页
-      // （开发者工具编译模式启动页常为表白墙，会使 merchant/admin 误显用户端内容）
       this.routeToRoleHome(this.globalData.currentRole);
-    } else {
-      // 启动页若不是 role-select（如开发者工具直接打开某 tab 页），强制回到角色选择
-      wx.reLaunch({ url: '/pages/role-select/index' });
     }
+    // 无 token 不 reLaunch：启动页即 role-select（pages[0]），会自然渲染三张角色卡片；
+    // 若开发者工具以其他页为编译入口，该页 onLoad 的 requireAuth() 会跳回 role-select。
+    // 原先 else 分支 reLaunch 到启动页自身，会中断首屏渲染导致白屏（lib 3.17.0 复现）。
   },
 
   // 按角色跳转对应端首页：user 表白墙(tabBar) / merchant 招聘列表(商家首页) / admin 管理端
