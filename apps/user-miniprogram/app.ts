@@ -33,7 +33,7 @@ App({
     if (role === 'merchant') {
       wx.reLaunch({ url: '/pages/job/manage/index' });
     } else if (role === 'admin') {
-      wx.reLaunch({ url: '/pages/admin/index' });
+      wx.reLaunch({ url: '/pages/admin/dashboard/index' });
     } else {
       // user 落地表白墙(tabBar)：reLaunch 与 merchant/admin 统一，规避 onLaunch 阶段 switchTab 偶发失效
       wx.reLaunch({ url: '/pages/confession/index' });

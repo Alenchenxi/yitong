@@ -1,0 +1,196 @@
+/* 管理端共享样式 - 对齐 docs/UI设计规范.md §8.3
+ * 克制使用品牌黄 #F9C801；表格/筛选/批量为主；统一状态色。
+ * 各 admin 页 wxss 顶部 @import "/pages/admin/admin-common.wxss";
+ * 颜色一律用 app.wxss 的 --yt-* 变量，不再用 #ff4d6d / #52c41a。
+ */
+
+/* 页面容器：留出底部 tab bar 空间 */
+.adm-page {
+  padding: 24rpx;
+  padding-bottom: 160rpx;
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+
+/* sub-tab 横向条（页内细粒度切换） */
+.adm-subtabs { display: flex; white-space: nowrap; margin-bottom: 24rpx; }
+.adm-subtab {
+  padding: 14rpx 24rpx;
+  border-radius: 999rpx;
+  background: var(--yt-card);
+  font-size: 26rpx;
+  color: var(--yt-text-sub);
+  margin-right: 12rpx;
+  border: 1rpx solid var(--yt-border);
+}
+.adm-subtab.on {
+  background: var(--yt-primary-light);
+  color: var(--yt-text-main);
+  font-weight: 600;
+  border-color: var(--yt-primary);
+}
+
+/* 区块标题 */
+.adm-section-title { font-size: 26rpx; color: var(--yt-text-sub); margin: 24rpx 0 12rpx; }
+
+/* 筛选 chip 行 */
+.adm-filter { display: flex; gap: 12rpx; flex-wrap: wrap; margin-bottom: 16rpx; }
+.adm-filter-btn {
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  background: var(--yt-card);
+  font-size: 24rpx;
+  color: var(--yt-text-sub);
+  border: 1rpx solid var(--yt-border);
+}
+.adm-filter-btn.on {
+  background: var(--yt-primary-light);
+  color: var(--yt-text-main);
+  border-color: var(--yt-primary);
+}
+
+/* 搜索行 */
+.adm-search { display: flex; gap: 12rpx; margin-bottom: 16rpx; }
+.adm-search-input {
+  flex: 1;
+  background: var(--yt-card);
+  border-radius: 12rpx;
+  padding: 14rpx 20rpx;
+  font-size: 26rpx;
+  border: 1rpx solid var(--yt-border);
+}
+
+/* 列表项 */
+.adm-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--yt-card);
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 12rpx;
+  border: 1rpx solid var(--yt-border);
+}
+.adm-item-main { flex: 1; min-width: 0; }
+.adm-item-title {
+  display: block;
+  font-size: 28rpx;
+  color: var(--yt-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm-item-sub { display: block; font-size: 22rpx; color: var(--yt-text-sub); margin-top: 4rpx; }
+.adm-item-actions { display: flex; gap: 12rpx; flex-shrink: 0; }
+
+/* 状态标签：统一状态色浅底（替代旧纯文本状态） */
+.adm-status { font-size: 22rpx; padding: 2rpx 14rpx; border-radius: 999rpx; display: inline-block; }
+.adm-status--pending { background: rgba(255, 176, 32, 0.15); color: var(--yt-warning); }   /* 待处理/待审核 警示 */
+.adm-status--approved { background: rgba(0, 180, 42, 0.15); color: var(--yt-success); }    /* 已通过/录用/完成 成功 */
+.adm-status--rejected { background: rgba(245, 63, 63, 0.15); color: var(--yt-danger); }    /* 已拒绝/下架/封禁 危险 */
+.adm-status--published { background: rgba(47, 128, 237, 0.15); color: var(--yt-info); }    /* 已发布/进行中 信息 */
+.adm-status--neutral { background: var(--yt-disabled-bg); color: var(--yt-text-sub); }     /* 中性/正常 */
+
+/* 统计卡 */
+.adm-stats-grid { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.adm-stat {
+  width: calc(33.33% - 8rpx);
+  background: var(--yt-card);
+  border-radius: 16rpx;
+  padding: 24rpx 0;
+  text-align: center;
+  border: 1rpx solid var(--yt-border);
+}
+.adm-stat-num { display: block; font-size: 40rpx; font-weight: 700; color: var(--yt-text-main); }
+.adm-stat-num.accent { color: var(--yt-primary-dark); }
+.adm-stat-label { display: block; font-size: 22rpx; color: var(--yt-text-sub); margin-top: 4rpx; }
+
+/* 批量操作按钮（浅黄底，克制） */
+.adm-batch {
+  background: var(--yt-primary-light);
+  color: var(--yt-primary-dark);
+  font-size: 26rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 12rpx;
+  display: inline-block;
+  margin-bottom: 12rpx;
+  border: 1rpx solid var(--yt-primary);
+}
+
+/* 表单区（新建公告/专题/话题/标签） */
+.adm-form {
+  background: var(--yt-card);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  border: 1rpx solid var(--yt-border);
+}
+.adm-input {
+  border: 1rpx solid var(--yt-border);
+  border-radius: 12rpx;
+  padding: 14rpx 16rpx;
+  font-size: 28rpx;
+  background: var(--yt-bg);
+}
+.adm-textarea {
+  border: 1rpx solid var(--yt-border);
+  border-radius: 12rpx;
+  padding: 14rpx 16rpx;
+  font-size: 26rpx;
+  min-height: 160rpx;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--yt-bg);
+}
+.adm-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  background: var(--yt-card);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  border: 1rpx solid var(--yt-border);
+}
+.adm-price-input {
+  width: 120rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 12rpx;
+  padding: 8rpx 16rpx;
+  font-size: 28rpx;
+  background: var(--yt-bg);
+}
+
+/* 待办聚合卡（看板页） */
+.adm-todo { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.adm-todo-item {
+  width: calc(50% - 6rpx);
+  background: var(--yt-card);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  border: 1rpx solid var(--yt-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.adm-todo-num { font-size: 40rpx; font-weight: 700; color: var(--yt-primary-dark); }
+.adm-todo-num.zero { color: var(--yt-text-weak); }
+.adm-todo-label { font-size: 24rpx; color: var(--yt-text-sub); }
+
+/* 趋势表 */
+.adm-trend { background: var(--yt-card); border-radius: 16rpx; overflow: hidden; border: 1rpx solid var(--yt-border); }
+.adm-trend-head, .adm-trend-row { display: flex; justify-content: space-between; padding: 16rpx 24rpx; font-size: 24rpx; }
+.adm-trend-head { background: var(--yt-bg); color: var(--yt-text-sub); font-weight: 600; }
+.adm-trend-row { border-top: 1rpx solid var(--yt-border); color: var(--yt-text-body); }
+.adm-trend-head text, .adm-trend-row text { flex: 1; text-align: center; }
+
+/* 加载更多 / 空状态 */
+.adm-loadmore { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 16rpx 0; }
+.adm-empty { text-align: center; color: var(--yt-text-weak); font-size: 24rpx; padding: 32rpx 0; }
+
+/* 可点击反馈（hover-class） */
+.adm-hover { opacity: 0.7; }

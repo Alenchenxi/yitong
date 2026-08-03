@@ -79,7 +79,7 @@ Page({
   },
 
   goAdmin() {
-    wx.navigateTo({ url: '/pages/admin/index' });
+    wx.navigateTo({ url: '/pages/admin/dashboard/index' });
   },
 
   logout() {

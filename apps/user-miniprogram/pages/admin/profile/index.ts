@@ -1,10 +1,11 @@
 import type { AppInstance } from '../../../app';
 
-// 管理端底部 tab：审核 / 看板 / 岗位 / 我的
+// 管理端底部 tab：看板 / 审核 / 运营 / 用户 / 我的
 const ADMIN_TABS = [
-  { path: '/pages/admin/index', label: '审核' },
-  { path: '/pages/admin/index?tab=stats', label: '看板' },
-  { path: '/pages/admin/index?tab=jobs', label: '岗位' },
+  { path: '/pages/admin/dashboard/index', label: '看板' },
+  { path: '/pages/admin/review/index', label: '审核' },
+  { path: '/pages/admin/ops/index', label: '运营' },
+  { path: '/pages/admin/users/index', label: '用户' },
   { path: '/pages/admin/profile/index', label: '我的' },
 ];
 
@@ -13,31 +14,27 @@ Page({
     tabs: ADMIN_TABS,
     current: 'pages/admin/profile/index',
     nickname: '',
-    roleText: '管理员',
   },
 
   onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const u = app.globalData.user;
-    this.setData({
-      nickname: u ? u.nickname : '',
-      roleText: '管理员',
-    });
+    this.setData({ nickname: u ? u.nickname : '' });
   },
 
-  // 管理快捷入口：跳到 admin/index 并指定默认 tab
-  goAdmin(e: WechatMiniprogram.TouchEvent) {
-    const tab = e.currentTarget.dataset.tab as string;
-    if (!tab) {
-      wx.reLaunch({ url: '/pages/admin/index' });
-      return;
-    }
-    wx.reLaunch({ url: `/pages/admin/index?tab=${tab}` });
+  // 快捷入口：跳到其他管理页
+  go(e: WechatMiniprogram.TouchEvent) {
+    const url = e.currentTarget.dataset.url as string;
+    if (url) wx.reLaunch({ url });
   },
 
   goAccountSecurity() {
     wx.navigateTo({ url: '/pages/account-security/index' });
+  },
+
+  goSettings() {
+    wx.navigateTo({ url: '/pages/settings/index' });
   },
 
   logout() {

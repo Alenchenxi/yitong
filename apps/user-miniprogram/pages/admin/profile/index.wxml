@@ -1,62 +1,30 @@
-<view class="page">
-  <!-- 身份卡 -->
-  <view class="card">
-    <view class="avatar">{{nickname ? nickname.slice(0,1) : '?'}}</view>
-    <view class="info">
-      <view class="nickname">{{nickname || '管理员'}}</view>
-      <view class="role-badge">{{roleText}}</view>
+<view class="adm-page">
+  <!-- 管理员资料卡 -->
+  <view class="profile-card">
+    <view class="profile-avatar">{{nickname ? nickname.slice(0,1) : '管'}}</view>
+    <view class="profile-info">
+      <view class="profile-name">{{nickname || '管理员'}}</view>
+      <view class="profile-badge">管理员</view>
     </view>
   </view>
 
-  <!-- 管理快捷入口 -->
-  <view class="section">
-    <view class="section-title">管理入口</view>
-    <view class="grid">
-      <view class="grid-item" data-tab="queue" bindtap="goAdmin">
-        <view class="grid-icon icon-queue">✓</view>
-        <text class="grid-label">审核</text>
-      </view>
-      <view class="grid-item" data-tab="stats" bindtap="goAdmin">
-        <view class="grid-icon icon-stats">📊</view>
-        <text class="grid-label">看板</text>
-      </view>
-      <view class="grid-item" data-tab="pricing" bindtap="goAdmin">
-        <view class="grid-icon icon-price">¥</view>
-        <text class="grid-label">单价</text>
-      </view>
-      <view class="grid-item" data-tab="jobs" bindtap="goAdmin">
-        <view class="grid-icon icon-jobs">💼</view>
-        <text class="grid-label">岗位</text>
-      </view>
-      <view class="grid-item" data-tab="users" bindtap="goAdmin">
-        <view class="grid-icon icon-users">👥</view>
-        <text class="grid-label">用户</text>
-      </view>
-      <view class="grid-item" data-tab="tickets" bindtap="goAdmin">
-        <view class="grid-icon icon-tickets">🎫</view>
-        <text class="grid-label">工单</text>
-      </view>
-      <view class="grid-item" data-tab="reports" bindtap="goAdmin">
-        <view class="grid-icon icon-reports">⚠</view>
-        <text class="grid-label">举报</text>
-      </view>
-      <view class="grid-item" data-tab="announce" bindtap="goAdmin">
-        <view class="grid-icon icon-announce">📢</view>
-        <text class="grid-label">公告</text>
-      </view>
-    </view>
+  <!-- 管理入口 -->
+  <view class="yt-card profile-section">
+    <view class="profile-section-title">管理入口</view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-url="/pages/admin/dashboard/index"><text>看板</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-url="/pages/admin/review/index"><text>审核</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-url="/pages/admin/ops/index"><text>运营</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-url="/pages/admin/users/index"><text>用户</text><text class="profile-arrow">›</text></view>
   </view>
 
   <!-- 账号 -->
-  <view class="section">
-    <view class="section-title">账号</view>
-    <view class="menu-item" bindtap="goAccountSecurity"><text>账号与安全</text><text class="arrow">›</text></view>
+  <view class="yt-card profile-section">
+    <view class="profile-section-title">账号</view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="goAccountSecurity"><text>账号与安全</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="goSettings"><text>设置</text><text class="profile-arrow">›</text></view>
   </view>
 
-  <button class="logout-btn" bindtap="logout">退出登录</button>
+  <button class="profile-logout" bindtap="logout">退出登录</button>
 
-  <bottom-tab
-    tabs="{{tabs}}"
-    current="{{current}}"
-  ></bottom-tab>
+  <bottom-tab tabs="{{tabs}}" current="{{current}}"></bottom-tab>
 </view>
