@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "用户",
+  "usingComponents": {
+    "bottom-tab": "/components/bottom-tab/index"
+  }
+}

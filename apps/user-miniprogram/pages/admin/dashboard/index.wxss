@@ -1,0 +1,3 @@
+@import "/pages/admin/admin-common.wxss";
+
+/* dashboard 无额外页面级样式，全部复用 admin-common */

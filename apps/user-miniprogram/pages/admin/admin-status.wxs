@@ -1,0 +1,33 @@
+<!-- 管理端状态码 -> 状态色 class / 中文文案，供 5 个 admin 页 wxml 复用
+     用法：<wxs src="../admin-status.wxs" module="st" />
+     <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text>
+-->
+var MAP = {
+  PENDING: '待处理',
+  APPROVED: '已通过',
+  REJECTED: '已拒绝',
+  PUBLISHED: '已发布',
+  OPEN: '待处理',
+  IN_PROGRESS: '处理中',
+  CLOSED: '已关闭',
+  EXPIRED: '已过期',
+  TAKEN_DOWN: '已下架',
+  DONE: '已完成',
+  HIRED: '已录用'
+};
+
+function cls(status) {
+  var s = (status || '').toUpperCase();
+  if (s === 'PENDING' || s === 'OPEN' || s === 'IN_PROGRESS') return 'adm-status--pending';
+  if (s === 'APPROVED' || s === 'DONE' || s === 'COMPLETED' || s === 'HIRED') return 'adm-status--approved';
+  if (s === 'PUBLISHED' || s === 'PAID') return 'adm-status--published';
+  if (s === 'REJECTED' || s === 'EXPIRED' || s === 'TAKEN_DOWN' || s === 'BANNED') return 'adm-status--rejected';
+  return 'adm-status--neutral';
+}
+
+function text(status) {
+  var s = (status || '').toUpperCase();
+  return MAP[s] || status || '';
+}
+
+module.exports = { cls: cls, text: text };

@@ -1,0 +1,53 @@
+<view class="adm-page">
+  <!-- 待办聚合 -->
+  <view class="adm-section-title">待办事项</view>
+  <view class="adm-todo">
+    <view class="adm-todo-item" hover-class="adm-hover" bindtap="goReview">
+      <text class="adm-todo-num {{pendingMerchants === 0 ? 'zero' : ''}}">{{pendingMerchants}}</text>
+      <text class="adm-todo-label">待审核商家</text>
+    </view>
+    <view class="adm-todo-item" hover-class="adm-hover" bindtap="goReview">
+      <text class="adm-todo-num {{pendingReports === 0 ? 'zero' : ''}}">{{pendingReports}}</text>
+      <text class="adm-todo-label">待处理举报</text>
+    </view>
+    <view class="adm-todo-item" hover-class="adm-hover" bindtap="goUsers">
+      <text class="adm-todo-num {{pendingTickets === 0 ? 'zero' : ''}}">{{pendingTickets}}</text>
+      <text class="adm-todo-label">待处理工单</text>
+    </view>
+  </view>
+
+  <block wx:if="{{stats}}">
+    <!-- 总览 -->
+    <view class="adm-section-title">总览</view>
+    <view class="adm-stats-grid">
+      <view class="adm-stat"><text class="adm-stat-num accent">{{stats.overview.totalUsers}}</text><text class="adm-stat-label">总用户</text></view>
+      <view class="adm-stat"><text class="adm-stat-num accent">{{stats.overview.totalMerchants}}</text><text class="adm-stat-label">商家</text></view>
+      <view class="adm-stat"><text class="adm-stat-num">{{stats.overview.totalPosts}}</text><text class="adm-stat-label">表白墙帖</text></view>
+      <view class="adm-stat"><text class="adm-stat-num">{{stats.overview.totalAnonPosts}}</text><text class="adm-stat-label">树洞帖</text></view>
+      <view class="adm-stat"><text class="adm-stat-num">{{stats.overview.publishedJobPosts}}</text><text class="adm-stat-label">在招岗位</text></view>
+      <view class="adm-stat"><text class="adm-stat-num">{{stats.overview.totalApplications}}</text><text class="adm-stat-label">总报名</text></view>
+    </view>
+
+    <!-- 今日 -->
+    <view class="adm-section-title">今日</view>
+    <view class="adm-stats-grid">
+      <view class="adm-stat"><text class="adm-stat-num">{{stats.today.newUsers}}</text><text class="adm-stat-label">新用户</text></view>
+      <view class="adm-stat"><text class="adm-stat-num">{{stats.today.newPosts}}</text><text class="adm-stat-label">新表白帖</text></view>
+      <view class="adm-stat"><text class="adm-stat-num">{{stats.today.newAnonPosts}}</text><text class="adm-stat-label">新树洞帖</text></view>
+      <view class="adm-stat"><text class="adm-stat-num">{{stats.today.newApplications}}</text><text class="adm-stat-label">新报名</text></view>
+    </view>
+
+    <!-- 近 7 天趋势 -->
+    <view class="adm-section-title">近 7 天趋势</view>
+    <view class="adm-trend">
+      <view class="adm-trend-head"><text>日期</text><text>发帖</text><text>报名</text><text>新用户</text></view>
+      <view class="adm-trend-row" wx:for="{{stats.trend}}" wx:key="date">
+        <text>{{item.date}}</text><text>{{item.posts}}</text><text>{{item.applications}}</text><text>{{item.newUsers}}</text>
+      </view>
+    </view>
+  </block>
+
+  <view class="adm-empty" wx:if="{{!stats && !loading}}">暂无数据</view>
+
+  <bottom-tab tabs="{{tabs}}" current="{{current}}"></bottom-tab>
+</view>
