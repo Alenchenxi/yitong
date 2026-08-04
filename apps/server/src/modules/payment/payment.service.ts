@@ -24,10 +24,10 @@ export class PaymentService {
   ) {}
 
   // 付费发布：按 PricingConfig 计价下单。金额服务端算，不信前端。
-  // - 凭证齐全（isReady）：V2 JSAPI 统一下单，返回 wxPayParams 供前端 wx.requestPayment；订单留 PENDING，等回调置 PUBLISHED。
-  // - 凭证缺失 + dev：mock 支付自动完成（置 PUBLISHED）。
+  // - 凭证齐全（isReady）：V3 JSAPI 下单，返回 wxPayParams 供前端 wx.requestPayment；订单留 PENDING，等回调置 PAID。
+  // - 凭证缺失 + dev：mock 支付自动完成（置 PAID）。
   // - 凭证缺失 + prod：抛 90003。
-  async createJobPublishOrder(merchantUid: string, dto: PublishJobDto, clientIp: string) {
+  async createJobPublishOrder(merchantUid: string, dto: PublishJobDto) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
 
@@ -71,7 +71,7 @@ export class PaymentService {
       };
     }
 
-    // 真实 V2 JSAPI 下单
+    // 真实 V3 JSAPI 下单（V3 不再需要 spbill_create_ip）
     const user = await this.prisma.user.findUnique({
       where: { id: merchantUid },
       select: { openid: true },
@@ -87,7 +87,6 @@ export class PaymentService {
       description: post.title || '岗位付费发布',
       openid: user.openid,
       notifyUrl,
-      clientIp,
     });
     await this.prisma.paymentOrder.update({ where: { id: order.id }, data: { wxPrepayId: prepayId } });
     return {
@@ -117,7 +116,7 @@ export class PaymentService {
         data: { status: JobPostStatus.PUBLISHED, expireAt },
       }),
     ]);
-    // E4 主动通知商家发布成功（PaymentOrder 无 relation，经 jobPost 取 merchant.userId）
+    // 主动通知商家发布成功（PaymentOrder 无 relation，经 jobPost 取 merchant.userId）
     const post = await this.prisma.jobPost.findUnique({
       where: { id: order.jobPostId },
       include: { merchant: { select: { userId: true } } },
@@ -138,9 +137,12 @@ export class PaymentService {
     }
   }
 
-  // 微信支付回调（V2 XML，prod）：验签 -> fulfillOrder。dev 不触发（mock 已直接完成）。
-  // 返回 {code,message}，由 controller 包成 V2 XML ack（不抛异常，失败回 FAIL 让微信重试）。
-  async notify(rawBody: string): Promise<{ code: string; message: string }> {
+  // 微信支付回调（V3 JSON 加密报文，prod）：验签 + 解密 + trade_state=SUCCESS -> fulfillOrder。
+  // 返回 {code,message}，由 controller 转 HTTP 200/500（V3 失败非 2xx 让微信重试）。
+  async notify(
+    rawBody: string,
+    headers: { timestamp?: string; nonce?: string; signature?: string },
+  ): Promise<{ code: string; message: string }> {
     if (!this.wxPay.isReady()) {
       if (process.env.NODE_ENV === 'production') {
         return { code: 'FAIL', message: '微信支付回调未接入' };
@@ -148,8 +150,8 @@ export class PaymentService {
       // dev 直达：body 内带 orderId（mock-pay / 手动测试用）
       let orderId = '';
       try {
-        const data = JSON.parse(rawBody) as { outTradeNo?: string; orderId?: string };
-        orderId = data.outTradeNo ?? data.orderId ?? '';
+        const data = JSON.parse(rawBody) as { out_trade_no?: string; orderId?: string };
+        orderId = data.out_trade_no ?? data.orderId ?? '';
       } catch {
         /* ignore */
       }
@@ -158,28 +160,58 @@ export class PaymentService {
       return { code: 'SUCCESS', message: 'OK' };
     }
     try {
-      const dec = this.wxPay.verifyAndParseCallback(rawBody);
-      const orderId = dec.out_trade_no;
+      const dec = this.wxPay.verifyAndParseCallback(headers, rawBody);
+      const orderId = typeof dec.out_trade_no === 'string' ? dec.out_trade_no : '';
       if (!orderId) return { code: 'FAIL', message: 'no out_trade_no' };
-      await this.fulfillOrder(orderId, dec.transaction_id);
+      if (dec.trade_state !== 'SUCCESS') {
+        return { code: 'SUCCESS', message: 'ignored: trade_state not SUCCESS' };
+      }
+      const transactionId = typeof dec.transaction_id === 'string' ? dec.transaction_id : undefined;
+      await this.fulfillOrder(orderId, transactionId);
       return { code: 'SUCCESS', message: 'OK' };
     } catch (e) {
       return { code: 'FAIL', message: (e as Error).message };
     }
   }
 
-  // 退款回调（V2 XML，prod）：验签 -> 置 REFUNDED。退款当前隐藏，预留接口。
-  async refundNotify(rawBody: string): Promise<{ code: string; message: string }> {
+  // 微信退款回调（V3 JSON 加密报文，prod）：验签 + 解密 + refund_status=SUCCESS -> REFUNDED + 下架。
+  async refundNotify(
+    rawBody: string,
+    headers: { timestamp?: string; nonce?: string; signature?: string },
+  ): Promise<{ code: string; message: string }> {
     if (!this.wxPay.isReady()) {
       return { code: 'SUCCESS', message: 'OK' };
     }
     try {
-      const dec = this.wxPay.verifyAndParseCallback(rawBody);
-      const orderId = dec.out_trade_no;
-      if (!orderId) return { code: 'FAIL', message: 'no out_trade_no' };
+      const dec = this.wxPay.verifyAndParseRefundCallback(headers, rawBody);
+      const outTradeNo = typeof dec.out_trade_no === 'string' ? dec.out_trade_no : '';
+      if (!outTradeNo) return { code: 'FAIL', message: 'no out_trade_no' };
+      if (dec.refund_status === 'SUCCESS') {
+        const refundId = typeof dec.refund_id === 'string' ? dec.refund_id : undefined;
+        const order = await this.prisma.paymentOrder.findUnique({ where: { id: outTradeNo } });
+        if (!order) return { code: 'SUCCESS', message: 'order not found' };
+        await this.prisma.$transaction(async (tx) => {
+          await tx.paymentOrder.updateMany({
+            where: { id: outTradeNo, status: { in: [PayStatus.PAID, PayStatus.REFUNDING] } },
+            data: {
+              status: PayStatus.REFUNDED,
+              refundedAt: new Date(),
+              refundStatus: 'SUCCESS',
+              ...(refundId ? { wxRefundId: refundId } : {}),
+            },
+          });
+          await tx.jobPost.updateMany({
+            where: { id: order.jobPostId, status: JobPostStatus.PUBLISHED },
+            data: { status: JobPostStatus.TAKEN_DOWN },
+          });
+        });
+        return { code: 'SUCCESS', message: 'OK' };
+      }
+      // ABNORMAL/CLOSED 等终态：仅更新退款子状态，不动订单主状态（保持 REFUNDING 等待人工）
+      const refundId = typeof dec.refund_id === 'string' ? dec.refund_id : undefined;
       await this.prisma.paymentOrder.updateMany({
-        where: { id: orderId, status: PayStatus.REFUNDING },
-        data: { status: PayStatus.REFUNDED, refundedAt: new Date(), refundStatus: 'SUCCESS' },
+        where: { id: outTradeNo, status: PayStatus.REFUNDING },
+        data: { refundStatus: dec.refund_status ?? 'ABNORMAL', ...(refundId ? { wxRefundId: refundId } : {}) },
       });
       return { code: 'SUCCESS', message: 'OK' };
     } catch (e) {
@@ -196,9 +228,10 @@ export class PaymentService {
     return { orderId, status: PayStatus.PAID };
   }
 
-  // 申请退款：退款功能当前隐藏（前端无入口）。
+  // 申请退款：V3 退款用同一套 RSA 签名，无需 V2 的 apiclient_cert.p12。
   // - 凭证缺失 + dev：mock 直接 REFUNDED + 下架（保留测试能力）。
-  // - 凭证齐全或 prod：抛 90003「退款暂未开放」（V2 退款需 apiclient_cert.p12，待后续接入）。
+  // - 凭证齐全：调 wxPay.refund；SUCCESS 立即 REFUNDED + 下架；PROCESSING 置 REFUNDING 等回调；
+  //   CLOSED/ABNORMAL 退款失败，订单保持 PAID（仅记 refundStatus，订单仍有效）。
   async refundOrder(merchantUid: string, orderId: string, reason?: string) {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new BizException(50001, '订单不存在', HttpStatus.NOT_FOUND);
@@ -234,8 +267,50 @@ export class PaymentService {
       return this.toOrderVo(updated);
     }
 
-    // 退款功能暂未开放（V2 退款需商户证书，待后续接入）
-    throw new BizException(90003, '退款功能暂未开放', HttpStatus.SERVICE_UNAVAILABLE);
+    // 真实 V3 退款：out_refund_no 用订单 ID 加 R 后缀避免同订单复用冲突
+    const amountInFen = Math.round(Number(order.amount.toString()) * 100);
+    const refundNotifyUrl = this.config.get<string>('WX_PAY_REFUND_NOTIFY_URL') ?? undefined;
+    const { refundId, status } = await this.wxPay.refund({
+      outTradeNo: order.id,
+      outRefundNo: `${order.id}_R1`,
+      reason: reason ?? '商家申请退款',
+      amountInFen,
+      notifyUrl: refundNotifyUrl,
+    });
+    if (status === 'SUCCESS') {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const o = await tx.paymentOrder.update({
+          where: { id: orderId },
+          data: {
+            status: PayStatus.REFUNDED,
+            refundedAt: new Date(),
+            refundReason: reason ?? '商家申请退款',
+            refundStatus: 'SUCCESS',
+            wxRefundId: refundId,
+          },
+        });
+        await tx.jobPost.updateMany({
+          where: { id: order.jobPostId, status: JobPostStatus.PUBLISHED },
+          data: { status: JobPostStatus.TAKEN_DOWN },
+        });
+        return o;
+      });
+      return this.toOrderVo(updated);
+    }
+    if (status === 'PROCESSING') {
+      // 退款处理中：置 REFUNDING，等退款回调（refundNotify）置 REFUNDED
+      const updated = await this.prisma.paymentOrder.update({
+        where: { id: orderId },
+        data: { status: PayStatus.REFUNDING, refundReason: reason ?? '商家申请退款', refundStatus: status, wxRefundId: refundId },
+      });
+      return this.toOrderVo(updated);
+    }
+    // CLOSED / ABNORMAL：退款失败，订单保持 PAID（仅记 refundStatus，订单仍有效可重试）
+    const updated = await this.prisma.paymentOrder.update({
+      where: { id: orderId },
+      data: { refundReason: reason ?? '商家申请退款', refundStatus: status, wxRefundId: refundId },
+    });
+    return this.toOrderVo(updated);
   }
 
   // 查订单状态
@@ -249,7 +324,7 @@ export class PaymentService {
     return this.toOrderVo(order);
   }
 
-  // M6-05 订单状态兜底查询：商家可主动刷新，按微信真实状态对账本地。
+  // 订单状态兜底查询：商家可主动刷新，按微信真实状态对账本地。
   // - PENDING + 微信 SUCCESS -> 补完成；PENDING + 微信 CLOSED/REVOKED/PAYERROR -> 置 CLOSED。
   // - 凭证缺失：仅返回本地状态。
   async syncOrderStatus(merchantUid: string, orderId: string) {
