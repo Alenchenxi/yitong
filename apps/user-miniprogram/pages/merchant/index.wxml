@@ -1,39 +1,38 @@
 <view class="shell">
-  <candidates-panel
-    wx:if="{{loaded.candidates}}"
-    hidden="{{activeTab !== 'candidates'}}"
-    id="panel-candidates"
-    params="{{tabParams.candidates}}"
-    bind:switchtab="onPanelSwitchTab"
-  ></candidates-panel>
-  <jobs-panel
-    wx:if="{{loaded.jobs}}"
-    hidden="{{activeTab !== 'jobs'}}"
-    id="panel-jobs"
-    params="{{tabParams.jobs}}"
-    bind:switchtab="onPanelSwitchTab"
-  ></jobs-panel>
-  <post-panel
-    wx:if="{{loaded.post}}"
-    hidden="{{activeTab !== 'post'}}"
-    id="panel-post"
-    params="{{tabParams.post}}"
-    bind:switchtab="onPanelSwitchTab"
-  ></post-panel>
-  <notifications-panel
-    wx:if="{{loaded.notifications}}"
-    hidden="{{activeTab !== 'notifications'}}"
-    id="panel-notifications"
-    params="{{tabParams.notifications}}"
-    bind:switchtab="onPanelSwitchTab"
-  ></notifications-panel>
-  <profile-panel
-    wx:if="{{loaded.profile}}"
-    hidden="{{activeTab !== 'profile'}}"
-    id="panel-profile"
-    params="{{tabParams.profile}}"
-    bind:switchtab="onPanelSwitchTab"
-  ></profile-panel>
+  <scroll-view scroll-y class="shell-content" refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindscrolltolower="onScrollLower" bindrefresherrefresh="onRefresh">
+    <view hidden="{{activeTab !== 'candidates'}}">
+      <candidates-panel
+        wx:if="{{loaded.candidates}}"
+        id="panel-candidates"
+        params="{{tabParams.candidates}}"
+        bind:switchtab="onPanelSwitchTab"
+      ></candidates-panel>
+    </view>
+    <view hidden="{{activeTab !== 'jobs'}}">
+      <jobs-panel
+        wx:if="{{loaded.jobs}}"
+        id="panel-jobs"
+        params="{{tabParams.jobs}}"
+        bind:switchtab="onPanelSwitchTab"
+      ></jobs-panel>
+    </view>
+    <view hidden="{{activeTab !== 'notifications'}}">
+      <notifications-panel
+        wx:if="{{loaded.notifications}}"
+        id="panel-notifications"
+        params="{{tabParams.notifications}}"
+        bind:switchtab="onPanelSwitchTab"
+      ></notifications-panel>
+    </view>
+    <view hidden="{{activeTab !== 'profile'}}">
+      <profile-panel
+        wx:if="{{loaded.profile}}"
+        id="panel-profile"
+        params="{{tabParams.profile}}"
+        bind:switchtab="onPanelSwitchTab"
+      ></profile-panel>
+    </view>
+  </scroll-view>
 
   <bottom-tab tabs="{{tabs}}" current="{{activeTab}}" bind:change="onTabChange" />
 </view>

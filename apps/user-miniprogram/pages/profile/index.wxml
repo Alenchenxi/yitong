@@ -30,5 +30,13 @@
     <view class="menu-item" wx:if="{{currentRole === 'ADMIN'}}" bindtap="goAdmin"><text>管理后台</text><text class="arrow">›</text></view>
   </view>
 
+  <!-- 关于 -->
+  <view class="section yt-card">
+    <view class="section-title">关于</view>
+    <view class="menu-item" bindtap="goFeedback"><text>意见反馈</text><text class="arrow">›</text></view>
+    <view class="menu-item" bindtap="goHelp"><text>帮助中心</text><text class="arrow">›</text></view>
+    <view class="menu-item" bindtap="goSettings"><text>设置</text><text class="arrow">›</text></view>
+  </view>
+
   <button class="logout-btn" bindtap="logout">退出登录</button>
 </view>

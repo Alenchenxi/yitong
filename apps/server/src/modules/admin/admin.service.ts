@@ -478,6 +478,10 @@ export class AdminService {
   async featureJob(id: string, reviewerId: string, featured: boolean) {
     const p = await this.prisma.jobPost.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    // 仅已发布岗位可设/取消精品：未发布/已下架/已过期不在精品池（featured 列表查 status=PUBLISHED），设了也不展示
+    if (p.status !== JobPostStatus.PUBLISHED) {
+      throw new BizException(50002, '仅已发布岗位可设精品', HttpStatus.CONFLICT);
+    }
     await this.prisma.jobPost.update({
       where: { id },
       data: { featured, featuredAt: featured ? new Date() : null },

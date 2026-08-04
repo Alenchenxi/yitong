@@ -1,11 +1,10 @@
 {
   "navigationBarTitleText": "燚桐商家",
-  "enablePullDownRefresh": true,
+  "enablePullDownRefresh": false,
   "usingComponents": {
     "bottom-tab": "/components/bottom-tab/index",
     "candidates-panel": "/components/merchant-panels/candidates/index",
     "jobs-panel": "/components/merchant-panels/jobs/index",
-    "post-panel": "/components/merchant-panels/post/index",
     "notifications-panel": "/components/merchant-panels/notifications/index",
     "profile-panel": "/components/merchant-panels/profile/index"
   }

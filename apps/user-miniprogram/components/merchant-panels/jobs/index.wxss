@@ -1,4 +1,4 @@
-.page { padding: 24rpx; padding-bottom: 160rpx; box-sizing: border-box; min-height: 100vh; }
+.page { padding: 24rpx; box-sizing: border-box; min-height: 100%; }
 
 /* 顶部 banner */
 .banner {
@@ -230,11 +230,8 @@
 }
 
 .pay-btn {
-  margin-top: 16rpx;
   background: var(--yt-danger, #e63946) !important;
   color: #fff !important;
-  border-radius: 32rpx !important;
-  font-size: 24rpx !important;
 }
 
 /* 空状态 */

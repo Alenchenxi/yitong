@@ -42,6 +42,16 @@ export function publishJob(data: { jobPostId: string; duration: 'D30' | 'D90' })
   return request<PublishOrderVo>({ url: '/payments/job-publish', method: 'POST', data });
 }
 
+// 发布岗位单价预览（D30/D90）：支付页展示用
+export interface JobPublishPriceVo {
+  duration: 'D30' | 'D90';
+  price: string;
+}
+
+export function getJobPublishPricing() {
+  return request<JobPublishPriceVo[]>({ url: '/payments/job-publish/price' });
+}
+
 export function refundPayment(orderId: string, reason?: string) {
   return request<PaymentOrderVo>({
     url: `/payments/${orderId}/refund`,

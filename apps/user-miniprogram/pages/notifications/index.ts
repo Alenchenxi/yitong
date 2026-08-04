@@ -14,7 +14,7 @@ Page({
   // 报名处理提醒 -> 商家 shell 候选人 tab（merchant_candidates 是商家通知；用户端薄壳理论上不触发，防御性处理）
   onOpenCandidates() {
     const app = getApp<AppInstance>();
-    if (app.globalData.currentRole === 'merchant') {
+    if (app.globalData.currentRole === 'MERCHANT') {
       wx.reLaunch({ url: '/pages/merchant/index?tab=candidates' });
     }
   },

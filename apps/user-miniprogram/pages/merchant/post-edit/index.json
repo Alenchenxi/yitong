@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "发布岗位",
+  "usingComponents": {
+    "post-panel": "/components/merchant-panels/post/index"
+  }
+}

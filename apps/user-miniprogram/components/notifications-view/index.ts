@@ -43,9 +43,9 @@ Component({
       const app = getApp<AppInstance>();
       if (!app.requireAuth()) return;
       const role = app.globalData.currentRole;
-      this.setData({ isMerchant: role === 'merchant' });
+      this.setData({ isMerchant: role === 'MERCHANT' });
       // M4-02 报名处理提醒（懒检查）：商家进消息页先检查，超时未联系 PENDING 报名产生站内提醒
-      if (role === 'merchant') {
+      if (role === 'MERCHANT') {
         try { await checkApplyReminder(); } catch { /* 不影响列表加载 */ }
       }
       await Promise.all([this.load(), this.loadUnreadCounts()]);

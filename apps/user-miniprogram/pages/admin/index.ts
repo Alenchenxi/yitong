@@ -30,6 +30,7 @@ Page({
     activeTab: DEFAULT_TAB,
     loaded: {} as Record<string, boolean>,
     tabParams: {} as Record<string, PanelParams>,
+    refreshing: false, // scroll-view 下拉刷新受控态
   },
 
   onLoad(options: { tab?: string } & Record<string, string>) {
@@ -59,12 +60,19 @@ Page({
     this.notifyPanel();
   },
 
-  onReachBottom() {
+  // scroll-view 触底 -> 当前 panel 加载更多
+  onScrollLower() {
     this.callPanel('onPanelReachBottom');
   },
 
-  onPullDownRefresh() {
-    Promise.resolve(this.callPanel('onPanelPullDown')).finally(() => wx.stopPullDownRefresh());
+  // scroll-view 下拉刷新 -> 当前 panel 刷新
+  async onRefresh() {
+    this.setData({ refreshing: true });
+    try {
+      await Promise.resolve(this.callPanel('onPanelPullDown'));
+    } finally {
+      this.setData({ refreshing: false });
+    }
   },
 
   /** 通知当前 panel 刷新（shell onShow / onReady / 切 tab 后调用） */

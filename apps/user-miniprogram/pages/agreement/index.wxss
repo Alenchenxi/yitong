@@ -19,6 +19,7 @@
   border-bottom: 4rpx solid var(--yt-primary);
 }
 .content { padding: 32rpx 24rpx; }
+.single-title { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); padding: 8rpx 4rpx 24rpx; }
 .para {
   font-size: 28rpx;
   color: var(--yt-text-body);

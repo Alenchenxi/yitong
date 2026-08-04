@@ -125,7 +125,7 @@
         <text class="adm-item-sub">{{item.merchantShopName}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text>{{item.urgent ? ' · 急招' : ''}}{{item.featured ? ' · 精品' : ''}}</text>
       </view>
       <view class="adm-item-actions">
-        <button size="mini" data-id="{{item.id}}" data-featured="{{item.featured}}" bindtap="toggleJobFeature">{{item.featured ? '取消精品' : '设精品'}}</button>
+        <button wx:if="{{item.status === 'PUBLISHED'}}" size="mini" data-id="{{item.id}}" data-featured="{{item.featured}}" bindtap="toggleJobFeature">{{item.featured ? '取消精品' : '设精品'}}</button>
       </view>
     </view>
     <view class="adm-empty" wx:if="{{jobPosts.length === 0}}">暂无岗位</view>

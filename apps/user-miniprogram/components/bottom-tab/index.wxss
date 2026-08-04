@@ -1,8 +1,4 @@
 .bt {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
   display: flex;
   background: #ffffff;
   border-top: 1rpx solid var(--yt-border, #f0f0f0);

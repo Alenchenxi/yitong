@@ -1,5 +1,4 @@
-/* panel 内 .page 保留；padding-bottom 留给 shell 固定 bottom-tab 空间 */
-.page { padding: 24rpx; padding-bottom: 160rpx; box-sizing: border-box; }
+.page { padding: 24rpx; box-sizing: border-box; }
 
 /* M5-02 认证状态卡 */
 .auth-card {

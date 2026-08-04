@@ -1,9 +1,10 @@
 <view class="page">
-  <view class="tabs">
+  <view class="tabs" wx:if="{{isMerchant}}">
     <view class="tab {{active === 'service' ? 'tab-active' : ''}}" data-tab="service" bindtap="onTabTap">商家服务规则</view>
     <view class="tab {{active === 'privacy' ? 'tab-active' : ''}}" data-tab="privacy" bindtap="onTabTap">隐私说明</view>
     <view class="tab {{active === 'posting' ? 'tab-active' : ''}}" data-tab="posting" bindtap="onTabTap">岗位发布规范</view>
   </view>
+  <view class="single-title" wx:else>隐私说明</view>
 
   <view class="content yt-card" wx:if="{{active === 'service'}}">
     <view class="para">1. 商家入驻需提交真实有效的营业执照号和联系电话，平台审核通过后方可发布岗位。</view>

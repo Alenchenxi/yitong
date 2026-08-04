@@ -1,10 +1,11 @@
 import type { AppInstance } from '../../app';
-import { publishJob, syncOrderStatus, type PublishOrderVo } from '../../services/payment';
+import { getJobPublishPricing, publishJob, syncOrderStatus, type PublishOrderVo } from '../../services/payment';
 
 Page({
   data: {
     jobPostId: '',
     duration: 'D30',
+    price: '',
     paying: false,
     result: null as PublishOrderVo | null,
     failed: false,
@@ -18,6 +19,18 @@ Page({
       jobPostId: options.jobPostId ?? '',
       duration: (options.duration as 'D30' | 'D90') ?? 'D30',
     });
+    this.loadPrice();
+  },
+
+  // 预览发布单价（按当前 duration 取 PricingConfig 价格）；失败不阻塞，支付时仍按服务端算
+  async loadPrice() {
+    try {
+      const list = await getJobPublishPricing();
+      const p = list.find((x) => x.duration === this.data.duration);
+      if (p) this.setData({ price: p.price });
+    } catch {
+      /* 价格预览失败不阻塞支付 */
+    }
   },
 
   async pay() {

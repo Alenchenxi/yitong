@@ -31,6 +31,7 @@ Page({
     activeTab: DEFAULT_TAB,
     loaded: {} as Record<string, boolean>,
     tabParams: {} as Record<string, PanelParams>,
+    refreshing: false, // scroll-view 下拉刷新受控态
   },
 
   onLoad(options: { tab?: string } & Record<string, string>) {
@@ -64,12 +65,19 @@ Page({
     this.notifyPanel();
   },
 
-  onReachBottom() {
+  // scroll-view 触底 -> 当前 panel 加载更多
+  onScrollLower() {
     this.callPanel('onPanelReachBottom');
   },
 
-  onPullDownRefresh() {
-    Promise.resolve(this.callPanel('onPanelPullDown')).finally(() => wx.stopPullDownRefresh());
+  // scroll-view 下拉刷新 -> 当前 panel 刷新
+  async onRefresh() {
+    this.setData({ refreshing: true });
+    try {
+      await Promise.resolve(this.callPanel('onPanelPullDown'));
+    } finally {
+      this.setData({ refreshing: false });
+    }
   },
 
   /** 通知当前 panel 刷新（shell onShow / onReady / 切 tab 后调用） */
@@ -95,6 +103,12 @@ Page({
 
   activateTab(key: string, params?: PanelParams) {
     if (!(TAB_KEYS as readonly string[]).includes(key)) return;
+    // 发布/编辑岗位走独立页面（带系统返回箭头），不切 panel；id 存在为编辑模式
+    if (key === 'post') {
+      const id = params?.id as string | undefined;
+      wx.navigateTo({ url: id ? `/pages/merchant/post-edit/index?id=${id}` : '/pages/merchant/post-edit/index' });
+      return;
+    }
     const updates: Record<string, unknown> = {
       activeTab: key,
       [`loaded.${key}`]: true,

@@ -20,7 +20,7 @@ Page({
   onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    const role = app.globalData.currentRole === 'merchant' ? 'merchant' : 'user';
+    const role = app.globalData.currentRole === 'MERCHANT' ? 'merchant' : 'user';
     this.setData({ role });
     this.loadTickets();
   },

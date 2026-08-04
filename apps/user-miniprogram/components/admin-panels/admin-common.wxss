@@ -4,12 +4,11 @@
  * 颜色一律用 app.wxss 的 --yt-* 变量，不再用 #ff4d6d / #52c41a。
  */
 
-/* 页面容器：留出底部 tab bar 空间 */
+/* 页面容器：shell 内 scroll-view 撑满，不再留固定 tab 空间 */
 .adm-page {
   padding: 24rpx;
-  padding-bottom: 160rpx;
   box-sizing: border-box;
-  min-height: 100vh;
+  min-height: 100%;
 }
 
 /* sub-tab 横向条（页内细粒度切换） */

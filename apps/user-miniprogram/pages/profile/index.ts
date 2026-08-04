@@ -82,6 +82,18 @@ Page({
     wx.navigateTo({ url: '/pages/admin/index' });
   },
 
+  goFeedback() {
+    wx.navigateTo({ url: '/pages/feedback/index' });
+  },
+
+  goHelp() {
+    wx.navigateTo({ url: '/pages/help/index' });
+  },
+
+  goSettings() {
+    wx.navigateTo({ url: '/pages/settings/index' });
+  },
+
   logout() {
     wx.showModal({
       title: '退出登录',

@@ -99,6 +99,12 @@ export class PaymentService {
     };
   }
 
+  // 发布岗位单价预览（D30/D90）：商家支付页展示用，金额服务端按 PricingConfig 算，不下单
+  async getJobPublishPricing() {
+    const list = await this.prisma.pricingConfig.findMany();
+    return list.map((p) => ({ duration: p.duration, price: p.price.toString() }));
+  }
+
   // 完成订单：置 PAID + 岗位 PUBLISHED + expireAt（幂等）
   async fulfillOrder(orderId: string, wxTransactionId?: string) {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });

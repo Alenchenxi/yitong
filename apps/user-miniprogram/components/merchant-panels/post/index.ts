@@ -1,6 +1,6 @@
 // 商家 shell 发布岗位 panel：发布 / 编辑岗位表单。
 // onParams(params)：params.id 存在 -> 加载岗位编辑回填；无 id -> 保持当前表单态（点「发布」tab 首次进入为空表单新建）。
-// 提交成功：编辑保存 -> resetForm 重置空表单 + switchtab jobs；新建草稿 -> navigateTo 支付二级页（原 redirectTo 改 navigateTo，支付返回有栈）。
+// 提交成功：编辑保存 -> resetForm 重置空表单 + switchtab jobs（post-edit 页 onSwitchTab navigateBack）；新建草稿 -> redirectTo 支付页。
 import type { AppInstance } from '../../../app';
 import {
   createJobPost,
@@ -285,9 +285,9 @@ Component({
             duration: duration as 'D30' | 'D90',
           });
           wx.showToast({ title: '创建成功', icon: 'success' });
-          // 创建为草稿，跳付费发布（二级页 navigateTo：原 redirectTo 改 navigateTo，支付返回有栈）
+          // 创建为草稿，跳付费发布（redirectTo：post-edit 页被支付页替换，返回直达职位列表）
           setTimeout(() => {
-            wx.navigateTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${duration}` });
+            wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${duration}` });
           }, 600);
         }
       } catch {

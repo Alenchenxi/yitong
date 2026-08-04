@@ -22,6 +22,12 @@ export class PaymentController {
     return ok(await this.payment.createJobPublishOrder(uid, dto));
   }
 
+  // 发布岗位单价预览（商家支付前展示）：按 PricingConfig 返回 D30/D90 单价，金额服务端算
+  @Get('job-publish/price')
+  async jobPublishPrice() {
+    return ok(await this.payment.getJobPublishPricing());
+  }
+
   // 微信支付回调（V3 JSON 加密报文，免鉴权）：验签 + 解密 -> 置 PAID
   @Public()
   @Post('notify')

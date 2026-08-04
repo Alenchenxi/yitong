@@ -1,6 +1,6 @@
 {
   "navigationBarTitleText": "燚桐管理",
-  "enablePullDownRefresh": true,
+  "enablePullDownRefresh": false,
   "usingComponents": {
     "bottom-tab": "/components/bottom-tab/index",
     "dashboard-panel": "/components/admin-panels/dashboard/index",

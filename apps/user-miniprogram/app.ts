@@ -28,11 +28,12 @@ App({
   },
 
   // 按角色跳转对应端首页：user 表白墙(tabBar) / merchant 招聘列表(商家首页) / admin 管理端
-  // onLaunch 恢复登录态后 + role-select 登录成功后共用此逻辑，保证「进哪个端展示哪个端」
+  // onLaunch 恢复登录态（currentRole 为后端 Role 枚举大写）+ role-select 登录成功（传小写 role）共用此逻辑，统一 toLowerCase 兼容
   routeToRoleHome(role: string) {
-    if (role === 'merchant') {
+    const r = role.toLowerCase();
+    if (r === 'merchant') {
       wx.reLaunch({ url: '/pages/merchant/index' });
-    } else if (role === 'admin') {
+    } else if (r === 'admin') {
       wx.reLaunch({ url: '/pages/admin/index' });
     } else {
       // user 落地表白墙(tabBar)：reLaunch 与 merchant/admin 统一，规避 onLaunch 阶段 switchTab 偶发失效

@@ -1,1 +1,2 @@
-.shell { min-height: 100vh; }
+.shell { height: 100vh; display: flex; flex-direction: column; }
+.shell-content { flex: 1; min-height: 0; }

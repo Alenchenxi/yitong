@@ -1,0 +1,1 @@
+<post-panel id="post" params="{{postParams}}" bind:switchtab="onSwitchTab" />
