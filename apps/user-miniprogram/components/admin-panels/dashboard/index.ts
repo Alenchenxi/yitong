@@ -73,11 +73,15 @@ Component({
     },
 
     // 待办快捷跳转 -> 通知 shell 切 tab（旧 reLaunch 独立页已废弃）
+    // E2 深链：带 params 预选 sub-tab，避免落默认 tab 还要再点一次
     goReview() {
       this.triggerEvent('switchtab', { tab: 'review' });
     },
-    goUsers() {
-      this.triggerEvent('switchtab', { tab: 'users' });
+    goReports() {
+      this.triggerEvent('switchtab', { tab: 'review', params: { sub: 'reports' } });
+    },
+    goTickets() {
+      this.triggerEvent('switchtab', { tab: 'users', params: { sub: 'tickets' } });
     },
   },
 });

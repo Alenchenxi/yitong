@@ -16,15 +16,18 @@ import {
   pinComment,
   listReports,
   resolveReport,
+  listJobPostsAdmin,
+  takedownJobPost,
   type AdminQueueVo,
   type AdminPostVo,
   type AdminAnonPostVo,
   type AdminCommentVo,
   type AdminReportVo,
+  type AdminJobPostVo,
 } from '../../../services/admin';
 
-type Sub = 'merchant' | 'posts' | 'anon' | 'comments' | 'reports';
-const SUBS: Sub[] = ['merchant', 'posts', 'anon', 'comments', 'reports'];
+type Sub = 'merchant' | 'posts' | 'anon' | 'comments' | 'reports' | 'jobs';
+const SUBS: Sub[] = ['merchant', 'posts', 'anon', 'comments', 'reports', 'jobs'];
 
 Component({
   options: { addGlobalClass: true },
@@ -65,6 +68,8 @@ Component({
     // 举报
     reports: [] as AdminReportVo[],
     reportStatus: 'PENDING',
+    // 岗位（R4）
+    jobs: [] as AdminJobPostVo[],
     loading: false,
   },
 
@@ -120,6 +125,9 @@ Component({
         } else if (sub === 'reports') {
           const r = await listReports(this.data.reportStatus);
           this.setData({ reports: r.list });
+        } else if (sub === 'jobs') {
+          const jobs = await listJobPostsAdmin(50);
+          this.setData({ jobs });
         }
       } catch {
         /* toast */
@@ -247,6 +255,23 @@ Component({
         success: async (r) => {
           if (r.confirm) {
             await takedownAnonPost(id, r.content || undefined);
+            wx.showToast({ title: '已下架', icon: 'success' });
+            this.load();
+          }
+        },
+      });
+    },
+
+    // ===== 岗位（R4 管理员主动下架）=====
+    takedownJob(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      wx.showModal({
+        title: '下架岗位',
+        editable: true,
+        placeholderText: '下架理由（可选）',
+        success: async (r) => {
+          if (r.confirm) {
+            await takedownJobPost(id, r.content || undefined);
             wx.showToast({ title: '已下架', icon: 'success' });
             this.load();
           }

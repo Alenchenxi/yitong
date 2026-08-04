@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { MerchantStatus, PostStatus, Prisma, Role } from '@prisma/client';
+import { JobPostStatus, MerchantStatus, PostStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfessionService } from '../confession/confession.service';
@@ -29,6 +29,12 @@ export class AdminService {
         take: 50,
       }),
     ]);
+    // R5 Merchant 模型无 user relation（仅 userId 标量），单独查 User 昵称再映射
+    const userIds = [...new Set(merchants.map((m) => m.userId))];
+    const users = userIds.length > 0
+      ? await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, nickname: true } })
+      : [];
+    const nickMap = new Map(users.map((u) => [u.id, u.nickname]));
     return {
       merchants: merchants.map((m) => ({
         id: m.id,
@@ -37,7 +43,7 @@ export class AdminService {
         contactPhone: m.contactPhone,
         status: m.status,
         userId: m.userId,
-        userNickname: '',
+        userNickname: nickMap.get(m.userId) ?? '',
         createdAt: m.createdAt.toISOString(),
       })),
       reports: reports.map((r) => ({
@@ -404,6 +410,34 @@ export class AdminService {
     return { id, status: PostStatus.REJECTED };
   }
 
+  // R4 岗位下架（兼职）+ 留痕 + 通知商家。管理员主动处置闭环（不依赖举报）。
+  async takedownJobPost(id: string, reviewerId: string, reason?: string) {
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id },
+      include: { merchant: { select: { userId: true } } },
+    });
+    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.jobPost.update({ where: { id }, data: { status: JobPostStatus.TAKEN_DOWN } });
+    await this.prisma.moderationRecord.create({
+      data: { targetType: 'job_post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
+    });
+    if (post.merchant) {
+      void this.notification
+        .create({
+          userId: post.merchant.userId,
+          type: NotificationType.POST_TAKEDOWN,
+          title: '兼职 · 岗位下架',
+          content: reason ? `你的岗位因违规被平台下架：${reason}` : '你的岗位因违规被平台下架',
+          targetType: 'job_post',
+          targetId: id,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify job takedown failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    }
+    return { id, status: JobPostStatus.TAKEN_DOWN };
+  }
+
   // P2-05 帖子置顶/取消置顶 + 留痕
   async pinPost(id: string, reviewerId: string, pinned: boolean, reason?: string) {
     const p = await this.prisma.post.findUnique({ where: { id } });
@@ -599,6 +633,7 @@ export class AdminService {
   }
 
   async updatePricing(dto: UpdatePricingDto) {
+    if (dto.price <= 0) throw new BizException(60004, '单价必须大于 0');
     await this.prisma.pricingConfig.upsert({
       where: { duration: dto.duration },
       update: { price: dto.price },

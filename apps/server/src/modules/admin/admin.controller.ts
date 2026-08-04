@@ -77,6 +77,14 @@ export class AdminController {
     return ok(await this.admin.takedownAnonPost(id, uid, reason));
   }
 
+  // R4 岗位下架（管理员主动处置，不依赖举报）
+  @Post('job-posts/:id/takedown')
+  async takedownJobPost(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    const reason = (req.body as { reason?: string })?.reason;
+    return ok(await this.admin.takedownJobPost(id, uid, reason));
+  }
+
   // P2-05 帖子置顶/取消置顶
   @Post('posts/:id/pin')
   async pinPost(@Param('id') id: string, @Body() body: { pinned?: boolean }, @Req() req: Request) {

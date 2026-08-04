@@ -8,6 +8,7 @@ import {
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WxPayService } from '../../common/wx/wx-pay.service';
+import { NotificationService, NotificationType } from '../notification/notification.service';
 import type { PublishJobDto } from './dto/payment.dto';
 
 // 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用
@@ -19,6 +20,7 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly wxPay: WxPayService,
+    private readonly notification: NotificationService,
   ) {}
 
   // 付费发布：按 PricingConfig 计价下单。金额服务端算，不信前端。
@@ -115,6 +117,25 @@ export class PaymentService {
         data: { status: JobPostStatus.PUBLISHED, expireAt },
       }),
     ]);
+    // E4 主动通知商家发布成功（PaymentOrder 无 relation，经 jobPost 取 merchant.userId）
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: order.jobPostId },
+      include: { merchant: { select: { userId: true } } },
+    });
+    if (post?.merchant) {
+      void this.notification
+        .create({
+          userId: post.merchant.userId,
+          type: NotificationType.PAYMENT_PAID,
+          title: '兼职 · 岗位已发布',
+          content: `你的岗位「${post.title}」已支付成功并发布`,
+          targetType: 'job_post',
+          targetId: post.id,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify payment paid failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    }
   }
 
   // 微信支付回调（V2 XML，prod）：验签 -> fulfillOrder。dev 不触发（mock 已直接完成）。

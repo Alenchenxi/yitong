@@ -41,9 +41,12 @@ Component({
   },
 
   methods: {
-    /** shell 注入参数（带 _ts nonce）；用户 panel 无 param 驱动初始化，空实现守接口 */
-    onParams(_params: Record<string, unknown>) {
-      // no-op：用户 panel 不消费 shell params
+    /** shell 注入参数（带 _ts nonce）；E2 支持 dashboard「待处理工单」深链预选 tickets sub-tab */
+    onParams(params: Record<string, unknown>) {
+      const sub = params.sub as Sub | undefined;
+      if (sub && SUBS.includes(sub)) {
+        this.setData({ sub });
+      }
     },
 
     /** 等价原 onShow：requireAuth + 加载当前 sub-tab */

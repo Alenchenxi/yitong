@@ -678,6 +678,7 @@ export class ConfessionService {
         targetType: 'post',
         targetId: postId,
         reason: reason ?? '用户举报',
+        reporterId: uid,
       },
     });
     return { reported: true };

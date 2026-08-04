@@ -32,6 +32,6 @@ Page({
 
   goTopic(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
-    if (id) wx.navigateTo({ url: `/pages/confession/activity/detail?id=${id}` });
+    if (id) wx.navigateTo({ url: `/pages/confession/activity-detail/index?id=${id}` });
   },
 });

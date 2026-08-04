@@ -40,6 +40,8 @@ export const NotificationType = {
   REPORT_RESULT: 'report_result',
   // B 工单回复
   TICKET_REPLY: 'ticket_reply',
+  // E4 支付成功（商家付费发布岗位完成）
+  PAYMENT_PAID: 'payment_paid',
 } as const;
 
 @Injectable()
@@ -133,8 +135,8 @@ export class NotificationService {
       'report_result',
       'ticket_reply',
     ],
-    // order 类暂无 type，M6 支付接入后补 payment_paid / payment_refunded 等
-    order: [] as string[],
+    // order 类：E4 支付成功通知（退款通知待退款闭环接入后补）
+    order: ['payment_paid'],
   };
 
   static readonly CATEGORIES = ['apply', 'system', 'order'] as const;

@@ -312,7 +312,13 @@ Component({
     },
     async savePrice() {
       if (!this.data.editingDuration || !this.data.editingPrice) return;
-      await updatePricing({ duration: this.data.editingDuration as 'D30' | 'D90', price: Number(this.data.editingPrice) });
+      const price = Number(this.data.editingPrice);
+      // E1 单价校验：防非数字 / 0 / 负数（后端 updatePricing 另有 60004 兜底）
+      if (!Number.isFinite(price) || price <= 0) {
+        wx.showToast({ title: '请输入大于 0 的单价', icon: 'none' });
+        return;
+      }
+      await updatePricing({ duration: this.data.editingDuration as 'D30' | 'D90', price });
       wx.showToast({ title: '已保存', icon: 'success' });
       this.setData({ editingDuration: '', editingPrice: '' });
       this.load();

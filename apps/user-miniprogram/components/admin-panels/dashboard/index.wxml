@@ -6,11 +6,11 @@
       <text class="adm-todo-num {{pendingMerchants === 0 ? 'zero' : ''}}">{{pendingMerchants}}</text>
       <text class="adm-todo-label">待审核商家</text>
     </view>
-    <view class="adm-todo-item" hover-class="adm-hover" bindtap="goReview">
+    <view class="adm-todo-item" hover-class="adm-hover" bindtap="goReports">
       <text class="adm-todo-num {{pendingReports === 0 ? 'zero' : ''}}">{{pendingReports}}</text>
       <text class="adm-todo-label">待处理举报</text>
     </view>
-    <view class="adm-todo-item" hover-class="adm-hover" bindtap="goUsers">
+    <view class="adm-todo-item" hover-class="adm-hover" bindtap="goTickets">
       <text class="adm-todo-num {{pendingTickets === 0 ? 'zero' : ''}}">{{pendingTickets}}</text>
       <text class="adm-todo-label">待处理工单</text>
     </view>

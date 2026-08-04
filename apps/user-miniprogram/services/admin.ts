@@ -108,6 +108,10 @@ export function featurePost(id: string, featured: boolean) {
 export function featureJob(id: string, featured: boolean) {
   return request({ url: `/admin/job-posts/${id}/feature`, method: 'POST', data: { featured } });
 }
+// R4 岗位下架（管理员主动处置，不依赖举报）
+export function takedownJobPost(id: string, reason?: string) {
+  return request({ url: `/admin/job-posts/${id}/takedown`, method: 'POST', data: { reason } });
+}
 
 // ===== C 帖子分页管理（getQueue 精简后独立分页接口）=====
 export interface AdminPostVo {

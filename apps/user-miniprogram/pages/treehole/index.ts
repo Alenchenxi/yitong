@@ -4,13 +4,12 @@ import {
   getAnonymousToken,
   listPosts,
   toggleAnonPostLike,
+  getAnonTags,
   type AnonPostVo,
 } from '../../services/treehole';
 import { formatTime } from '../../utils/auth';
 
 type Tab = 'recommend' | 'latest' | 'mood';
-
-const MOODS = ['开心', 'emo', '吐槽', '求安慰', '学习', '恋爱', '迷茫'];
 
 Page({
   data: {
@@ -20,7 +19,7 @@ Page({
     loading: false,
     anonNickname: '',
     activeTab: 'recommend' as Tab,
-    moods: MOODS,
+    moods: [] as string[], // E3 从标签库动态拉取（getAnonTags.mood）
     selectedMood: '',
   },
 
@@ -39,7 +38,18 @@ Page({
         .then((r) => this.setData({ anonNickname: r.nickname }))
         .catch(() => {});
     }
+    if (this.data.moods.length === 0) this.loadMoods();
     if (this.data.posts.length === 0) this.reload();
+  },
+
+  // E3 从标签库拉取 mood chips（与 profile/post 同源，后台配置新增 mood 时首页同步）
+  async loadMoods() {
+    try {
+      const lib = await getAnonTags();
+      this.setData({ moods: lib.mood.map((t) => t.name) });
+    } catch {
+      /* 降级：mood tab 无 chips 可选，不影响 recommend/latest */
+    }
   },
 
   async reload() {

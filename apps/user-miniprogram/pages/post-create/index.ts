@@ -13,7 +13,8 @@ interface PageData {
   selectedCircleName: string;
   content: string;
   hasContent: boolean; // content.trim() 预计算（WXML 不支持 .trim()）
-  images: string[]; // 本地路径（选中后/上传中）；编辑模式下为已上传 URL
+  images: string[]; // 本地路径（选中后/上传中）；编辑模式下可能混存已上传 URL
+  originalImages: string[]; // R2 编辑模式：draft 回填的已上传 URL（身份标识，区分需上传的本地路径）
   uploading: boolean;
   submitting: boolean;
   showCirclePicker: boolean;
@@ -48,6 +49,7 @@ Page({
     content: '',
     hasContent: false,
     images: [],
+    originalImages: [],
     uploading: false,
     submitting: false,
     showCirclePicker: false,
@@ -100,6 +102,7 @@ Page({
         initial.content = draft.content;
         initial.hasContent = draft.content.trim().length > 0;
         initial.images = draft.images ?? [];
+        initial.originalImages = draft.images ?? [];
         initial.isAnonymous = !!draft.isAnonymous;
         initial.visibility = draft.visibility ?? 'PUBLIC';
         // 标记标签选中态
@@ -290,14 +293,23 @@ Page({
       publishAtIso = t.toISOString();
     }
     try {
-      // 先上传图片（本地路径 -> COS URL）
-      let imageUrls: string[] = [];
-      if (this.data.images.length > 0) {
+      // R2 按 originalImages 身份分区：已上传 URL 透传，仅本地路径上传（编辑模式 images 混存 URL+本地路径，
+      //    旧逻辑对全数组调 uploadImages 会把 URL 当 filePath 传给 wx.uploadFile 必败；且旧 finalImages 会拼重复）
+      const originalSet = new Set(this.data.originalImages);
+      const keptUrls: string[] = [];
+      const toUpload: string[] = [];
+      for (const img of this.data.images) {
+        if (originalSet.has(img)) keptUrls.push(img);
+        else toUpload.push(img);
+      }
+      let uploadedUrls: string[] = [];
+      if (toUpload.length > 0) {
         this.setData({ uploading: true });
         wx.showLoading({ title: '上传图片...', mask: true });
-        imageUrls = await uploadImages(this.data.images, 'posts');
+        uploadedUrls = await uploadImages(toUpload, 'posts');
         this.setData({ uploading: false });
       }
+      const finalImageUrls = [...keptUrls, ...uploadedUrls];
       // 上传视频 + 封面
       let videoUrl: string | undefined;
       let videoCover: string | undefined;
@@ -313,10 +325,9 @@ Page({
       wx.showLoading({ title: this.data.editId ? '保存中...' : '发布中...', mask: true });
       const selectedTagNames = this.data.tags.filter((t) => t.selected).map((t) => t.name);
       if (this.data.editId) {
-        const finalImages = imageUrls.length > 0 ? [...(this.data.images ?? []), ...imageUrls] : this.data.images ?? [];
         await editPost(this.data.editId, {
           content,
-          images: finalImages,
+          images: finalImageUrls,
           tags: selectedTagNames,
           isAnonymous: this.data.isAnonymous,
           videoUrl,
@@ -328,7 +339,7 @@ Page({
       } else {
         await createPost(this.data.selectedCircleId, {
           content,
-          images: imageUrls,
+          images: finalImageUrls,
           tags: selectedTagNames,
           isAnonymous: this.data.isAnonymous,
           videoUrl,

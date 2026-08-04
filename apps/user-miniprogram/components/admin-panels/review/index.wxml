@@ -6,6 +6,7 @@
     <view class="adm-subtab {{sub === 'anon' ? 'on' : ''}}" data-sub="anon" bindtap="switchSub">树洞帖</view>
     <view class="adm-subtab {{sub === 'comments' ? 'on' : ''}}" data-sub="comments" bindtap="switchSub">评论</view>
     <view class="adm-subtab {{sub === 'reports' ? 'on' : ''}}" data-sub="reports" bindtap="switchSub">举报处理</view>
+    <view class="adm-subtab {{sub === 'jobs' ? 'on' : ''}}" data-sub="jobs" bindtap="switchSub">岗位</view>
   </scroll-view>
 
   <!-- 商家入驻 -->
@@ -111,5 +112,19 @@
       </view>
     </view>
     <view class="adm-empty" wx:if="{{reports.length === 0}}">暂无举报</view>
+  </block>
+
+  <!-- 岗位（R4 管理员主动下架）-->
+  <block wx:if="{{sub === 'jobs'}}">
+    <view class="adm-item" wx:for="{{jobs}}" wx:key="id">
+      <view class="adm-item-main">
+        <text class="adm-item-title">{{item.title}}</text>
+        <text class="adm-item-sub">{{item.merchantShopName}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text>{{item.urgent ? ' · 急招' : ''}}{{item.featured ? ' · 精' : ''}}</text>
+      </view>
+      <view class="adm-item-actions">
+        <button wx:if="{{item.status === 'PUBLISHED'}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="takedownJob">下架</button>
+      </view>
+    </view>
+    <view class="adm-empty" wx:if="{{jobs.length === 0}}">暂无岗位</view>
   </block>
 </view>
