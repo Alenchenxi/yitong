@@ -6,13 +6,19 @@ import {
   type UserInfo,
 } from './utils/auth';
 
+// 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
+const __envVersion = wx.getAccountInfoSync().miniProgram.envVersion;
+const apiBase = __envVersion === 'develop'
+  ? 'http://localhost:3000/api/v1'
+  : 'https://yitongjiajiao.com/api/v1';
+
 App({
   globalData: {
     token: '',
     refreshToken: '',
     user: null as UserInfo | null,
     currentRole: '',
-    apiBase: 'http://localhost:3000/api/v1',
+    apiBase,
     loginReady: false,
   },
 
