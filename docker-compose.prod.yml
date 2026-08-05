@@ -1,5 +1,6 @@
-# 生产部署 compose（dev 用 docker-compose.yml 仅起 postgres+redis）
-# 用法：docker compose -f docker-compose.prod.yml up -d
+# 生产部署 compose（dev 用 docker-compose.yml 仅起 postgres+redis+minio）
+# 用法：docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+# 环境变量：--env-file 做 ${VAR} 插值；server.env_file 注入业务变量。模板见 .env.production.example
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,7 +8,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.production}
       POSTGRES_DB: yitong
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -23,25 +24,37 @@ services:
     networks:
       - yitong-network
 
+  minio:
+    image: minio/minio:latest
+    container_name: yitong-minio
+    restart: always
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY in .env.production}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY in .env.production}
+    volumes:
+      - minio_data:/data
+    networks:
+      - yitong-network
+
   server:
     build: .
     container_name: yitong-server
     restart: always
+    env_file: .env.production
     environment:
-      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/yitong?schema=public
+      # compose 插值注入（优先级高于 env_file，覆盖 .env.production 同名项）
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/yitong?schema=public
       - REDIS_URL=redis://redis:6379
-      - CHAT_WS_URL=ws://${DOMAIN:-localhost}:3001
+      - CHAT_WS_URL=wss://${DOMAIN}/ws
       - CHAT_WS_PORT=3001
       - PORT=3000
       - NODE_ENV=production
-      - JWT_SECRET=${JWT_SECRET:-change-me}
-      - ADMIN_OPENID=${ADMIN_OPENID:-}
     depends_on:
       - postgres
       - redis
-    ports:
-      - "3000:3000"
-      - "3001:3001"
+      - minio
+    # 不映射 3000/3001 到宿主：公网统一走 nginx:80/443；调试可临时加 "127.0.0.1:3000:3000"
     networks:
       - yitong-network
 
@@ -51,8 +64,11 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./certbot-www:/var/www/certbot:ro
     depends_on:
       - server
     networks:
@@ -61,6 +77,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  minio_data:
 
 networks:
   yitong-network:

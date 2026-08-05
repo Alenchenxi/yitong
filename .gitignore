@@ -19,6 +19,7 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+.env.production
 
 # 支付 / TLS 等敏感证书与私钥（公钥/私钥/证书/MOBILE_SAFETY/请求头证书等）
 # 落点：apps/server/certs/（推荐）；散落 *.pem/*.key/*.crt/*.cer 一律不提交
