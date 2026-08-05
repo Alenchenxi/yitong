@@ -1,16 +1,19 @@
 FROM node:20-alpine
 WORKDIR /app
 
-# Prisma 在 Alpine 上需要 libssl / openssl
-RUN apk add --no-cache openssl
+# 国内构建加速：apk 换阿里云源（避免 dl-cdn.alpinelinux.org DNS 失败）
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories
 
-RUN npm install -g pnpm@9
+# Prisma 在 Alpine 上需要 openssl
+RUN apk add --no-cache openssl
 
 # 国内构建加速：npm/prisma 走淘宝镜像（海外构建可用 --build-arg 覆盖回官方源）
 #   --build-arg NPM_REGISTRY=https://registry.npmjs.org
 #   --build-arg PRISMA_ENGINES_MIRROR=https://binaries.prisma.sh
 ARG NPM_REGISTRY=https://registry.npmmirror.com
 ARG PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
+
+RUN npm_config_registry=${NPM_REGISTRY} npm install -g pnpm@9
 
 # 先复制依赖清单（利用 Docker 缓存）
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
