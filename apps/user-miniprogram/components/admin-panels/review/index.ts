@@ -46,6 +46,8 @@ Component({
     sub: 'merchant' as Sub,
     // 商家入驻
     queue: null as AdminQueueVo | null,
+    merchantStatus: 'PENDING' as 'all' | 'PENDING' | 'APPROVED' | 'REJECTED',
+    filteredMerchants: [] as AdminQueueVo['merchants'],
     // 表白墙帖
     posts: [] as AdminPostVo[],
     postPage: 0,
@@ -116,6 +118,7 @@ Component({
         if (sub === 'merchant') {
           const queue = await getQueue();
           this.setData({ queue });
+          this.filterMerchants();
         } else if (sub === 'posts') {
           await this.loadPosts(false);
         } else if (sub === 'anon') {
@@ -137,6 +140,20 @@ Component({
     },
 
     // ===== 商家入驻 =====
+    switchMerchantStatus(e: WechatMiniprogram.TouchEvent) {
+      const s = e.currentTarget.dataset.s as 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
+      this.setData({ merchantStatus: s });
+      this.filterMerchants();
+    },
+
+    // 按 merchantStatus 在前端过滤 queue（server 端 getQueue 返回全量，前端按 tab 切片）
+    filterMerchants() {
+      const all = this.data.queue?.merchants ?? [];
+      const status = this.data.merchantStatus;
+      const filtered = status === 'all' ? all : all.filter((m) => m.status === status);
+      this.setData({ filteredMerchants: filtered });
+    },
+
     approve(e: WechatMiniprogram.TouchEvent) {
       const id = e.currentTarget.dataset.id as string;
       wx.showModal({
