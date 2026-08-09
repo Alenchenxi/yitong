@@ -135,6 +135,8 @@ export default {
     }
 
     // POST /check —— 客户端巡检（apiKey 鉴权）
+    // 可选 body.integrityHash：客户端对 dist/license/*.js 的 SHA256 摘要；与 KV 中的 lastIntegrityHash 对比，
+    // 不一致则标记 tampered=true（运维可据此察觉「客户改了 dist 绕过 guard」）。
     if (method === 'POST' && pathname === '/check') {
       if (request.headers.get('x-license-key') !== env.LICENSE_API_KEY) {
         return json({ error: 'unauthorized' }, 401);
@@ -145,7 +147,35 @@ export default {
       const raw = await kv.get(`license:${licenseId}`);
       const lic = raw ? JSON.parse(raw) : null;
       const now = Date.now();
-      return json({ ...computeAllowed(lic, now), serverTime: now });
+
+      // 完整性比对
+      const reportedHash = body.integrityHash === undefined || body.integrityHash === null
+        ? ''
+        : String(body.integrityHash);
+      let tampered = false;
+      let dirty = false;
+      if (lic && reportedHash) {
+        if (!lic.lastIntegrityHash) {
+          // 首次上报：记录基线
+          lic.lastIntegrityHash = reportedHash;
+          dirty = true;
+        } else if (lic.lastIntegrityHash !== reportedHash) {
+          tampered = true;
+          if (!lic.tamperedSince) lic.tamperedSince = now;
+          lic.lastIntegrityHash = reportedHash; // 记录最新上报的 hash，便于人工排查
+          dirty = true;
+        }
+        if (dirty) {
+          lic.updatedAt = now;
+          await kv.put(`license:${licenseId}`, JSON.stringify(lic));
+        }
+      }
+
+      return json({
+        ...computeAllowed(lic, now),
+        serverTime: now,
+        tampered,
+      });
     }
 
     if (!pathname.startsWith('/admin/')) {
@@ -191,6 +221,9 @@ export default {
         ...computeAllowed(lic, now),
         expiresAt: trialExpiresAt(lic),
         updatedAt: lic.updatedAt,
+        tampered: Boolean(lic.tamperedSince),
+        tamperedSince: lic.tamperedSince,
+        lastIntegrityHash: lic.lastIntegrityHash,
       });
     }
 

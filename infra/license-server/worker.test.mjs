@@ -91,6 +91,30 @@ async function main() {
   r = await call('GET', '/admin/status?licenseId=yt-test', { headers: { 'x-master-key': 'wrong' } });
   assert(r.status === 401, 'status 错误 masterKey -> 401');
 
+  console.log('[7] 完整性哈希（篡改检测）');
+  // 重新创建 license 用于完整性场景（前面的爆破锁定可能还在）
+  await call('POST', '/admin/create', {
+    body: { licenseId: 'yt-int', password: 'stop-pw', days: 10 },
+    headers: { 'x-master-key': MASTER_KEY },
+  });
+  await call('POST', '/admin/activate', { body: { licenseId: 'yt-int', password: 'stop-pw', days: 10 } });
+  // 首次 check 不带 hash：tampered 应为 false（视为未上报，不当作篡改）
+  r = await call('POST', '/check', { body: { licenseId: 'yt-int' }, headers: { 'x-license-key': API_KEY } });
+  assert(r.data.allowed === true && r.data.tampered === false, '首次 check 无 hash -> tampered=false');
+  // 首次带 hash：记录基线，tampered=false
+  r = await call('POST', '/check', { body: { licenseId: 'yt-int', integrityHash: 'hash-v1' }, headers: { 'x-license-key': API_KEY } });
+  assert(r.data.tampered === false, '首次带 hash 记录基线 -> tampered=false');
+  // 相同 hash 再来：仍 tampered=false
+  r = await call('POST', '/check', { body: { licenseId: 'yt-int', integrityHash: 'hash-v1' }, headers: { 'x-license-key': API_KEY } });
+  assert(r.data.tampered === false, '相同 hash -> tampered=false');
+  // 不同 hash：tampered=true
+  r = await call('POST', '/check', { body: { licenseId: 'yt-int', integrityHash: 'hash-v2-tampered' }, headers: { 'x-license-key': API_KEY } });
+  assert(r.data.tampered === true, '不同 hash -> tampered=true');
+  // status 暴露 tampered + tamperedSince + lastIntegrityHash
+  r = await call('GET', '/admin/status?licenseId=yt-int', { headers: { 'x-master-key': MASTER_KEY } });
+  assert(r.data.tampered === true && typeof r.data.tamperedSince === 'number', 'status 返回 tampered=true 与 tamperedSince');
+  assert(r.data.lastIntegrityHash === 'hash-v2-tampered', 'status 返回 lastIntegrityHash（最新上报的 hash）');
+
   console.log(`\n==== Worker 测试结果：${passed} 通过 / ${failed} 失败 ====`);
   if (failed > 0) process.exitCode = 1;
 }

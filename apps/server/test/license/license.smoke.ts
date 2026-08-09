@@ -8,7 +8,8 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { ConfigService } from '@nestjs/config';
-import type { ExecutionContext, Reflector } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
+import type { Reflector } from '@nestjs/core';
 import { LicenseService } from '../../src/license/license.service';
 import { LicenseGuard } from '../../src/license/license.guard';
 import { LICENSE_DISABLED_CODE } from '../../src/license/license.constants';
@@ -36,7 +37,7 @@ function assertThrows(fn: () => unknown, msg: string, check?: (e: unknown) => bo
 }
 
 // ---------- 内联假授权服务器（契约同 infra/license-server/worker.js）----------
-interface FakeLicense { password: string; status: string; activatedAt: number; durationMs: number; }
+interface FakeLicense { password: string; status: string; activatedAt: number; durationMs: number; lastIntegrityHash?: string; tamperedSince?: number; }
 const store = new Map<string, FakeLicense>();
 function compute(lic: FakeLicense | undefined, now: number) {
   if (!lic) return { allowed: false, status: 'unknown' };
@@ -54,7 +55,14 @@ function startFake(): Promise<Server> {
       if (m === 'GET' && url.pathname === '/') return json({ ok: true });
       if (m === 'POST' && url.pathname === '/check') {
         if (req.headers['x-license-key'] !== API_KEY) return json({ error: 'unauthorized' }, 401);
-        return json({ ...compute(store.get(String(body.licenseId)), Date.now()), serverTime: Date.now() });
+        const lic = store.get(String(body.licenseId));
+        const reported = body.integrityHash === undefined || body.integrityHash === null ? '' : String(body.integrityHash);
+        let tampered = false;
+        if (lic && reported) {
+          if (!lic.lastIntegrityHash) { lic.lastIntegrityHash = reported; }
+          else if (lic.lastIntegrityHash !== reported) { tampered = true; if (!lic.tamperedSince) lic.tamperedSince = Date.now(); lic.lastIntegrityHash = reported; }
+        }
+        return json({ ...compute(lic, Date.now()), serverTime: Date.now(), tampered });
       }
       if (m === 'POST' && url.pathname === '/test/reset') { store.clear(); return json({ ok: true }); }
       if (m === 'POST' && url.pathname === '/test/expire') {
@@ -254,6 +262,112 @@ async function main(): Promise<void> {
       assert(unlock.code === 0 && /成功/.test(unlock.out), 'unlock 命令成功');
       const statusFinal = await runCli(['status'], env);
       assert(/active/.test(statusFinal.out), `unlock 后 status=active（输出: ${statusFinal.out.trim()}）`);
+    }
+
+    // === 10. 完整性检测（dist/license/*.js 防篡改） ===
+    console.log('[10] 完整性检测：bootHash 一致 -> 放行；不一致 -> 锁定');
+    {
+      // 在测试目录下造一个临时 dist/license/，让 LicenseService 扫描用
+      const tmpDist = fs.mkdtempSync(path.join(require('os').tmpdir(), 'yitong-license-int-'));
+      const tmpLicenseDir = path.join(tmpDist, 'license');
+      fs.mkdirSync(tmpLicenseDir, { recursive: true });
+      fs.writeFileSync(path.join(tmpLicenseDir, 'license.guard.js'), '// guard\n');
+      fs.writeFileSync(path.join(tmpLicenseDir, 'license.service.js'), '// service\n');
+
+      const { computeIntegrityHash } = await import('../../src/license/integrity');
+      const goodHash = computeIntegrityHash(tmpDist).hash;
+      assert(/^[a-f0-9]{64}$/.test(goodHash), `computeIntegrityHash 返回 64 位 hex（实际 ${goodHash.slice(0, 8)}…）`);
+
+      const origEnvDistDir = process.env.LICENSE_DIST_DIR;
+      const origCwd = process.cwd();
+
+      // 10a. bootHash 与 computedHash 一致 -> 不视为篡改
+      process.env.LICENSE_DIST_DIR = tmpDist; // 让 LicenseService 直接扫 tmpDist（含 license 子目录）
+      try {
+        const cfg10 = { ...cfgVars, LICENSE_BOOT_HASH: goodHash };
+        const svc = new LicenseService(makeConfig(cfg10));
+        await fetchJson(`http://localhost:${PORT}/admin/unlock`, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ licenseId: LICENSE_ID, password: PASSWORD }),
+        });
+        await svc.refresh();
+        assert(svc.isAllowed() === true, 'bootHash 匹配 -> isAllowed=true');
+        assert(svc.getStatus().localTampered === false, 'localTampered=false');
+      } finally {
+        process.env.LICENSE_DIST_DIR = origEnvDistDir;
+      }
+
+      // 10b. 改 dist -> bootHash 不匹配 -> localTampered=true -> 锁定
+      fs.writeFileSync(path.join(tmpLicenseDir, 'license.guard.js'), '// TAMPERED canActivate -> true\n');
+      process.env.LICENSE_DIST_DIR = tmpDist;
+      try {
+        const cfg10b = { ...cfgVars, LICENSE_BOOT_HASH: goodHash };
+        const svc = new LicenseService(makeConfig(cfg10b));
+        await fetchJson(`http://localhost:${PORT}/admin/unlock`, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ licenseId: LICENSE_ID, password: PASSWORD }),
+        });
+        await svc.refresh();
+        assert(svc.isAllowed() === false, '本地篡改 -> isAllowed=false');
+        assert(svc.getStatus().localTampered === true, 'localTampered=true');
+      } finally {
+        process.env.LICENSE_DIST_DIR = origEnvDistDir;
+      }
+
+      // 10c. 授权服务器发现 serverReportedTampered -> 锁定
+      // 造两个不同内容的 dist，让两个 svc 实例分别算不同 hash。
+      // 第一个 svc 上报 hashA，server 记录基线；第二个 svc 上报 hashB -> server 返回 tampered=true。
+      // 注意：10a/10b 已经给 store.lastIntegrityHash 写过 goodHash，需先 /test/reset 清空。
+      await fetchJson(`http://localhost:${PORT}/test/reset`, { method: 'POST' });
+      // 重新 create + activate 让 license 处于 allowed 状态
+      await fetchJson(`http://localhost:${PORT}/admin/create`, {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-master-key': MASTER_KEY },
+        body: JSON.stringify({ licenseId: LICENSE_ID, password: PASSWORD, days: 10 }),
+      });
+      await fetchJson(`http://localhost:${PORT}/admin/activate`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ licenseId: LICENSE_ID, password: PASSWORD, days: 10 }),
+      });
+
+      const tmpDistA = fs.mkdtempSync(path.join(require('os').tmpdir(), 'yitong-license-A-'));
+      const tmpDistB = fs.mkdtempSync(path.join(require('os').tmpdir(), 'yitong-license-B-'));
+      fs.mkdirSync(path.join(tmpDistA, 'license'), { recursive: true });
+      fs.mkdirSync(path.join(tmpDistB, 'license'), { recursive: true });
+      fs.writeFileSync(path.join(tmpDistA, 'license/license.guard.js'), 'A');
+      fs.writeFileSync(path.join(tmpDistB, 'license/license.guard.js'), 'B');
+      const hashA = computeIntegrityHash(tmpDistA).hash;
+      const hashB = computeIntegrityHash(tmpDistB).hash;
+      assert(hashA !== hashB, `两个 dist 哈希不同（${hashA.slice(0,6)} vs ${hashB.slice(0,6)}）`);
+
+      // 关掉本地检测只看服务器反馈：给 bootHash 一个占位值（任意），通过 LICENSE_LOCAL_CHECK_ENABLED=false
+      // 关闭本地比对，但仍会让 hash 发到 /check（用于 server 端 hash 漂移检测）。
+      const cfgC = { ...cfgVars, LICENSE_BOOT_HASH: 'placeholder', LICENSE_LOCAL_CHECK_ENABLED: 'false' };
+
+      process.env.LICENSE_DIST_DIR = tmpDistA;
+      try {
+        const svcA = new LicenseService(makeConfig(cfgC));
+        await svcA.refresh();
+        assert(svcA.isAllowed() === true, 'svcA 上报 hashA -> 放行');
+        assert(svcA.getStatus().serverReportedTampered === false, '首次上报 hashA -> serverReportedTampered=false');
+      } finally {
+        process.env.LICENSE_DIST_DIR = origEnvDistDir;
+      }
+      process.env.LICENSE_DIST_DIR = tmpDistB;
+      try {
+        const svcB = new LicenseService(makeConfig(cfgC));
+        await svcB.refresh();
+        // store 中是 hashA，上报 hashB -> server 返回 tampered=true
+        assert(svcB.isAllowed() === false, 'svcB 上报 hashB（与 store 中 hashA 不同）-> 锁定');
+        assert(svcB.getStatus().serverReportedTampered === true, 'serverReportedTampered=true');
+      } finally {
+        process.env.LICENSE_DIST_DIR = origEnvDistDir;
+      }
+
+      // 清理临时目录
+      fs.rmSync(tmpDist, { recursive: true, force: true });
+      fs.rmSync(tmpDistA, { recursive: true, force: true });
+      fs.rmSync(tmpDistB, { recursive: true, force: true });
+      await fetchJson(`http://localhost:${PORT}/test/reset`, { method: 'POST' });
     }
 
     console.log(`\n==== 冒烟测试结果：${passed} 通过 / ${failed} 失败 ====`);

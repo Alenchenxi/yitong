@@ -65,12 +65,12 @@ docker exec yitong-server node dist/license/license-cli.js activate --password <
 
 | 方法 路径 | 鉴权 | 作用 |
 |---|---|---|
-| `POST /check` | `X-License-Key` | `{allowed,status,expiresAt?,serverTime}` |
+| `POST /check` | `X-License-Key` | `{allowed,status,expiresAt?,serverTime,tampered}`；body 可选 `integrityHash`（客户端 SHA256 指纹，详见下文） |
 | `POST /admin/create` | `X-Master-Key` | 注册 license（body: licenseId,password,days?） |
 | `POST /admin/activate` | password | 开/重置 trial（body: licenseId,password,days?） |
 | `POST /admin/unlock` | password | 永久激活 |
 | `POST /admin/lock` | password | 手动停服 |
-| `GET /admin/status?licenseId=` | `X-Master-Key` | 查详情 |
+| `GET /admin/status?licenseId=` | `X-Master-Key` | 查详情；含 `tampered`/`tamperedSince`/`lastIntegrityHash` |
 
 ## 运维
 - 查某 license 状态：`curl "https://.../admin/status?licenseId=yt-prod-001" -H "X-Master-Key: <k>"`
@@ -83,3 +83,36 @@ docker exec yitong-server node dist/license/license-cli.js activate --password <
 - **activate 报 invalid password**：密码错；连续 5 次会锁 15 分钟（429）。
 - **付费客户偶尔 90003**：Worker 抖动断连，客户端有 2h 容忍窗口；持续 >2h 检查 Worker 状态（`wrangler tail` 看异常）。
 - **CPU 超限**：PBKDF2 哈希只在 create/activate/unlock/lock 触发（极低频），免费额度够；如仍报 CPU 限，可降低 worker.js 里 `PBKDF2_ITERATIONS`（不低于 5 万）。
+
+## 完整性检测（防客户改 dist 绕过 guard）
+
+> 威胁：客户能进容器 → 直接编辑 `dist/license/license.guard.js` 把 `canActivate` 改成 return true → 服务永远放行。
+> 这是 DRM 根本性限制，本方案只在「懂 JS 但懒得继续改 hash 算法」的客户面前有效。真硬防见文末。
+
+机制：
+- 客户端把 `dist/license/*.js` 的 SHA256（路径+长度+内容混合哈希）算成 64 位 hex，每 30 分钟 + 启动时随 `/check` 上报（`body.integrityHash`）。
+- 本地比对：客户端 `LICENSE_BOOT_HASH` 写部署时的基线 hash；运行时不一致 → 立即 fail-closed（不依赖远端）。
+- 远端比对：本 Worker 与上次记录对比，发现 hash 漂移 → `tampered=true` + `tamperedSince`，暴露在 `/admin/status`。
+
+### 部署时算 LICENSE_BOOT_HASH
+
+部署客户服务器前，在构建产物上跑：
+```bash
+cd apps/server
+node -e "const{createHash}=require('crypto'),{readdirSync,readFileSync}=require('fs'),{join}=require('path');const d='dist/license';const h=createHash('sha256');for(const n of readdirSync(d).filter(f=>f.endsWith('.js')&&!f.endsWith('.js.map')).sort()){const c=readFileSync(join(d,n));h.update(n);h.update(String(c.length));h.update(c);}console.log(h.digest('hex'));"
+```
+把输出的 hex 填进客户 `.env.production` 的 `LICENSE_BOOT_HASH`。
+
+### 检测到篡改时
+
+`/admin/status?licenseId=<id>` 返回：
+```json
+{ "tampered": true, "tamperedSince": 1700000000000, "lastIntegrityHash": "<客户端最近一次上报的 hash>" }
+```
+人工判断：联系客户要求还原代码 / 停止服务。
+
+### 为什么这不够（重要）
+
+客户端代码在客户手里，懂 JS + 改 `dist/license/license.service.js` 内的 `computeAndCheckLocal` 的人可以同时让本地比对和上报都吐「正确的 hash」，绕过整套检测。
+**真正的硬防只有收回宿主权限**：不让客户进容器、用你们的 CI 部署、管理服务器只开放运维通道。
+本完整性检测仅作「告警」用，不是阻断。

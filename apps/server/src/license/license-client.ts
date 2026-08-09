@@ -5,6 +5,7 @@ export interface CheckResult {
   status: string;
   expiresAt?: number;
   serverTime?: number;
+  tampered?: boolean; // 授权服务器发现客户端上报的 integrityHash 与上次不一致
 }
 
 export interface AdminResult {
@@ -32,13 +33,16 @@ export async function checkLicense(opts: {
   serverUrl: string;
   licenseId: string;
   apiKey: string;
+  integrityHash?: string; // 可选：客户端对 dist/license/*.js 的 SHA256；授权服务器会检测篡改
 }): Promise<CheckResult> {
   const { signal, cancel } = withTimeout();
   try {
+    const body: Record<string, unknown> = { licenseId: opts.licenseId };
+    if (opts.integrityHash) body.integrityHash = opts.integrityHash;
     const res = await fetch(`${baseUrl(opts.serverUrl)}/check`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-license-key': opts.apiKey },
-      body: JSON.stringify({ licenseId: opts.licenseId }),
+      body: JSON.stringify(body),
       signal,
     });
     if (!res.ok) throw new Error(`/check HTTP ${res.status}`);
