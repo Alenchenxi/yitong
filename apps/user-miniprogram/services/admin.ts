@@ -285,3 +285,33 @@ export function banUser(id: string) {
 export function muteUser(id: string, days: number) {
   return request({ url: `/admin/users/${id}/mute`, method: 'POST', data: { days } });
 }
+
+// ===== P2-30 管理员自助管理 =====
+// 列表里的"管理员账号" Vo；区别于上方的 AdminUserVo（那是用户封禁业务的 User）
+export interface ManagerVo {
+  id: string;
+  username: string;
+  openid: string | null;
+  createdAt: string;
+  linkedUser: { id: string; nickname: string; avatarUrl: string | null } | null;
+  isSelf: boolean;
+}
+// 搜索候选 User（添加弹窗用）：昵称模糊 + 排除已是 admin + 排除封禁
+export interface CandidateUserVo {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+}
+export function listAdmins(keyword?: string) {
+  const qs = keyword ? `?keyword=${encodeURIComponent(keyword)}` : '';
+  return request<ManagerVo[]>({ url: `/admin/admins${qs}` });
+}
+export function searchCandidateUsers(keyword: string) {
+  return request<CandidateUserVo[]>({ url: `/admin/users/search?keyword=${encodeURIComponent(keyword)}` });
+}
+export function createAdmin(userId: string) {
+  return request<ManagerVo>({ url: '/admin/admins', method: 'POST', data: { userId } });
+}
+export function deleteAdmin(id: string) {
+  return request<{ id: string; deleted: boolean }>({ url: `/admin/admins/${id}`, method: 'DELETE' });
+}

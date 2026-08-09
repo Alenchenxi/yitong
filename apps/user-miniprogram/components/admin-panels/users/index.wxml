@@ -1,8 +1,7 @@
 <wxs src="../admin-status.wxs" module="st" />
 <view class="adm-page">
   <scroll-view scroll-x class="adm-subtabs" enhanced show-scrollbar="{{false}}">
-    <view class="adm-subtab {{sub === 'users' ? 'on' : ''}}" data-sub="users" bindtap="switchSub">用户</view>
-    <view class="adm-subtab {{sub === 'tickets' ? 'on' : ''}}" data-sub="tickets" bindtap="switchSub">工单</view>
+    <view wx:for="{{subs}}" wx:key="*this" class="adm-subtab {{sub === item ? 'on' : ''}}" data-sub="{{item}}" bindtap="switchSub">{{subLabels[item]}}</view>
   </scroll-view>
 
   <!-- 用户 -->
@@ -48,4 +47,50 @@
     </view>
     <view class="adm-empty" wx:if="{{tickets.length === 0}}">暂无工单</view>
   </block>
+
+  <!-- 管理员（P2-30） -->
+  <block wx:if="{{sub === 'admins'}}">
+    <view class="adm-search">
+      <input class="adm-search-input" placeholder="搜用户名/openid" value="{{adminKeyword}}" bindinput="onAdminKeywordInput" bindconfirm="searchAdmins" />
+      <button size="mini" bindtap="searchAdmins">搜索</button>
+      <button size="mini" class="adm-btn--primary" bindtap="openAddDialog">添加</button>
+    </view>
+    <view class="adm-item" wx:for="{{admins}}" wx:key="id">
+      <view class="adm-item-main">
+        <text class="adm-item-title">{{item.linkedUser ? item.linkedUser.nickname : item.username}}<text wx:if="{{item.isSelf}}" class="adm-badge adm-badge--self">自己</text></text>
+        <text class="adm-item-sub">username: {{item.username}} · 加入于 {{item.createdAt}}</text>
+      </view>
+      <view class="adm-item-actions">
+        <button size="mini" type="warn" data-admin="{{item}}" bindtap="deleteAdminTap" disabled="{{item.isSelf}}">{{item.isSelf ? '自己' : '删除'}}</button>
+      </view>
+    </view>
+    <view class="adm-empty" wx:if="{{admins.length === 0}}">暂无管理员</view>
+  </block>
+
+  <!-- 添加管理员弹窗 -->
+  <view wx:if="{{showAddDialog}}" class="adm-dialog" catchtouchmove="noop">
+    <view class="adm-dialog-mask" bindtap="closeAddDialog" />
+    <view class="adm-dialog-panel">
+      <view class="adm-dialog-title">添加管理员</view>
+      <view class="adm-search">
+        <input class="adm-search-input" placeholder="搜昵称（已绑微信）" value="{{candidateKeyword}}" bindinput="onCandidateKeywordInput" bindconfirm="searchCandidates" />
+        <button size="mini" bindtap="searchCandidates">搜索</button>
+      </view>
+      <scroll-view class="adm-dialog-list" scroll-y>
+        <view class="adm-item" wx:for="{{candidates}}" wx:key="id">
+          <view class="adm-item-main">
+            <text class="adm-item-title">{{item.nickname}}</text>
+            <text class="adm-item-sub">id: {{item.id}}</text>
+          </view>
+          <view class="adm-item-actions">
+            <button size="mini" class="adm-btn--primary" data-user="{{item}}" bindtap="addCandidateTap">添加</button>
+          </view>
+        </view>
+        <view class="adm-empty" wx:if="{{candidates.length === 0 && candidateKeyword}}">无匹配用户</view>
+      </scroll-view>
+      <view class="adm-dialog-footer">
+        <button size="mini" bindtap="closeAddDialog">关闭</button>
+      </view>
+    </view>
+  </view>
 </view>

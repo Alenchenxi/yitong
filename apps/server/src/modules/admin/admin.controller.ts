@@ -9,6 +9,9 @@ import { BatchMerchantDto } from './dto/batch-merchant.dto';
 import { UpdatePricingDto } from './dto/update-pricing.dto';
 import { CreateAnonTagDto, UpdateAnonTagDto } from './dto/anon-tag.dto';
 import { ResolveReportDto } from './dto/resolve-report.dto';
+import { CreateAdminDto } from './dto/create-admin.dto';
+import { ListAdminsDto } from './dto/list-admins.dto';
+import { SearchUsersDto } from './dto/search-users.dto';
 import { Body, Param, Post, Put, UseGuards } from '@nestjs/common';
 
 @Controller('admin')
@@ -285,5 +288,32 @@ export class AdminController {
   @Post('posts/:id/topic')
   async setPostTopic(@Param('id') id: string, @Body() body: { topicId?: string | null }) {
     return ok(await this.admin.setPostTopic(id, body.topicId ?? null));
+  }
+
+  // ===== P2-30 管理员自助管理（AdminUser CRUD）=====
+  // 列表：keyword 模糊匹配 username / openid；响应带 isSelf 给前端 disable「删除自己」按钮
+  @Get('admins')
+  listAdmins(@Query() q: ListAdminsDto, @Req() req: Request) {
+    const openid = (req as AuthenticatedRequest).user!.openid;
+    return ok(this.admin.listAdmins(q.keyword, openid));
+  }
+
+  // 搜索候选 User（用于"添加管理员"弹窗）：排除已是 admin
+  @Get('users/search')
+  searchCandidateUsers(@Query() q: SearchUsersDto) {
+    return ok(this.admin.searchCandidateUsers(q.keyword));
+  }
+
+  // 添加管理员：body { userId } -> 查 User openid -> upsert AdminUser + UserRole.ADMIN
+  @Post('admins')
+  createAdmin(@Body() dto: CreateAdminDto) {
+    return ok(this.admin.createAdmin(dto.userId));
+  }
+
+  // 删除管理员：自删保护 + 至少保留 1 个 admin（service 内校验）
+  @Delete('admins/:id')
+  deleteAdmin(@Param('id') id: string, @Req() req: Request) {
+    const openid = (req as AuthenticatedRequest).user!.openid;
+    return ok(this.admin.deleteAdmin(id, openid));
   }
 }

@@ -880,4 +880,109 @@ export class AdminService {
     this.confession.invalidateFeedCache();
     return { postId, topicId };
   }
+
+  // ===== P2-30 管理员自助管理（AdminUser CRUD）=====
+  // 自检：当前 admin 的 openid === 被删 AdminUser.openid 即"删自己" → 40004
+  // 删除时同步删 UserRole.ADMIN，避免"AdminUser 没了但 UserRole.ADMIN 还在"的不一致
+
+  // 列管理员（关联查 User 拿头像昵称；isSelf 给前端 disable「删除自己」按钮用）
+  async listAdmins(keyword?: string, currentOpenid?: string) {
+    const kw = keyword?.trim();
+    const admins = await this.prisma.adminUser.findMany({
+      where: kw
+        ? { OR: [{ username: { contains: kw, mode: 'insensitive' } }, { openid: { contains: kw, mode: 'insensitive' } }] }
+        : {},
+      orderBy: { createdAt: 'desc' },
+    });
+    // 风险3 相关：admin openid 可能为 null（未绑微信的占位 admin），反查时统一 filter
+    const openids = admins.map((a) => a.openid).filter((v): v is string => !!v);
+    const users = openids.length
+      ? await this.prisma.user.findMany({
+          where: { openid: { in: openids } },
+          select: { id: true, nickname: true, avatarUrl: true, openid: true },
+        })
+      : [];
+    const userByOpenid = new Map(users.map((u) => [u.openid, u]));
+    return admins.map((a) => {
+      const u = a.openid ? userByOpenid.get(a.openid) : undefined;
+      return {
+        id: a.id,
+        username: a.username,
+        openid: a.openid,
+        createdAt: a.createdAt.toISOString(),
+        linkedUser: u ? { id: u.id, nickname: u.nickname, avatarUrl: u.avatarUrl } : null,
+        // 前端"自己"判断用：openid 字符串比对。后端权威，前端不再需单独查
+        isSelf: !!currentOpenid && !!a.openid && a.openid === currentOpenid,
+      };
+    });
+  }
+
+  // 添加管理员：userId -> 查 User -> 取 openid -> upsert AdminUser + UserRole.ADMIN
+  async createAdmin(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BizException(40001, '用户不存在', HttpStatus.NOT_FOUND);
+    if (!user.openid) throw new BizException(40002, '该用户未绑定微信，无法设为管理员', HttpStatus.BAD_REQUEST);
+    const admin = await this.prisma.adminUser.upsert({
+      where: { openid: user.openid },
+      create: { openid: user.openid, username: user.nickname || `admin_${user.id.slice(-6)}` },
+      update: {}, // 已存在不覆盖 username（避免误改 seed 创建的 'admin'）
+    });
+    // 同步 UserRole.ADMIN（确保该用户选 admin 角色登录时不被 10003 拒）
+    await this.prisma.userRole.upsert({
+      where: { userId_role: { userId: user.id, role: Role.ADMIN } },
+      create: { userId: user.id, role: Role.ADMIN },
+      update: {},
+    });
+    this.logger.log(`createAdmin: user=${user.id} openid=${user.openid}`);
+    return {
+      id: admin.id,
+      username: admin.username,
+      openid: admin.openid,
+      createdAt: admin.createdAt.toISOString(),
+      linkedUser: { id: user.id, nickname: user.nickname, avatarUrl: user.avatarUrl },
+    };
+  }
+
+  // 删除管理员：currentOpenid 用 JWT payload.openid（user.id 不在 AdminUser 上）
+  async deleteAdmin(id: string, currentOpenid: string) {
+    const admin = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!admin) throw new BizException(40003, '管理员不存在', HttpStatus.NOT_FOUND);
+    // 风险1：openid 字符串比对，避免多查一次 User
+    if (admin.openid && admin.openid === currentOpenid) {
+      throw new BizException(40004, '不能删除自己', HttpStatus.FORBIDDEN);
+    }
+    // 风险2 配套：至少保留 1 个 admin，防全员失管
+    const total = await this.prisma.adminUser.count();
+    if (total <= 1) throw new BizException(40005, '至少保留 1 个管理员', HttpStatus.FORBIDDEN);
+    await this.prisma.adminUser.delete({ where: { id } });
+    // 同步撤销 UserRole.ADMIN（保持一致；该用户其它角色不受影响）
+    if (admin.openid) {
+      const u = await this.prisma.user.findUnique({ where: { openid: admin.openid }, select: { id: true } });
+      if (u) {
+        await this.prisma.userRole.deleteMany({ where: { userId: u.id, role: Role.ADMIN } });
+      }
+    }
+    this.logger.log(`deleteAdmin: id=${id} by openid=${currentOpenid}`);
+    return { id, deleted: true };
+  }
+
+  // 搜索候选 User（用于添加弹窗）：按昵称模糊 + 排除已是 admin + 排除封禁
+  async searchCandidateUsers(keyword?: string) {
+    const kw = keyword?.trim();
+    // 风险3：admin.openid 可能为 null，in: [null] 在 PG 等价于 IS NULL，会污染结果；显式 filter
+    const existingOpenids = (await this.prisma.adminUser.findMany({ select: { openid: true } }))
+      .map((a) => a.openid)
+      .filter((v): v is string => !!v);
+    const users = await this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        ...(kw ? { nickname: { contains: kw, mode: 'insensitive' } } : {}),
+        ...(existingOpenids.length ? { NOT: { openid: { in: existingOpenids } } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
+    return users;
+  }
 }
