@@ -1,0 +1,15 @@
+{
+  "name": "yitong-license-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "燚桐试用授权锁 - Cloudflare Worker 远程授权服务器（phone-home）",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}

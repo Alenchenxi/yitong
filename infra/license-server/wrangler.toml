@@ -1,0 +1,17 @@
+# Cloudflare Worker 配置 -- 燚桐试用授权锁远程授权服务器
+#
+# 部署步骤见 README.md。KV namespace id 需先用 `wrangler kv namespace create LICENSE_KV` 创建后填入下方。
+# 密钥（LICENSE_API_KEY / LICENSE_MASTER_KEY）勿写本文件，用 `wrangler secret put` 设置。
+
+name = "yitong-license"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+
+[[kv_namespaces]]
+binding = "LICENSE_KV"
+id = "用 wrangler kv namespace create LICENSE_KV 创建后填入这里的 id"
+
+# 可选：自定义域名（推荐，国内访问更稳；需在 Cloudflare 后台绑定）
+# [routes]
+# route = "license.yourdomain.com/*"
+# zone_name = "yourdomain.com"

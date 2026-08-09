@@ -10,6 +10,8 @@ import { ChatModule } from './modules/chat/chat.module';
 import { ConfessionModule } from './modules/confession/confession.module';
 import { JobModule } from './modules/job/job.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
+import { LicenseGuard } from './license/license.guard';
+import { LicenseModule } from './license/license.module';
 import { MerchantModule } from './modules/merchant/merchant.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { PaymentModule } from './modules/payment/payment.module';
@@ -46,8 +48,10 @@ import { UploadModule } from './modules/upload/upload.module';
     ReferralModule,
     ConfessionModule,
     SupportModule,
+    LicenseModule,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: LicenseGuard }, // 授权锁最先：未授权直接 90003，先于限流/鉴权短路
     { provide: APP_GUARD, useClass: ThrottlerGuard }, // 限流先于鉴权
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
