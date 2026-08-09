@@ -66,10 +66,33 @@ export class AuthService {
   }
 
   // 静默切换角色：已登录用户（uid）切换到 newRole，不需重新 wx.login
+  // 🔒 与 wx-login 不同，switchRole 不允许自动创建 UserRole：用户必须已拥有目标角色
+  // 才能切到该角色。修复"DB 删 MERCHANT 角色后用户切回商家端会被 ensureRole upsert 复活"
+  // 的权限漏洞；wx-login 行为不变（首次登录仍由 ensureRole 兜底创建）。
   async switchRole(uid: string, roleKey: RoleKey) {
     const user = await this.prisma.user.findUnique({ where: { id: uid } });
     if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
-    const role = await this.ensureRole(uid, roleKey, user.openid);
+
+    const role = ROLE_MAP[roleKey];
+    if (!role) throw new BizException(10004, '角色不合法');
+
+    // 必须已拥有该角色（不调 ensureRole，避免 upsert 重建）
+    const owned = await this.prisma.userRole.findUnique({
+      where: { userId_role: { userId: uid, role } },
+    });
+    if (!owned) {
+      throw new BizException(10003, '未拥有该角色，无法切换', HttpStatus.FORBIDDEN);
+    }
+
+    // MERCHANT 角色额外校验：商家必须处于 APPROVED 状态
+    // 驳回/未通过审批的用户切回商家端被拒（与商家接口 60002 一致语义）
+    if (role === Role.MERCHANT) {
+      const m = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+      if (!m || m.status !== 'APPROVED') {
+        throw new BizException(60002, '商家未通过审核，无法进入商家端', HttpStatus.FORBIDDEN);
+      }
+    }
+
     return this.issueTokens(user, role);
   }
 
