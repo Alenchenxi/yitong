@@ -8,6 +8,8 @@ export interface MerchantVo {
   contactPhone: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
+  // 最近一次 REJECTED ModerationRecord.reason；null 表示从未被驳回（后端 2026-08-10 扩展）
+  lastRejectReason?: string | null;
 }
 
 export function registerMerchant(data: {
@@ -16,6 +18,15 @@ export function registerMerchant(data: {
   contactPhone: string;
 }) {
   return request<MerchantVo>({ url: '/merchant/register', method: 'POST', data });
+}
+
+// 商家驳回后重新提交资质：要求后端 merchant.status===REJECTED
+export function reapplyMerchant(data: {
+  shopName: string;
+  licenseNo: string;
+  contactPhone: string;
+}) {
+  return request<MerchantVo>({ url: '/merchant/reapply', method: 'POST', data });
 }
 
 export function getMerchantProfile() {

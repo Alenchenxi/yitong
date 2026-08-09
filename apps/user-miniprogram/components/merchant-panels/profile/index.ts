@@ -38,6 +38,7 @@ Component({
     saving: false,
     unreadCount: 0,
     currentRole: '',
+    lastRejectReason: null as string | null, // 最近一次 REJECTED 原因，仅 REJECTED 状态展示
   },
 
   methods: {
@@ -58,12 +59,15 @@ Component({
     async load() {
       try {
         const m = await getMerchantProfile();
+        // lastRejectReason 字段是后端 2026-08-10 扩展，老后端可能缺失
+        const lastRejectReason = (m && m.lastRejectReason) ?? null;
         this.setData({
           merchant: m,
           statusText: STATUS_TEXT[m.status] || m.status,
           shopName: m.shopName,
           contactPhone: m.contactPhone,
           notMerchant: false,
+          lastRejectReason,
         });
       } catch {
         // shell 已做入驻探测，能进此 panel 说明已入驻；失败仅置空，不再 redirectTo register
@@ -147,6 +151,10 @@ Component({
     },
     goRegister() {
       wx.navigateTo({ url: '/pages/merchant/register/index' });
+    },
+    // 商家驳回后重新提交资质入口：带 ?mode=resubmit 跳到 register 页
+    goReapply() {
+      wx.navigateTo({ url: '/pages/merchant/register/index?mode=resubmit' });
     },
     goAccountSecurity() {
       wx.navigateTo({ url: '/pages/account-security/index' });

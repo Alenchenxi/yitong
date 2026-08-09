@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../../app';
-import { registerMerchant, getMerchantProfile } from '../../../services/merchant';
+import { registerMerchant, reapplyMerchant, getMerchantProfile } from '../../../services/merchant';
 
 Page({
   data: {
@@ -7,14 +7,45 @@ Page({
     licenseNo: '',
     contactPhone: '',
     submitting: false,
+    mode: '' as '' | 'resubmit', // 页面模式：resubmit=商家驳回后重新提交
+    lastRejectReason: null as string | null, // REJECTED 模式下展示的驳回原因
+    title: '商家入驻', // 标题栏 + 页面顶部 title 视图同步
   },
 
-  onLoad() {
+  onLoad(options: Record<string, string | undefined>) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    // 已入驻则跳商家 shell「我的」tab
+    const mode = options?.mode === 'resubmit' ? 'resubmit' : '';
+    this.setData({ mode, title: mode === 'resubmit' ? '重新提交资质' : '商家入驻' });
+    // 仅 resubmit 模式才动态改导航栏标题（JSON 文件无法做表达式绑定）
+    if (mode === 'resubmit') {
+      wx.setNavigationBarTitle({ title: '重新提交资质' });
+    }
+
+    // 已入驻则按 status 分流：
+    //  REJECTED + mode=resubmit → 留在页内回填表单
+    //  REJECTED + 无 mode → 跳回商家 shell（用户误点）
+    //  非 REJECTED + mode=resubmit → toast 后返回（不让 resubmit 页面被非驳回用户进来）
+    //  非 REJECTED + 无 mode → 跳回商家 shell（保持原 register 流程）
     getMerchantProfile()
-      .then(() => {
+      .then((m) => {
+        if (m.status === 'REJECTED') {
+          // 驳回后回填：让商家改完三字段直接提交
+          const lastRejectReason = (m && m.lastRejectReason) ?? null;
+          this.setData({
+            shopName: m.shopName,
+            licenseNo: m.licenseNo,
+            contactPhone: m.contactPhone,
+            lastRejectReason,
+          });
+          return;
+        }
+        if (mode === 'resubmit') {
+          wx.showToast({ title: '当前状态不支持重新申请', icon: 'none' });
+          setTimeout(() => wx.navigateBack(), 600);
+          return;
+        }
+        // 其他状态（PENDING/APPROVED）保持原 redirect 行为
         wx.redirectTo({ url: '/pages/merchant/index?tab=profile' });
       })
       .catch(() => {
@@ -30,13 +61,24 @@ Page({
   async submit() {
     if (this.data.submitting) return;
     const app = getApp<AppInstance>();
-    const { shopName, licenseNo, contactPhone } = this.data;
+    const { shopName, licenseNo, contactPhone, mode } = this.data;
     if (!shopName.trim() || !licenseNo.trim() || !contactPhone.trim()) {
       wx.showToast({ title: '请填完整', icon: 'none' });
       return;
     }
     this.setData({ submitting: true });
     try {
+      if (mode === 'resubmit') {
+        // 重新提交：不需要切角色 / reLaunch，只是回到 shell 等复审
+        await reapplyMerchant({
+          shopName: shopName.trim(),
+          licenseNo: licenseNo.trim(),
+          contactPhone: contactPhone.trim(),
+        });
+        wx.showToast({ title: '已提交，等待审核', icon: 'success' });
+        setTimeout(() => wx.navigateBack(), 800);
+        return;
+      }
       const m = await registerMerchant({
         shopName: shopName.trim(),
         licenseNo: licenseNo.trim(),
@@ -52,7 +94,7 @@ Page({
         setTimeout(() => wx.navigateBack(), 800);
       }
     } catch {
-      /* toast 已弹 */
+      /* toast 已弹（request helper 在非 0 码时自动 showToast） */
     } finally {
       this.setData({ submitting: false });
     }

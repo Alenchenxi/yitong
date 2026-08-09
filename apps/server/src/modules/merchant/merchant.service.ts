@@ -15,9 +15,12 @@ import type {
   MarkFitDto,
 } from './dto/list-candidates.dto';
 import type { RegisterMerchantDto } from './dto/register-merchant.dto';
+import type { ReapplyMerchantDto } from './dto/reapply-merchant.dto';
 import type { UpdateMerchantDto } from './dto/update-merchant.dto';
 
-// 错误码 6xxxx 商家段（API 规范 §3 未列，新增）：60001 已入驻 / 60002 未入驻 / 60003 未审核通过
+// 错误码 6xxxx 商家段（API 规范 §3 未列，新增）：
+//   60001 已入驻 / 60002 未入驻 / 60003 未审核通过
+//   60005 当前状态非 REJECTED，无法重新申请（商家驳回后重新提交守卫）
 @Injectable()
 export class MerchantService {
   private readonly logger = new Logger(MerchantService.name);
@@ -96,10 +99,48 @@ export class MerchantService {
     return this.toVo(refreshed!);
   }
 
+  // 商家驳回后重新提交资质：要求 status===REJECTED，写回三字段并置回 PENDING，写一条 ModerationRecord。
+  // 注意：与 register() 不同，**不**调 approveInternal——dev 模式也不自动过审，否则绕过 60005 守卫
+  // 让管理员永远看不到 PENDING 状态。MERCHANT 角色仅在 admin 审批通过时恢复。
+  // 不重置 createdAt：语义是「首次入驻时间」，重新提交只是 ModerationRecord 上的事件。
+  async reapply(uid: string, dto: ReapplyMerchantDto) {
+    const m = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (!m) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    if (m.status !== MerchantStatus.REJECTED) {
+      throw new BizException(60005, '当前状态非 REJECTED，无法重新申请', HttpStatus.BAD_REQUEST);
+    }
+    const updated = await this.prisma.merchant.update({
+      where: { id: m.id },
+      data: {
+        shopName: dto.shopName,
+        licenseNo: dto.licenseNo,
+        contactPhone: dto.contactPhone,
+        status: MerchantStatus.PENDING,
+      },
+    });
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'merchant',
+        targetId: m.id,
+        reason: '商家重新提交审核',
+        status: 'PENDING',
+        // reviewerId 留空：商家自提交非审核动作
+      },
+    });
+    this.logger.log(`merchant reapply uid=${uid} merchantId=${m.id} -> PENDING`);
+    return this.toVo(updated);
+  }
+
   async getProfile(uid: string) {
     const m = await this.prisma.merchant.findUnique({ where: { userId: uid } });
     if (!m) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
-    return this.toVo(m);
+    // 取最近一条 REJECTED ModerationRecord 的 reason，前端用于驳回原因展示
+    const rejectRow = await this.prisma.moderationRecord.findFirst({
+      where: { targetType: 'merchant', targetId: m.id, status: 'REJECTED' },
+      orderBy: { createdAt: 'desc' },
+      select: { reason: true },
+    });
+    return this.toVoWithReason(m, rejectRow?.reason ?? null);
   }
 
   async updateProfile(uid: string, dto: UpdateMerchantDto) {
@@ -589,5 +630,21 @@ export class MerchantService {
       status: m.status,
       createdAt: m.createdAt.toISOString(),
     };
+  }
+
+  // 带驳回原因的 VO 扩展：用于 GET /merchant/profile 返回值，供前端展示最近一次被拒原因
+  private toVoWithReason(
+    m: {
+      id: string;
+      userId: string;
+      shopName: string;
+      licenseNo: string;
+      contactPhone: string;
+      status: MerchantStatus;
+      createdAt: Date;
+    },
+    lastRejectReason: string | null,
+  ) {
+    return { ...this.toVo(m), lastRejectReason };
   }
 }

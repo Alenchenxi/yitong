@@ -5,6 +5,7 @@ import type { AuthenticatedRequest } from '../auth/types';
 import { MerchantService } from './merchant.service';
 import { BatchMarkDto, ListCandidatesDto, ListViewersDto, MarkContactedDto, MarkFitDto } from './dto/list-candidates.dto';
 import { RegisterMerchantDto } from './dto/register-merchant.dto';
+import { ReapplyMerchantDto } from './dto/reapply-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
 
 @Controller('merchant')
@@ -15,6 +16,13 @@ export class MerchantController {
   async register(@Body() dto: RegisterMerchantDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.merchant.register(uid, dto));
+  }
+
+  // 商家驳回后重新提交资质：要求 merchant.status===REJECTED，写回三字段并置 PENDING，写 ModerationRecord
+  @Post('reapply')
+  async reapply(@Body() dto: ReapplyMerchantDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.merchant.reapply(uid, dto));
   }
 
   @Get('profile')

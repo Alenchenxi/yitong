@@ -19,6 +19,7 @@
 .auth-badge-REJECTED { background: rgba(0, 0, 0, 0.15); color: var(--yt-danger); }
 .auth-badge-NONE { background: rgba(134, 144, 156, 0.2); color: var(--yt-text-sub); }
 .auth-tip { margin-top: 16rpx; font-size: 24rpx; color: var(--yt-text-main); opacity: 0.8; }
+.auth-tip-reason { font-size: 24rpx; color: var(--yt-danger); opacity: 0.85; margin-top: 8rpx; }
 .register-btn {
   margin-top: 24rpx;
   background: var(--yt-text-main) !important;
