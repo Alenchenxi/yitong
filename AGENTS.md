@@ -61,6 +61,18 @@
 - `git push origin main` 本机常超时（errno 10054 / Timed out），多重试 3-5 次；仍失败告知用户手动 `! git push origin main`。
 - 若 main 已前进，合并前先在 worktree 内 `git rebase main`。
 
+### 5.1 worktree 清理清单（强制，缺一步视为未完成）
+
+squash merge 到 main 并 push 成功后，必须依次执行以下步骤，**不得跳过任何一步**：
+
+1. **杀掉 worktree 内启动的后台进程**（node / nest / tsc / pnpm dev / smoke server 等）：`pkill -f "<worktree路径>"` 或 `taskkill //F //PID <pid>`；确认端口已释放（`netstat -ano | grep <port>`）。
+2. **`git worktree remove <路径>`**（优先）—— 同时清理 git 元数据和工作目录。如果报 `Invalid argument`（Windows 常见，工作目录有未提交改动），改用 `git worktree remove --force <路径>`。
+3. **`git branch -D <分支名>`**：remove 通常自动删分支；若残留（如 `--force` 跳过），手动删。
+4. **删除 .env 副本**：如果在 worktree 内复制了 `.env` 用于本地测试（worktree 根的 `.env` 或 `apps/server/.env`），**必须删除该副本**，避免残留凭证或过期配置。注意：worktree remove 会自动清空已跟踪文件，但 `.env` 在 `.gitignore` 中，remove 不会删它；删整个 worktree 目录前确认 `.env` 已清理。
+5. **验证清理**：`git worktree list` 不再出现该 worktree；`.claude/worktrees/<name>` 物理目录不存在。
+
+> 起因：2026-08-11 用户发现 `.claude/worktrees/square-hybrid-impl` 残留目录（含完整 node_modules/ 和 .env 副本），worktree 已从 git 移除但目录未清理——原因是 `git worktree remove --force` 删了 git 元数据但留下 node_modules（文件被残留 server 进程锁住），且 .env 副本未被清理。此后本条作为 §5 子条款强制执行。
+
 ---
 
 ## 6. 文档落点
