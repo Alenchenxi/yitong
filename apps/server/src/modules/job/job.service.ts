@@ -84,6 +84,7 @@ export class JobService {
       include: { merchant: { select: { userId: true } } },
     });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND); // M3-07 软删过滤
     if (post.merchant.userId !== merchantUid) {
       throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
     }
@@ -138,6 +139,7 @@ export class JobService {
       include: { merchant: { select: { userId: true } } },
     });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND); // M3-07 软删过滤
     if (post.merchant.userId !== merchantUid) {
       throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
     }
@@ -153,10 +155,68 @@ export class JobService {
     return this.toPostVo(updated);
   }
 
+  // M3-07 商家硬删草稿：仅 PENDING 状态可删（其它走下架）；软删字段 deletedAt=now；list/get 全链路过滤 deletedAt:null。
+  async deletePost(merchantUid: string, postId: string) {
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      include: { merchant: { select: { userId: true } } },
+    });
+    if (!post || post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (post.merchant.userId !== merchantUid) {
+      throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
+    }
+    if (post.status !== JobPostStatus.PENDING) {
+      throw new BizException(40004, `状态非法流转：${post.status} -> DELETED（非 PENDING 草稿请走下架）`, HttpStatus.CONFLICT);
+    }
+    await this.prisma.jobPost.update({
+      where: { id: postId },
+      data: { deletedAt: new Date() },
+    });
+    return { deleted: true };
+  }
+
+  // M3-07 单岗位数据（曝光/报名/转化率 + 时间范围）：商家仅可查自己岗位；
+  // exposureCount 复用 JobView.count（schema 无独立曝光字段，文案与数据偏差已在计划登记）；
+  // 不过滤 deletedAt（保留历史数据）：所有权校验用 inline 实现，跳过 assertOwnsPost 的 deletedAt 检查。
+  async getPostStats(
+    merchantUid: string,
+    postId: string,
+    range: 'day' | 'week' | 'month' | 'all' | string = 'all',
+  ) {
+    // 非法 range 回退 all（与 plan §Step 3 一致：range=day|week|month|all，非法值回退 all）
+    const safeRange: 'day' | 'week' | 'month' | 'all' =
+      range === 'day' || range === 'week' || range === 'month' || range === 'all' ? range : 'all';
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      include: { merchant: { select: { userId: true } } },
+    });
+    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (post.merchant.userId !== merchantUid) {
+      throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
+    }
+    // 注意：post.deletedAt 不做 40001 拦截（保留历史 stats）
+    const since = rangeToSince(safeRange);
+    const baseWhere = since
+      ? { jobPostId: postId, createdAt: { gte: since } }
+      : { jobPostId: postId };
+    const [exposureCount, total, accepted, completed] = await Promise.all([
+      this.prisma.jobView.count({ where: baseWhere }),
+      this.prisma.jobApplication.count({ where: baseWhere }),
+      this.prisma.jobApplication.count({ where: { ...baseWhere, status: AppStatus.ACCEPTED } }),
+      this.prisma.jobApplication.count({ where: { ...baseWhere, status: AppStatus.DONE } }),
+    ]);
+    return {
+      exposureCount,
+      applicationCount: total,
+      conversionRate: total > 0 ? Math.round(((accepted + completed) / total) * 100) : 0,
+      range: safeRange,
+    };
+  }
+
   // 岗位列表：mine=1 商家自己的（含草稿）；否则 PUBLISHED 且未过期
   async listPosts(uid: string, q: JobListQueryDto) {
     const limit = Math.min(50, q.limit ?? 20);
-    const where: Prisma.JobPostWhereInput = {};
+    const where: Prisma.JobPostWhereInput = { deletedAt: null }; // M3-07 全链路过滤软删
     if (q.mine === 1) {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
       if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
@@ -229,7 +289,7 @@ export class JobService {
       where: { id },
       include: { merchant: { select: { shopName: true } } },
     });
-    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (!post || post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND); // M3-07 软删过滤
     return this.toPostVo(post);
   }
 
@@ -244,7 +304,7 @@ export class JobService {
   // P2-15 精品岗位列表（status=PUBLISHED + featured=true，按 featuredAt 倒序）
   async listFeatured(limit = 20) {
     const posts = await this.prisma.jobPost.findMany({
-      where: { status: 'PUBLISHED', featured: true, expireAt: { gt: new Date() } },
+      where: { status: 'PUBLISHED', featured: true, expireAt: { gt: new Date() }, deletedAt: null }, // M3-07 软删过滤
       orderBy: [{ featuredAt: 'desc' }, { createdAt: 'desc' }],
       take: Math.min(50, Math.max(1, limit)),
       include: { merchant: { select: { shopName: true } } },
@@ -617,6 +677,7 @@ export class JobService {
       where: {
         status: JobPostStatus.PUBLISHED,
         expireAt: { gt: new Date() },
+        deletedAt: null, // M3-07 软删过滤
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -669,7 +730,7 @@ export class JobService {
       where: { id: postId },
       include: { merchant: { select: { userId: true } } },
     });
-    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (!post || post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND); // M3-07 软删过滤
     return post.merchant.userId === uid;
   }
 
@@ -704,6 +765,7 @@ export class JobService {
     expireAt: Date;
     status: JobPostStatus;
     takenDownAt?: Date | null;
+    deletedAt?: Date | null; // M3-07 软删字段
     createdAt: Date;
     merchant?: { shopName: string };
   }) {
@@ -730,6 +792,7 @@ export class JobService {
       expireAt: p.expireAt.toISOString(),
       status: p.status,
       takenDownAt: p.takenDownAt ? p.takenDownAt.toISOString() : null,
+      deletedAt: p.deletedAt ? p.deletedAt.toISOString() : null, // M3-07 审计字段
       createdAt: p.createdAt.toISOString(),
       // M3-04 编辑返回扩展（仅 updatePost 设置）
       editedFromStatus: undefined as string | undefined,

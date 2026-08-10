@@ -138,7 +138,7 @@ Component({
     // 二级页 navigateTo 保留不改
     goDetail(e: WechatMiniprogram.TouchEvent) {
       const id = e.currentTarget.dataset.id as string;
-      wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
+      wx.navigateTo({ url: `/pages/merchant/job-detail/index?id=${id}` }); // M3-07 商家专属详情
     },
 
     // 二级页 navigateTo 保留不改

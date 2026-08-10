@@ -1,11 +1,11 @@
-import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpStatus, Param, Post, Put, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { ok } from '../../common/dto/api-response';
 import { BizException } from '../../common/exceptions/biz.exception';
 import type { AuthenticatedRequest } from '../auth/types';
 import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
-import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto } from './dto/job.dto';
+import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto } from './dto/job.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -178,5 +178,19 @@ export class JobController {
   async takeDown(@Param('id') id: string, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.job.takeDownPost(uid, id));
+  }
+
+  // M3-07 商家硬删草稿（仅 PENDING 状态；非 PENDING 删除请走 take-down）
+  @Delete('job-posts/:id')
+  async deletePost(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.deletePost(uid, id));
+  }
+
+  // M3-07 单岗位数据（曝光/报名/转化率 + 时间范围），商家仅查自己岗位
+  @Get('job-posts/:id/stats')
+  async postStats(@Param('id') id: string, @Query() q: JobPostStatsQueryDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.getPostStats(uid, id, q.range));
   }
 }

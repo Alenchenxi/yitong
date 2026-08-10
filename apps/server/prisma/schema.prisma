@@ -565,6 +565,7 @@ model JobPost {
   expireAt     DateTime      @map("expire_at")
   status       JobPostStatus @default(PENDING)
   takenDownAt  DateTime?     @map("taken_down_at") // M3-05 商家主动下架时间（null=未下架或非下架状态）
+  deletedAt    DateTime?     @map("deleted_at")    // M3-07 商家硬删草稿（软删字段，null=未删；list/get 全链路过滤 deletedAt:null）
   createdAt    DateTime      @default(now()) @map("created_at")
   merchant     Merchant      @relation(fields: [merchantId], references: [id])
   applications JobApplication[]
@@ -575,6 +576,7 @@ model JobPost {
   @@index([status, category, createdAt])
   @@index([status, salaryAmount])
   @@index([status, featured, featuredAt])
+  @@index([merchantId, status, deletedAt, createdAt]) // M3-07 商家视角列表过滤加速
   @@map("job_posts")
 }
 enum JobDuration {

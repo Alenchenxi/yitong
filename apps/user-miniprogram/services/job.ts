@@ -203,6 +203,37 @@ export function takeDownJobPost(id: string) {
   return request<JobPostVo>({ url: `/job-posts/${id}/take-down`, method: 'POST' });
 }
 
+// M3-07 商家硬删草稿（仅 PENDING 状态可删；非 PENDING 请走 takeDownJobPost）
+export function deleteJobPost(id: string) {
+  return request<{ deleted: boolean }>({ url: `/job-posts/${id}`, method: 'DELETE' });
+}
+
+// M3-07 单岗位数据（曝光/报名/转化率 + 时间范围），商家仅查自己岗位
+export interface PostStatsVo {
+  exposureCount: number;
+  applicationCount: number;
+  conversionRate: number; // 0-100
+  range: DashboardRange;
+}
+export function getJobPostStats(id: string, range: DashboardRange = 'month') {
+  return request<PostStatsVo>({ url: `/job-posts/${id}/stats?range=${range}` });
+}
+
+// M3-07 详情页 chip 文案：第一 chip 固定「兼职」（纯展示，不绑字段）；第二 chip 走结算方式映射
+export interface PostChipLabels {
+  first: string; // 「兼职」
+  second: string; // SETTLEMENT_LABELS[post.settlement] | 「完工结算」
+}
+export function getPostChipLabels(post: JobPostVo): PostChipLabels {
+  // 决策 A：first 纯展示写死「兼职」；second 优先展示「完工结算」否则用枚举映射
+  const first = '兼职';
+  let second = '可商议';
+  if (post.settlement) {
+    second = post.settlement === 'COMPLETION' ? '完工结算' : SETTLEMENT_LABELS[post.settlement];
+  }
+  return { first, second };
+}
+
 export function applyJob(postId: string, data: { resumeId?: string; answers?: string[] } = {}) {
   return request<JobAppVo>({ url: `/job-posts/${postId}/applications`, method: 'POST', data });
 }

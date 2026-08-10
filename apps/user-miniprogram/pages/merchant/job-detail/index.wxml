@@ -1,0 +1,104 @@
+<!--pages/merchant/job-detail/index.wxml-->
+<view class="page" wx:if="{{post}}">
+  <!-- Card 1 标题卡：状态徽标 + 权益不足徽标 + 标题 + 薪资 + chip -->
+  <view class="yt-card hero">
+    <view class="hero-top">
+      <view class="hero-status">✨ 竞招职位·{{post.status === 'PENDING' ? '待发布' : post.status === 'PUBLISHED' ? '已发布' : post.status === 'TAKEN_DOWN' ? '已下架' : '已过期'}}</view>
+      <view class="hero-badge" wx:if="{{post.status === 'PENDING'}}">权益不足</view>
+    </view>
+    <view class="hero-time">发布于 {{createdAtText}}</view>
+    <view class="hero-title">{{post.title}}</view>
+    <view class="hero-salary">{{post.salary}}</view>
+    <view class="hero-chips">
+      <text class="chip primary">{{chips.first}}</text>
+      <text class="chip">{{chips.second}}</text>
+    </view>
+  </view>
+
+  <!-- Card 2 工作信息卡：4 行 info-row + 展开按钮 -->
+  <view class="yt-card info-card">
+    <view class="info-row">
+      <text class="info-k">工作日期</text>
+      <text class="info-v">{{workDatesText || '可商议'}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-k">工作时段</text>
+      <text class="info-v">{{workPeriodsText || '可商议'}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-k">工作地址</text>
+      <text class="info-v">{{post.location}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-k">职位要求</text>
+      <text class="info-v">招 {{post.headcount}} 人</text>
+    </view>
+    <view class="info-expand" wx:if="{{!expanded && (post.description || post.requirements)}}" bindtap="onToggleExpand">
+      <text>展开</text>
+      <text class="arrow">⌄</text>
+    </view>
+  </view>
+
+  <!-- Card 3 展开段（岗位职责 + 任职要求） -->
+  <view class="yt-card detail-card" wx:if="{{expanded}}">
+    <view class="yt-section-title">职位详情</view>
+    <view class="section-block" wx:if="{{post.description}}">
+      <view class="section-h">岗位职责</view>
+      <view class="section-body prewrap">{{post.description}}</view>
+    </view>
+    <view class="section-block" wx:if="{{post.requirements}}">
+      <view class="section-h">任职要求</view>
+      <view class="section-body prewrap">{{post.requirements}}</view>
+    </view>
+    <view class="info-collapse" bindtap="onToggleExpand">
+      <text>收起</text>
+      <text class="arrow up">⌃</text>
+    </view>
+  </view>
+
+  <!-- Card 4 职位数据卡：近 30 天曝光 / 报名 / 转化率 -->
+  <view class="yt-card stats-card">
+    <view class="stats-head">
+      <text class="stats-title">职位数据</text>
+      <text class="stats-range">近 30 天</text>
+    </view>
+    <view class="stats-row">
+      <view class="stats-cell">
+        <view class="stats-num">{{statsExposure}}</view>
+        <view class="stats-label">曝光</view>
+      </view>
+      <view class="stats-cell">
+        <view class="stats-num">{{statsApplication}}</view>
+        <view class="stats-label">报名</view>
+      </view>
+      <view class="stats-cell">
+        <view class="stats-num">{{statsConversion}}</view>
+        <view class="stats-label">转化率</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Card 5 专属客服 -->
+  <view class="yt-card support-card" bindtap="onSupport">
+    <view class="support-left">
+      <view class="support-avatar">客服</view>
+      <view class="support-text">
+        <view class="support-title">专属客服</view>
+        <view class="support-sub">点击查看常见问题</view>
+      </view>
+    </view>
+    <view class="support-arrow">›</view>
+  </view>
+
+  <view class="bottom-spacer"></view>
+
+  <!-- 底部固定 bar：PENDING 显示删除 + 开始招聘 -->
+  <view class="yt-footer-bar" wx:if="{{post.status !== 'PUBLISHED'}}">
+    <view class="bar-btn bar-btn-danger-outline" bindtap="onDelete" wx:if="{{post.status === 'PENDING'}}">
+      删除
+    </view>
+    <view class="bar-btn bar-btn-primary {{post.status === 'PENDING' ? '' : 'bar-btn-full'}}" bindtap="onStartHiring">
+      开始招聘
+    </view>
+  </view>
+</view>

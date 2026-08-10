@@ -17,6 +17,7 @@
     "pages/follow-list/index",
     "pages/merchant/index",
     "pages/merchant/post-edit/index",
+    "pages/merchant/job-detail/index",
     "pages/merchant/register/index",
     "pages/merchant/reviews/index",
     "pages/merchant/orders/index",

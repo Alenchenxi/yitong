@@ -234,6 +234,13 @@ export class JobListQueryDto {
   status?: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
 }
 
+// M3-07 单岗位 stats 端点 query：range=day|week|month|all（非法值回退 all，由 service 兜底而非 @IsIn）
+export class JobPostStatsQueryDto {
+  @IsOptional()
+  @IsString()
+  range?: string = 'all';
+}
+
 export class TransitionDto {
   @IsIn(['accept', 'complete', 'reject'])
   action!: 'accept' | 'complete' | 'reject';
