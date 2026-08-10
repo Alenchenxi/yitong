@@ -174,4 +174,32 @@ export class LocationService {
     const isLatClose = Math.abs(detail.lat - lat) < 0.001;
     return isLngClose && isLatClose;
   }
+
+  // 坐标转换:GCJ-02(微信 wx.getLocation) → BD-09(百度坐标系,与岗位 locationLng/lat 一致)
+  // 调百度 geoconv API;AK 缺失时 prod 抛 90003,dev 用近似公式
+  async convertGcj02ToBd09(lng: number, lat: number): Promise<{ lng: number; lat: number }> {
+    const ak = this.getAk();
+    if (!ak) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new BizException(90003, '百度地图 AK 未配置，无法转换坐标', HttpStatus.SERVICE_UNAVAILABLE);
+      }
+      // dev:近似偏移(北京地区典型值,排序误差可接受)
+      return { lng: lng + 0.0065, lat: lat + 0.006 };
+    }
+    try {
+      const coords = `${lng},${lat}`;
+      const url = `https://api.map.baidu.com/geoconv/v1/?coords=${encodeURIComponent(coords)}&from=3&to=5&ak=${ak}&output=json`;
+      const resp = await fetch(url);
+      const data = (await resp.json()) as { status: number; message?: string; result?: Array<{ x: number; y: number }> };
+      if (data.status !== 0 || !data.result || data.result.length === 0) {
+        this.logger.warn(`baidu geoconv failed: ${data.message ?? 'unknown'}, using identity`);
+        return { lng, lat };
+      }
+      const r = data.result[0]!;
+      return { lng: r.x, lat: r.y };
+    } catch (e) {
+      this.logger.warn(`baidu geoconv error: ${(e as Error).message}, using identity`);
+      return { lng, lat };
+    }
+  }
 }

@@ -1,7 +1,7 @@
 import type { AppInstance } from '../../app';
 import { listJobPosts, recommendJobs, recordJobImpressions, type JobPostVo } from '../../services/job';
 
-type Tab = 'recommend' | 'latest' | 'urgent';
+type Tab = 'recommend' | 'latest' | 'urgent' | 'nearest';
 
 Page({
   data: {
@@ -11,13 +11,15 @@ Page({
     hasMore: true,
     loading: false,
     isMerchant: false,
+    userLng: 0,
+    userLat: 0,
+    hasLocation: false,
   },
 
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const isMerchant = app.globalData.currentRole === 'MERCHANT';
-    // 商家视角不显示 tab（仅看自己发的岗位）
     this.setData({ isMerchant, tab: isMerchant ? 'latest' : 'recommend' });
     this.reload();
   },
@@ -26,7 +28,25 @@ Page({
     const t = (e.currentTarget.dataset.tab as Tab) ?? 'recommend';
     if (t === this.data.tab) return;
     this.setData({ tab: t });
-    this.reload();
+    if (t === 'nearest' && !this.data.hasLocation) {
+      this.getLocationAndLoad();
+    } else {
+      this.reload();
+    }
+  },
+
+  getLocationAndLoad() {
+    wx.getLocation({
+      type: 'gcj02',
+      success: (res) => {
+        this.setData({ userLng: res.longitude, userLat: res.latitude, hasLocation: true });
+        this.reload();
+      },
+      fail: () => {
+        wx.showToast({ title: '需要位置权限查看附近岗位', icon: 'none' });
+        this.setData({ tab: 'recommend', hasLocation: false });
+      },
+    });
   },
 
   async reload() {
@@ -34,7 +54,6 @@ Page({
     if (this.data.tab === 'recommend') {
       await this.loadRecommend();
     } else {
-      // latest 全量；urgent 只看急招（P0-17 urgent 字段过滤）
       await this.loadMore();
     }
   },
@@ -58,8 +77,15 @@ Page({
     if (this.data.loading || !this.data.hasMore) return;
     this.setData({ loading: true });
     try {
-      const urgent = this.data.tab === 'urgent';
-      const resp = await listJobPosts({ cursor: this.data.nextCursor ?? undefined, urgent });
+      const isUrgent = this.data.tab === 'urgent';
+      const isNearest = this.data.tab === 'nearest';
+      const resp = await listJobPosts({
+        cursor: this.data.nextCursor ?? undefined,
+        urgent: isUrgent || undefined,
+        sort: isNearest ? 'nearest' : undefined,
+        userLng: isNearest ? this.data.userLng : undefined,
+        userLat: isNearest ? this.data.userLat : undefined,
+      });
       this.setData({
         posts: [...this.data.posts, ...resp.list],
         nextCursor: resp.nextCursor,

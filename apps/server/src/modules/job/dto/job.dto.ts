@@ -283,6 +283,25 @@ export class JobListQueryDto {
   @IsOptional()
   @IsIn(['PENDING', 'PUBLISHED', 'TAKEN_DOWN', 'EXPIRED'])
   status?: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
+
+  /** 用户端"最近"tab：按距离排序，需配合 userLng/userLat */
+  @IsOptional()
+  @IsIn(['nearest'])
+  sort?: 'nearest';
+
+  /** 用户当前经度（sort=nearest 时必传，GCJ-02 坐标） */
+  @IsOptional()
+  @Type(() => Number)
+  @Min(-180)
+  @Max(180)
+  userLng?: number;
+
+  /** 用户当前纬度（sort=nearest 时必传，GCJ-02 坐标） */
+  @IsOptional()
+  @Type(() => Number)
+  @Min(-90)
+  @Max(90)
+  userLat?: number;
 }
 
 // M3-07 单岗位 stats 端点 query：range=day|week|month|all（非法值回退 all，由 service 兜底而非 @IsIn）

@@ -62,6 +62,8 @@ export interface JobPostVo {
   // M3-04 编辑返回扩展：编辑前状态、是否需要重新发布
   editedFromStatus?: string;
   needsRepublish?: boolean;
+  // 用户端"最近"tab：距离（km，仅 sort=nearest 时返回）
+  distance?: number;
 }
 
 export interface JobListResult {
@@ -154,6 +156,10 @@ export interface JobListFilter {
   salaryMax?: number; // P0-18 薪资上限
   online?: boolean; // P0-18 仅看线上
   status?: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED'; // M3-03 商家岗位状态筛选
+  // 用户端"最近"tab
+  sort?: 'nearest';
+  userLng?: number;
+  userLat?: number;
 }
 
 export function listJobPosts(filter: JobListFilter = {}) {
@@ -168,6 +174,9 @@ export function listJobPosts(filter: JobListFilter = {}) {
   if (filter.salaryMin !== undefined) params.push(`salaryMin=${filter.salaryMin}`);
   if (filter.salaryMax !== undefined) params.push(`salaryMax=${filter.salaryMax}`);
   if (filter.status) params.push(`status=${filter.status}`);
+  if (filter.sort) params.push(`sort=${filter.sort}`);
+  if (filter.userLng !== undefined) params.push(`userLng=${filter.userLng}`);
+  if (filter.userLat !== undefined) params.push(`userLat=${filter.userLat}`);
   params.push('limit=20');
   if (filter.cursor) params.push(`cursor=${encodeURIComponent(filter.cursor)}`);
   return request<JobListResult>({ url: `/job-posts?${params.join('&')}` });

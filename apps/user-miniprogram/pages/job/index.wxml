@@ -12,11 +12,12 @@
     </block>
   </view>
 
-  <!-- tab：推荐/最新/急招 -->
+  <!-- tab：推荐/最新/急招/最近 -->
   <view class="main-tabs" wx:if="{{!isMerchant}}">
     <view class="main-tab {{tab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchTab">推荐</view>
     <view class="main-tab {{tab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchTab">最新</view>
     <view class="main-tab {{tab === 'urgent' ? 'active' : ''}}" data-tab="urgent" bindtap="switchTab">急招</view>
+    <view class="main-tab {{tab === 'nearest' ? 'active' : ''}}" data-tab="nearest" bindtap="switchTab">最近</view>
   </view>
 
   <!-- 岗位列表 -->
@@ -33,6 +34,7 @@
       <view class="shop">{{item.merchantShopName}}</view>
       <view class="meta">
         <text class="meta-item">📍 {{item.location}}</text>
+        <text class="meta-item" wx:if="{{item.distance != null}}">📏 距你 {{item.distance}} km</text>
         <text class="meta-item">⏱ {{item.duration === 'D90' ? '90天' : '30天'}}</text>
       </view>
     </view>

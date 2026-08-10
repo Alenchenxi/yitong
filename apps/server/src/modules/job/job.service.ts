@@ -12,6 +12,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import { LocationService } from './location.service';
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
 import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto, UpdateJobPostDto } from './dto/job.dto';
 
@@ -31,6 +32,7 @@ export class JobService {
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
     private readonly notification: NotificationService,
+    private readonly location: LocationService,
   ) {}
 
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
@@ -327,6 +329,12 @@ export class JobService {
       const t = new Date(q.cursor);
       if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
     }
+
+    // "最近"tab：Haversine 距离排序（仅公开列表，非 mine 模式）
+    if (q.sort === 'nearest' && q.mine !== 1 && q.userLng != null && q.userLat != null) {
+      return this.listPostsNearest(uid, q, where, limit);
+    }
+
     const posts = await this.prisma.jobPost.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -355,6 +363,53 @@ export class JobService {
       })),
       nextCursor,
       hasMore,
+    };
+  }
+
+  // "最近"tab：Haversine 距离排序（GCJ-02 用户坐标 → BD-09 转换 → 与岗位 BD-09 坐标算距离）
+  private async listPostsNearest(uid: string, q: JobListQueryDto, baseWhere: Prisma.JobPostWhereInput, limit: number) {
+    // 坐标转换
+    const bd = await this.location.convertGcj02ToBd09(q.userLng!, q.userLat!);
+    // 仅查有坐标的岗位（无坐标不纳入最近排序）
+    const where: Prisma.JobPostWhereInput = {
+      ...baseWhere,
+      locationLng: { not: null },
+      locationLat: { not: null },
+    };
+    const candidates = await this.prisma.jobPost.findMany({
+      where,
+      take: 100, // 候选池上限，避免全表扫描
+      include: { merchant: { select: { shopName: true } } },
+    });
+
+    // Haversine 距离（km）
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const withDistance = candidates.map((p) => {
+      const lng = Number(p.locationLng);
+      const lat = Number(p.locationLat);
+      const dLat = toRad(lat - bd.lat);
+      const dLng = toRad(lng - bd.lng);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(bd.lat)) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const km = 6371 * c; // 地球半径 6371km
+      return { ...p, _distance: Math.round(km * 10) / 10 };
+    });
+
+    withDistance.sort((a, b) => a._distance - b._distance);
+    const slice = withDistance.slice(0, limit);
+    const nextCursor = slice.length >= limit && withDistance.length > limit
+      ? String(slice[slice.length - 1]!._distance)
+      : null;
+
+    return {
+      list: slice.map((p) => ({
+        ...this.toPostVo(p),
+        distance: p._distance,
+      })),
+      nextCursor,
+      hasMore: withDistance.length > limit,
     };
   }
 
