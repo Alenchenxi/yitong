@@ -724,7 +724,8 @@ export class TreeholeService {
   }
 
   // P0-16 当前 anonId 的双向屏蔽对端集合（广场列表排除用，A 屏蔽 B 或 B 屏蔽 A 都排除 B）
-  private async getBlockedPeerSet(anonId: string): Promise<Set<string>> {
+  // CR-001: 改 public 供 SquareService 复用（广场 union 列表延续屏蔽隔离）
+  async getBlockedPeerSet(anonId: string): Promise<Set<string>> {
     const rows = await this.prisma.anonBlock.findMany({
       where: { OR: [{ blockerAnonId: anonId }, { blockedAnonId: anonId }] },
       select: { blockerAnonId: true, blockedAnonId: true },

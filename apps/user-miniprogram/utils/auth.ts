@@ -23,6 +23,8 @@ interface AppLike {
     user: UserInfo | null;
     currentRole: string;
     apiBase: string;
+    anonToken: string;  // CR-001 树洞匿名 token（x-anon-token header）
+    anonId: string;     // CR-001 当前 anonId
   };
 }
 
@@ -39,6 +41,9 @@ export function restoreAuth(app: AppLike): boolean {
     app.globalData.refreshToken = cached.refreshToken;
     app.globalData.user = cached.user;
     app.globalData.currentRole = cached.currentRole;
+    // CR-001: 恢复匿名 token（如果持久化过）
+    if ((cached as any).anonToken) app.globalData.anonToken = (cached as any).anonToken;
+    if ((cached as any).anonId) app.globalData.anonId = (cached as any).anonId;
     return true;
   }
   return false;
@@ -54,6 +59,8 @@ function persist(app: AppLike, data: LoginResp) {
     refreshToken: data.refreshToken,
     user: data.user,
     currentRole: data.role,
+    anonToken: (wx.getStorageSync(STORAGE_KEY) as any)?.anonToken || '',
+    anonId: (wx.getStorageSync(STORAGE_KEY) as any)?.anonId || '',
   });
 }
 
@@ -100,7 +107,19 @@ export function clearAuth(app: AppLike) {
   app.globalData.refreshToken = '';
   app.globalData.user = null;
   app.globalData.currentRole = '';
+  app.globalData.anonToken = '';
+  app.globalData.anonId = '';
   wx.removeStorageSync(STORAGE_KEY);
+}
+
+// CR-001: 持久化 anonToken（token 签发后调用，保持 storage 同步）
+export function persistAnonToken(app: AppLike, anonToken: string, anonId: string) {
+  app.globalData.anonToken = anonToken;
+  app.globalData.anonId = anonId;
+  const cached = wx.getStorageSync(STORAGE_KEY) || {};
+  (cached as any).anonToken = anonToken;
+  (cached as any).anonId = anonId;
+  wx.setStorageSync(STORAGE_KEY, cached);
 }
 
 // 相对时间：今天 HH:mm，昨天，更早 YYYY-MM-DD

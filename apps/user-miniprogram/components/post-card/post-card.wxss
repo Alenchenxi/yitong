@@ -104,6 +104,13 @@
   border-radius: 999rpx;
 }
 
+/* CR-001 树洞 mood 标签 */
+.tag-mood {
+  background: var(--yt-primary-lighter);
+  color: var(--yt-primary-dark);
+  font-weight: 500;
+}
+
 .video {
   width: 100%;
   height: 380rpx;
@@ -125,6 +132,15 @@
   align-items: center;
   font-size: 26rpx;
   color: var(--yt-text-sub);
+}
+
+/* CR-001 匿名帖点赞/评论 disabled（anonToken 缺失时） */
+.action-disabled {
+  opacity: 0.5;
+}
+
+.card-disabled {
+  opacity: 0.85;
 }
 
 .icon {

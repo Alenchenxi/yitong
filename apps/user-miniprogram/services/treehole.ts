@@ -1,4 +1,5 @@
 import { request } from './request';
+import { persistAnonToken } from '../utils/auth';
 
 // 树洞匿名接口：用 anonToken 鉴权（独立于 user access token）
 
@@ -60,14 +61,20 @@ interface AppLike {
 }
 
 export function hasAnonToken() {
-  return !!anonToken;
+  // CR-001: 优先从 globalData 读（持久化恢复），fallback 模块级变量
+  const app = getApp<{ globalData: { anonToken?: string } }>();
+  return !!(app.globalData.anonToken || anonToken);
 }
 export function getAnonId() {
-  return anonId;
+  const app = getApp<{ globalData: { anonId?: string } }>();
+  return app.globalData.anonId || anonId;
 }
 export function clearAnonToken() {
   anonToken = '';
   anonId = '';
+  const app = getApp<{ globalData: { anonToken?: string; anonId?: string } }>();
+  if (app.globalData.anonToken !== undefined) app.globalData.anonToken = '';
+  if (app.globalData.anonId !== undefined) app.globalData.anonId = '';
 }
 
 // 换匿名 token（用 user access token 调）
@@ -83,6 +90,8 @@ export function getAnonymousToken(): Promise<AnonTokenResp> {
         if (b.code === 0 && b.data) {
           anonToken = b.data.anonToken;
           anonId = b.data.anonId;
+          // CR-001: 持久化到 globalData + storage（广场混合流双 token 共用）
+          try { persistAnonToken(getApp(), b.data.anonToken, b.data.anonId); } catch { /* 非关键 */ }
           resolve(b.data);
         } else {
           wx.showToast({ title: b.message ?? '匿名态获取失败', icon: 'none' });

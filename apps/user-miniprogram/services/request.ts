@@ -7,6 +7,7 @@ interface ApiResult<T> {
 interface AppGlobalData {
   token: string;
   apiBase: string;
+  anonToken?: string; // CR-001 树洞匿名 token
 }
 
 // 统一请求封装：注入 token、统一错误提示（与 API 设计规范 §2 对齐）
@@ -14,6 +15,7 @@ export function request<T>(opts: {
   url: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'TRACE' | 'CONNECT';
   data?: Record<string, unknown>;
+  header?: Record<string, string>; // CR-001 额外 header（如 x-anon-token）
 }): Promise<T> {
   const app = getApp<{ globalData: AppGlobalData }>();
   return new Promise((resolve, reject) => {
@@ -24,6 +26,7 @@ export function request<T>(opts: {
       header: {
         'Content-Type': 'application/json',
         Authorization: app.globalData.token ? `Bearer ${app.globalData.token}` : '',
+        ...(opts.header || {}),
       },
       success: (res) => {
         const body = res.data as ApiResult<T>;

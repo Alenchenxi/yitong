@@ -16,15 +16,29 @@
     </swiper>
   </view>
 
-  <!-- 主 tab：关注 / 推荐 -->
+  <!-- 主 tab：推荐 / 最新（CR-001:「关注」tab 移除，匿名帖无 follow 语义） -->
   <view class="main-tabs">
-    <view class="main-tab {{activeMainTab === 'follow' ? 'active' : ''}}" data-tab="follow" bindtap="switchMainTab">关注</view>
     <view class="main-tab {{activeMainTab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchMainTab">推荐</view>
+    <view class="main-tab {{activeMainTab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchMainTab">最新</view>
   </view>
 
-  <!-- 帖子流 -->
-  <view class="list" wx:if="{{posts.length > 0}}">
-    <post-card wx:for="{{posts}}" wx:key="id" post="{{item}}" bind:like="onLike"></post-card>
+  <!-- 混合流 -->
+  <view class="list" wx:if="{{items.length > 0}}">
+    <block wx:for="{{items}}" wx:key="data.id">
+      <!-- CR-001: 按 kind 分发渲染，匿名卡传 anonymous/disabled -->
+      <view wx:if="{{item.kind === 'post'}}" data-id="{{item.data.id}}" data-kind="post" bindtap="goPostDetail">
+        <post-card post="{{item.data}}" bind:like="onLike"></post-card>
+      </view>
+      <view wx:elif="{{item.kind === 'anon_post'}}" data-id="{{item.data.id}}" data-kind="anon_post" bindtap="goPostDetail">
+        <post-card
+          post="{{item.data}}"
+          anonymous="{{true}}"
+          disabled="{{!anonTokenReady}}"
+          disabledReason="请前往树洞签发匿名身份后互动"
+          bind:like="onLike"
+        ></post-card>
+      </view>
+    </block>
     <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
     <view class="loading-tip" wx:elif="{{!hasMore}}">没有更多了</view>
   </view>

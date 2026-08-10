@@ -1,26 +1,55 @@
-<view class="card" wx:if="{{post}}" bindtap="onTap">
-  <!-- P2-05 置顶/加精角标 -->
-  <view class="badges" wx:if="{{post.pinned || post.featured}}">
+<view class="card {{disabled ? 'card-disabled' : ''}}" wx:if="{{post}}" bindtap="onTap">
+  <!-- P2-05 置顶/加精角标（匿名卡不展示运营角标） -->
+  <view class="badges" wx:if="{{!anonymous && (post.pinned || post.featured)}}">
     <text class="badge badge-pin" wx:if="{{post.pinned}}">置顶</text>
     <text class="badge badge-feature" wx:if="{{post.featured}}">精</text>
   </view>
   <view class="header">
-    <image wx:if="{{hasAvatar}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
-    <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
-    <view class="meta">
-      <view class="nickname">
-        {{post.authorNickname}}
-        <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
+    <!-- CR-001 匿名模式：emoji 占位头像 + 「匿名」标签 -->
+    <block wx:if="{{anonymous}}">
+      <view class="avatar avatar-ph">?</view>
+      <view class="meta">
+        <view class="nickname">
+          {{post.anonNickname || '匿名用户'}}
+          <text class="anon-badge">匿名</text>
+        </view>
+        <view class="time">{{timeText}}</view>
       </view>
-      <view class="time">{{timeText}}</view>
-    </view>
+    </block>
+    <block wx:else>
+      <image wx:if="{{hasAvatar}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
+      <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
+      <view class="meta">
+        <view class="nickname">
+          {{post.authorNickname}}
+          <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
+        </view>
+        <view class="time">{{timeText}}</view>
+      </view>
+    </block>
   </view>
   <view class="content">{{post.content}}</view>
-  <view class="tags" wx:if="{{post.tags.length}}">
+  <!-- CR-001 树洞 mood 标签 -->
+  <view class="tags" wx:if="{{post.mood}}">
+    <text class="tag tag-mood">{{post.mood}}</text>
+  </view>
+  <view class="tags" wx:if="{{!anonymous && post.tags.length}}">
     <text class="tag" wx:for="{{post.tags}}" wx:key="*this">#{{item}}</text>
   </view>
-  <video wx:if="{{post.videoUrl}}" class="video" src="{{post.videoUrl}}" poster="{{post.videoCover}}" object-fit="cover" controls></video>
-  <view class="images images-{{imgLayout}}" wx:elif="{{imgLayout}}">
+  <video wx:if="{{!anonymous && post.videoUrl}}" class="video" src="{{post.videoUrl}}" poster="{{post.videoCover}}" object-fit="cover" controls></video>
+  <view class="images images-{{imgLayout}}" wx:elif="{{!anonymous && imgLayout}}">
+    <image
+      wx:for="{{post.images}}"
+      wx:key="*this"
+      class="img img-{{imgLayout}}"
+      src="{{item}}"
+      mode="aspectFill"
+      data-src="{{item}}"
+      catchtap="previewImage"
+    ></image>
+  </view>
+  <!-- CR-001 匿名模式：图片仍展示（树洞帖也支持图片） -->
+  <view class="images images-{{imgLayout}}" wx:elif="{{anonymous && imgLayout}}">
     <image
       wx:for="{{post.images}}"
       wx:key="*this"
@@ -32,11 +61,11 @@
     ></image>
   </view>
   <view class="actions">
-    <view class="action" catchtap="onLike">
+    <view class="action {{disabled ? 'action-disabled' : ''}}" catchtap="onLike">
       <text class="icon {{post.liked ? 'liked' : ''}}">{{post.liked ? '♥' : '♡'}}</text>
       <text class="count">{{post.likeCount || ''}}</text>
     </view>
-    <view class="action" catchtap="onComment">
+    <view class="action {{disabled ? 'action-disabled' : ''}}" catchtap="onComment">
       <text class="icon">💬</text>
       <text class="count">{{post.commentCount || ''}}</text>
     </view>

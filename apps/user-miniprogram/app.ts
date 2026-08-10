@@ -5,6 +5,7 @@ import {
   clearAuth,
   type UserInfo,
 } from './utils/auth';
+import { getAnonymousToken } from './services/treehole';
 
 // 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
 const __envVersion = wx.getAccountInfoSync().miniProgram.envVersion;
@@ -20,6 +21,8 @@ App({
     currentRole: '',
     apiBase,
     loginReady: false,
+    anonToken: '', // CR-001 树洞匿名 token
+    anonId: '',    // CR-001 当前 anonId
   },
 
   onLaunch() {
@@ -50,6 +53,10 @@ App({
   async loginWithRole(role: 'user' | 'merchant' | 'admin', referralCode?: string) {
     await loginWithRoleUtil(role, this, referralCode);
     this.globalData.loginReady = true;
+    // CR-001: 登录后尝试签发 anonToken（user 角色进广场需要；失败不影响登录流程）
+    if (role === 'user') {
+      getAnonymousToken().catch(() => {}); // 静默失败：首次未访问树洞无匿名身份，进入树洞时重试
+    }
   },
 
   async switchRole(role: 'user' | 'merchant' | 'admin') {
@@ -77,6 +84,8 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
     user: UserInfo | null;
     currentRole: string;
     apiBase: string;
+    anonToken: string;
+    anonId: string;
     loginReady: boolean;
   };
   loginWithRole: (role: 'user' | 'merchant' | 'admin', referralCode?: string) => Promise<void>;
