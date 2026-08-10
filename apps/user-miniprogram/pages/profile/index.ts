@@ -1,9 +1,6 @@
 import type { AppInstance } from '../../app';
 import { listNotifications } from '../../services/notification';
-
-function roleLabel(r: string): string {
-  return r === 'USER' ? '普通用户' : r === 'MERCHANT' ? '商家' : r === 'ADMIN' ? '管理员' : r;
-}
+import { refreshRoles, ALL_ROLES, roleLabel } from '../../services/auth';
 
 Page({
   data: {
@@ -12,6 +9,9 @@ Page({
     currentRole: '',
     roleText: '',
     unreadCount: 0,
+    roleOptions: ALL_ROLES,         // 3 个角色入口常量
+    myRoles: [] as string[],        // 用户实时拥有的角色（来自 /auth/me）
+    switchingRole: '',              // 正在切换中的角色（loading 态）
   },
 
   async onShow() {
@@ -24,12 +24,46 @@ Page({
       avatarChar: u ? u.nickname.slice(0, 1) : '?',
       currentRole,
       roleText: roleLabel(currentRole),
+      myRoles: u?.roles ?? [],
+    });
+    // 后台刷新实时角色权限（静默，不阻塞 UI）
+    refreshRoles().then((roles) => {
+      if (roles) this.setData({ myRoles: roles });
     });
     try {
       const resp = await listNotifications(false, 1);
       this.setData({ unreadCount: resp.unreadCount });
     } catch {
       this.setData({ unreadCount: 0 });
+    }
+  },
+
+  // 切换角色：二次确认权限 → switchRole → reLaunch 到目标端首页
+  async switchToRole(e: WechatMiniprogram.TouchEvent) {
+    const role = e.currentTarget.dataset.role as string;
+    if (!role || role === this.data.currentRole) return;
+    // 不拥有该角色 → toast 提示
+    if (!this.data.myRoles.includes(role)) {
+      wx.showToast({ title: '暂无该角色权限', icon: 'none' });
+      return;
+    }
+    if (this.data.switchingRole) return;
+    this.setData({ switchingRole: role });
+    try {
+      const app = getApp<AppInstance>();
+      await app.switchRole(role as 'user' | 'merchant' | 'admin');
+      app.routeToRoleHome(role);
+    } catch (e: any) {
+      const msg = e?.message || '';
+      // 服务器返回了具体错误信息（如"商家未通过审核"），request 层已弹 toast，不再重复
+      // 仅当错误信息未显示时补 toast
+      if (!msg) wx.showToast({ title: '切换失败，请重试', icon: 'none' });
+      // 刷新角色状态
+      refreshRoles().then((roles) => {
+        if (roles) this.setData({ myRoles: roles });
+      });
+    } finally {
+      this.setData({ switchingRole: '' });
     }
   },
 

@@ -6,6 +6,7 @@ import {
   type MerchantVo,
 } from '../../../services/merchant';
 import { listNotifications } from '../../../services/notification';
+import { refreshRoles, ALL_ROLES, roleLabel } from '../../../services/auth';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '审核中',
@@ -31,29 +32,58 @@ Component({
   data: {
     merchant: null as MerchantVo | null,
     statusText: '',
-    notMerchant: false, // 未入驻（shell 已做入驻探测，正常不会进此态）
+    notMerchant: false,
     editing: false,
     shopName: '',
     contactPhone: '',
     saving: false,
     unreadCount: 0,
     currentRole: '',
-    lastRejectReason: null as string | null, // 最近一次 REJECTED 原因，仅 REJECTED 状态展示
+    lastRejectReason: null as string | null,
+    // role switching
+    myRoles: [] as string[],
+    switchingRole: '',
   },
 
   methods: {
-    /** shell 注入参数（带 _ts nonce）；profile 无 param 驱动初始化，空实现守接口 */
-    onParams(_params: Record<string, unknown>) {
-      // no-op：profile 不消费 shell params
-    },
+    onParams(_params: Record<string, unknown>) {},
 
-    /** 等价原 onShow：requireAuth + 加载商家资料 + 未读数 */
     onPanelShow() {
       const app = getApp<AppInstance>();
       if (!app.requireAuth()) return;
       this.setData({ currentRole: app.globalData.currentRole });
       this.load();
       this.loadUnread();
+      this.loadRoles();
+    },
+
+    async loadRoles() {
+      try {
+        const roles = await refreshRoles();
+        if (roles) this.setData({ myRoles: roles });
+      } catch {
+        const app = getApp<AppInstance>();
+        if (app.globalData.user) this.setData({ myRoles: app.globalData.user.roles });
+      }
+    },
+
+    async onSwitchRole(e: WechatMiniprogram.TouchEvent) {
+      const role = e.currentTarget.dataset.role as string;
+      if (!role || role === this.data.currentRole || this.data.switchingRole) return;
+      if (!this.data.myRoles.includes(role)) {
+        wx.showToast({ title: '暂无该角色权限', icon: 'none' });
+        return;
+      }
+      this.setData({ switchingRole: role });
+      try {
+        const app = getApp<AppInstance>();
+        await app.switchRole(role.toLowerCase() as 'user' | 'merchant' | 'admin');
+        app.routeToRoleHome(role.toLowerCase());
+      } catch {
+        refreshRoles().then((roles) => { if (roles) this.setData({ myRoles: roles }); });
+      } finally {
+        this.setData({ switchingRole: '' });
+      }
     },
 
     async load() {

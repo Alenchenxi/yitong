@@ -71,6 +71,16 @@
 }
 .arrow { color: var(--yt-text-weak); font-size: 32rpx; }
 
+/* 角色切换 */
+.role-current-item {
+  background: linear-gradient(135deg, var(--yt-primary-lighter), var(--yt-primary-light));
+  margin: 0 -24rpx;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+  border-radius: 12rpx;
+}
+.role-switching { opacity: 0.6; }
+
 .logout-btn {
   margin-top: 32rpx;
   background: var(--yt-card) !important;

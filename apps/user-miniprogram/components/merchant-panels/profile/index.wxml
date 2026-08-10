@@ -86,5 +86,22 @@
     </view>
   </block>
 
+  <!-- 切换角色 -->
+  <view class="section yt-card" wx:if="{{myRoles.length > 1}}">
+    <view class="section-title">切换角色</view>
+    <view
+      wx:for="{{myRoles}}"
+      wx:key="*this"
+      class="menu-item role-item {{currentRole === item ? 'role-current-item' : ''}} {{switchingRole === item ? 'role-switching' : ''}}"
+      data-role="{{item}}"
+      catchtap="onSwitchRole"
+    >
+      <text>{{item === 'USER' ? '👤 用户端' : item === 'MERCHANT' ? '🏪 商家端' : '⚙ 管理端'}}</text>
+      <text wx:if="{{currentRole === item}}" class="yt-tag yt-tag-accent">当前</text>
+      <text wx:elif="{{switchingRole === item}}" style="font-size:24rpx;color:var(--yt-text-sub)">切换中…</text>
+      <text wx:else class="arrow">›</text>
+    </view>
+  </view>
+
   <button class="logout-btn" bindtap="logout">退出登录</button>
 </view>

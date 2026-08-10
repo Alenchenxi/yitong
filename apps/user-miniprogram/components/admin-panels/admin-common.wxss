@@ -102,6 +102,16 @@
 }
 .adm-stat-num { display: block; font-size: 40rpx; font-weight: 700; color: var(--yt-text-main); }
 .adm-stat-num.accent { color: var(--yt-primary-dark); }
+
+/* 角色切换 */
+.adm-role-current {
+  background: linear-gradient(135deg, var(--yt-primary-lighter), var(--yt-primary-light));
+  margin: 0 -24rpx;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+  border-radius: 12rpx;
+}
+.adm-role-switching { opacity: 0.6; }
 .adm-stat-label { display: block; font-size: 22rpx; color: var(--yt-text-sub); margin-top: 4rpx; }
 
 /* 批量操作按钮（浅黄底，克制） */

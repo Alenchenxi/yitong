@@ -69,3 +69,45 @@
   height: 88rpx !important;
   line-height: 88rpx !important;
 }
+
+/* 角色切换 */
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+.role-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx 8rpx;
+  border-radius: 12rpx;
+  border: 2rpx solid var(--yt-border);
+  background: var(--yt-card);
+  position: relative;
+}
+.role-cell.role-current {
+  border-color: var(--yt-primary);
+  background: linear-gradient(135deg, var(--yt-primary-lighter), var(--yt-primary-light));
+}
+.role-cell.role-off {
+  opacity: 0.45;
+}
+.role-cell.role-switching {
+  opacity: 0.6;
+}
+.role-emoji { font-size: 36rpx; margin-bottom: 6rpx; }
+.role-label { font-size: 24rpx; font-weight: 600; color: var(--yt-text-main); }
+.role-desc { font-size: 18rpx; color: var(--yt-text-sub); margin-top: 4rpx; text-align: center; }
+.role-tag {
+  font-size: 18rpx;
+  color: var(--yt-primary-dark);
+  background: var(--yt-primary-light);
+  padding: 2rpx 10rpx;
+  border-radius: 999rpx;
+  margin-top: 8rpx;
+}
+.role-tag.role-tag-off {
+  color: var(--yt-text-sub);
+  background: var(--yt-disabled-bg);
+}

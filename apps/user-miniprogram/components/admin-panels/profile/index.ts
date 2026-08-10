@@ -1,4 +1,5 @@
 import type { AppInstance } from '../../../app';
+import { refreshRoles } from '../../../services/auth';
 
 // 管理端「我的」panel（由 pages/admin/index shell 保活装载）
 Component({
@@ -18,18 +19,53 @@ Component({
 
   data: {
     nickname: '',
+    // role switching
+    currentRole: '',
+    myRoles: [] as string[],
+    switchingRole: '',
   },
 
   methods: {
-    onParams(_params: Record<string, unknown>) {
-      // profile 无需外部参数（shell 注入的 query 在此接收）
-    },
+    onParams(_params: Record<string, unknown>) {},
 
     onPanelShow() {
       const app = getApp<AppInstance>();
       if (!app.requireAuth()) return;
       const u = app.globalData.user;
-      this.setData({ nickname: u ? u.nickname : '' });
+      this.setData({
+        nickname: u ? u.nickname : '',
+        currentRole: app.globalData.currentRole,
+      });
+      this.loadRoles();
+    },
+
+    async loadRoles() {
+      try {
+        const roles = await refreshRoles();
+        if (roles) this.setData({ myRoles: roles });
+      } catch {
+        const app = getApp<AppInstance>();
+        if (app.globalData.user) this.setData({ myRoles: app.globalData.user.roles });
+      }
+    },
+
+    async onSwitchRole(e: WechatMiniprogram.TouchEvent) {
+      const role = e.currentTarget.dataset.role as string;
+      if (!role || role === this.data.currentRole || this.data.switchingRole) return;
+      if (!this.data.myRoles.includes(role)) {
+        wx.showToast({ title: '暂无该角色权限', icon: 'none' });
+        return;
+      }
+      this.setData({ switchingRole: role });
+      try {
+        const app = getApp<AppInstance>();
+        await app.switchRole(role.toLowerCase() as 'user' | 'merchant' | 'admin');
+        app.routeToRoleHome(role.toLowerCase());
+      } catch {
+        refreshRoles().then((roles) => { if (roles) this.setData({ myRoles: roles }); });
+      } finally {
+        this.setData({ switchingRole: '' });
+      }
     },
 
     onPanelReachBottom() {

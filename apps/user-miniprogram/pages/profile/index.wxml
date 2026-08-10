@@ -9,6 +9,26 @@
     </view>
   </view>
 
+  <!-- 切换角色 -->
+  <view class="section yt-card">
+    <view class="section-title">切换角色</view>
+    <view class="role-grid">
+      <view
+        wx:for="{{roleOptions}}"
+        wx:key="key"
+        class="role-cell {{currentRole === item.key ? 'role-current' : ''}} {{myRoles.indexOf(item.key) < 0 ? 'role-off' : ''}} {{switchingRole === item.key ? 'role-switching' : ''}}"
+        data-role="{{item.key}}"
+        bindtap="switchToRole"
+      >
+        <text class="role-emoji">{{item.emoji}}</text>
+        <text class="role-label">{{item.label}}</text>
+        <text class="role-desc">{{item.desc}}</text>
+        <text class="role-tag" wx:if="{{currentRole === item.key}}">当前</text>
+        <text class="role-tag role-tag-off" wx:elif="{{myRoles.indexOf(item.key) < 0}}">无权限</text>
+      </view>
+    </view>
+  </view>
+
   <!-- 我的内容 -->
   <view class="section yt-card">
     <view class="section-title">我的内容</view>

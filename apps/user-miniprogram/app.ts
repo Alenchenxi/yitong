@@ -30,10 +30,13 @@ App({
     if (restoreAuth(this)) {
       this.globalData.loginReady = true;
       this.routeToRoleHome(this.globalData.currentRole);
+      return;
     }
-    // 无 token 不 reLaunch：启动页即 role-select（pages[0]），会自然渲染三张角色卡片；
-    // 若开发者工具以其他页为编译入口，该页 onLoad 的 requireAuth() 会跳回 role-select。
-    // 原先 else 分支 reLaunch 到启动页自身，会中断首屏渲染导致白屏（lib 3.17.0 复现）。
+    // 无缓存 token → 首次进入小程序，自动以 user 身份登录直进广场
+    // 失败静默留在 role-select 页（pages[0]），用户可手动选角色
+    this.loginWithRole('user').then(() => {
+      this.routeToRoleHome('user');
+    }).catch(() => {});
   },
 
   // 按角色跳转对应端首页：user 表白墙(tabBar) / merchant 招聘列表(商家首页) / admin 管理端

@@ -24,5 +24,23 @@
     <view class="profile-menu" hover-class="adm-hover" bindtap="goSettings"><text>设置</text><text class="profile-arrow">›</text></view>
   </view>
 
+  <!-- 切换角色 -->
+  <view class="yt-card profile-section" wx:if="{{myRoles.length > 1}}">
+    <view class="profile-section-title">切换角色</view>
+    <view
+      wx:for="{{myRoles}}"
+      wx:key="*this"
+      class="profile-menu {{currentRole === item ? 'adm-role-current' : ''}} {{switchingRole === item ? 'adm-role-switching' : ''}}"
+      data-role="{{item}}"
+      hover-class="adm-hover"
+      catchtap="onSwitchRole"
+    >
+      <text>{{item === 'USER' ? '👤 用户端' : item === 'MERCHANT' ? '🏪 商家端' : '⚙ 管理端'}}</text>
+      <text wx:if="{{currentRole === item}}" style="font-size:22rpx;color:var(--yt-primary-dark);background:var(--yt-primary-light);padding:2rpx 12rpx;border-radius:999rpx;">当前</text>
+      <text wx:elif="{{switchingRole === item}}" style="font-size:22rpx;color:var(--yt-text-sub)">切换中…</text>
+      <text wx:else class="profile-arrow">›</text>
+    </view>
+  </view>
+
   <button class="profile-logout" bindtap="logout">退出登录</button>
 </view>
