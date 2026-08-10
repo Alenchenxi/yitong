@@ -526,14 +526,15 @@ model ReferralRecord {
 
 // ===== 兼职 =====
 model Merchant {
-  id           String         @id @default(cuid())
-  userId       String         @unique @map("user_id")
-  shopName     String         @map("shop_name")
-  licenseNo    String         @map("license_no")
-  contactPhone String         @map("contact_phone")
-  status       MerchantStatus @default(PENDING)
-  createdAt    DateTime       @default(now()) @map("created_at")
-  jobPosts     JobPost[]
+  id            String         @id @default(cuid())
+  userId        String         @unique @map("user_id")
+  shopName      String         @map("shop_name")
+  licenseNo     String         @map("license_no")
+  contactPhone  String         @map("contact_phone")
+  contactWechat String?        @map("contact_wechat") // 智能生成流程落地：发岗位时回填用（空=报名者无法联系）
+  status        MerchantStatus @default(PENDING)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  jobPosts      JobPost[]
   @@map("merchants")
 }
 enum MerchantStatus {
@@ -551,6 +552,12 @@ model JobPost {
   salary       String
   salaryAmount Int?          @map("salary_amount")                    // P0-18 薪资数额（auto-parse 自 salary，范围筛选用；单位差异为已知限制）
   location     String
+  // 智能生成流程(2026-08-10):工作地点必须经百度地图选点 / GPS 定位获得，禁止用户手动输入文本。
+  // 老数据兼容：4 字段可空；新创建岗位 createPost 强制必填（缺一抛 40003）。
+  locationPoiId String?       @map("location_poi_id")  // 百度地图 poi uid
+  locationLng   Decimal?      @db.Decimal(10, 6) @map("location_lng") // 经度
+  locationLat   Decimal?      @db.Decimal(10, 6) @map("location_lat") // 纬度
+  locationCity  String?       @map("location_city")      // 城市（如「北京」）
   category     JobCategory?  @map("category")                          // P0-17 分类
   settlement   Settlement?   @map("settlement")                        // P0-17 结算方式
   workDates    String[]      @default([]) @map("work_dates")           // P0-17 工作日期（周一..周日/可商议）
@@ -576,7 +583,8 @@ model JobPost {
   @@index([status, category, createdAt])
   @@index([status, salaryAmount])
   @@index([status, featured, featuredAt])
-  @@index([merchantId, status, deletedAt, createdAt]) // M3-07 商家视角列表过滤加速
+@@index([merchantId, status, deletedAt, createdAt]) // M3-07 商家视角列表过滤加速
+  @@index([locationCity, status])
   @@map("job_posts")
 }
 enum JobDuration {

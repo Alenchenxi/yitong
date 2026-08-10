@@ -34,10 +34,15 @@ export class JobService {
   ) {}
 
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
+  // 智能生成流程(2026-08-10):工作地点强制地图选点,4 字段必填,缺一抛 40003
   async createPost(merchantUid: string, dto: CreateJobPostDto, openid?: string) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant || merchant.status !== MerchantStatus.APPROVED) {
       throw new BizException(60003, '商家资质未审核通过，不能发岗', HttpStatus.FORBIDDEN);
+    }
+    // 强制必填 4 个 location 字段:locationPoiId / locationLng / locationLat / locationCity
+    if (!dto.locationPoiId || dto.locationLng === undefined || dto.locationLat === undefined || !dto.locationCity) {
+      throw new BizException(40003, '工作地点必须通过地图选点获得,请补全 poiId/经度/纬度/城市', HttpStatus.BAD_REQUEST);
     }
     await Promise.all([
       this.moderation.checkText(dto.title, openid),
@@ -57,6 +62,10 @@ export class JobService {
         salary: dto.salary,
         salaryAmount: this.parseSalaryAmount(dto.salary),
         location: dto.location,
+        locationPoiId: dto.locationPoiId,
+        locationLng: dto.locationLng,
+        locationLat: dto.locationLat,
+        locationCity: dto.locationCity,
         category: dto.category,
         settlement: dto.settlement,
         workDates: this.filterWhitelist(dto.workDates, WORK_DATE_VALUES),
@@ -106,6 +115,21 @@ export class JobService {
       data.salaryAmount = this.parseSalaryAmount(dto.salary);
     }
     if (dto.location !== undefined) data.location = dto.location;
+    // 智能生成流程(2026-08-10):编辑模式 location 4 字段可选;前端传齐才更新(全或无,防半更新)
+    const hasLocExt =
+      dto.locationPoiId !== undefined ||
+      dto.locationLng !== undefined ||
+      dto.locationLat !== undefined ||
+      dto.locationCity !== undefined;
+    if (hasLocExt) {
+      if (!dto.locationPoiId || dto.locationLng === undefined || dto.locationLat === undefined || !dto.locationCity) {
+        throw new BizException(40003, '编辑位置信息必须传齐 poiId/经度/纬度/城市', HttpStatus.BAD_REQUEST);
+      }
+      data.locationPoiId = dto.locationPoiId;
+      data.locationLng = dto.locationLng;
+      data.locationLat = dto.locationLat;
+      data.locationCity = dto.locationCity;
+    }
     if (dto.category !== undefined) data.category = dto.category;
     if (dto.settlement !== undefined) data.settlement = dto.settlement;
     if (dto.workDates !== undefined) data.workDates = this.filterWhitelist(dto.workDates, WORK_DATE_VALUES);
@@ -752,6 +776,10 @@ export class JobService {
     salary: string;
     salaryAmount: number | null;
     location: string;
+    locationPoiId?: string | null;
+    locationLng?: { toString(): string } | null;
+    locationLat?: { toString(): string } | null;
+    locationCity?: string | null;
     category: JobCategory | null;
     settlement: Settlement | null;
     workDates: string[];
@@ -779,6 +807,11 @@ export class JobService {
       salary: p.salary,
       salaryAmount: p.salaryAmount,
       location: p.location,
+      // 智能生成流程(2026-08-10):百度地图结构化字段,前端用于重选/二次校验
+      locationPoiId: p.locationPoiId ?? null,
+      locationLng: p.locationLng ? Number(p.locationLng.toString()) : null,
+      locationLat: p.locationLat ? Number(p.locationLat.toString()) : null,
+      locationCity: p.locationCity ?? null,
       category: p.category,
       settlement: p.settlement,
       workDates: p.workDates,

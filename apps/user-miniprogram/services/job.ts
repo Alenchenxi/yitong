@@ -133,8 +133,13 @@ export function createJobPost(data: {
   online?: boolean;
   questions?: string[]; // P0-21 报名问题
   duration: 'D30' | 'D90';
+  // 智能生成流程(2026-08-10):百度地图结构化字段;后端 createPost 强制必填
+  locationPoiId?: string;
+  locationLng?: number;
+  locationLat?: number;
+  locationCity?: string;
 }) {
-  return request<JobPostVo>({ url: '/job-posts', method: 'POST', data });
+  return request<JobPostVoExt>({ url: '/job-posts', method: 'POST', data });
 }
 
 export interface JobListFilter {
@@ -330,4 +335,78 @@ export interface MerchantDashboardVo {
 
 export function getMerchantDashboard(range: DashboardRange = 'all') {
   return request<MerchantDashboardVo>({ url: `/merchant/dashboard?range=${range}` });
+}
+
+// ===== 智能生成流程(2026-08-10)=====
+
+export interface JobPostVoExt extends JobPostVo {
+  locationPoiId: string | null;
+  locationLng: number | null;
+  locationLat: number | null;
+  locationCity: string | null;
+}
+
+export interface JobCategoryGridItem {
+  key: string;
+  label: string;
+  icon: string;
+  mapTo: string | null;
+}
+
+// 类别网格(GET /job-categories)
+export function getJobCategories() {
+  return request<{ items: JobCategoryGridItem[] }>({ url: '/job-categories' });
+}
+
+export interface AttractivenessVo {
+  score: number;
+  percentile: number;
+  label: string;
+}
+
+export interface JobTemplateVo {
+  title: string;
+  description: string;
+  salary: string;
+  settlementHint: string;
+  categoryMapTo: string | null;
+  attractiveness: AttractivenessVo;
+  refreshCount: number;
+  nextSeed: number;
+}
+
+// 智能生成(GET /job-posts/template)
+export function getJobTemplate(params: {
+  key: string;
+  location?: string;
+  headcount?: number;
+  salaryType?: 'fixed' | 'range';
+  salaryAmount?: number;
+  seed?: number;
+}) {
+  const q: string[] = [`key=${encodeURIComponent(params.key)}`];
+  if (params.location) q.push(`location=${encodeURIComponent(params.location)}`);
+  if (params.headcount !== undefined) q.push(`headcount=${params.headcount}`);
+  if (params.salaryType) q.push(`salaryType=${params.salaryType}`);
+  if (params.salaryAmount !== undefined) q.push(`salaryAmount=${params.salaryAmount}`);
+  if (params.seed !== undefined) q.push(`seed=${params.seed}`);
+  return request<JobTemplateVo>({ url: `/job-posts/template?${q.join('&')}` });
+}
+
+export interface PoiInfoVo {
+  poiId: string;
+  address: string;
+  lng: number;
+  lat: number;
+  city: string;
+}
+
+// 百度地图正向地理编码(GET /job-posts/geocode)
+export function geocode(address: string) {
+  return request<PoiInfoVo>({ url: `/job-posts/geocode?address=${encodeURIComponent(address)}` });
+}
+
+// poiId 反查(GET /job-posts/poi-detail)
+export function getPoiDetail(poiId: string) {
+  return request<PoiInfoVo>({ url: `/job-posts/poi-detail?poiId=${encodeURIComponent(poiId)}` });
 }

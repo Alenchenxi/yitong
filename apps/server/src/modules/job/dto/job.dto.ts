@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 // P0-17 岗位分类 / 结算方式枚举值（与 schema.prisma JobCategory / Settlement 对齐）
@@ -45,6 +45,32 @@ export class CreateJobPostDto {
   @MinLength(1)
   @MaxLength(100)
   location!: string;
+
+  // 智能生成流程(2026-08-10):工作地点强制地图选点,4 字段必填,缺一抛 40003
+  // 老数据兼容:4 字段可空(snapshot 模式);新创建岗位必须传齐
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  locationPoiId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  locationLng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  locationLat?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  locationCity?: string;
 
   // P0-17 结构化字段第一批
   @IsIn(JOB_CATEGORY_VALUES)
@@ -118,6 +144,31 @@ export class UpdateJobPostDto {
   @MinLength(1)
   @MaxLength(100)
   location?: string;
+
+  // 智能生成流程(2026-08-10):编辑模式 location 4 字段可选;前端传齐才更新
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  locationPoiId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  locationLng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  locationLat?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  locationCity?: string;
 
   @IsOptional()
   @IsIn(JOB_CATEGORY_VALUES)

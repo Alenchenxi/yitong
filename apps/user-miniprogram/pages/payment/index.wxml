@@ -1,13 +1,14 @@
 <view class="page">
   <view class="card">
-    <view class="title">付费发布岗位</view>
+    <view class="title">{{duration === 'D90' ? '90 天发布' : '30 天发布'}}</view>
+    <view class="subtitle">{{duration === 'D90' ? '长期招聘更划算' : '适合短期招聘'}}</view>
     <view class="row">展示时长：{{duration === 'D90' ? '90 天' : '30 天'}}{{price ? ' · ¥' + price : ''}}</view>
     <view class="row" wx:if="{{result}}">支付金额：¥{{result.amount}}</view>
     <view class="row" wx:if="{{result && result.status === 'PAID'}}">岗位状态：已发布</view>
   </view>
 
   <block wx:if="{{!result}}">
-    <button class="pay-btn" bindtap="pay" disabled="{{paying}}">{{paying ? '支付中…' : '确认支付'}}</button>
+    <button class="pay-btn" bindtap="pay" disabled="{{paying}}">{{paying ? '支付中…' : '立即支付'}}</button>
   </block>
 
   <block wx:elif="{{result.status === 'PAID'}}">

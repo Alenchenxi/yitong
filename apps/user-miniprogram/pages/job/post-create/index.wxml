@@ -1,0 +1,153 @@
+<view class="container">
+  <!-- 顶部 chip:类别 + 吸引力 -->
+  <view class="top-chip">
+    <text class="city">{{locationCity || '北京'}} · {{categoryLabel}}</text>
+    <text class="attr">{{attractivenessLabel}}</text>
+  </view>
+
+  <!-- 标题 + 「换一个」 -->
+  <view class="field">
+    <view class="label">职位标题</view>
+    <view class="input-row">
+      <input
+        class="input"
+        value="{{form.title}}"
+        bindinput="onFieldInput"
+        data-field="title"
+        placeholder="例:餐厅服务员 包餐+加班费"
+      />
+      <view class="btn-refresh" bindtap="onRefreshTitle">换一个</view>
+    </view>
+  </view>
+
+  <!-- 薪资 -->
+  <view class="field">
+    <view class="label">薪资</view>
+    <input
+      class="input"
+      value="{{form.salary}}"
+      bindinput="onFieldInput"
+      data-field="salary"
+      placeholder="例:150元/小时"
+    />
+  </view>
+
+  <!-- 结算方式 -->
+  <view class="field">
+    <view class="label">结算方式</view>
+    <view class="chip-row">
+      <view
+        wx:for="{{settlements}}"
+        wx:key="value"
+        class="chip {{item.value === form.settlement ? 'active' : ''}}"
+        bindtap="onPickSettlement"
+        data-value="{{item.value}}"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <!-- 描述 + 「换一个/清空」 -->
+  <view class="field">
+    <view class="label">职位描述</view>
+    <textarea
+      class="textarea"
+      value="{{form.description}}"
+      bindinput="onFieldInput"
+      data-field="description"
+      placeholder="工作内容、要求等"
+    />
+    <view class="textarea-actions">
+      <view class="btn-refresh" bindtap="onRefreshDescription">换一个</view>
+      <view class="btn-refresh" bindtap="onClearDescription">清空</view>
+    </view>
+  </view>
+
+  <!-- 工作地点(只读,锁定) -->
+  <view class="field">
+    <view class="label">工作地点</view>
+    <view class="readonly-row">
+      <text class="value">{{form.location}}</text>
+      <view class="link" bindtap="onChangeLocation">重选</view>
+    </view>
+  </view>
+
+  <!-- 联系人微信号 -->
+  <view class="field">
+    <view class="label">联系人微信号</view>
+    <input
+      class="input"
+      value="{{form.contactWechat}}"
+      bindinput="onFieldInput"
+      data-field="contactWechat"
+      placeholder="报名者联系用"
+    />
+  </view>
+
+  <!-- 招聘人数 -->
+  <view class="field">
+    <view class="label">招聘人数</view>
+    <input
+      class="input"
+      type="number"
+      value="{{form.headcount}}"
+      bindinput="onFieldInput"
+      data-field="headcount"
+      placeholder="1"
+    />
+  </view>
+
+  <!-- 继续完善(折叠) -->
+  <view class="field collapsible" bindtap="onToggleMore">
+    <text>继续完善</text>
+    <text class="arrow">{{showMore ? '▴' : '▾'}}</text>
+  </view>
+  <view wx:if="{{showMore}}" class="more-fields">
+    <view class="field">
+      <view class="label">任职要求(年龄/学历/福利)</view>
+      <textarea
+        class="textarea"
+        value="{{form.requirements}}"
+        bindinput="onFieldInput"
+        data-field="requirements"
+        placeholder="例如:18-25岁,大学生优先,包工作餐"
+      />
+    </view>
+    <view class="field">
+      <view class="label">工作时段</view>
+      <view class="chip-row">
+        <view
+          wx:for="{{workPeriodOptions}}"
+          wx:key="label"
+          class="chip {{item.selected ? 'active' : ''}}"
+          bindtap="onTogglePeriod"
+          data-label="{{item.label}}"
+        >{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 发布时长 -->
+  <view class="field">
+    <view class="label">发布时长</view>
+    <view class="chip-row">
+      <view
+        class="chip {{form.duration === 'D30' ? 'active' : ''}}"
+        bindtap="onPickDuration"
+        data-d="D30"
+      >30 天发布</view>
+      <view
+        class="chip {{form.duration === 'D90' ? 'active' : ''}}"
+        bindtap="onPickDuration"
+        data-d="D90"
+      >90 天发布</view>
+    </view>
+  </view>
+
+  <view class="action">
+    <button
+      class="btn-primary {{submitting ? 'disabled' : ''}}"
+      bindtap="onSubmit"
+      disabled="{{submitting}}"
+    >立即发布</button>
+  </view>
+</view>

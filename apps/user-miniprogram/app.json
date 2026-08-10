@@ -5,6 +5,9 @@
     "pages/confession/index",
     "pages/treehole/index",
     "pages/job/index",
+    "pages/job/category-pick/index",
+    "pages/job/post-create/index",
+    "pages/job/location-picker/index",
     "pages/profile/index",
     "pages/post-detail/index",
     "pages/post-create/index",
@@ -72,5 +75,11 @@
       { "pagePath": "pages/profile/index", "text": "我的", "iconPath": "assets/tabbar/profile.png", "selectedIconPath": "assets/tabbar/profile-active.png" }
     ]
   },
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于选择工作地点时定位当前位置"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation"]
 }

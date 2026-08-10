@@ -1,0 +1,26 @@
+.container { padding: 24rpx; background: #F6F7FB; min-height: 100vh; }
+.title { font-size: 36rpx; font-weight: 600; color: #1D2129; padding: 16rpx 0 24rpx; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16rpx; }
+.grid-item {
+  background: #FFFFFF; border-radius: 16rpx; padding: 24rpx 0;
+  display: flex; flex-direction: column; align-items: center; gap: 8rpx;
+}
+.grid-item.active { background: #F9C801; }
+.icon { font-size: 60rpx; }
+.label { font-size: 24rpx; color: #1D2129; }
+.location-row {
+  display: flex; align-items: center; gap: 16rpx;
+  margin-top: 32rpx; padding: 24rpx;
+  background: #FFFFFF; border-radius: 16rpx;
+}
+.location-row .label { font-size: 28rpx; color: #4E5969; flex: 0 0 auto; }
+.location-row .value { font-size: 28rpx; color: #1D2129; flex: 1 1 auto; }
+.location-row .placeholder { color: #86909C; }
+.location-row .arrow { color: #86909C; font-size: 32rpx; }
+.action { margin-top: 48rpx; }
+.btn-primary {
+  width: 100%; height: 88rpx; line-height: 88rpx;
+  background: #F9C801; color: #1D2129; font-size: 32rpx; font-weight: 600;
+  border-radius: 16rpx; border: none;
+}
+.btn-primary.disabled { background: #F2F3F5; color: #86909C; }

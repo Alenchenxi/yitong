@@ -1,0 +1,33 @@
+<view class="container">
+  <view class="title">选择要招的职位类别</view>
+
+  <view class="grid">
+    <view
+      wx:for="{{categories}}"
+      wx:key="key"
+      class="grid-item {{item.key === selectedKey ? 'active' : ''}}"
+      bindtap="onPickCategory"
+      data-key="{{item.key}}"
+    >
+      <view class="icon">{{item.icon}}</view>
+      <view class="label">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{selectedKey}}" class="location-row">
+    <view class="label">工作地点</view>
+    <view class="value" bindtap="onPickLocation">
+      <text wx:if="{{location.address}}">{{location.address}}</text>
+      <text wx:else class="placeholder">请选择工作地点(地图定位)</text>
+    </view>
+    <view class="arrow">›</view>
+  </view>
+
+  <view class="action">
+    <button
+      class="btn-primary {{canSubmit ? '' : 'disabled'}}"
+      bindtap="onNext"
+      disabled="{{!canSubmit}}"
+    >去发布</button>
+  </view>
+</view>

@@ -5,7 +5,11 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import type { AuthenticatedRequest } from '../auth/types';
 import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
+import { JobTemplateService } from './job-template.service';
+import { LocationService } from './location.service';
 import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto } from './dto/job.dto';
+import { JobTemplateQueryDto } from './dto/job-template.dto';
+import { GeocodeQueryDto, PoiDetailQueryDto } from './dto/location.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -14,7 +18,36 @@ export class JobController {
   constructor(
     private readonly job: JobService,
     private readonly scheduler: JobScheduler,
+    private readonly template: JobTemplateService,
+    private readonly location: LocationService,
   ) {}
+
+  // 智能生成流程(2026-08-10):类别网格 + 智能生成 + 百度地图选点
+  @Get('job-categories')
+  async jobCategories() {
+    return ok(this.template.listCategories());
+  }
+
+  // /template 必须声明在 /:id 之前,避免被参数路由吞掉
+  @Get('job-posts/template')
+  async jobPostTemplate(@Query() q: JobTemplateQueryDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.template.generate(uid, q));
+  }
+
+  // 百度地图 API 兜底校验:文本地址反查 poiId/lng/lat/city
+  @Get('job-posts/geocode')
+  async geocode(@Query() q: GeocodeQueryDto, @Req() req: Request) {
+    // 鉴权要求登录;空 user 也算通,真鉴权交给全局 Guard
+    (req as AuthenticatedRequest).user;
+    return ok(await this.location.geocode(q.address));
+  }
+
+  @Get('job-posts/poi-detail')
+  async poiDetail(@Query() q: PoiDetailQueryDto, @Req() req: Request) {
+    (req as AuthenticatedRequest).user;
+    return ok(await this.location.getPoiDetail(q.poiId));
+  }
 
   @Post('job-posts')
   async createPost(@Body() dto: CreateJobPostDto, @Req() req: Request) {
