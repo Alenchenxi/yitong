@@ -54,12 +54,12 @@
 ---
 
 ## 5. 提交与合并（trunk-based）
-- 从 main 切 `feat/<scope>` 分支开发（scope 取模块名）。
+- **每个开发任务必须在独立 git worktree 中进行，禁止只在主工作区 `git checkout -b` 切分支**：多个分支 / 多 agent 会同时开发，共用一个工作目录会互相覆盖、漏提交。开 worktree：`git worktree add <路径> -b feat/<scope>`（scope 取模块名）；Claude Code agent 用 `EnterWorktree` 工具（在 `.claude/worktrees/` 下建隔离副本）。
 - 合并前：改动记录状态 = **已审查**，typecheck + smoke + 单测全过。
-- 合并：`git checkout main && git merge --squash feat/<x> && git commit`。
+- 合并：主工作区 `git checkout main && git merge --squash feat/<x> && git commit`（squash 并入后该 worktree 分支可 `git worktree remove` 清理）。
 - Conventional Commits：`feat(<scope>): 中文 subject`；**提交信息（subject + body）以中文为主，不得全英文**（技术术语如 tabBar/shell/Prisma 可保留英文，但整体须中文可读），结尾 `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`。
 - `git push origin main` 本机常超时（errno 10054 / Timed out），多重试 3-5 次；仍失败告知用户手动 `! git push origin main`。
-- 若 main 已前进，合并前先 `git rebase main`。
+- 若 main 已前进，合并前先在 worktree 内 `git rebase main`。
 
 ---
 
@@ -89,8 +89,10 @@
 ---
 
 ## 9. 分支与多 agent 协同
+- **多 agent / 多分支并行 = 各自独立 worktree**：每个 agent / 任务一个 worktree，互不共用工作目录；绝不在同一 worktree 里同时切两个分支改代码（这是第 5 节硬性要求的直接原因）。
 - 分支划分、合并波次、跨分支契约见 `docs/开发记录/分支开发计划.md`。
 - 多 agent 并行：各管各的模块；`schema.prisma` 各加自己的 model；`app.module.ts` / `改动记录.md` 合并取并集；冲突按分支计划协议处理。
+- worktree 并发注意：各 worktree 共享同一 `.git`，`prisma migrate` / `pnpm install` 等会持锁或改 lockfile 的操作不要多个 worktree 同时跑；`改动记录.md` 合并取并集、不互相覆盖。
 
 ---
 
