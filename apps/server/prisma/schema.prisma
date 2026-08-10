@@ -35,6 +35,7 @@ model User {
   referralGot    ReferralRecord? @relation("RefereeRel")
   commentLikes CommentLike[]
   searchHistories SearchHistory[]
+  jobImpressions JobImpression[]
   @@map("users")
 }
 enum Role {
@@ -577,6 +578,7 @@ model JobPost {
   merchant     Merchant      @relation(fields: [merchantId], references: [id])
   applications JobApplication[]
   views        JobView[]
+  impressions  JobImpression[]
   @@index([status, expireAt])
   @@index([status, createdAt])
   @@index([status, urgent, createdAt])
@@ -661,6 +663,21 @@ model JobReview {
   @@unique([applicationId, direction]) // P1-26 同一报名可双向评（学生评商家 + 商家评学生）
   @@index([reviewerId])
   @@map("job_reviews")
+}
+
+// M3-08 招聘曝光事件（列表页 onShow 上报，按 (postId, userId, hourBucket) 去重）
+model JobImpression {
+  id         String   @id @default(cuid())
+  jobPostId  String   @map("job_post_id")
+  userId     String   @map("user_id")
+  hourBucket Int      @map("hour_bucket") // epoch 小时桶，Math.floor(Date.now() / 3_600_000)
+  createdAt  DateTime @default(now()) @map("created_at")
+  jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([jobPostId, userId, hourBucket])
+  @@index([jobPostId, createdAt])
+  @@index([userId, createdAt])
+  @@map("job_impressions")
 }
 
 // P2-16 招聘浏览事件

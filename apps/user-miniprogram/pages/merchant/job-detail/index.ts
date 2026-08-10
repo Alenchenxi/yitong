@@ -5,6 +5,7 @@ import {
   getJobPost,
   getJobPostStats,
   deleteJobPost,
+  republishJobPost,
   getPostChipLabels,
   type JobPostVo,
   type PostStatsVo,
@@ -100,12 +101,23 @@ Page({
     this.setData({ expanded: !this.data.expanded });
   },
 
-  // 「开始招聘」按钮：PUBLISHED 已隐藏；PENDING / TAKEN_DOWN / EXPIRED 跳支付
-  onStartHiring() {
+  // PENDING 直跳支付；PUBLISHED / TAKEN_DOWN / EXPIRED 先 republish 再跳
+  async onStartHiring() {
     const post = this.data.post;
     if (!post) return;
-    if (post.status === 'PUBLISHED') return; // 防御
-    wx.navigateTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${post.duration}` });
+    if (post.status === 'PENDING') {
+      wx.navigateTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${post.duration}` });
+      return;
+    }
+    // PUBLISHED / TAKEN_DOWN / EXPIRED：先 republish 回退 PENDING，再跳支付
+    try {
+      wx.showLoading({ title: '处理中', mask: true });
+      await republishJobPost(post.id);
+      wx.hideLoading();
+      wx.navigateTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${post.duration}` });
+    } catch {
+      wx.hideLoading();
+    }
   },
 
   // 「删除」按钮：仅 PENDING 草稿；二次确认 -> 服务端软删 -> 返回

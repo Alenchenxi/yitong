@@ -7,7 +7,7 @@ import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
 import { JobTemplateService } from './job-template.service';
 import { LocationService } from './location.service';
-import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto } from './dto/job.dto';
+import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto, RecordImpressionsDto } from './dto/job.dto';
 import { JobTemplateQueryDto } from './dto/job-template.dto';
 import { GeocodeQueryDto, PoiDetailQueryDto } from './dto/location.dto';
 
@@ -225,5 +225,19 @@ export class JobController {
   async postStats(@Param('id') id: string, @Query() q: JobPostStatsQueryDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.job.getPostStats(uid, id, q.range));
+  }
+
+  // M3-08 曝光上报：前端 onShow 批量上报当前可见岗位 ID，后端按 (postId, userId, hourBucket) 去重
+  @Post('job-posts/impressions')
+  async recordImpressions(@Body() dto: RecordImpressionsDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user?.uid ?? '';
+    return ok(await this.job.recordImpressions(uid || null, dto));
+  }
+
+  // M3-08 重新发布：PUBLISHED / TAKEN_DOWN / EXPIRED → PENDING（强制重付）
+  @Post('job-posts/:id/republish')
+  async republishPost(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.republishPost(uid, id));
   }
 }

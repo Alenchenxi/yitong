@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../app';
-import { listJobPosts, recommendJobs, type JobPostVo } from '../../services/job';
+import { listJobPosts, recommendJobs, recordJobImpressions, type JobPostVo } from '../../services/job';
 
 type Tab = 'recommend' | 'latest' | 'urgent';
 
@@ -45,6 +45,7 @@ Page({
     try {
       const list = await recommendJobs();
       this.setData({ posts: list, hasMore: false, nextCursor: null });
+      this.reportImpressions(list);
     } catch {
       /* toast */
     } finally {
@@ -64,6 +65,7 @@ Page({
         nextCursor: resp.nextCursor,
         hasMore: resp.hasMore,
       });
+      this.reportImpressions(resp.list);
     } catch {
       /* toast */
     } finally {
@@ -89,6 +91,14 @@ Page({
   },
   goPost() {
     wx.navigateTo({ url: '/pages/merchant/index?tab=post' });
+  },
+
+  // M3-08 曝光上报：数据加载完成后批量上报可见岗位 ID
+  reportImpressions(posts: JobPostVo[]) {
+    const ids = posts.map((p) => p.id).filter(Boolean);
+    if (!ids.length) return;
+    // 容错：失败静默
+    recordJobImpressions(ids).catch(() => {});
   },
   goManage() {
     wx.navigateTo({ url: '/pages/merchant/index?tab=jobs' });

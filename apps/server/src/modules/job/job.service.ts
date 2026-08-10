@@ -224,7 +224,7 @@ export class JobService {
       ? { jobPostId: postId, createdAt: { gte: since } }
       : { jobPostId: postId };
     const [exposureCount, total, accepted, completed] = await Promise.all([
-      this.prisma.jobView.count({ where: baseWhere }),
+      this.prisma.jobImpression.count({ where: baseWhere }),
       this.prisma.jobApplication.count({ where: baseWhere }),
       this.prisma.jobApplication.count({ where: { ...baseWhere, status: AppStatus.ACCEPTED } }),
       this.prisma.jobApplication.count({ where: { ...baseWhere, status: AppStatus.DONE } }),
@@ -235,6 +235,56 @@ export class JobService {
       conversionRate: total > 0 ? Math.round(((accepted + completed) / total) * 100) : 0,
       range: safeRange,
     };
+  }
+
+  // M3-08 曝光上报：前端 onShow 批量上报当前可见岗位 ID，按 (postId, userId, hourBucket) 去重
+  async recordImpressions(uid: string | null, dto: { postIds: string[] }) {
+    // 匿名用户不记录曝光（NULL 不去重）
+    if (!uid) return { recorded: 0 };
+    try {
+      const postIds = [...new Set(dto.postIds)].slice(0, 50);
+      if (!postIds.length) return { recorded: 0 };
+      // 过滤商家自己的岗位（防止商家刷自己曝光）
+      const ownPosts = await this.prisma.jobPost.findMany({
+        where: { id: { in: postIds }, merchant: { userId: uid } },
+        select: { id: true },
+      });
+      const ownSet = new Set(ownPosts.map((p) => p.id));
+      const validIds = postIds.filter((id) => !ownSet.has(id));
+      if (!validIds.length) return { recorded: 0 };
+      const hourBucket = Math.floor(Date.now() / 3_600_000);
+      const result = await this.prisma.jobImpression.createMany({
+        data: validIds.map((postId) => ({ jobPostId: postId, userId: uid!, hourBucket })),
+        skipDuplicates: true,
+      });
+      return { recorded: result.count };
+    } catch {
+      // 容错：曝光是分析数据，不应阻塞 list 渲染
+      return { recorded: 0 };
+    }
+  }
+
+  // M3-08 重新发布：PUBLISHED / TAKEN_DOWN / EXPIRED → PENDING（强制重付）
+  async republishPost(uid: string, postId: string) {
+    // assertOwnsPost 含 deletedAt 过滤 + 权限校验
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      include: { merchant: { select: { userId: true } } },
+    });
+    if (!post || post.deletedAt) {
+      throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    }
+    if (post.merchant.userId !== uid) {
+      throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
+    }
+    if (!['PUBLISHED', 'TAKEN_DOWN', 'EXPIRED'].includes(post.status)) {
+      throw new BizException(40004, '状态非法流转：仅已发布/已下架/已过期可重新发布', HttpStatus.CONFLICT);
+    }
+    await this.prisma.jobPost.update({
+      where: { id: postId },
+      data: { status: 'PENDING' },
+    });
+    return { id: postId, status: 'PENDING' as const, duration: post.duration };
   }
 
   // 岗位列表：mine=1 商家自己的（含草稿）；否则 PUBLISHED 且未过期

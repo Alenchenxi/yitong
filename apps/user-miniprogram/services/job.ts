@@ -410,3 +410,15 @@ export function geocode(address: string) {
 export function getPoiDetail(poiId: string) {
   return request<PoiInfoVo>({ url: `/job-posts/poi-detail?poiId=${encodeURIComponent(poiId)}` });
 }
+
+// ===== M3-08 曝光 + 重新发布 =====
+
+// M3-08 曝光上报：前端 onShow 批量上报当前可见岗位 ID，后端按 (postId, userId, hourBucket) 去重
+export function recordJobImpressions(postIds: string[]) {
+  return request<{ recorded: number }>({ url: '/job-posts/impressions', method: 'POST', data: { postIds } });
+}
+
+// M3-08 重新发布：PUBLISHED/TAKEN_DOWN/EXPIRED → PENDING（强制重付）
+export function republishJobPost(id: string) {
+  return request<{ id: string; status: 'PENDING'; duration: 'D30' | 'D90' }>({ url: `/job-posts/${id}/republish`, method: 'POST' });
+}

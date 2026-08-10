@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsArray, ArrayMinSize, ArrayMaxSize, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 // P0-17 岗位分类 / 结算方式枚举值（与 schema.prisma JobCategory / Settlement 对齐）
@@ -370,4 +370,13 @@ export class UpsertResumeDto {
   @IsString()
   @MaxLength(2000)
   experience?: string;
+}
+
+// M3-08 曝光上报 DTO：前端 onShow 批量上报当前可见岗位 ID，后端按 (postId, userId, hourBucket) 去重
+export class RecordImpressionsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  postIds!: string[];
 }

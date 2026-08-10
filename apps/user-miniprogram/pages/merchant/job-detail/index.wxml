@@ -92,13 +92,13 @@
 
   <view class="bottom-spacer"></view>
 
-  <!-- 底部固定 bar：PENDING 显示删除 + 开始招聘 -->
-  <view class="yt-footer-bar" wx:if="{{post.status !== 'PUBLISHED'}}">
+  <!-- 底部固定 bar：所有状态显示；PENDING 加删除；按钮文案状态决定 -->
+  <view class="yt-footer-bar">
     <view class="bar-btn bar-btn-danger-outline" bindtap="onDelete" wx:if="{{post.status === 'PENDING'}}">
       删除
     </view>
     <view class="bar-btn bar-btn-primary {{post.status === 'PENDING' ? '' : 'bar-btn-full'}}" bindtap="onStartHiring">
-      开始招聘
+      {{post.status === 'PENDING' ? '开始招聘' : '重新发布'}}
     </view>
   </view>
 </view>
