@@ -270,6 +270,12 @@ async function main(): Promise<void> {
     assert(!rows.some((u) => u.id === 'u-deleted'), '排除 deletedAt!=null 的封禁用户');
     assert(!rows.some((u) => u.id === 'u-other'), '昵称关键词过滤生效');
   }
+  {
+    const prisma = new FakePrisma();
+    prisma.users.push(user('u-ok', '候选同学', 'openid-ok'));
+    await assertBizCode(() => serviceFor(prisma).searchCandidateUsers(''), 40006, '无 keyword 抛 40006');
+    await assertBizCode(() => serviceFor(prisma).searchCandidateUsers('   '), 40006, '空白 keyword 抛 40006');
+  }
 
   console.log('[5] listAdmins linkedUser 与 isSelf');
   {

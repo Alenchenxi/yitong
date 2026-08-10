@@ -966,9 +966,13 @@ export class AdminService {
     return { id, deleted: true };
   }
 
-  // 搜索候选 User（用于添加弹窗）：按昵称模糊 + 排除已是 admin + 排除封禁
+  // 搜索候选 User（用于添加弹窗）：keyword 必填（DTO MinLength(1) + service 双保险）
+  // 强制最小长度避免无关键词返回全量 50 条；排除已是 admin + 排除封禁
   async searchCandidateUsers(keyword?: string) {
     const kw = keyword?.trim();
+    if (!kw) {
+      throw new BizException(40006, '请输入关键词搜索候选用户', HttpStatus.BAD_REQUEST);
+    }
     // 风险3：admin.openid 可能为 null，in: [null] 在 PG 等价于 IS NULL，会污染结果；显式 filter
     const existingOpenids = (await this.prisma.adminUser.findMany({ select: { openid: true } }))
       .map((a) => a.openid)
@@ -976,7 +980,7 @@ export class AdminService {
     const users = await this.prisma.user.findMany({
       where: {
         deletedAt: null,
-        ...(kw ? { nickname: { contains: kw, mode: 'insensitive' } } : {}),
+        nickname: { contains: kw, mode: 'insensitive' },
         ...(existingOpenids.length ? { NOT: { openid: { in: existingOpenids } } } : {}),
       },
       orderBy: { createdAt: 'desc' },
