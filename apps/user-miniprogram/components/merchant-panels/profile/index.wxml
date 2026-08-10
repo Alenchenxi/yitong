@@ -6,9 +6,13 @@
       <view class="auth-badge auth-badge-{{merchant.status}}">{{statusText}}</view>
     </view>
     <view class="auth-tip" wx:if="{{merchant.status === 'PENDING'}}">资质审核中，通过后可发布岗位</view>
-    <view class="auth-tip" wx:elif="{{merchant.status === 'REJECTED'}}">资质未通过，请重新提交或联系平台</view>
-    <view class="auth-tip auth-tip-reason" wx:elif="{{merchant.status === 'REJECTED' && lastRejectReason}}">上次未通过原因：{{lastRejectReason}}</view>
-    <button class="register-btn" wx:elif="{{merchant.status === 'REJECTED'}}" bindtap="goReapply">重新提交资质</button>
+    <!-- REJECTED 三件套必须同层渲染：之前 tip / reason / 按钮串在同一条 wx:elif 链上，
+         第一条 REJECTED 命中后，后两条永远不会渲染，「重新提交资质」按钮点不到 -->
+    <block wx:elif="{{merchant.status === 'REJECTED'}}">
+      <view class="auth-tip">资质未通过，请重新提交或联系平台</view>
+      <view class="auth-tip auth-tip-reason" wx:if="{{lastRejectReason}}">上次未通过原因：{{lastRejectReason}}</view>
+      <button class="register-btn" bindtap="goReapply">重新提交资质</button>
+    </block>
     <view class="auth-tip" wx:elif="{{merchant.status === 'APPROVED'}}">资质已认证</view>
   </view>
 
