@@ -42,8 +42,8 @@ App({
     } else if (r === 'admin') {
       wx.reLaunch({ url: '/pages/admin/index' });
     } else {
-      // user 落地表白墙(tabBar)：reLaunch 与 merchant/admin 统一，规避 onLaunch 阶段 switchTab 偶发失效
-      wx.reLaunch({ url: '/pages/confession/index' });
+      // user 落地广场(tabBar 左一)：reLaunch 与 merchant/admin 统一，规避 onLaunch 阶段 switchTab 偶发失效
+      wx.reLaunch({ url: '/pages/square/index' });
     }
   },
 

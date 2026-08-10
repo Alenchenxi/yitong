@@ -11,9 +11,10 @@ const SIZE = 81;
 const OUT_DIR = path.join(__dirname, '..', 'assets', 'tabbar');
 const ICON_SRC = path.join(__dirname, '..', '..', '..', 'node_modules', '@tabler', 'icons', 'icons', 'outline');
 
-// 文件名 -> Tabler outline 图标名（三端 14 个 tab；user/users 跨端复用同形）
+// 文件名 -> Tabler outline 图标名（三端 15 个 tab；user/users 跨端复用同形）
 const ICONS = [
   // 用户端（文件名沿用旧名，直接覆盖，app.json tabBar 路径不变）
+  { file: 'square', icon: 'compass' },
   { file: 'confession', icon: 'heart' },
   { file: 'treehole', icon: 'moon-stars' },
   { file: 'job', icon: 'briefcase' },

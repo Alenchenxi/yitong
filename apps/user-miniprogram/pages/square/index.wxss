@@ -1,6 +1,6 @@
 .page { padding: 0 0 120rpx; }
 
-/* 顶部搜索 + 发布 */
+/* 顶部搜索 */
 .topbar {
   display: flex;
   align-items: center;
@@ -23,14 +23,6 @@
 }
 .search-icon { font-size: 24rpx; }
 .search-ph { font-size: 26rpx; color: var(--yt-text-sub); }
-.publish-btn {
-  background: var(--yt-primary);
-  color: var(--yt-text-main);
-  font-size: 26rpx;
-  padding: 12rpx 28rpx;
-  border-radius: 999rpx;
-  font-weight: 600;
-}
 
 /* 公告栏 */
 .announce-bar {

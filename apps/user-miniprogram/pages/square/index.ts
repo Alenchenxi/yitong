@@ -2,7 +2,7 @@ import type { AppInstance } from '../../app';
 import { feed, toggleLike, type PostVo } from '../../services/confession';
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
 
-type MainTab = 'recommend' | 'latest' | 'hot' | 'follow';
+type MainTab = 'follow' | 'recommend';
 
 interface PageData {
   posts: PostVo[];
@@ -19,7 +19,7 @@ Page({
     nextCursor: null,
     hasMore: true,
     loading: false,
-    activeMainTab: 'recommend',
+    activeMainTab: 'follow',
     announcements: [],
   } as PageData,
 
@@ -62,7 +62,7 @@ Page({
   },
 
   switchMainTab(e: WechatMiniprogram.TouchEvent) {
-    const tab = (e.currentTarget.dataset.tab as MainTab) ?? 'recommend';
+    const tab = (e.currentTarget.dataset.tab as MainTab) ?? 'follow';
     if (tab === this.data.activeMainTab) return;
     this.setData({ activeMainTab: tab });
     this.reloadFeed();

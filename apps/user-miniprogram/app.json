@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/role-select/index",
+    "pages/square/index",
     "pages/confession/index",
     "pages/treehole/index",
     "pages/job/index",
@@ -63,6 +64,7 @@
     "selectedColor": "#1D2129",
     "backgroundColor": "#ffffff",
     "list": [
+      { "pagePath": "pages/square/index", "text": "广场", "iconPath": "assets/tabbar/square.png", "selectedIconPath": "assets/tabbar/square-active.png" },
       { "pagePath": "pages/confession/index", "text": "表白墙", "iconPath": "assets/tabbar/confession.png", "selectedIconPath": "assets/tabbar/confession-active.png" },
       { "pagePath": "pages/treehole/index", "text": "树洞", "iconPath": "assets/tabbar/treehole.png", "selectedIconPath": "assets/tabbar/treehole-active.png" },
       { "pagePath": "pages/job/index", "text": "兼职", "iconPath": "assets/tabbar/job.png", "selectedIconPath": "assets/tabbar/job-active.png" },
