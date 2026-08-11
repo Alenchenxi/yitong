@@ -1,3 +1,5 @@
+import { handleResponseAuth } from './auth-error';
+
 interface ApiResult<T> {
   code: number;
   data: T;
@@ -11,6 +13,7 @@ interface AppGlobalData {
 }
 
 // 统一请求封装：注入 token、统一错误提示（与 API 设计规范 §2 对齐）
+// 鉴权失败（10001 未登录/用户不存在、10002 登录已过期/token 无效）→ 清登录态 + 跳 role-select
 export function request<T>(opts: {
   url: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'TRACE' | 'CONNECT';
@@ -34,6 +37,7 @@ export function request<T>(opts: {
           resolve(body.data);
         } else {
           wx.showToast({ title: body.message, icon: 'none' });
+          handleResponseAuth(body);
           reject(body);
         }
       },

@@ -1,8 +1,11 @@
+import { handleResponseAuth } from './auth-error';
+
 export type UploadType = 'common' | 'posts' | 'anon' | 'avatars' | 'merchant' | 'voice';
 
 // 通用上传：wx.chooseMedia 拿到本地路径 -> wx.uploadFile 传 /uploads(图片) /uploads/video(视频) /uploads/voice(语音) -> 返回 {url}
 // 注意：uploadFile 不能复用 request 封装（它走 multipart/form-data 而非 JSON），
 // 故直接用 wx.uploadFile 并手动注入 Authorization。
+// 鉴权失败（10001/10002）→ 清登录态 + 跳 role-select
 function uploadFile(
   localPath: string,
   type: UploadType,
@@ -28,6 +31,7 @@ function uploadFile(
             resolve(body.data.url);
           } else {
             wx.showToast({ title: body.message ?? '上传失败', icon: 'none' });
+            handleResponseAuth(body);
             reject(body);
           }
         } catch {

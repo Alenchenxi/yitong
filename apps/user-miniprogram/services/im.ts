@@ -1,6 +1,8 @@
 // IM manager: wx.connectSocket -> ChatGateway with login handshake, heartbeat,
 // exponential reconnect, and a small pending-send queue.
 
+import { handleResponseAuth } from './auth-error';
+
 export interface ImCredential {
   loginUserId: string;
   loginToken: string;
@@ -314,6 +316,7 @@ function request<T>(
           resolve(b.data as T);
         } else {
           wx.showToast({ title: b.message ?? '请求失败', icon: 'none' });
+          handleResponseAuth(b);
           reject(new Error(b.message ?? 'fail'));
         }
       },

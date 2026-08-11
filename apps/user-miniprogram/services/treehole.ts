@@ -1,5 +1,6 @@
 import { request } from './request';
 import { persistAnonToken } from '../utils/auth';
+import { handleResponseAuth } from './auth-error';
 
 // 树洞匿名接口：用 anonToken 鉴权（独立于 user access token）
 
@@ -97,6 +98,7 @@ export function getAnonymousToken(): Promise<AnonTokenResp> {
           resolve(b.data);
         } else {
           wx.showToast({ title: b.message ?? '匿名态获取失败', icon: 'none' });
+          handleResponseAuth(b);
           reject(new Error(b.message ?? 'fail'));
         }
       },
