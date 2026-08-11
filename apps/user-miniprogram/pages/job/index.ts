@@ -36,7 +36,7 @@ Page({
   },
 
   getLocationAndLoad() {
-    wx.getLocation({
+    wx.getFuzzyLocation({
       type: 'gcj02',
       success: (res) => {
         this.setData({ userLng: res.longitude, userLat: res.latitude, hasLocation: true });

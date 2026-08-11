@@ -50,7 +50,7 @@ Page({
   // 真实"锁定"由用户输入搜索 → 点击候选完成
   startLocate() {
     this.setData({ locating: true, locationFailed: false, locationErrMsg: '' });
-    wx.getLocation({
+    wx.getFuzzyLocation({
       type: 'gcj02',
       success: (res) => {
         // 拿到坐标后,前端先把坐标存到位置占位(地址写"定位中...")
@@ -82,7 +82,7 @@ Page({
         });
       },
       fail: (err) => {
-        console.error('wx.getLocation failed:', err?.errMsg);
+        console.error('wx.getFuzzyLocation failed:', err?.errMsg);
         this.setData({
           locating: false,
           locationFailed: true,
