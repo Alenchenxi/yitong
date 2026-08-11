@@ -11,7 +11,8 @@
       "disablePlugins": [],
       "outputPath": ""
     },
-    "useCompilerPlugins": false
+    "useCompilerPlugins": ["typescript"],
+    "condition": false
   },
   "compileType": "miniprogram",
   "miniprogramRoot": "apps/user-miniprogram/",

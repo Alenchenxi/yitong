@@ -37,7 +37,7 @@
     <view wx:if="{{locating}}" class="hint">正在定位...</view>
     <view wx:elif="{{locationFailed}}" class="hint hint-warn">定位失败：{{locationErrMsg}}，请手动输入地点</view>
     <view wx:elif="{{autoLocking}}" class="hint">自动选点中...</view>
-    <view wx:elif="{{location.poiId}}" class="hint hint-ok">已选：{{location.address}}</view>
+    <view wx:elif="{{location.poiId}}" class="hint hint-ok">{{location.address}}</view>
     <view wx:elif="{{location.address && !location.poiId && !autoLocking && !autoLockFailed && !locationFailed}}" class="hint">模糊位置：{{location.address}}</view>
     <view wx:elif="{{autoLockFailed}}" class="hint">未识别当前位置，请搜索</view>
     <view wx:elif="{{!location.poiId && searchInput}}" class="hint">输入关键词搜索候选</view>
