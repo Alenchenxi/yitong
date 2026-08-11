@@ -55,12 +55,15 @@ Page({
     this.setData({
       selectedKey: opts.selectedKey ?? '',
       categoryLabel: decodeURIComponent(opts.categoryLabel ?? ''),
-      locationCity: opts.city ?? '',
+      // city 经 encodeURIComponent 编码传入(publish.onNext),必须 decode;
+      // 否则中文城市编码后(如 %E5%8C%97%E4%BA%AC=24字符)超 CreateJobPostDto.locationCity @MaxLength(20) -> 创建 400,
+      // 且顶部 chip 显示 %E5%8C%97... 乱码
+      locationCity: decodeURIComponent(opts.city ?? ''),
       'form.location': decodeURIComponent(opts.address ?? ''),
       'form.locationPoiId': opts.poiId ?? '',
       'form.locationLng': Number(opts.lng ?? 0),
       'form.locationLat': Number(opts.lat ?? 0),
-      'form.locationCity': opts.city ?? '',
+      'form.locationCity': decodeURIComponent(opts.city ?? ''),
     });
     this.generate();
   },
@@ -165,7 +168,8 @@ Page({
       });
       wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${f.duration}` });
     } catch (e) {
-      wx.showToast({ title: '创建失败', icon: 'none' });
+      console.error('createJobPost failed:', e);
+      // request.ts 已弹后端真实错误;不再用"创建失败"覆盖,便于排查
     } finally {
       this.setData({ submitting: false });
     }

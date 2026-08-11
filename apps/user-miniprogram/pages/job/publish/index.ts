@@ -79,7 +79,8 @@ Page({
           locationFailed: false,
         });
       },
-      fail: () => {
+      fail: (err) => {
+        console.error('wx.getLocation failed:', err?.errMsg);
         this.setData({ locating: false, locationFailed: true });
         wx.showToast({ title: '定位失败，请手动输入', icon: 'none' });
       },
@@ -128,9 +129,10 @@ Page({
     try {
       const list = await suggestPlaces(q, this.data.location.city || undefined);
       this.setData({ candidates: list, searching: false });
-    } catch {
+    } catch (e) {
+      console.error('place-suggestion failed:', e);
       this.setData({ searching: false, candidates: [] });
-      wx.showToast({ title: '搜索失败', icon: 'none' });
+      // 不弹"搜索失败"覆盖 request.ts 已弹的后端真实 message(如"百度地图候选搜索失败:xxx")
     }
   },
 
