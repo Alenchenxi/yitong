@@ -75,4 +75,17 @@ export class BoostService {
     }
     await tx.anonymousPost.updateMany({ where: { id: targetId, boostUntil: active }, data: { boostUntil: new Date() } });
   }
+
+  // 清理过期推广：把 boostUntil <= now 的 Post/AnonymousPost 字段置回 null（数据整洁）。
+  // 懒过滤（boostUntil > now）已保证 feed 正确，此方法仅做整洁清理，无功能影响；
+  // 推广历史保留在 PaymentOrder（scene=POST_BOOST/ANON_POST_BOOST + boostPlanId + 时间），不依赖此字段。
+  // Prisma lte 在 SQL 层为 `boost_until <= now`，NULL 行经三值逻辑被排除（NULL <= now = unknown），故仅清理非 null 且过期的行。
+  async cleanupExpiredBoosts(): Promise<{ posts: number; anonPosts: number }> {
+    const now = new Date();
+    const [posts, anonPosts] = await Promise.all([
+      this.prisma.post.updateMany({ where: { boostUntil: { lte: now } }, data: { boostUntil: null } }),
+      this.prisma.anonymousPost.updateMany({ where: { boostUntil: { lte: now } }, data: { boostUntil: null } }),
+    ]);
+    return { posts: posts.count, anonPosts: anonPosts.count };
+  }
 }
