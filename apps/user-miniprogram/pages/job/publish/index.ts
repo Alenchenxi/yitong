@@ -72,7 +72,7 @@ Page({
         const city = this.guessCity(latitude, longitude);
         // 3. 定位成功 → 进入自动反查阶段(setData 切到「自动选点中...」hint)
         this.setData({
-          location: { address: `当前定位(${latitude.toFixed(4)}, ${longitude.toFixed(4)})`, poiId: '', lng: longitude, lat: latitude, city },
+          location: { address: `当前模糊位置:${city || '未知区域'} (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`, poiId: '', lng: longitude, lat: latitude, city },
           locating: false,
           locationFailed: false,
           autoLocking: true,
