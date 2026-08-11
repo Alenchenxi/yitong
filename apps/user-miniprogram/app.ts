@@ -8,10 +8,16 @@ import {
 import { getAnonymousToken } from './services/treehole';
 
 // 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
+// FORCE_PRODUCTION 开关：true=开发者工具(develop)也强制连生产 yitongjiajiao.cn（本地不跑 server 调试真数据用）；
+//   false=自动切换（develop→localhost:3000，trial/release→生产）。上线联调完记得翻回 false。
+const FORCE_PRODUCTION = true;
 const __envVersion = wx.getAccountInfoSync().miniProgram.envVersion;
-const apiBase = __envVersion === 'develop'
-  ? 'http://localhost:3000/api/v1'
-  : 'https://yitongjiajiao.com/api/v1';
+const PROD_API_BASE = 'https://yitongjiajiao.cn/api/v1';
+const apiBase = FORCE_PRODUCTION
+  ? PROD_API_BASE
+  : __envVersion === 'develop'
+    ? 'http://localhost:3000/api/v1'
+    : PROD_API_BASE;
 
 App({
   globalData: {
