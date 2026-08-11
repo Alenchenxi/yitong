@@ -51,8 +51,11 @@ Page({
     this.setData({ switchingRole: role });
     try {
       const app = getApp<AppInstance>();
-      await app.switchRole(role as 'user' | 'merchant' | 'admin');
-      app.routeToRoleHome(role);
+      // role 来自 wxml data-role={{item.key}}，大写（USER/MERCHANT/ADMIN）；
+      // 后端 DTO 仅接受小写，需 toLowerCase，与商家/管理端 onSwitchRole 保持一致
+      const roleLower = role.toLowerCase() as 'user' | 'merchant' | 'admin';
+      await app.switchRole(roleLower);
+      app.routeToRoleHome(roleLower);
     } catch (e: any) {
       const msg = e?.message || '';
       // 服务器返回了具体错误信息（如"商家未通过审核"），request 层已弹 toast，不再重复

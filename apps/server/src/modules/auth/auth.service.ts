@@ -93,6 +93,20 @@ export class AuthService {
       }
     }
 
+    // ADMIN 角色额外校验：openid 必须绑定 AdminUser（后台管理员表）
+    // 修复 dev 模式 wx-login ensureRole 跳过 admin 校验 + 历史 AdminUser 删除未同步
+    // UserRole 行残留导致的"非管理员可切到管理端"鉴权漏洞。与 ensureRole prod 路径对齐。
+    if (role === Role.ADMIN) {
+      const a = await this.prisma.adminUser.findFirst({ where: { openid: user.openid } });
+      if (!a) {
+        throw new BizException(
+          10003,
+          '该账号未绑定管理员，无法切换到管理端',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
+
     return this.issueTokens(user, role);
   }
 
