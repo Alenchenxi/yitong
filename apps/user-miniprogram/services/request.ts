@@ -14,11 +14,13 @@ interface AppGlobalData {
 
 // 统一请求封装：注入 token、统一错误提示（与 API 设计规范 §2 对齐）
 // 鉴权失败（10001 未登录/用户不存在、10002 登录已过期/token 无效）→ 清登录态 + 跳 role-select
+// silent: true 时不弹 wx.showToast(用于前端需要静默降级的场景,如 reverse geocode 失败要让用户无感)
 export function request<T>(opts: {
   url: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'TRACE' | 'CONNECT';
   data?: Record<string, unknown>;
   header?: Record<string, string>; // CR-001 额外 header（如 x-anon-token）
+  silent?: boolean; // 不弹错误 toast(默认 false 保持既有行为不变)
 }): Promise<T> {
   const app = getApp<{ globalData: AppGlobalData }>();
   return new Promise((resolve, reject) => {
@@ -36,13 +38,13 @@ export function request<T>(opts: {
         if (body.code === 0) {
           resolve(body.data);
         } else {
-          wx.showToast({ title: body.message, icon: 'none' });
+          if (!opts.silent) wx.showToast({ title: body.message, icon: 'none' });
           handleResponseAuth(body);
           reject(body);
         }
       },
       fail: () => {
-        wx.showToast({ title: '网络异常，请重试', icon: 'none' });
+        if (!opts.silent) wx.showToast({ title: '网络异常，请重试', icon: 'none' });
         reject(new Error('network error'));
       },
     });

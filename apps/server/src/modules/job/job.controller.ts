@@ -9,7 +9,7 @@ import { JobTemplateService } from './job-template.service';
 import { LocationService } from './location.service';
 import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto, RecordImpressionsDto } from './dto/job.dto';
 import { JobTemplateQueryDto } from './dto/job-template.dto';
-import { GeocodeQueryDto, PoiDetailQueryDto, PlaceSuggestionQueryDto } from './dto/location.dto';
+import { GeocodeQueryDto, PoiDetailQueryDto, PlaceSuggestionQueryDto, ReverseGeocodeQueryDto } from './dto/location.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -55,6 +55,15 @@ export class JobController {
   async placeSuggestion(@Query() q: PlaceSuggestionQueryDto, @Req() req: Request) {
     (req as AuthenticatedRequest).user;
     return ok(await this.location.suggestPlaces(q.query, q.region));
+  }
+
+  // 百度地图反向地理编码:坐标 → POI/地址/城市,供发布岗"模糊定位后自动锁定默认选点"用
+  // GET /job-posts/reverse-geocode?lng=xxx&lat=xxx&coordType=gcj02|bd09
+  // 路由必须在 job-posts/:id 之前(否则会被吞成 :id=reverse-geocode)
+  @Get('job-posts/reverse-geocode')
+  async reverseGeocode(@Query() q: ReverseGeocodeQueryDto, @Req() req: Request) {
+    (req as AuthenticatedRequest).user;
+    return ok(await this.location.reverseGeocode(q.lng, q.lat, q.coordType));
   }
 
   @Post('job-posts')

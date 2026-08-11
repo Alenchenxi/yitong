@@ -271,4 +271,86 @@ export class LocationService {
       return { lng, lat };
     }
   }
+
+  // dev mock reverse:基于 lng/lat 哈希生成稳定 poiId,坐标原样回传(不偏移,避免前端坐标跳变)
+  // 量化到 4 位小数(≈11m 精度)兼顾幂等性与边界区分
+  private mockReverseGeocode(lng: number, lat: number): PoiInfo {
+    const key = `${lng.toFixed(4)}_${lat.toFixed(4)}`;
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+    // 城市粗判(复用前端 guessCity 的矩形框,后端兜底)
+    let city = '北京';
+    if (lat > 39 && lat < 41 && lng > 116 && lng < 117) city = '北京';
+    else if (lat > 31 && lat < 32 && lng > 121 && lng < 122) city = '上海';
+    else if (lat > 22 && lat < 24 && lng > 113 && lng < 114) city = '广州';
+    else if (lat > 22 && lat < 23 && lng > 113 && lng < 115) city = '深圳';
+    return {
+      poiId: `mock_rev_${Math.abs(h).toString(36)}`,
+      address: `模拟地址(${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      lng,
+      lat,
+      city,
+    };
+  }
+
+  // 反向地理编码:坐标(lng, lat) → PoiInfo(poiId/address/lng/lat/city)
+  // 入参坐标系:gcj02(微信 wx.getFuzzyLocation 默认)或 bd09;后端内部转 bd09 后调百度 reverse
+  // AK 缺失:dev 走 mockReverseGeocode,prod 抛 90003
+  // 注:百度 reverse_geocoding/v3 location 参数顺序是 lat,lng(与本文件其它接口相反)
+  async reverseGeocode(
+    lng: number,
+    lat: number,
+    coordType: 'gcj02' | 'bd09' = 'gcj02',
+  ): Promise<PoiInfo> {
+    // 无 AK 判断必须在坐标系转换前(否则 dev 近似偏移破坏幂等,且反向也无意义)
+    const ak = this.getAk();
+    if (!ak) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new BizException(90003, '百度地图 AK 未配置', HttpStatus.SERVICE_UNAVAILABLE);
+      }
+      return this.mockReverseGeocode(lng, lat);
+    }
+    // 有 AK:gcj02 → bd09(百度 reverse 期望 bd09)
+    let bd = { lng, lat };
+    if (coordType === 'gcj02') {
+      bd = await this.convertGcj02ToBd09(lng, lat);
+    }
+    try {
+      // 注意 location 参数顺序:lat,lng(百度 reverse v3 与 geocoding v3 不同)
+      const params = new URLSearchParams({
+        location: `${bd.lat},${bd.lng}`,
+        output: 'json',
+        ak,
+      });
+      const url = `https://api.map.baidu.com/reverse_geocoding/v3/?${params.toString()}`;
+      const resp = await fetch(url);
+      const data = (await resp.json()) as {
+        status: number;
+        message?: string;
+        result?: {
+          location?: { lng: number; lat: number };
+          formatted_address?: string;
+          addressComponent?: { city?: string };
+          // 百度 reverse 返回的 POI uid(部分场景有)
+          uid?: string;
+        };
+      };
+      if (data.status !== 0 || !data.result || !data.result.formatted_address) {
+        this.logger.warn(`baidu reverse geocode failed: ${data.message ?? 'unknown'}, falling back to mock`);
+        return this.mockReverseGeocode(lng, lat);
+      }
+      const r = data.result;
+      return {
+        // 百度 reverse 不一定返回 uid;缺则基于坐标哈希生成稳定 poiId
+        poiId: r.uid ?? `bd_rev_${bd.lng.toFixed(6)}_${bd.lat.toFixed(6)}`,
+        address: r.formatted_address,
+        lng: r.location?.lng ?? bd.lng,
+        lat: r.location?.lat ?? bd.lat,
+        city: r.addressComponent?.city ?? '',
+      };
+    } catch (e) {
+      this.logger.warn(`baidu reverse geocode error: ${(e as Error).message}, falling back to mock`);
+      return this.mockReverseGeocode(lng, lat);
+    }
+  }
 }

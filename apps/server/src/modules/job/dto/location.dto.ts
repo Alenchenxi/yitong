@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class GeocodeQueryDto {
   @IsString()
@@ -22,6 +22,26 @@ export class PlaceSuggestionQueryDto {
   @IsString()
   @MaxLength(20)
   region?: string;
+}
+
+// 反向地理编码:坐标 → POI/地址/城市
+// 坐标系:gcej02(微信 wx.getFuzzyLocation 默认)或 bd09;后端内部按需转 bd09
+export class ReverseGeocodeQueryDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat!: number;
+
+  @IsOptional()
+  @IsIn(['gcj02', 'bd09'])
+  coordType?: 'gcj02' | 'bd09';
 }
 
 export class PoiInfoVo {

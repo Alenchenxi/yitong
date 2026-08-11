@@ -6,11 +6,15 @@ import 'reflect-metadata';
 //      - 空 query → []
 //      - mock 路径(无 AK) → 5 个候选,每个含 poiId/address/lng/lat/city
 //      - 真实 AK 路径(有 AK) → 调百度 API(这里用 mock fetch 模拟返回)
-//   2. JobController 路由顺序:/place-suggestion 必须在 /:id 之前
-//   3. JobService.createPost 4 字段强制:缺一抛 40003
-//   4. PaymentService.createJobPublishOrder(missing wxPay) → mock 自动完成
-//   5. PaymentService.mockPay(orderId) → 状态 PAID + JobPost 变 PUBLISHED
-//   6. PaymentService.getJobPublishPricing → 返回 D30/D90 两档
+//   2. LocationService.reverseGeocode:
+//      - mock 路径(无 AK) → 稳定 poiId + 坐标原样回传
+//      - 真实 AK 路径 status=0 → 解析 formatted_address + city
+//      - 真实 AK 路径 status!=0 → 降级到 mock(不抛)
+//   3. JobController 路由顺序:/place-suggestion /reverse-geocode 都必须在 /:id 之前
+//   4. JobService.createPost 4 字段强制:缺一抛 40003
+//   5. PaymentService.createJobPublishOrder(missing wxPay) → mock 自动完成
+//   6. PaymentService.mockPay(orderId) → 状态 PAID + JobPost 变 PUBLISHED
+//   7. PaymentService.getJobPublishPricing → 返回 D30/D90 两档
 // 不依赖数据库 / docker。失败时进程退出码 1.
 import { ConfigService } from '@nestjs/config';
 import { BizException } from '../../src/common/exceptions/biz.exception';
@@ -142,6 +146,86 @@ async function run(): Promise<void> {
     }
   }
 
+  // ---- 子测试 7: reverseGeocode mock 路径(无 AK)→ 稳定 poiId + 坐标原样回传 ----
+  {
+    const svc = new LocationService(makeConfig({}));
+    const a = await svc.reverseGeocode(116.404, 39.915);
+    const b = await svc.reverseGeocode(116.404, 39.915);
+    assert(a.poiId === b.poiId, `mock reverseGeocode 同 lng/lat 幂等(poiId 稳定):${a.poiId}===${b.poiId}`);
+    assert(a.lng === 116.404 && a.lat === 39.915, `mock reverseGeocode 坐标原样回传(不偏移):lng=${a.lng},lat=${a.lat}`);
+    assert(a.poiId.startsWith('mock_rev_'), `mock reverseGeocode poiId 前缀 mock_rev_(实际 ${a.poiId})`);
+    assert(typeof a.address === 'string' && a.address.length > 0, 'mock reverseGeocode address 非空');
+    assert(a.city === '北京', `mock reverseGeocode city 粗判(北京矩形框内 → 北京;实际 ${a.city})`);
+  }
+  {
+    const svc = new LocationService(makeConfig({}));
+    // 微小坐标差异(量化 4 位小数外) → 哈希应变化(允许不同 poiId,但同 4 位小数内必须相同)
+    const a = await svc.reverseGeocode(116.4041, 39.9151);
+    const b = await svc.reverseGeocode(116.4041001, 39.9151001);
+    assert(a.poiId === b.poiId, `mock reverseGeocode 4 位小数量化内坐标差异不影响 poiId(幂等边界):${a.poiId}===${b.poiId}`);
+  }
+  {
+    const svc = new LocationService(makeConfig({}));
+    const sh = await svc.reverseGeocode(121.473, 31.230); // 上海矩形框
+    assert(sh.city === '上海', `mock reverseGeocode city 上海矩形框(实际 ${sh.city})`);
+  }
+
+  // ---- 子测试 8: reverseGeocode 真实 AK 路径 status=0 → 解析 formatted_address + city ----
+  {
+    const originalFetch = (global as { fetch?: typeof fetch }).fetch;
+    let capturedUrl = '';
+    const fakeBody = JSON.stringify({
+      status: 0,
+      message: 'ok',
+      result: {
+        location: { lng: 116.404, lat: 39.915 },
+        formatted_address: '北京市东城区天安门广场',
+        addressComponent: { city: '北京市' },
+        uid: 'bd_real_uid_123',
+      },
+    });
+    (global as { fetch?: typeof fetch }).fetch = (async (url: unknown) => {
+      capturedUrl = String(url);
+      return {
+        status: 200,
+        ok: true,
+        json: async () => JSON.parse(fakeBody),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    try {
+      const svc = new LocationService(makeConfig({ BAIDU_MAP_AK: 'real-ak' }));
+      const out = await svc.reverseGeocode(116.404, 39.915, 'gcj02');
+      assert(out.poiId === 'bd_real_uid_123', `真实 AK reverseGeocode 优先用 result.uid(实际 ${out.poiId})`);
+      assert(out.address === '北京市东城区天安门广场', `address 解析 formatted_address(实际 ${out.address})`);
+      assert(out.city === '北京市', `city 解析 addressComponent.city(实际 ${out.city})`);
+      assert(capturedUrl.includes('reverse_geocoding/v3'), `URL 含 reverse_geocoding/v3(实际 ${capturedUrl})`);
+      assert(capturedUrl.includes('location=39.915%2C116.404') || capturedUrl.includes('location=39.915,116.404'), `location 参数 lat,lng 顺序(实际 ${capturedUrl})`);
+      assert(capturedUrl.includes('ak=real-ak'), `URL 含 ak(实际 ${capturedUrl})`);
+    } finally {
+      (global as { fetch?: typeof fetch }).fetch = originalFetch;
+    }
+  }
+
+  // ---- 子测试 9: reverseGeocode 真实 AK 路径 status!=0 → 降级到 mock 不抛 ----
+  {
+    const originalFetch = (global as { fetch?: typeof fetch }).fetch;
+    const fakeBody = JSON.stringify({ status: 302, message: 'AK 错误', result: null });
+    (global as { fetch?: typeof fetch }).fetch = (async () => ({
+      status: 200,
+      ok: true,
+      json: async () => JSON.parse(fakeBody),
+    })) as unknown as typeof fetch;
+    try {
+      const svc = new LocationService(makeConfig({ BAIDU_MAP_AK: 'bad-ak' }));
+      const out = await svc.reverseGeocode(116.404, 39.915);
+      // 降级到 mock: poiId 应有 mock_rev_ 前缀,坐标原样回传
+      assert(out.poiId.startsWith('mock_rev_'), `status!=0 降级 mock poiId 前缀(实际 ${out.poiId})`);
+      assert(out.lng === 116.404 && out.lat === 39.915, 'status!=0 降级坐标原样回传');
+    } finally {
+      (global as { fetch?: typeof fetch }).fetch = originalFetch;
+    }
+  }
+
   console.log('\n========== T2: JobController 路由顺序 ==========');
   {
     // NestJS 控制器装饰器不写 SET_METADATA,而是直接用 reflect-metadata:
@@ -168,6 +252,10 @@ async function run(): Promise<void> {
     assert(placeIdx >= 0, `/place-suggestion 注册存在(序号=${placeIdx}, 总路由数=${routeOrder.length})`);
     assert(detailIdx >= 0, `/:id 注册存在(序号=${detailIdx})`);
     assert(placeIdx < detailIdx, `/place-suggestion 在 /:id 之前注册(不被吞):${placeIdx}<${detailIdx}`);
+    // 同样校验: /reverse-geocode 必须在 /:id 之前
+    const reverseIdx = routeOrder.findIndex((r) => r.path === 'job-posts/reverse-geocode');
+    assert(reverseIdx >= 0, `/reverse-geocode 注册存在(序号=${reverseIdx})`);
+    assert(reverseIdx < detailIdx, `/reverse-geocode 在 /:id 之前注册(不被吞):${reverseIdx}<${detailIdx}`);
   }
 
   // ---- 子测试 7: 静态段 /template /recommend /featured 在 /:id 之前 ----
@@ -175,7 +263,7 @@ async function run(): Promise<void> {
     const METHOD_METADATA = 'method';
     const PATH_METADATA = 'path';
     const proto = JobController.prototype as unknown as Record<string, unknown>;
-    const staticKeys = ['job-posts/template', 'job-posts/recommend', 'job-posts/featured', 'job-posts/place-suggestion'];
+    const staticKeys = ['job-posts/template', 'job-posts/recommend', 'job-posts/featured', 'job-posts/place-suggestion', 'job-posts/reverse-geocode'];
     const order: string[] = [];
     for (const key of Object.getOwnPropertyNames(proto)) {
       const fn = proto[key] as object;
