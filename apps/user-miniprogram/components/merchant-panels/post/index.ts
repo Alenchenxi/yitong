@@ -69,7 +69,12 @@ Component({
     description: '',
     requirements: '',
     salary: '',
+    // 2026-08-11:location 改为只读 + 选点返填(poiId/lng/lat/city + 地址)
     location: '',
+    locationPoiId: '',
+    locationLng: 0,
+    locationLat: 0,
+    locationCity: '',
     categoryOptions: CATEGORY_OPTIONS,
     settlementOptions: SETTLEMENT_OPTIONS,
     workDateOptions: WORK_DATE_OPTIONS,
@@ -110,12 +115,17 @@ Component({
         const settlementOptions = this.data.settlementOptions.map((o) => ({ ...o, selected: o.value === post.settlement }));
         const workDateOptions = this.data.workDateOptions.map((o) => ({ ...o, selected: post.workDates.includes(o.label) }));
         const workPeriodOptions = this.data.workPeriodOptions.map((o) => ({ ...o, selected: post.workPeriods.includes(o.label) }));
+        const ext = post as JobPostVo & { locationPoiId?: string | null; locationLng?: number | null; locationLat?: number | null; locationCity?: string | null };
         this.setData({
           title: post.title,
           description: post.description,
           requirements: post.requirements ?? '',
           salary: post.salary,
           location: post.location,
+          locationPoiId: ext.locationPoiId ?? '',
+          locationLng: ext.locationLng ?? 0,
+          locationLat: ext.locationLat ?? 0,
+          locationCity: ext.locationCity ?? '',
           categoryOptions,
           settlementOptions,
           workDateOptions,
@@ -145,6 +155,10 @@ Component({
         requirements: '',
         salary: '',
         location: '',
+        locationPoiId: '',
+        locationLng: 0,
+        locationLat: 0,
+        locationCity: '',
         categoryOptions: CATEGORY_OPTIONS.map((o) => ({ ...o })),
         settlementOptions: SETTLEMENT_OPTIONS.map((o) => ({ ...o })),
         workDateOptions: WORK_DATE_OPTIONS.map((o) => ({ ...o })),
@@ -157,6 +171,29 @@ Component({
         duration: 'D30',
         submitting: false,
       });
+    },
+
+    // 2026-08-11:点击选点 → 跳 publish 页选完返回回填
+    onPickLocation() {
+      wx.navigateTo({ url: '/pages/job/publish/index?from=merchant' });
+    },
+
+    // 监听 publish 页回填(redirectTo / navigateBack)—— 通过页面栈读 route 参数
+    _pageShowListener() {
+      const pages = getCurrentPages();
+      // 找到当前页面栈顶(merchant 里嵌的 panel,page 是 merchant/index)
+      const cur = pages[pages.length - 1];
+      if (!cur) return;
+      const opts = (cur as { options?: Record<string, string> }).options || {};
+      if (opts.poiId && opts.lng && opts.lat) {
+        this.setData({
+          location: opts.address ?? '',
+          locationPoiId: opts.poiId,
+          locationLng: Number(opts.lng),
+          locationLat: Number(opts.lat),
+          locationCity: opts.city ?? '',
+        });
+      }
     },
 
     onInput(e: WechatMiniprogram.Input) {
@@ -227,7 +264,7 @@ Component({
 
     async submit() {
       if (this.data.submitting) return;
-      const { title, description, requirements, salary, location, duration, headcount, urgent, online, isEdit, editId } = this.data;
+      const { title, description, requirements, salary, location, locationPoiId, locationLng, locationLat, locationCity, duration, headcount, urgent, online, isEdit, editId } = this.data;
       const category = this.data.categoryOptions.find((o) => o.selected)?.value;
       const settlement = this.data.settlementOptions.find((o) => o.selected)?.value;
       if (!title.trim() || !description.trim() || !salary.trim() || !location.trim()) {
@@ -236,6 +273,11 @@ Component({
       }
       if (!category || !settlement) {
         wx.showToast({ title: '请选择分类和结算方式', icon: 'none' });
+        return;
+      }
+      // 2026-08-11:新增岗位必须 4 字段(poiId/lng/lat/city)都锁定,否则 40003
+      if (!isEdit && (!locationPoiId || locationLng === 0 || locationLat === 0 || !locationCity)) {
+        wx.showToast({ title: '请先选择工作地点', icon: 'none' });
         return;
       }
       const workDates = this.data.workDateOptions.filter((o) => o.selected).map((o) => o.label);
@@ -267,13 +309,17 @@ Component({
             this.triggerEvent('switchtab', { tab: 'jobs' });
           }, 600);
         } else {
-          // 创建草稿
+          // 创建草稿(2026-08-11:补齐 4 字段)
           const post = await createJobPost({
             title: title.trim(),
             description: description.trim(),
             requirements: requirements.trim() || undefined,
             salary: salary.trim(),
             location: location.trim(),
+            locationPoiId,
+            locationLng,
+            locationLat,
+            locationCity,
             category: category as JobCategory,
             settlement: settlement as Settlement,
             workDates,
@@ -285,13 +331,20 @@ Component({
             duration: duration as 'D30' | 'D90',
           });
           wx.showToast({ title: '创建成功', icon: 'success' });
-          // 创建为草稿，跳付费发布（redirectTo：post-edit 页被支付页替换，返回直达职位列表）
+          // 创建为草稿,跳付费发布(redirectTo:post-edit 页被支付页替换,返回直达职位列表)
           setTimeout(() => {
             wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${duration}` });
           }, 600);
         }
-      } catch {
-        /* toast */
+      } catch (e) {
+        // 2026-08-11:catch 错误不再静默,显示具体消息
+        const msg = (e as { message?: string })?.message || '提交失败,请重试';
+        wx.showModal({
+          title: '提交失败',
+          content: msg,
+          showCancel: false,
+          confirmText: '我知道了',
+        });
       } finally {
         this.setData({ submitting: false });
       }

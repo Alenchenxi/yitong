@@ -116,7 +116,8 @@ Page({
     wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
   },
   goPost() {
-    wx.navigateTo({ url: '/pages/merchant/index?tab=post' });
+    // 2026-08-11:统一走新发布入口页(类别网格 + 搜索选点 同页)
+    wx.navigateTo({ url: '/pages/job/publish/index' });
   },
 
   // M3-08 曝光上报：数据加载完成后批量上报可见岗位 ID

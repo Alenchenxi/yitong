@@ -13,6 +13,17 @@ export class PoiDetailQueryDto {
   poiId!: string;
 }
 
+export class PlaceSuggestionQueryDto {
+  @IsString()
+  @MaxLength(50)
+  query!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  region?: string;
+}
+
 export class PoiInfoVo {
   poiId!: string;
   address!: string;

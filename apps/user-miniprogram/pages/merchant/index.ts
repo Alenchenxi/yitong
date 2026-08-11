@@ -103,10 +103,16 @@ Page({
 
   activateTab(key: string, params?: PanelParams) {
     if (!(TAB_KEYS as readonly string[]).includes(key)) return;
-    // 发布/编辑岗位走独立页面（带系统返回箭头），不切 panel；id 存在为编辑模式
+    // 发布/编辑岗位走独立页面（带系统返回箭头），不切 panel
+    // 2026-08-11:改为发布走新同页入口 /pages/job/publish(类别网格 + 搜索选点)
     if (key === 'post') {
       const id = params?.id as string | undefined;
-      wx.navigateTo({ url: id ? `/pages/merchant/post-edit/index?id=${id}` : '/pages/merchant/post-edit/index' });
+      if (id) {
+        // 编辑模式:走原 post-edit 页(内部改用 publish 流程)
+        wx.navigateTo({ url: `/pages/merchant/post-edit/index?id=${id}` });
+      } else {
+        wx.navigateTo({ url: '/pages/job/publish/index?from=merchant' });
+      }
       return;
     }
     const updates: Record<string, unknown> = {

@@ -175,6 +175,75 @@ export class LocationService {
     return isLngClose && isLatClose;
   }
 
+  // 候选地址搜索(前端搜索框输入时调用,返回地址列表供用户点击锁定)
+  // 百度 place suggestion v2:query=关键词&region=城市&output=json&ak=AK
+  // dev mock:按 query 哈希生成若干稳定候选(地址形如「模拟地址 X」,poiId 以 mock_ 开头)
+  // 已知限制:AK 需开启"地点检索"权限;否则 prod 抛 90003;dev 已降级
+  async suggestPlaces(query: string, region?: string): Promise<PoiInfo[]> {
+    const q = query?.trim() ?? '';
+    if (!q) return [];
+    const ak = this.getAk();
+    if (!ak) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new BizException(90003, '百度地图 AK 未配置', HttpStatus.SERVICE_UNAVAILABLE);
+      }
+      // dev mock:基于 query 哈希生成 5 个候选(地址形如「{q}|n」+ 周边 1km 偏移)
+      let h = 0;
+      for (let i = 0; i < q.length; i++) h = (h * 31 + q.charCodeAt(i)) | 0;
+      const city = region || '北京';
+      const lng = 116.4 + ((Math.abs(h) % 1000) / 1000) * 0.5;
+      const lat = 39.9 + ((Math.abs(h >> 8) % 1000) / 1000) * 0.3;
+      const out: PoiInfo[] = [];
+      for (let i = 0; i < 5; i++) {
+        const offsetLng = lng + (i - 2) * 0.005;
+        const offsetLat = lat + (i - 2) * 0.005;
+        out.push({
+          poiId: `mock_${Math.abs(h + i).toString(36)}`,
+          address: `${q} ${i + 1}号`,
+          lng: Math.round(offsetLng * 1e6) / 1e6,
+          lat: Math.round(offsetLat * 1e6) / 1e6,
+          city,
+        });
+      }
+      return out;
+    }
+    try {
+      const params = new URLSearchParams({
+        query: q,
+        region: region || '',
+        output: 'json',
+        ak,
+      });
+      const url = `https://api.map.baidu.com/place/v2/suggestion?${params.toString()}`;
+      const resp = await fetch(url);
+      const data = (await resp.json()) as {
+        status: number;
+        message?: string;
+        result?: Array<{
+          uid?: string;
+          name?: string;
+          address?: string;
+          location?: { lng: number; lat: number };
+          city?: string;
+        }>;
+      };
+      if (data.status !== 0 || !data.result) {
+        throw new BizException(40003, `百度地图候选搜索失败:${data.message ?? 'unknown'}`, HttpStatus.BAD_REQUEST);
+      }
+      return data.result.map((r) => ({
+        poiId: r.uid ?? `bd_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        address: [r.name, r.address].filter(Boolean).join(' '),
+        lng: r.location?.lng ?? 0,
+        lat: r.location?.lat ?? 0,
+        city: r.city ?? region ?? '',
+      }));
+    } catch (e) {
+      if (e instanceof BizException) throw e;
+      this.logger.warn(`baidu suggestion error: ${(e as Error).message}`);
+      throw new BizException(40003, '百度地图候选搜索失败', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+  }
+
   // 坐标转换:GCJ-02(微信 wx.getLocation) → BD-09(百度坐标系,与岗位 locationLng/lat 一致)
   // 调百度 geoconv API;AK 缺失时 prod 抛 90003,dev 用近似公式
   async convertGcj02ToBd09(lng: number, lat: number): Promise<{ lng: number; lat: number }> {

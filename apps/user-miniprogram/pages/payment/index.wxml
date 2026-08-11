@@ -1,39 +1,84 @@
 <view class="page">
-  <view class="card">
-    <view class="title">{{duration === 'D90' ? '90 天发布' : '30 天发布'}}</view>
-    <view class="subtitle">{{duration === 'D90' ? '长期招聘更划算' : '适合短期招聘'}}</view>
-    <view class="row">展示时长：{{duration === 'D90' ? '90 天' : '30 天'}}{{price ? ' · ¥' + price : ''}}</view>
-    <view class="row" wx:if="{{result}}">支付金额：¥{{result.amount}}</view>
-    <view class="row" wx:if="{{result && result.status === 'PAID'}}">岗位状态：已发布</view>
+  <view class="orange-header">
+    <view class="head-title">竞招岗位需付费发布</view>
+    <view class="head-tip">?</view>
   </view>
 
-  <block wx:if="{{!result}}">
-    <button class="pay-btn" bindtap="pay" disabled="{{paying}}">{{paying ? '支付中…' : '立即支付'}}</button>
-  </block>
-
-  <block wx:elif="{{result.status === 'PAID'}}">
-    <view class="success">
-      <view class="success-emoji">✅</view>
-      <view class="success-text">岗位已发布</view>
-      <button class="back-btn" bindtap="goBack">返回</button>
+  <view class="package-card">
+    <view class="left">
+      <view class="big">竞招岗位套餐</view>
+      <view class="sub">购买后到期自动续接</view>
     </view>
-  </block>
+    <view class="right-icon">🛡️</view>
+  </view>
 
-  <block wx:elif="{{failed}}">
-    <view class="success">
-      <view class="success-emoji">⚠️</view>
-      <view class="success-text">{{message || '支付未完成'}}</view>
-      <button class="pay-btn" bindtap="pay">重新支付</button>
-      <button class="back-btn" bindtap="goOrders">查看订单</button>
-    </view>
-  </block>
+  <view class="refund-row">
+    <view class="refund-label">无报名全额退</view>
+    <view class="refund-link">遇到问题？咨询客服 ›</view>
+  </view>
 
-  <block wx:else>
-    <view class="success">
-      <view class="success-emoji">⏳</view>
-      <view class="success-text">{{message || '支付处理中'}}</view>
-      <view class="hint">可在订单页刷新确认状态</view>
-      <button class="back-btn" bindtap="goOrders">查看订单</button>
+  <view class="tier-list">
+    <view
+      class="tier {{selectedDuration === 'D30' ? 'selected' : ''}}"
+      bindtap="onPickDuration"
+      data-d="D30"
+    >
+      <view class="tier-radio">
+        <view class="dot {{selectedDuration === 'D30' ? 'dot-active' : ''}}"></view>
+      </view>
+      <view class="tier-body">
+        <view class="tier-name">月卡 30 天</view>
+        <view class="tier-note">套餐结束后，收不到报名，全额退款</view>
+      </view>
+      <view class="tier-price">
+        <view class="price-main">¥{{price.D30}}</view>
+        <view class="price-sub">折合 {{perDayPrice.D30}} 元/天</view>
+      </view>
     </view>
-  </block>
+
+    <view
+      class="tier {{selectedDuration === 'D90' ? 'selected' : ''}}"
+      bindtap="onPickDuration"
+      data-d="D90"
+    >
+      <view class="tier-radio">
+        <view class="dot {{selectedDuration === 'D90' ? 'dot-active' : ''}}"></view>
+      </view>
+      <view class="tier-body">
+        <view class="tier-name">季卡 90 天</view>
+        <view class="tier-note">套餐结束后，收不到报名，全额退款</view>
+      </view>
+      <view class="tier-price">
+        <view class="price-main">¥{{price.D90}}</view>
+        <view class="price-sub">折合 {{perDayPrice.D90}} 元/天</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="notice" bindtap="toggleNotice">
+    <view class="notice-title">购买须知</view>
+    <view class="notice-list" wx:if="{{noticeOpen}}">
+      <view class="notice-item">1. 购买成功后，在套餐生效周期内可发布相应数量的竞招岗位</view>
+      <view class="notice-item">2. 套餐售价根据购买档位、职类、地区等因素产生波动，最终价格以购买前平台显示为准</view>
+      <view class="notice-item">3. 在套餐生效周期内，再次购买的竞招岗位套餐作为续费套餐，将在上一个套餐到期后自动续接</view>
+      <view class="notice-item">4. 竞招岗位达到在线职位数上限后，若您还需要发布新职位，可暂停已有职位或购买竞招岗位加油包获得更多在线职位数</view>
+      <view class="notice-item">5. 该产品属于数字化商品，不支持七天无理由退款</view>
+      <view class="notice-item">6. 如有问题请联系客服</view>
+    </view>
+  </view>
+
+  <view class="spacer"></view>
+
+  <view class="pay-bar">
+    <view class="pay-bar-left">
+      <view class="pay-bar-price">¥{{currentPrice}}</view>
+      <view class="pay-bar-tag">
+        <text wx:if="{{selectedDuration === 'D30'}}">月卡 30 天</text>
+        <text wx:else>季卡 90 天</text>
+      </view>
+    </view>
+    <view class="pay-bar-btn {{paying ? 'disabled' : ''}}" bindtap="onPay">
+      {{paying ? '支付中…' : '立即支付'}}
+    </view>
+  </view>
 </view>

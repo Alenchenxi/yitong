@@ -9,7 +9,7 @@ import { JobTemplateService } from './job-template.service';
 import { LocationService } from './location.service';
 import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto, RecordImpressionsDto } from './dto/job.dto';
 import { JobTemplateQueryDto } from './dto/job-template.dto';
-import { GeocodeQueryDto, PoiDetailQueryDto } from './dto/location.dto';
+import { GeocodeQueryDto, PoiDetailQueryDto, PlaceSuggestionQueryDto } from './dto/location.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -47,6 +47,14 @@ export class JobController {
   async poiDetail(@Query() q: PoiDetailQueryDto, @Req() req: Request) {
     (req as AuthenticatedRequest).user;
     return ok(await this.location.getPoiDetail(q.poiId));
+  }
+
+  // 百度地图 place suggestion:前端搜索框输入时实时调用,返回地址候选列表
+  // GET /job-posts/place-suggestion?query=xxx&region=xxx
+  @Get('job-posts/place-suggestion')
+  async placeSuggestion(@Query() q: PlaceSuggestionQueryDto, @Req() req: Request) {
+    (req as AuthenticatedRequest).user;
+    return ok(await this.location.suggestPlaces(q.query, q.region));
   }
 
   @Post('job-posts')

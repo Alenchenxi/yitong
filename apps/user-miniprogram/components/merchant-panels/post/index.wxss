@@ -2,6 +2,13 @@
 .row { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
 .label { width: 140rpx; font-size: 28rpx; color: #333; flex-shrink: 0; }
 .input { flex: 1; font-size: 28rpx; }
+.location-cell {
+  flex: 1; display: flex; align-items: center; gap: 12rpx;
+  font-size: 28rpx; color: #1D2129;
+}
+.loc-val { flex: 1; }
+.loc-placeholder { flex: 1; color: #86909C; }
+.loc-arrow { color: #86909C; font-size: 32rpx; }
 .textarea-wrap { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
 .textarea { width: 100%; min-height: 200rpx; font-size: 28rpx; line-height: 1.6; margin-top: 12rpx; }
 .dur { display: flex; gap: 16rpx; flex: 1; }

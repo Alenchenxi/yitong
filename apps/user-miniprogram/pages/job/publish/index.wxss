@@ -1,0 +1,65 @@
+.container { padding: 24rpx; background: #F6F7FB; min-height: 100vh; box-sizing: border-box; }
+.title { font-size: 36rpx; font-weight: 600; color: #1D2129; padding: 16rpx 0 24rpx; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16rpx; }
+.grid-item {
+  background: #FFFFFF; border-radius: 16rpx; padding: 24rpx 0;
+  display: flex; flex-direction: column; align-items: center; gap: 8rpx;
+}
+.grid-item.active { background: #F9C801; }
+.icon { font-size: 60rpx; }
+.label { font-size: 24rpx; color: #1D2129; }
+
+.location-block {
+  margin-top: 32rpx; padding: 24rpx;
+  background: #FFFFFF; border-radius: 16rpx;
+}
+.location-block .label {
+  display: flex; align-items: center; gap: 12rpx;
+  font-size: 28rpx; color: #4E5969; margin-bottom: 16rpx;
+}
+.locked-tag {
+  font-size: 20rpx; color: #00B42A; background: #E8FAE0;
+  padding: 4rpx 12rpx; border-radius: 8rpx;
+}
+
+.search {
+  position: relative; display: flex; align-items: center;
+  border: 2rpx solid #E5E6EB; border-radius: 12rpx; padding: 0 16rpx;
+  background: #FFFFFF;
+}
+.search-input {
+  flex: 1 1 auto; height: 72rpx; font-size: 28rpx; color: #1D2129;
+}
+.search-input.locked { color: #1D2129; background: #F7F8FA; }
+.placeholder { color: #86909C; }
+.relocate {
+  flex: 0 0 auto; font-size: 24rpx; color: #F9C801; padding: 8rpx 4rpx;
+}
+
+.hint {
+  font-size: 24rpx; color: #86909C; padding: 12rpx 4rpx 0;
+}
+.hint-ok { color: #00B42A; }
+.hint-warn { color: #F53F3F; }
+
+.candidates {
+  margin-top: 16rpx; border: 2rpx solid #E5E6EB; border-radius: 12rpx;
+  background: #FFFFFF; max-height: 600rpx; overflow-y: auto;
+}
+.candidate {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 24rpx; border-bottom: 2rpx solid #F2F3F5;
+}
+.candidate:last-child { border-bottom: none; }
+.candidate-icon { font-size: 32rpx; flex: 0 0 auto; }
+.candidate-info { flex: 1 1 auto; min-width: 0; }
+.candidate-address { font-size: 28rpx; color: #1D2129; }
+.candidate-city { font-size: 22rpx; color: #86909C; padding-top: 4rpx; }
+
+.action { margin-top: 48rpx; }
+.btn-primary {
+  width: 100%; height: 88rpx; line-height: 88rpx;
+  background: #F9C801; color: #1D2129; font-size: 32rpx; font-weight: 600;
+  border-radius: 16rpx; border: none;
+}
+.btn-primary.disabled { background: #F2F3F5; color: #86909C; }

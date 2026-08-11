@@ -1,19 +1,104 @@
-.page { padding: 24rpx; background: #F6F7FB; min-height: 100vh; }
-.card { background: #FFFFFF; border-radius: 16rpx; padding: 32rpx; margin-bottom: 32rpx; }
-.title { font-size: 36rpx; font-weight: 700; color: #1D2129; margin-bottom: 8rpx; }
-.subtitle { font-size: 26rpx; color: #86909C; margin-bottom: 24rpx; }
-.row { font-size: 28rpx; color: #4E5969; margin-top: 12rpx; }
-.pay-btn {
-  background: #F9C801 !important;
-  color: #1D2129 !important;
-  border-radius: 48rpx !important;
-  font-size: 32rpx !important;
-  font-weight: 600;
-  border: none;
+/* 支付页样式(2026-08-11 重写,仿截图风格) */
+.page { background: #F6F7FB; min-height: 100vh; padding-bottom: 180rpx; }
+
+/* 橙色头部 */
+.orange-header {
+  background: linear-gradient(135deg, #FFB07A, #FF7A4D);
+  padding: 48rpx 32rpx 56rpx;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
 }
-.pay-btn[disabled] { background: #F2F3F5 !important; color: #86909C !important; }
-.hint { text-align: center; color: #86909C; font-size: 22rpx; margin-top: 20rpx; }
-.success { text-align: center; padding-top: 80rpx; }
-.success-emoji { font-size: 96rpx; }
-.success-text { font-size: 30rpx; color: #1D2129; margin: 24rpx 0 40rpx; }
-.back-btn { background: #FFFFFF !important; color: #1D2129 !important; border-radius: 48rpx !important; border: 1rpx solid #F2F3F5 !important; }
+.head-title { font-size: 36rpx; font-weight: 600; color: #FFFFFF; }
+.head-tip {
+  position: absolute; right: 32rpx;
+  width: 36rpx; height: 36rpx; line-height: 36rpx;
+  border-radius: 50%; background: rgba(255, 255, 255, 0.3);
+  color: #FFFFFF; text-align: center; font-size: 24rpx;
+}
+
+/* 套餐卡片 */
+.package-card {
+  margin: -32rpx 24rpx 24rpx;
+  background: linear-gradient(135deg, #FFD4A8, #FFB78A);
+  border-radius: 16rpx;
+  padding: 28rpx 32rpx;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 4rpx 16rpx rgba(255, 122, 77, 0.15);
+}
+.package-card .big { font-size: 32rpx; font-weight: 700; color: #1D2129; }
+.package-card .sub { font-size: 24rpx; color: #8B4513; padding-top: 8rpx; }
+.package-card .right-icon { font-size: 64rpx; }
+
+/* 退款文案 */
+.refund-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 24rpx 32rpx;
+  font-size: 28rpx;
+}
+.refund-label { color: #1D2129; font-weight: 500; }
+.refund-link { color: #86909C; font-size: 24rpx; }
+
+/* 套餐两档 */
+.tier-list { margin: 0 24rpx; display: flex; flex-direction: column; gap: 20rpx; }
+.tier {
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  display: flex; align-items: center; gap: 24rpx;
+  border: 4rpx solid transparent;
+  transition: border-color 0.2s;
+}
+.tier.selected { border-color: #FF7A4D; background: #FFF8F3; }
+.tier-radio {
+  flex: 0 0 auto;
+  width: 36rpx; height: 36rpx;
+  border: 2rpx solid #C9CDD4; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.tier.selected .tier-radio { border-color: #FF7A4D; }
+.dot {
+  width: 20rpx; height: 20rpx; border-radius: 50%;
+  background: transparent;
+}
+.dot-active { background: #FF7A4D; }
+.tier-body { flex: 1 1 auto; min-width: 0; }
+.tier-name { font-size: 30rpx; font-weight: 600; color: #1D2129; }
+.tier-note { font-size: 22rpx; color: #86909C; padding-top: 8rpx; }
+.tier-price { flex: 0 0 auto; text-align: right; }
+.price-main { font-size: 32rpx; font-weight: 700; color: #1D2129; }
+.price-sub { font-size: 22rpx; color: #86909C; padding-top: 4rpx; }
+
+/* 购买须知 */
+.notice {
+  margin: 32rpx 24rpx 0;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 24rpx 28rpx;
+}
+.notice-title { font-size: 28rpx; font-weight: 600; color: #1D2129; }
+.notice-list { padding-top: 16rpx; }
+.notice-item { font-size: 24rpx; color: #86909C; line-height: 1.6; padding: 4rpx 0; }
+
+.spacer { height: 60rpx; }
+
+/* 底部支付栏 */
+.pay-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  background: #FFFFFF;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
+  z-index: 10;
+}
+.pay-bar-left { display: flex; align-items: baseline; gap: 16rpx; }
+.pay-bar-price { font-size: 40rpx; font-weight: 700; color: #1D2129; }
+.pay-bar-tag { font-size: 24rpx; color: #86909C; }
+.pay-bar-btn {
+  background: linear-gradient(135deg, #FFB07A, #FF7A4D);
+  color: #FFFFFF;
+  font-size: 30rpx; font-weight: 600;
+  padding: 20rpx 60rpx;
+  border-radius: 48rpx;
+}
+.pay-bar-btn.disabled { opacity: 0.6; }

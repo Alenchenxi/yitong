@@ -1,0 +1,67 @@
+<view class="container">
+  <view class="title">选择要招的职位类别</view>
+
+  <view class="grid">
+    <view
+      wx:for="{{categories}}"
+      wx:key="key"
+      class="grid-item {{item.key === selectedKey ? 'active' : ''}}"
+      bindtap="onPickCategory"
+      data-key="{{item.key}}"
+    >
+      <view class="icon">{{item.icon}}</view>
+      <view class="label">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{selectedKey}}" class="location-block">
+    <view class="label">
+      <text>工作地点</text>
+      <text wx:if="{{location.poiId}}" class="locked-tag">已锁定</text>
+    </view>
+
+    <view class="search">
+      <input
+        class="search-input {{selectedLocked ? 'locked' : ''}}"
+        placeholder="搜索工作地点（如：大学城南门）"
+        placeholder-class="placeholder"
+        value="{{searchInput}}"
+        bindinput="onSearchInput"
+        bindfocus="onSearchFocus"
+        bindblur="onSearchBlur"
+        confirm-type="search"
+      />
+      <view wx:if="{{!locating && !location.poiId}}" class="relocate" bindtap="onRelocate">重新定位</view>
+    </view>
+
+    <view wx:if="{{locating}}" class="hint">正在定位...</view>
+    <view wx:elif="{{locationFailed}}" class="hint hint-warn">定位失败，请手动输入地点</view>
+    <view wx:elif="{{!location.poiId && searchInput}}" class="hint">输入关键词搜索候选</view>
+    <view wx:elif="{{location.poiId}}" class="hint hint-ok">已选：{{location.address}}</view>
+
+    <view wx:if="{{candidates.length > 0}}" class="candidates">
+      <view
+        wx:for="{{candidates}}"
+        wx:key="poiId"
+        wx:for-index="idx"
+        class="candidate"
+        bindtap="onPickCandidate"
+        data-idx="{{idx}}"
+      >
+        <view class="candidate-icon">📍</view>
+        <view class="candidate-info">
+          <view class="candidate-address">{{item.address}}</view>
+          <view class="candidate-city">{{item.city}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="action">
+    <button
+      class="btn-primary {{canSubmit ? '' : 'disabled'}}"
+      bindtap="onNext"
+      disabled="{{!canSubmit}}"
+    >下一步</button>
+  </view>
+</view>
