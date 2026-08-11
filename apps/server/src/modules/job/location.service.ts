@@ -335,7 +335,9 @@ export class LocationService {
           uid?: string;
         };
       };
-      if (data.status !== 0 || !data.result || !data.result.formatted_address) {
+      // 把 narrowing 绑到本地 const(避免 r.formatted_address 重新访问丢失 narrow 类型)
+      const formatted = data.result?.formatted_address;
+      if (data.status !== 0 || !data.result || !formatted) {
         this.logger.warn(`baidu reverse geocode failed: ${data.message ?? 'unknown'}, falling back to mock`);
         return this.mockReverseGeocode(lng, lat);
       }
@@ -343,7 +345,7 @@ export class LocationService {
       return {
         // 百度 reverse 不一定返回 uid;缺则基于坐标哈希生成稳定 poiId
         poiId: r.uid ?? `bd_rev_${bd.lng.toFixed(6)}_${bd.lat.toFixed(6)}`,
-        address: r.formatted_address,
+        address: formatted,
         lng: r.location?.lng ?? bd.lng,
         lat: r.location?.lat ?? bd.lat,
         city: r.addressComponent?.city ?? '',
