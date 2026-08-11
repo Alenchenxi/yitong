@@ -25,6 +25,7 @@ Page({
     searchFocus: false,
     locating: true, // 初次定位中
     locationFailed: false,
+    locationErrMsg: '' as string,
     candidates: [] as PoiInfoVo[],
     searching: false,
     selectedLocked: false, // 已锁定候选,搜索框不再触发搜索
@@ -48,7 +49,7 @@ Page({
   // 初次定位:wx.getLocation → 没有 poiId,只用做占位文本
   // 真实"锁定"由用户输入搜索 → 点击候选完成
   startLocate() {
-    this.setData({ locating: true, locationFailed: false });
+    this.setData({ locating: true, locationFailed: false, locationErrMsg: '' });
     wx.getLocation({
       type: 'gcj02',
       success: (res) => {
@@ -82,7 +83,11 @@ Page({
       },
       fail: (err) => {
         console.error('wx.getLocation failed:', err?.errMsg);
-        this.setData({ locating: false, locationFailed: true });
+        this.setData({
+          locating: false,
+          locationFailed: true,
+          locationErrMsg: err?.errMsg || '未知错误',
+        });
         wx.showToast({ title: '定位失败，请手动输入', icon: 'none' });
       },
     });
