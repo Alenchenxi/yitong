@@ -4,6 +4,7 @@ import { ok } from '../../common/dto/api-response';
 import { Public } from '../auth/public.decorator';
 import type { AuthenticatedRequest } from '../auth/types';
 import { PaymentService } from './payment.service';
+import { CreateBoostOrderDto } from './dto/boost.dto';
 import { PublishJobDto, RefundPaymentDto } from './dto/payment.dto';
 
 // V3 微信回调应答：SUCCESS 必须 2xx（200/204），FAIL 返 5xx 让微信重试
@@ -26,6 +27,14 @@ export class PaymentController {
   @Get('job-publish/price')
   async jobPublishPrice() {
     return ok(await this.payment.getJobPublishPricing());
+  }
+
+  // 内容推广（付费置顶曝光）：按 BoostPlan 档位计价下单，金额服务端算。
+  // 静态段须在 :orderId 动态路由之前声明，否则会被 :orderId 捕走。
+  @Post('post-boost')
+  async postBoost(@Body() dto: CreateBoostOrderDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.payment.createBoostOrder(uid, dto));
   }
 
   // 微信支付回调（V3 JSON 加密报文，免鉴权）：验签 + 解密 -> 置 PAID

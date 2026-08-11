@@ -32,6 +32,7 @@
     "pages/candidates/detail/index",
     "pages/resume/index",
     "pages/payment/index",
+    "pages/boost/index",
     "pages/treehole/post/index",
     "pages/treehole/detail/index",
     "pages/treehole/chat/index",

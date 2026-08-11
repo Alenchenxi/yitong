@@ -1,6 +1,6 @@
 <view class="page">
   <view wx:if="{{post}}" class="card">
-    <view class="anon">树洞 {{post.anonShort}}</view>
+    <view class="anon">树洞 {{post.anonShort}}<text class="boost-badge" wx:if="{{post.boosted}}">推广</text></view>
     <view class="content">{{post.content}}</view>
     <view wx:if="{{post.images.length > 0}}" class="images">
       <image wx:for="{{post.images}}" wx:key="*this" class="image" src="{{item}}" mode="aspectFill" />
@@ -8,6 +8,7 @@
     <view class="row">
       <text class="time">{{post.timeText}}</text>
       <view class="actions">
+        <view class="boost" wx:if="{{isAuthor}}" catchtap="onBoost">提升曝光</view>
         <view class="block" catchtap="blockAuthor">屏蔽</view>
         <view class="like {{post.liked ? 'liked' : ''}}" catchtap="onLike">
           {{post.liked ? '已赞' : '点赞'}} {{post.likeCount || ''}}

@@ -6,6 +6,7 @@ import { AdminGuard } from '../auth/admin.guard';
 import { DashboardService } from './dashboard.service';
 import { AdminService } from './admin.service';
 import { BatchMerchantDto } from './dto/batch-merchant.dto';
+import { UpdateBoostPlanPriceDto } from './dto/update-boost-plan-price.dto';
 import { UpdatePricingDto } from './dto/update-pricing.dto';
 import { CreateAnonTagDto, UpdateAnonTagDto } from './dto/anon-tag.dto';
 import { ResolveReportDto } from './dto/resolve-report.dto';
@@ -208,6 +209,17 @@ export class AdminController {
   @Put('pricing')
   async updatePricing(@Body() dto: UpdatePricingDto) {
     return ok(await this.admin.updatePricing(dto));
+  }
+
+  // 内容推广档位：列表 + 改价（后台「推广价」配置）
+  @Get('boost-plans')
+  async getBoostPlans() {
+    return ok(await this.admin.getBoostPlans());
+  }
+
+  @Put('boost-plans/:code')
+  async updateBoostPlanPrice(@Param('code') code: string, @Body() dto: UpdateBoostPlanPriceDto) {
+    return ok(await this.admin.updateBoostPlanPrice(code, dto));
   }
 
   @Post('users/:id/ban')

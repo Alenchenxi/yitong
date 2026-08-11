@@ -3,6 +3,7 @@ import {
   getAnonymousToken,
   getPost,
   hasAnonToken,
+  getAnonId,
   toggleAnonPostLike,
   blockAnon,
   type AnonPostVo,
@@ -13,6 +14,7 @@ Page({
   data: {
     id: '',
     post: null as (AnonPostVo & { timeText: string; anonShort: string }) | null,
+    isAuthor: false, // 当前匿名态是否为帖子作者
     loading: false,
   },
 
@@ -45,6 +47,7 @@ Page({
           timeText: formatTime(post.createdAt),
           anonShort: post.anonId.slice(0, 10),
         },
+        isAuthor: getAnonId() === post.anonId,
       });
     } catch {
       /* toast */
@@ -74,6 +77,13 @@ Page({
         'post.likeCount': post.likeCount,
       });
     }
+  },
+
+  // 内容推广：作者提升曝光（付费置顶；树洞帖真实用户以 access token 付费，库内 AnonymousPost 仍 0 uid）
+  onBoost() {
+    const post = this.data.post;
+    if (!post) return;
+    wx.navigateTo({ url: `/pages/boost/index?type=anon_post&id=${post.id}` });
   },
 
   // P0-16 屏蔽此用户（帖子作者）：屏蔽后互相隔离，屏蔽即返回广场

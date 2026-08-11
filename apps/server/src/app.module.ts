@@ -19,6 +19,7 @@ import { TreeholeModule } from './modules/treehole/treehole.module';
 import { SquareModule } from './modules/square/square.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AnnouncementModule } from './modules/announcement/announcement.module';
+import { BoostModule } from './modules/boost/boost.module';
 import { FavoriteModule } from './modules/favorite/favorite.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { NotificationModule } from './modules/notification/notification.module';
@@ -44,6 +45,7 @@ import { UploadModule } from './modules/upload/upload.module';
     SquareModule,
     AdminModule,
     AnnouncementModule,
+    BoostModule,
     FavoriteModule,
     FollowModule,
     NotificationModule,

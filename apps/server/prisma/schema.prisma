@@ -126,6 +126,7 @@ model Post {
   visibility  PostVisibility @default(PUBLIC)  // P1-11 草稿/私密投稿
   pinned      Boolean        @default(false) // P2-05 置顶
   featured    Boolean        @default(false) // P2-05 加精
+  boostUntil  DateTime?      @map("boost_until") // 内容推广：付费置顶曝光到期（null=未推广；>now 即推广中）
   topicId     String?        @map("topic_id") // P2-04 校园话题
   publishAt   DateTime?      @map("publish_at") // P2-06 定时发布时间（到点 DRAFT->PUBLIC + 审核）
   createdAt   DateTime       @default(now()) @map("created_at")
@@ -143,6 +144,7 @@ model Post {
   @@index([authorId, visibility, createdAt])
   @@index([publishAt])
   @@index([topicId])
+  @@index([boostUntil])
   @@map("posts")
 }
 enum PostStatus {
@@ -201,9 +203,11 @@ model AnonymousPost {
   status    PostStatus @default(PENDING)
   createdAt DateTime   @default(now()) @map("created_at")
   likeCount Int        @default(0) @map("like_count")
+  boostUntil DateTime? @map("boost_until") // 内容推广：付费置顶曝光到期（null=未推广；>now 即推广中）
   likes    AnonPostLike[]
   @@index([createdAt])
   @@index([mood, createdAt])
+  @@index([boostUntil])
   @@map("anonymous_posts")
 }
 
@@ -718,9 +722,17 @@ model PricingConfig {
 }
 model PaymentOrder {
   id         String    @id @default(cuid())
-  merchantId String    @map("merchant_id")
-  jobPostId  String    @map("job_post_id")
-  duration   JobDuration
+  // 订单场景：JOB_PUBLISH 兼职付费发布 / POST_BOOST 表白墙推广 / ANON_POST_BOOST 树洞推广
+  scene      PayScene  @default(JOB_PUBLISH)
+  // job 场景：商家/岗位/档期；boost 场景为空
+  merchantId String?   @map("merchant_id")
+  jobPostId  String?   @map("job_post_id")
+  duration   JobDuration?
+  // boost 场景：购买者真实 uid（后台可追溯，等同于 AnonymousProfile 定位）+ 推广目标 + 档位
+  userId     String?   @map("user_id")
+  postId     String?   @map("post_id")
+  anonPostId String?   @map("anon_post_id")
+  boostPlanId String?  @map("boost_plan_id")
   amount     Decimal   @db.Decimal(10, 2)
   wxPrepayId String?   @map("wx_prepay_id")
   status     PayStatus @default(PENDING)
@@ -740,6 +752,24 @@ enum PayStatus {
   REFUNDING
   REFUNDED
   CLOSED
+}
+enum PayScene {
+  JOB_PUBLISH
+  POST_BOOST
+  ANON_POST_BOOST
+}
+
+// ===== 内容推广（付费置顶曝光）=====
+model BoostPlan {
+  id            String   @id @default(cuid())
+  code          String   @unique // BOOST_1D / BOOST_3D / BOOST_7D
+  name          String             // 1天推广 / 3天推广 / 7天推广
+  durationHours Int      @map("duration_hours") // 24 / 72 / 168
+  price         Decimal  @db.Decimal(10, 2)
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  @@map("boost_plans")
 }
 
 // ===== 内容审核 =====

@@ -691,19 +691,34 @@ export class ConfessionService {
   ): Promise<FeedResult> {
     const limit = query.limit ?? 20;
     const cursor = query.cursor ? decodeCursor(query.cursor) : null;
+    const now = new Date();
 
-    // P2-05 feed 主体只查普通帖（pinned=false）；置顶帖仅在首页（无 cursor）额外查合并到头部，翻页不重复
+    // P2-05 feed 主体只查普通帖（pinned=false）；置顶帖仅在首页（无 cursor）额外查合并到头部，翻页不重复。
+    // 内容推广：推广中（boostUntil>now）帖子也不进主体查询，首页在 pinned 后合并 boosted，翻页不重复。
+    // 内容推广：普通流排除「推广中」（boostUntil>now）。
+    // ⚠️ 不能写 boostUntil: { not: { gt: now } }——SQL 三值逻辑下 NOT(NULL > now)=unknown，
+    // Prisma 会把 NULL 行一起过滤掉，导致全部未推广帖从 feed 消失；必须显式 OR 空值。
+    const boostInactive: Prisma.PostWhereInput = {
+      OR: [{ boostUntil: null }, { boostUntil: { lte: now } }],
+    };
     const where: Prisma.PostWhereInput = {
       status: PostStatus.APPROVED,
       deletedAt: null,
       visibility: 'PUBLIC',
       pinned: false,
+      AND: [boostInactive],
     };
     if (circleId) where.circleId = circleId;
     if (cursor) {
-      where.OR = [
-        { createdAt: { lt: cursor.createdAt } },
-        { createdAt: { equals: cursor.createdAt }, id: { lt: cursor.id } },
+      // 与游标条件 AND 嵌套（不能扁平化进同一 OR，否则推广中帖会因命中游标漏入）
+      where.AND = [
+        boostInactive,
+        {
+          OR: [
+            { createdAt: { lt: cursor.createdAt } },
+            { createdAt: { equals: cursor.createdAt }, id: { lt: cursor.id } },
+          ],
+        },
       ];
     }
 
@@ -715,7 +730,16 @@ export class ConfessionService {
       ...(circleId ? { circleId } : {}),
     };
 
-    const [posts, pinnedPosts] = await Promise.all([
+    const boostedWhere: Prisma.PostWhereInput = {
+      status: PostStatus.APPROVED,
+      deletedAt: null,
+      visibility: 'PUBLIC',
+      pinned: false,
+      boostUntil: { gt: now },
+      ...(circleId ? { circleId } : {}),
+    };
+
+    const [posts, pinnedPosts, boostedPosts] = await Promise.all([
       this.prisma.post.findMany({
         where,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -730,6 +754,14 @@ export class ConfessionService {
             take: 5,
             include: postInclude(uid),
           }),
+      cursor
+        ? Promise.resolve([])
+        : this.prisma.post.findMany({
+            where: boostedWhere,
+            orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }],
+            take: 20,
+            include: postInclude(uid),
+          }),
     ]);
 
     const hasMore = posts.length > limit;
@@ -737,7 +769,7 @@ export class ConfessionService {
     const last = slice[slice.length - 1];
     const nextCursor = hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
 
-    const list = cursor ? slice : [...pinnedPosts, ...slice];
+    const list = cursor ? slice : [...pinnedPosts, ...boostedPosts, ...slice];
     return { list: list.map((p) => this.toPostVo(p)), nextCursor, hasMore };
   }
 
@@ -749,49 +781,98 @@ export class ConfessionService {
     sort: 'hot' | 'recommend',
   ): Promise<FeedResult> {
     const limit = query.limit ?? 20;
-    const posts = await this.prisma.post.findMany({
-      where: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC', ...(circleId ? { circleId } : {}) },
-      orderBy:
-        sort === 'hot'
-          ? [{ pinned: 'desc' }, { likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }]
-          : [{ pinned: 'desc' }, { likeCount: 'desc' }, { createdAt: 'desc' }],
-      take: limit,
-      include: postInclude(uid),
-    });
-    return { list: posts.map((p) => this.toPostVo(p)), nextCursor: null, hasMore: false };
+    const now = new Date();
+    const base: Prisma.PostWhereInput = {
+      status: PostStatus.APPROVED,
+      deletedAt: null,
+      visibility: 'PUBLIC',
+      ...(circleId ? { circleId } : {}),
+    };
+    // 三档合并：置顶 -> 推广中 -> 普通（各档内部按热度排序），再 slice 到 limit
+    const orderBy: Prisma.PostOrderByWithRelationInput[] =
+      sort === 'hot'
+        ? [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }]
+        : [{ likeCount: 'desc' }, { createdAt: 'desc' }];
+    const [pinned, boosted, normal] = await Promise.all([
+      this.prisma.post.findMany({ where: { ...base, pinned: true }, orderBy, take: limit, include: postInclude(uid) }),
+      this.prisma.post.findMany({
+        where: { ...base, pinned: false, boostUntil: { gt: now } },
+        orderBy,
+        take: limit,
+        include: postInclude(uid),
+      }),
+      this.prisma.post.findMany({
+        where: { ...base, pinned: false, OR: [{ boostUntil: null }, { boostUntil: { lte: now } }] },
+        orderBy,
+        take: limit,
+        include: postInclude(uid),
+      }),
+    ]);
+    const list = [...pinned, ...boosted, ...normal].slice(0, limit);
+    return { list: list.map((p) => this.toPostVo(p)), nextCursor: null, hasMore: false };
   }
 
-  // P2-01 置顶最热帖子：全时段最热 top N（首页顶部横向滚动），pinned 优先
+  // P2-01 置顶最热帖子：全时段最热 top N（首页顶部横向滚动），置顶 -> 推广中 -> 普通 三档
   async listHotTop(uid: string, limit = 10): Promise<{ list: PostVo[] }> {
-    const posts = await this.prisma.post.findMany({
-      where: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' },
-      orderBy: [{ pinned: 'desc' }, { likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }],
-      take: Math.min(50, Math.max(1, limit)),
-      include: postInclude(uid),
-    });
-    return { list: posts.map((p) => this.toPostVo(p)) };
+    const take = Math.min(50, Math.max(1, limit));
+    const now = new Date();
+    const base: Prisma.PostWhereInput = { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' };
+    const orderBy: Prisma.PostOrderByWithRelationInput[] = [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }];
+    const [pinned, boosted, normal] = await Promise.all([
+      this.prisma.post.findMany({ where: { ...base, pinned: true }, orderBy, take, include: postInclude(uid) }),
+      this.prisma.post.findMany({
+        where: { ...base, pinned: false, boostUntil: { gt: now } },
+        orderBy,
+        take,
+        include: postInclude(uid),
+      }),
+      this.prisma.post.findMany({
+        where: { ...base, pinned: false, OR: [{ boostUntil: null }, { boostUntil: { lte: now } }] },
+        orderBy,
+        take,
+        include: postInclude(uid),
+      }),
+    ]);
+    return { list: [...pinned, ...boosted, ...normal].slice(0, take).map((p) => this.toPostVo(p)) };
   }
 
-  // P2-02 今日上头：近 24h 最热，page 分页（滚动加载），pinned 优先
+  // P2-02 今日上头：近 24h 最热，page 分页（滚动加载），置顶 -> 推广中 -> 普通；推广仅首页前置
   async listTodayHit(uid: string, page = 1, pageSize = 20): Promise<PageResult<PostVo>> {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const where: Prisma.PostWhereInput = {
+    const now = new Date();
+    const baseWhere: Prisma.PostWhereInput = {
       status: PostStatus.APPROVED,
       deletedAt: null,
       visibility: 'PUBLIC',
       createdAt: { gte: since },
     };
-    const [posts, total] = await Promise.all([
+    const orderBy: Prisma.PostOrderByWithRelationInput[] = [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }];
+    // 首页前置 pinned + boosted。⚠️ 前置会挤掉普通帖主体切片尾部，翻页 skip 必须减去
+    // prepended 条位移，否则恰好有 1+ 条普通帖首页/次页都查不到（分页丢帖）。pinned 同样触发。
+    const [pinned, boosted] = await Promise.all([
+      this.prisma.post.findMany({ where: { ...baseWhere, pinned: true }, orderBy, take: pageSize, include: postInclude(uid) }),
       this.prisma.post.findMany({
-        where,
-        orderBy: [{ pinned: 'desc' }, { likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }],
-        skip: (page - 1) * pageSize,
+        where: { ...baseWhere, pinned: false, boostUntil: { gt: now } },
+        orderBy: [{ boostUntil: 'desc' }, ...orderBy],
         take: pageSize,
         include: postInclude(uid),
       }),
-      this.prisma.post.count({ where }),
     ]);
-    return { list: posts.map((p) => this.toPostVo(p)), total, page, pageSize };
+    const prepended = Math.min(pageSize, pinned.length + boosted.length);
+    const skip = Math.max(0, (page - 1) * pageSize - prepended);
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where: { ...baseWhere, pinned: false, OR: [{ boostUntil: null }, { boostUntil: { lte: now } }] },
+        orderBy,
+        skip,
+        take: pageSize,
+        include: postInclude(uid),
+      }),
+      this.prisma.post.count({ where: baseWhere }),
+    ]);
+    // 首页：前置 + 普通帖主体（多余的普通帖被 slice 裁掉）；翻页：仅普通帖，不重复前置
+    const list = page > 1 ? posts : [...pinned, ...boosted, ...posts].slice(0, pageSize);
+    return { list: list.map((p) => this.toPostVo(p)), total, page, pageSize };
   }
 
   // 关注流：只看关注作者的最新帖
@@ -832,6 +913,8 @@ export class ConfessionService {
       visibility: post.visibility,
       pinned: post.pinned, // P2-05
       featured: post.featured, // P2-05
+      boosted: post.boostUntil ? post.boostUntil.getTime() > Date.now() : false, // 内容推广
+      boostUntil: post.boostUntil ? post.boostUntil.toISOString() : null,
       publishAt: post.publishAt ? post.publishAt.toISOString() : null, // P2-06
       createdAt: post.createdAt.toISOString(),
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,

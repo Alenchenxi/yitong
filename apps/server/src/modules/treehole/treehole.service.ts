@@ -258,34 +258,57 @@ export class TreeholeService {
     const blockedPeers = await this.getBlockedPeerSet(anonId);
     if (blockedPeers.size > 0) baseWhere.anonId = { notIn: [...blockedPeers] };
 
-    // P0-13 推荐：热度（点赞）+ 新鲜度，take limit 不分页（规则排序，不接 AI）
+    const include = { likes: { where: { anonId }, select: { id: true }, take: 1 } };
+    const now = new Date();
+
+    // P0-13 推荐：热度（点赞）+ 新鲜度，take limit 不分页；推广中（boostUntil>now）前置
     if (opts.sort === 'recommend') {
-      const posts = await this.prisma.anonymousPost.findMany({
-        where: baseWhere,
-        orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
-        take: limit,
-        include: { likes: { where: { anonId }, select: { id: true }, take: 1 } },
-      });
-      return { list: posts.map((p) => this.toVo(p)), nextCursor: null, hasMore: false };
+      const [boosted, normal] = await Promise.all([
+        this.prisma.anonymousPost.findMany({
+          where: { ...baseWhere, boostUntil: { gt: now } },
+          orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+          take: limit,
+          include,
+        }),
+        this.prisma.anonymousPost.findMany({
+          where: { ...baseWhere, OR: [{ boostUntil: null }, { boostUntil: { lte: now } }] },
+          orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+          take: limit,
+          include,
+        }),
+      ]);
+      const list = [...boosted, ...normal].slice(0, limit);
+      return { list: list.map((p) => this.toVo(p)), nextCursor: null, hasMore: false };
     }
 
-    // 最新：按 createdAt 游标分页
-    const where: Prisma.AnonymousPostWhereInput = { ...baseWhere };
+    // 最新：按 createdAt 游标分页；首页（无 cursor）前置推广中帖子，翻页不重复
+    const where: Prisma.AnonymousPostWhereInput = { ...baseWhere, OR: [{ boostUntil: null }, { boostUntil: { lte: now } }] };
     if (opts.cursor) {
       const t = new Date(opts.cursor);
       if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
     }
-    const posts = await this.prisma.anonymousPost.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: limit + 1,
-      include: { likes: { where: { anonId }, select: { id: true }, take: 1 } },
-    });
+    const [posts, boostedPosts] = await Promise.all([
+      this.prisma.anonymousPost.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit + 1,
+        include,
+      }),
+      opts.cursor
+        ? Promise.resolve([])
+        : this.prisma.anonymousPost.findMany({
+            where: { ...baseWhere, boostUntil: { gt: now } },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            include,
+          }),
+    ]);
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
     const last = slice[slice.length - 1];
     const nextCursor = hasMore && last ? last.createdAt.toISOString() : null;
-    return { list: slice.map((p) => this.toVo(p)), nextCursor, hasMore };
+    const list = opts.cursor ? slice : [...boostedPosts, ...slice];
+    return { list: list.map((p) => this.toVo(p)), nextCursor, hasMore };
   }
 
   // 我的匿名帖：按 userId -> anonId 查（用 access token，非 anon）
@@ -844,6 +867,7 @@ export class TreeholeService {
     mood: string | null;
     status: PostStatus;
     likeCount: number;
+    boostUntil: Date | null;
     createdAt: Date;
     likes?: { id: string }[];
   }) {
@@ -855,6 +879,8 @@ export class TreeholeService {
       mood: p.mood,
       likeCount: p.likeCount,
       liked: (p.likes?.length ?? 0) > 0,
+      boosted: p.boostUntil ? p.boostUntil.getTime() > Date.now() : false, // 内容推广
+      boostUntil: p.boostUntil ? p.boostUntil.toISOString() : null,
       createdAt: p.createdAt.toISOString(),
     };
   }

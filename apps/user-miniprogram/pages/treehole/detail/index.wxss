@@ -7,8 +7,20 @@
 .row { display: flex; justify-content: space-between; align-items: center; margin-top: 24rpx; }
 .time { font-size: 22rpx; color: #aaa; }
 .actions { display: flex; align-items: center; }
+.boost { font-size: 26rpx; color: #C59A00; font-weight: 600; padding: 10rpx 24rpx 10rpx 0; }
 .block { font-size: 26rpx; color: #E63946; padding: 10rpx 24rpx 10rpx 0; }
 .like { font-size: 26rpx; color: #999; padding: 10rpx 0 10rpx 24rpx; }
 .like.liked { color: #ff4d6d; }
+.boost-badge {
+  display: inline-block;
+  margin-left: 12rpx;
+  padding: 0 12rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #1D2129;
+  background: #F9C801;
+  border-radius: 999rpx;
+  vertical-align: middle;
+}
 .empty { padding-top: 260rpx; text-align: center; color: #999; }
 .empty-title { font-size: 28rpx; }

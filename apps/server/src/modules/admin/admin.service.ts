@@ -4,6 +4,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfessionService } from '../confession/confession.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import type { UpdateBoostPlanPriceDto } from './dto/update-boost-plan-price.dto';
 import type { UpdatePricingDto } from './dto/update-pricing.dto';
 
 @Injectable()
@@ -644,6 +645,26 @@ export class AdminService {
       create: { duration: dto.duration, price: dto.price },
     });
     return { duration: dto.duration, price: dto.price.toString() };
+  }
+
+  // 内容推广档位（列表 + 改价）
+  async getBoostPlans() {
+    const list = await this.prisma.boostPlan.findMany({ orderBy: { durationHours: 'asc' } });
+    return list.map((p) => ({
+      code: p.code,
+      name: p.name,
+      durationHours: p.durationHours,
+      price: p.price.toString(),
+      enabled: p.enabled,
+    }));
+  }
+
+  async updateBoostPlanPrice(code: string, dto: UpdateBoostPlanPriceDto) {
+    const plan = await this.prisma.boostPlan.findUnique({ where: { code } });
+    if (!plan) throw new BizException(50006, '推广档位不存在', HttpStatus.NOT_FOUND);
+    if (dto.price < 0) throw new BizException(60004, '推广价不能为负');
+    await this.prisma.boostPlan.update({ where: { code }, data: { price: dto.price } });
+    return { code, price: dto.price.toString() };
   }
 
   // 用户封禁（soft delete）

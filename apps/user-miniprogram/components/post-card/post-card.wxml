@@ -1,8 +1,9 @@
 <view class="card {{disabled ? 'card-disabled' : ''}}" wx:if="{{post}}" bindtap="onTap">
-  <!-- P2-05 置顶/加精角标（匿名卡不展示运营角标） -->
-  <view class="badges" wx:if="{{!anonymous && (post.pinned || post.featured)}}">
+  <!-- P2-05 置顶/加精角标（匿名卡不展示运营角标）+ 内容推广角标（匿名/树洞同样展示） -->
+  <view class="badges" wx:if="{{post.boosted || (!anonymous && (post.pinned || post.featured))}}">
     <text class="badge badge-pin" wx:if="{{post.pinned}}">置顶</text>
     <text class="badge badge-feature" wx:if="{{post.featured}}">精</text>
+    <text class="badge badge-boost" wx:if="{{post.boosted}}">推广</text>
   </view>
   <view class="header">
     <!-- CR-001 匿名模式：emoji 占位头像 + 「匿名」标签 -->

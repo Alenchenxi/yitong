@@ -156,6 +156,7 @@ export class SquareService {
     visibility: PostVisibility;
     pinned: boolean;
     featured: boolean;
+    boostUntil: Date | null;
     publishAt: Date | null;
     createdAt: Date;
     editedAt: Date | null;
@@ -164,6 +165,8 @@ export class SquareService {
     postLikes: { id: string }[];
   }): PostVo {
     const isAnonymous = post.isAnonymous;
+    // 表白墙推广在广场 tab 生效（Post 已含 boostUntil，直接映射）
+    const boostActive = post.boostUntil != null && post.boostUntil.getTime() > Date.now();
     return {
       id: post.id,
       circleId: post.circleId,
@@ -182,6 +185,8 @@ export class SquareService {
       visibility: post.visibility,
       pinned: post.pinned,
       featured: post.featured,
+      boosted: boostActive,
+      boostUntil: post.boostUntil ? post.boostUntil.toISOString() : null,
       publishAt: post.publishAt ? post.publishAt.toISOString() : null,
       createdAt: post.createdAt.toISOString(),
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,
@@ -211,6 +216,9 @@ export class SquareService {
       likeCount: p.likeCount,
       // anonId 缺失时 liked 恒 false；有 anonId 时按 likes 关联判断
       liked: anonId ? (p.likes?.length ?? 0) > 0 : false,
+      // 树洞 union feed 的 boost 置顶处理为合并后待补（见改动记录 follow-up #2），暂不映射
+      boosted: false,
+      boostUntil: null,
       createdAt: p.createdAt.toISOString(),
     };
   }

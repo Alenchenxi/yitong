@@ -11,6 +11,8 @@ export interface AnonPostVo {
   mood: string | null; // P0-13 情绪分类
   likeCount: number;
   liked: boolean;
+  boosted: boolean; // 内容推广：付费置顶曝光中
+  boostUntil: string | null; // 推广到期时间 ISO
   createdAt: string;
 }
 

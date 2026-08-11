@@ -7,6 +7,7 @@
     <view class="adm-subtab {{sub === 'tags' ? 'on' : ''}}" data-sub="tags" bindtap="switchSub">树洞标签</view>
     <view class="adm-subtab {{sub === 'jobs' ? 'on' : ''}}" data-sub="jobs" bindtap="switchSub">岗位精品</view>
     <view class="adm-subtab {{sub === 'pricing' ? 'on' : ''}}" data-sub="pricing" bindtap="switchSub">单价</view>
+    <view class="adm-subtab {{sub === 'boost' ? 'on' : ''}}" data-sub="boost" bindtap="switchSub">推广价</view>
   </scroll-view>
 
   <!-- 公告 -->
@@ -148,6 +149,26 @@
       <input class="adm-price-input" type="digit" value="{{editingPrice}}" bindinput="onPriceInput" />
       <button size="mini" bindtap="savePrice">保存</button>
       <button size="mini" bindtap="cancelEdit">取消</button>
+    </view>
+  </block>
+
+  <!-- 推广价（内容推广档位） -->
+  <block wx:if="{{sub === 'boost'}}">
+    <view class="adm-section-title">内容推广档位价格</view>
+    <view class="adm-item" wx:for="{{boostPlans}}" wx:key="code">
+      <view class="adm-item-main">
+        <text class="adm-item-title">{{item.name}}</text>
+        <text class="adm-item-sub">{{item.durationHours}} 小时 · ¥{{item.price}} · <text class="adm-status {{item.enabled ? 'adm-status--approved' : 'adm-status--neutral'}}">{{item.enabled ? '启用' : '停用'}}</text></text>
+      </view>
+      <view class="adm-item-actions">
+        <button wx:if="{{editingBoostCode !== item.code}}" size="mini" data-code="{{item.code}}" data-price="{{item.price}}" bindtap="startEditBoost">编辑</button>
+      </view>
+    </view>
+    <view class="adm-edit-row" wx:if="{{editingBoostCode}}">
+      <text>推广价：¥</text>
+      <input class="adm-price-input" type="digit" value="{{editingBoostPrice}}" bindinput="onBoostPriceInput" />
+      <button size="mini" bindtap="saveBoostPrice">保存</button>
+      <button size="mini" bindtap="cancelEditBoost">取消</button>
     </view>
   </block>
 </view>

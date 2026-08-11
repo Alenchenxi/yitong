@@ -126,6 +126,13 @@ Page({
     wx.navigateTo({ url: `/pages/post-create/index?editId=${p.id}` });
   },
 
+  // 内容推广：作者提升曝光（付费置顶）
+  onBoost() {
+    const p = this.data.post;
+    if (!p) return;
+    wx.navigateTo({ url: `/pages/boost/index?type=post&id=${p.id}` });
+  },
+
   // P1-10 作者删除帖子（软删）
   onDelete() {
     const p = this.data.post;

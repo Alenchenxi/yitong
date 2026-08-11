@@ -8,5 +8,7 @@ export interface AnonPostVo {
   mood: string | null;
   likeCount: number;
   liked: boolean; // 当前用户是否已赞；anonToken 缺失时为 false
+  boosted: boolean; // 内容推广：boostUntil > now 为 true
+  boostUntil: string | null; // ISO 字符串，未推广为 null
   createdAt: string; // ISO 字符串
 }

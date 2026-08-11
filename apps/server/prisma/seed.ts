@@ -53,6 +53,21 @@ async function main() {
   // eslint-disable-next-line no-console
   console.log('seed: pricing config ensured (D30=90, D90=180)');
 
+  // 内容推广档位默认价（1天/3天/7天；管理员可后台改；幂等：code 查重）
+  const DEFAULT_BOOST_PLANS: Array<{ code: string; name: string; durationHours: number; price: number }> = [
+    { code: 'BOOST_1D', name: '1天推广', durationHours: 24, price: 5 },
+    { code: 'BOOST_3D', name: '3天推广', durationHours: 72, price: 12 },
+    { code: 'BOOST_7D', name: '7天推广', durationHours: 168, price: 30 },
+  ];
+  for (const p of DEFAULT_BOOST_PLANS) {
+    const exists = await prisma.boostPlan.findUnique({ where: { code: p.code } });
+    if (!exists) {
+      await prisma.boostPlan.create({ data: p });
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.log('seed: boost plans ensured (BOOST_1D=5, BOOST_3D=12, BOOST_7D=30)');
+
   // P1-13 树洞标签库种子（个性 / 兴趣 / 心情 三类；幂等：category+name 查重）
   const DEFAULT_ANON_TAGS: Array<{ category: string; name: string; sortOrder: number }> = [
     // 心情（发帖 mood + 资料 moodState）

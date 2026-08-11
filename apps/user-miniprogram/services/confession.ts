@@ -27,6 +27,8 @@ export interface PostVo {
   visibility: PostVisibility;
   pinned: boolean; // P2-05 置顶
   featured: boolean; // P2-05 加精
+  boosted: boolean; // 内容推广：付费置顶曝光中
+  boostUntil: string | null; // 推广到期时间 ISO
   publishAt: string | null; // P2-06 定时发布时间
   createdAt: string;
   editedAt: string | null; // P1-10

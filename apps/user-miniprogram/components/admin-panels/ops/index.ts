@@ -17,11 +17,14 @@ import {
   featureJob,
   getPricing,
   updatePricing,
+  getBoostPlans,
+  updateBoostPlanPrice,
   type ActivityTopicVo,
   type TopicVo,
   type AnonTagVo,
   type AdminJobPostVo,
   type PricingVo,
+  type BoostPlanVo,
 } from '../../../services/admin';
 import {
   listAllAnnouncements,
@@ -31,8 +34,8 @@ import {
   type AdminAnnouncementVo,
 } from '../../../services/announcement';
 
-type Sub = 'announce' | 'activity' | 'topic' | 'tags' | 'jobs' | 'pricing';
-const SUBS: Sub[] = ['announce', 'activity', 'topic', 'tags', 'jobs', 'pricing'];
+type Sub = 'announce' | 'activity' | 'topic' | 'tags' | 'jobs' | 'pricing' | 'boost';
+const SUBS: Sub[] = ['announce', 'activity', 'topic', 'tags', 'jobs', 'pricing', 'boost'];
 
 Component({
   options: {
@@ -78,6 +81,10 @@ Component({
     pricing: [] as PricingVo[],
     editingDuration: '',
     editingPrice: '',
+    // 推广价
+    boostPlans: [] as BoostPlanVo[],
+    editingBoostCode: '',
+    editingBoostPrice: '',
     loading: false,
   },
 
@@ -127,6 +134,8 @@ Component({
           this.setData({ jobPosts: await listJobPostsAdmin() });
         } else if (sub === 'pricing') {
           this.setData({ pricing: await getPricing() });
+        } else if (sub === 'boost') {
+          this.setData({ boostPlans: await getBoostPlans() });
         }
       } catch {
         /* toast */
@@ -325,6 +334,31 @@ Component({
     },
     cancelEdit() {
       this.setData({ editingDuration: '', editingPrice: '' });
+    },
+
+    // ===== 推广价 =====
+    startEditBoost(e: WechatMiniprogram.TouchEvent) {
+      const { code, price } = e.currentTarget.dataset as { code: string; price: string };
+      this.setData({ editingBoostCode: code, editingBoostPrice: price });
+    },
+    onBoostPriceInput(e: WechatMiniprogram.Input) {
+      this.setData({ editingBoostPrice: e.detail.value });
+    },
+    async saveBoostPrice() {
+      if (!this.data.editingBoostCode || !this.data.editingBoostPrice) return;
+      const price = Number(this.data.editingBoostPrice);
+      // 校验：防非数字 / 负数（后端 60004 兜底）
+      if (!Number.isFinite(price) || price < 0) {
+        wx.showToast({ title: '请输入有效的推广价', icon: 'none' });
+        return;
+      }
+      await updateBoostPlanPrice(this.data.editingBoostCode, price);
+      wx.showToast({ title: '已保存', icon: 'success' });
+      this.setData({ editingBoostCode: '', editingBoostPrice: '' });
+      this.load();
+    },
+    cancelEditBoost() {
+      this.setData({ editingBoostCode: '', editingBoostPrice: '' });
     },
   },
 });

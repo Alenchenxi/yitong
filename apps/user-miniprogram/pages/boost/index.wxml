@@ -1,0 +1,46 @@
+<view class="page">
+  <view class="yt-card card">
+    <view class="title">提升曝光</view>
+    <view class="subtitle">付费后帖子在推荐 / 最新 / 热门顶部展示，带「推广」标识，到期自动恢复</view>
+    <view class="plan" wx:for="{{plans}}" wx:key="code" data-code="{{item.code}}" bindtap="selectPlan">
+      <view class="plan-main">
+        <text class="plan-name">{{item.name}}</text>
+        <text class="plan-sub">{{item.durationHours}} 小时</text>
+      </view>
+      <view class="plan-right">
+        <text class="plan-price">¥{{item.price}}</text>
+        <text class="plan-check {{selectedCode === item.code ? 'on' : ''}}"></text>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{plans.length === 0}}">暂无可用档位</view>
+  </view>
+
+  <block wx:if="{{!result}}">
+    <button class="yt-btn-primary pay-btn" bindtap="pay" disabled="{{paying || !selectedCode}}">{{paying ? '支付中…' : '确认支付'}}</button>
+  </block>
+
+  <block wx:elif="{{result.status === 'PAID'}}">
+    <view class="success">
+      <view class="success-emoji">✅</view>
+      <view class="success-text">推广成功，帖子已在推荐流顶部展示</view>
+      <button class="yt-btn-secondary back-btn" bindtap="goBack">返回</button>
+    </view>
+  </block>
+
+  <block wx:elif="{{failed}}">
+    <view class="success">
+      <view class="success-emoji">⚠️</view>
+      <view class="success-text">{{message || '支付未完成'}}</view>
+      <button class="yt-btn-primary pay-btn" bindtap="pay">重新支付</button>
+      <button class="yt-btn-secondary back-btn" bindtap="goBack">返回</button>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="success">
+      <view class="success-emoji">⏳</view>
+      <view class="success-text">支付处理中</view>
+      <button class="yt-btn-secondary back-btn" bindtap="goBack">返回</button>
+    </view>
+  </block>
+</view>

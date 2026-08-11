@@ -48,6 +48,21 @@ export function getPricing() {
   return request<PricingVo[]>({ url: '/admin/pricing' });
 }
 
+// 内容推广档位（付费置顶曝光）价格配置
+export interface BoostPlanVo {
+  code: string;
+  name: string;
+  durationHours: number;
+  price: string;
+  enabled: boolean;
+}
+export function getBoostPlans() {
+  return request<BoostPlanVo[]>({ url: '/admin/boost-plans' });
+}
+export function updateBoostPlanPrice(code: string, price: number) {
+  return request({ url: `/admin/boost-plans/${code}`, method: 'PUT', data: { price } });
+}
+
 export interface DashboardStats {
   overview: {
     totalUsers: number;

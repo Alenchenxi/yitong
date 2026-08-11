@@ -3,15 +3,23 @@ import { ConfigService } from '@nestjs/config';
 import {
   JobDuration,
   JobPostStatus,
+  PayScene,
   PayStatus,
+  PostStatus,
+  PostVisibility,
+  type PaymentOrder,
 } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WxPayService } from '../../common/wx/wx-pay.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import { BoostService, type BoostTargetType } from '../boost/boost.service';
+import { ConfessionService } from '../confession/confession.service';
+import type { CreateBoostOrderDto } from './dto/boost.dto';
 import type { PublishJobDto } from './dto/payment.dto';
 
-// 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用
+// 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用 / 50006 推广档位不存在或已下架 / 50007 内容不可推广
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
@@ -21,7 +29,11 @@ export class PaymentService {
     private readonly config: ConfigService,
     private readonly wxPay: WxPayService,
     private readonly notification: NotificationService,
+    private readonly boost: BoostService,
+    private readonly confession: ConfessionService,
   ) {}
+
+  // ===== 兼职付费发布（JOB_PUBLISH）=====
 
   // 付费发布：按 PricingConfig 计价下单。金额服务端算，不信前端。
   // - 凭证齐全（isReady）：V3 JSAPI 下单，返回 wxPayParams 供前端 wx.requestPayment；订单留 PENDING，等回调置 PAID。
@@ -45,6 +57,7 @@ export class PaymentService {
 
     const order = await this.prisma.paymentOrder.create({
       data: {
+        scene: PayScene.JOB_PUBLISH,
         merchantId: merchant.id,
         jobPostId: post.id,
         duration: dto.duration,
@@ -105,42 +118,158 @@ export class PaymentService {
     return list.map((p) => ({ duration: p.duration, price: p.price.toString() }));
   }
 
-  // 完成订单：置 PAID + 岗位 PUBLISHED + expireAt（幂等）
+  // ===== 内容推广（POST_BOOST / ANON_POST_BOOST）=====
+
+  // 付费提升曝光：按 BoostPlan 档位计价下单。金额服务端按 plan.price 算，不信前端。
+  // 树洞匿名红线：真实用户用 access token 付费（微信支付需 openid），订单记真实 userId（后台可追溯），
+  // AnonymousPost 表保持 0 真实 uid，仅校验 AnonymousProfile.userId ↔ anonId 归属。
+  async createBoostOrder(uid: string, dto: CreateBoostOrderDto) {
+    const plan = await this.boost.getPlan(dto.planCode); // 50006 缺失/下架
+
+    // 归属 + 可推广校验
+    let postId: string | null = null;
+    let anonPostId: string | null = null;
+    let description = '内容推广';
+    if (dto.targetType === 'post') {
+      const post = await this.prisma.post.findUnique({ where: { id: dto.targetId } });
+      if (!post || post.authorId !== uid) {
+        throw new BizException(10003, '无权推广该内容', HttpStatus.FORBIDDEN);
+      }
+      if (post.status !== PostStatus.APPROVED || post.visibility !== PostVisibility.PUBLIC || post.deletedAt) {
+        throw new BizException(50007, '该内容当前不可推广', HttpStatus.CONFLICT);
+      }
+      postId = post.id;
+      description = (post.content || '表白墙内容').slice(0, 30);
+    } else {
+      const profile = await this.prisma.anonymousProfile.findFirst({ where: { userId: uid } });
+      const anonPost = await this.prisma.anonymousPost.findUnique({ where: { id: dto.targetId } });
+      if (!anonPost || !profile || anonPost.anonId !== profile.anonId) {
+        throw new BizException(10003, '无权推广该内容', HttpStatus.FORBIDDEN);
+      }
+      if (anonPost.status !== PostStatus.APPROVED) {
+        throw new BizException(50007, '该内容当前不可推广', HttpStatus.CONFLICT);
+      }
+      anonPostId = anonPost.id;
+      description = anonPost.content.slice(0, 30);
+    }
+
+    const order = await this.prisma.paymentOrder.create({
+      data: {
+        scene: dto.targetType === 'post' ? PayScene.POST_BOOST : PayScene.ANON_POST_BOOST,
+        userId: uid,
+        postId,
+        anonPostId,
+        boostPlanId: plan.id,
+        amount: plan.price,
+        status: PayStatus.PENDING,
+      },
+    });
+
+    // dev mock：直接完成
+    if (!this.wxPay.isReady()) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new BizException(90003, '微信支付凭证未配置，无法发起支付', HttpStatus.SERVICE_UNAVAILABLE);
+      }
+      this.logger.warn('dev mode: mock pay & boost');
+      await this.fulfillOrder(order.id);
+      const refreshed = await this.prisma.paymentOrder.findUnique({ where: { id: order.id } });
+      const target = await this.getBoostTarget(dto.targetType, dto.targetId);
+      return {
+        orderId: order.id,
+        amount: refreshed!.amount.toString(),
+        status: refreshed!.status,
+        targetType: dto.targetType,
+        targetId: dto.targetId,
+        boostUntil: target?.boostUntil?.toISOString() ?? null,
+        wxPayParams: null,
+      };
+    }
+
+    // 真实 V3 JSAPI 下单
+    const user = await this.prisma.user.findUnique({ where: { id: uid }, select: { openid: true } });
+    if (!user?.openid) {
+      throw new BizException(90003, '用户 openid 缺失，无法发起微信支付', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    const amountInFen = Math.round(Number(order.amount.toString()) * 100);
+    const notifyUrl = this.config.get<string>('WX_PAY_NOTIFY_URL')!;
+    const { prepayId, wxPayParams } = await this.wxPay.createJsapiOrder({
+      outTradeNo: order.id,
+      amountInFen,
+      description,
+      openid: user.openid,
+      notifyUrl,
+    });
+    await this.prisma.paymentOrder.update({ where: { id: order.id }, data: { wxPrepayId: prepayId } });
+    return {
+      orderId: order.id,
+      amount: order.amount.toString(),
+      status: PayStatus.PENDING,
+      targetType: dto.targetType,
+      targetId: dto.targetId,
+      boostUntil: null,
+      wxPayParams,
+    };
+  }
+
+  // ===== 完成 / 退款（按 scene 分支）=====
+
+  // 完成订单（幂等）：置 PAID + 按场景生效——JOB 岗位 PUBLISHED + expireAt；boost applyBoost（置顶到期时间）。
   async fulfillOrder(orderId: string, wxTransactionId?: string) {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new BizException(50001, '订单不存在', HttpStatus.NOT_FOUND);
     if (order.status !== PayStatus.PENDING) return; // 已完成，幂等
-    const days = order.duration === JobDuration.D90 ? 90 : 30;
-    const expireAt = new Date(Date.now() + days * 86_400_000);
-    await this.prisma.$transaction([
-      this.prisma.paymentOrder.update({
+
+    if (order.scene === PayScene.JOB_PUBLISH) {
+      const days = order.duration === JobDuration.D90 ? 90 : 30;
+      const expireAt = new Date(Date.now() + days * 86_400_000);
+      await this.prisma.$transaction([
+        this.prisma.paymentOrder.update({
+          where: { id: orderId },
+          data: { status: PayStatus.PAID, paidAt: new Date(), wxTransactionId: wxTransactionId ?? order.wxTransactionId },
+        }),
+        this.prisma.jobPost.update({
+          where: { id: order.jobPostId! },
+          data: { status: JobPostStatus.PUBLISHED, expireAt },
+        }),
+      ]);
+      // 主动通知商家发布成功（PaymentOrder 无 relation，经 jobPost 取 merchant.userId）
+      const post = await this.prisma.jobPost.findUnique({
+        where: { id: order.jobPostId! },
+        include: { merchant: { select: { userId: true } } },
+      });
+      if (post?.merchant) {
+        void this.notification
+          .create({
+            userId: post.merchant.userId,
+            type: NotificationType.PAYMENT_PAID,
+            title: '兼职 · 岗位已发布',
+            content: `你的岗位「${post.title}」已支付成功并发布`,
+            targetType: 'job_post',
+            targetId: post.id,
+          })
+          .catch((e: unknown) =>
+            this.logger.warn(`notify payment paid failed: ${e instanceof Error ? e.message : String(e)}`),
+          );
+      }
+      return;
+    }
+
+    // boost 场景：事务内置 PAID + 应用推广；金额在 create 时已按档位算，此处只消费计划时长
+    const plan = order.boostPlanId
+      ? await this.prisma.boostPlan.findUnique({ where: { id: order.boostPlanId } })
+      : null;
+    if (!plan) throw new BizException(50006, '推广档位不存在', HttpStatus.NOT_FOUND);
+    const targetType: BoostTargetType = order.scene === PayScene.POST_BOOST ? 'post' : 'anon_post';
+    const targetId = targetType === 'post' ? order.postId! : order.anonPostId!;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.paymentOrder.update({
         where: { id: orderId },
         data: { status: PayStatus.PAID, paidAt: new Date(), wxTransactionId: wxTransactionId ?? order.wxTransactionId },
-      }),
-      this.prisma.jobPost.update({
-        where: { id: order.jobPostId },
-        data: { status: JobPostStatus.PUBLISHED, expireAt },
-      }),
-    ]);
-    // 主动通知商家发布成功（PaymentOrder 无 relation，经 jobPost 取 merchant.userId）
-    const post = await this.prisma.jobPost.findUnique({
-      where: { id: order.jobPostId },
-      include: { merchant: { select: { userId: true } } },
+      });
+      await this.boost.applyBoost(targetType, targetId, plan.durationHours, tx);
     });
-    if (post?.merchant) {
-      void this.notification
-        .create({
-          userId: post.merchant.userId,
-          type: NotificationType.PAYMENT_PAID,
-          title: '兼职 · 岗位已发布',
-          content: `你的岗位「${post.title}」已支付成功并发布`,
-          targetType: 'job_post',
-          targetId: post.id,
-        })
-        .catch((e: unknown) =>
-          this.logger.warn(`notify payment paid failed: ${e instanceof Error ? e.message : String(e)}`),
-        );
-    }
+    // 推广影响各 feed 首屏排序，失效列表缓存
+    this.confession.invalidateFeedCache();
   }
 
   // 微信支付回调（V3 JSON 加密报文，prod）：验签 + 解密 + trade_state=SUCCESS -> fulfillOrder。
@@ -180,7 +309,7 @@ export class PaymentService {
     }
   }
 
-  // 微信退款回调（V3 JSON 加密报文，prod）：验签 + 解密 + refund_status=SUCCESS -> REFUNDED + 下架。
+  // 微信退款回调（V3 JSON 加密报文，prod）：验签 + 解密 + refund_status=SUCCESS -> REFUNDED + 按场景回滚。
   async refundNotify(
     rawBody: string,
     headers: { timestamp?: string; nonce?: string; signature?: string },
@@ -206,10 +335,7 @@ export class PaymentService {
               ...(refundId ? { wxRefundId: refundId } : {}),
             },
           });
-          await tx.jobPost.updateMany({
-            where: { id: order.jobPostId, status: JobPostStatus.PUBLISHED },
-            data: { status: JobPostStatus.TAKEN_DOWN },
-          });
+          await this.applyRefundSideEffects(order, tx);
         });
         return { code: 'SUCCESS', message: 'OK' };
       }
@@ -235,16 +361,13 @@ export class PaymentService {
   }
 
   // 申请退款：V3 退款用同一套 RSA 签名，无需 V2 的 apiclient_cert.p12。
-  // - 凭证缺失 + dev：mock 直接 REFUNDED + 下架（保留测试能力）。
-  // - 凭证齐全：调 wxPay.refund；SUCCESS 立即 REFUNDED + 下架；PROCESSING 置 REFUNDING 等回调；
+  // - 凭证缺失 + dev：mock 直接 REFUNDED + 按场景回滚（保留测试能力）。
+  // - 凭证齐全：调 wxPay.refund；SUCCESS 立即 REFUNDED + 回滚；PROCESSING 置 REFUNDING 等回调；
   //   CLOSED/ABNORMAL 退款失败，订单保持 PAID（仅记 refundStatus，订单仍有效）。
-  async refundOrder(merchantUid: string, orderId: string, reason?: string) {
+  async refundOrder(callerUid: string, orderId: string, reason?: string) {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new BizException(50001, '订单不存在', HttpStatus.NOT_FOUND);
-    const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
-    if (!merchant || order.merchantId !== merchant.id) {
-      throw new BizException(10003, '无权操作该订单', HttpStatus.FORBIDDEN);
-    }
+    await this.assertOrderOwner(callerUid, order);
     if (order.status === PayStatus.REFUNDED || order.status === PayStatus.REFUNDING) {
       return this.toOrderVo(order);
     }
@@ -261,12 +384,9 @@ export class PaymentService {
       const updated = await this.prisma.$transaction(async (tx) => {
         const o = await tx.paymentOrder.update({
           where: { id: orderId },
-          data: { status: PayStatus.REFUNDED, refundedAt, refundReason: reason ?? '商家申请退款', refundStatus: 'SUCCESS' },
+          data: { status: PayStatus.REFUNDED, refundedAt, refundReason: reason ?? '申请退款', refundStatus: 'SUCCESS' },
         });
-        await tx.jobPost.updateMany({
-          where: { id: order.jobPostId, status: JobPostStatus.PUBLISHED },
-          data: { status: JobPostStatus.TAKEN_DOWN },
-        });
+        await this.applyRefundSideEffects(order, tx);
         return o;
       });
       this.logger.warn(`dev mode: mock refund order ${orderId}`);
@@ -279,7 +399,7 @@ export class PaymentService {
     const { refundId, status } = await this.wxPay.refund({
       outTradeNo: order.id,
       outRefundNo: `${order.id}_R1`,
-      reason: reason ?? '商家申请退款',
+      reason: reason ?? '申请退款',
       amountInFen,
       notifyUrl: refundNotifyUrl,
     });
@@ -290,15 +410,12 @@ export class PaymentService {
           data: {
             status: PayStatus.REFUNDED,
             refundedAt: new Date(),
-            refundReason: reason ?? '商家申请退款',
+            refundReason: reason ?? '申请退款',
             refundStatus: 'SUCCESS',
             wxRefundId: refundId,
           },
         });
-        await tx.jobPost.updateMany({
-          where: { id: order.jobPostId, status: JobPostStatus.PUBLISHED },
-          data: { status: JobPostStatus.TAKEN_DOWN },
-        });
+        await this.applyRefundSideEffects(order, tx);
         return o;
       });
       return this.toOrderVo(updated);
@@ -307,39 +424,33 @@ export class PaymentService {
       // 退款处理中：置 REFUNDING，等退款回调（refundNotify）置 REFUNDED
       const updated = await this.prisma.paymentOrder.update({
         where: { id: orderId },
-        data: { status: PayStatus.REFUNDING, refundReason: reason ?? '商家申请退款', refundStatus: status, wxRefundId: refundId },
+        data: { status: PayStatus.REFUNDING, refundReason: reason ?? '申请退款', refundStatus: status, wxRefundId: refundId },
       });
       return this.toOrderVo(updated);
     }
     // CLOSED / ABNORMAL：退款失败，订单保持 PAID（仅记 refundStatus，订单仍有效可重试）
     const updated = await this.prisma.paymentOrder.update({
       where: { id: orderId },
-      data: { refundReason: reason ?? '商家申请退款', refundStatus: status, wxRefundId: refundId },
+      data: { refundReason: reason ?? '申请退款', refundStatus: status, wxRefundId: refundId },
     });
     return this.toOrderVo(updated);
   }
 
   // 查订单状态
-  async getOrder(merchantUid: string, orderId: string) {
+  async getOrder(callerUid: string, orderId: string) {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new BizException(50001, '订单不存在', HttpStatus.NOT_FOUND);
-    const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
-    if (!merchant || order.merchantId !== merchant.id) {
-      throw new BizException(10003, '无权查看该订单', HttpStatus.FORBIDDEN);
-    }
+    await this.assertOrderOwner(callerUid, order);
     return this.toOrderVo(order);
   }
 
-  // 订单状态兜底查询：商家可主动刷新，按微信真实状态对账本地。
+  // 订单状态兜底查询：用户可主动刷新，按微信真实状态对账本地。
   // - PENDING + 微信 SUCCESS -> 补完成；PENDING + 微信 CLOSED/REVOKED/PAYERROR -> 置 CLOSED。
   // - 凭证缺失：仅返回本地状态。
-  async syncOrderStatus(merchantUid: string, orderId: string) {
+  async syncOrderStatus(callerUid: string, orderId: string) {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new BizException(50001, '订单不存在', HttpStatus.NOT_FOUND);
-    const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
-    if (!merchant || order.merchantId !== merchant.id) {
-      throw new BizException(10003, '无权操作该订单', HttpStatus.FORBIDDEN);
-    }
+    await this.assertOrderOwner(callerUid, order);
 
     let message = '';
     if (this.wxPay.isReady() && order.status === PayStatus.PENDING) {
@@ -361,24 +472,53 @@ export class PaymentService {
     return { ...this.toOrderVo(refreshed!), message };
   }
 
-  private toOrderVo(order: {
-    id: string;
-    jobPostId: string;
-    duration: JobDuration;
-    amount: { toString(): string };
-    status: PayStatus;
-    paidAt: Date | null;
-    refundedAt: Date | null;
-    refundReason: string | null;
-    wxTransactionId: string | null;
-    wxRefundId: string | null;
-    refundStatus: string | null;
-    createdAt: Date;
-  }) {
+  // ===== 私有辅助 =====
+
+  // 归属校验按 scene 分支：JOB 查 merchant；boost 校验 order.userId === callerUid
+  private async assertOrderOwner(callerUid: string, order: PaymentOrder): Promise<void> {
+    if (order.scene === PayScene.JOB_PUBLISH) {
+      const merchant = await this.prisma.merchant.findUnique({ where: { userId: callerUid } });
+      if (!merchant || order.merchantId !== merchant.id) {
+        throw new BizException(10003, '无权操作该订单', HttpStatus.FORBIDDEN);
+      }
+      return;
+    }
+    if (order.userId !== callerUid) {
+      throw new BizException(10003, '无权操作该订单', HttpStatus.FORBIDDEN);
+    }
+  }
+
+  // 退款回滚按 scene 分支：JOB 下架岗位；boost 裁剪推广（applyBoostRefund，不再置顶）
+  private async applyRefundSideEffects(order: PaymentOrder, tx: Prisma.TransactionClient): Promise<void> {
+    if (order.scene === PayScene.JOB_PUBLISH) {
+      await tx.jobPost.updateMany({
+        where: { id: order.jobPostId!, status: JobPostStatus.PUBLISHED },
+        data: { status: JobPostStatus.TAKEN_DOWN },
+      });
+      return;
+    }
+    const targetType: BoostTargetType = order.scene === PayScene.POST_BOOST ? 'post' : 'anon_post';
+    const targetId = targetType === 'post' ? order.postId! : order.anonPostId!;
+    await this.boost.applyBoostRefund(targetType, targetId, tx);
+    this.confession.invalidateFeedCache();
+  }
+
+  private getBoostTarget(targetType: BoostTargetType, targetId: string) {
+    return targetType === 'post'
+      ? this.prisma.post.findUnique({ where: { id: targetId }, select: { boostUntil: true } })
+      : this.prisma.anonymousPost.findUnique({ where: { id: targetId }, select: { boostUntil: true } });
+  }
+
+  private toOrderVo(order: PaymentOrder) {
     return {
       orderId: order.id,
+      scene: order.scene,
       jobPostId: order.jobPostId,
       duration: order.duration,
+      userId: order.userId,
+      postId: order.postId,
+      anonPostId: order.anonPostId,
+      boostPlanId: order.boostPlanId,
       amount: order.amount.toString(),
       status: order.status,
       paidAt: order.paidAt?.toISOString() ?? null,

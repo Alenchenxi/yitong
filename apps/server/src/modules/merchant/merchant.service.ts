@@ -571,7 +571,7 @@ export class MerchantService {
     return orders.map((o) => ({
       id: o.id,
       jobPostId: o.jobPostId,
-      jobPostTitle: postMap.get(o.jobPostId) ?? '',
+      jobPostTitle: postMap.get(o.jobPostId ?? '') ?? '',
       duration: o.duration,
       amount: o.amount.toString(),
       status: o.status,

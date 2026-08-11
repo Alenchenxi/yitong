@@ -96,6 +96,8 @@ Page({
             visibility: 'PUBLIC' as const,
             pinned: false,
             featured: false,
+            boosted: false,
+            boostUntil: null,
             publishAt: null,
             createdAt: fav.createdAt,
             editedAt: null,

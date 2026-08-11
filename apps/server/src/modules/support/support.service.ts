@@ -64,7 +64,7 @@ export class SupportService {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
-    const postIds = [...new Set(orders.map((o) => o.jobPostId))];
+    const postIds = orders.map((o) => o.jobPostId).filter((x): x is string => !!x);
     const posts = postIds.length
       ? await this.prisma.jobPost.findMany({ where: { id: { in: postIds } }, select: { id: true, title: true } })
       : [];
@@ -74,7 +74,7 @@ export class SupportService {
       amount: o.amount.toString(),
       status: o.status,
       duration: o.duration,
-      jobPostTitle: titleMap.get(o.jobPostId) ?? '',
+      jobPostTitle: titleMap.get(o.jobPostId ?? '') ?? '',
       paidAt: o.paidAt?.toISOString() ?? null,
       createdAt: o.createdAt.toISOString(),
     }));
