@@ -81,5 +81,5 @@
       "desc": "用于选择工作地点时定位当前位置"
     }
   },
-  "requiredPrivateInfos": ["getLocation"]
+  "requiredPrivateInfos": ["getLocation", "chooseMedia", "requestSubscribeMessage"]
 }
