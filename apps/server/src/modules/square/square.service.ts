@@ -34,19 +34,37 @@ export class SquareService {
     const limit = q.limit ?? 20;
     const sort: SquareFeedSort = q.sort ?? 'recommend';
     const fetchSize = limit * 2;
+    // 推广置顶仅首页（无 cursor）前置；翻页只走普通流，游标/hasMore 均按普通流计算
+    const isFirstPage = !q.cursor;
 
-    // 并行拉取双源（不串行，提性能）
-    const [posts, anonPosts] = await Promise.all([
+    // 并行拉取双源普通流 + （首页）双源推广帖（不串行，提性能）
+    const [posts, anonPosts, boostedPosts, boostedAnonPosts] = await Promise.all([
       this.fetchApprovedPosts(uid, sort, fetchSize, q.cursor),
       this.fetchApprovedAnonPosts(anonId, sort, fetchSize, q.cursor),
+      isFirstPage ? this.fetchBoostedPosts(uid, limit) : Promise.resolve([]),
+      isFirstPage ? this.fetchBoostedAnonPosts(anonId, limit) : Promise.resolve([]),
     ]);
 
-    // VO 映射 + 合并排序 + 分页切片
-    return this.mergeAndPaginate(
+    // 普通流：VO 映射 + 合并排序 + 分页切片
+    const normal = this.mergeAndPaginate(
       posts.map((p) => ({ kind: 'post' as const, data: this.toPostVo(p) })),
       anonPosts.map((p) => ({ kind: 'anon_post' as const, data: this.toAnonPostVo(p, anonId) })),
       limit,
     );
+    if (!isFirstPage) return normal;
+
+    // 推广帖（双源）按 boostUntil desc 合并，前置到首页顶部；普通流已排除推广中，无重复
+    const boostedItems: FeedItemVo[] = [
+      ...boostedPosts.map((p) => ({ kind: 'post' as const, data: this.toPostVo(p) })),
+      ...boostedAnonPosts.map((p) => ({ kind: 'anon_post' as const, data: this.toAnonPostVo(p, anonId) })),
+    ];
+    boostedItems.sort((a, b) => {
+      const byBoost = (b.data.boostUntil ?? '').localeCompare(a.data.boostUntil ?? '');
+      if (byBoost !== 0) return byBoost;
+      const byTime = b.data.createdAt.localeCompare(a.data.createdAt);
+      return byTime !== 0 ? byTime : b.data.id.localeCompare(a.data.id);
+    });
+    return { list: [...boostedItems, ...normal.list], nextCursor: normal.nextCursor, hasMore: normal.hasMore };
   }
 
   /**
@@ -78,17 +96,25 @@ export class SquareService {
     cursor?: string,
   ) {
     const cur = cursor ? this.decodeCursor(cursor) : null;
+    // 普通流排除推广中（boostUntil > now）。SQL 三值逻辑：NOT(NULL > now) = unknown 会漏 NULL 行，
+    // 必须显式 OR 空值；cursor 条件走嵌套 AND 避免 OR 被拍平
+    const boostInactive: Prisma.PostWhereInput = { OR: [{ boostUntil: null }, { boostUntil: { lte: new Date() } }] };
     const where: Prisma.PostWhereInput = {
       status: PostStatus.APPROVED,
       visibility: PostVisibility.PUBLIC,
       deletedAt: null,
+      AND: cur
+        ? [
+            boostInactive,
+            {
+              OR: [
+                { createdAt: { lt: cur.createdAt } },
+                { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
+              ],
+            },
+          ]
+        : [boostInactive],
     };
-    if (cur) {
-      where.OR = [
-        { createdAt: { lt: cur.createdAt } },
-        { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
-      ];
-    }
     const orderBy: Prisma.PostOrderByWithRelationInput[] =
       sort === 'recommend'
         ? [{ featured: 'desc' }, { pinned: 'desc' }, { likeCount: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
@@ -97,6 +123,25 @@ export class SquareService {
       where,
       orderBy,
       take: fetchSize,
+      include: {
+        author: { select: { id: true, nickname: true, avatarUrl: true } },
+        _count: { select: { comments: true } },
+        postLikes: { where: { userId: uid }, select: { id: true }, take: 1 },
+      },
+    });
+  }
+
+  // ===== 推广帖查询（boostUntil > now，仅首页前置；两源对称）=====
+  private async fetchBoostedPosts(uid: string, take: number) {
+    return this.prisma.post.findMany({
+      where: {
+        status: PostStatus.APPROVED,
+        visibility: PostVisibility.PUBLIC,
+        deletedAt: null,
+        boostUntil: { gt: new Date() },
+      },
+      orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take,
       include: {
         author: { select: { id: true, nickname: true, avatarUrl: true } },
         _count: { select: { comments: true } },
@@ -119,12 +164,21 @@ export class SquareService {
       const blockedPeers = await this.treehole.getBlockedPeerSet(anonId);
       if (blockedPeers.size > 0) baseWhere.anonId = { notIn: [...blockedPeers] };
     }
-    if (cur) {
-      baseWhere.OR = [
-        { createdAt: { lt: cur.createdAt } },
-        { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
-      ];
-    }
+    // 普通流排除推广中（boostUntil > now），同 Post 侧：显式 OR 空值 + 嵌套 AND
+    const boostInactive: Prisma.AnonymousPostWhereInput = {
+      OR: [{ boostUntil: null }, { boostUntil: { lte: new Date() } }],
+    };
+    baseWhere.AND = cur
+      ? [
+          boostInactive,
+          {
+            OR: [
+              { createdAt: { lt: cur.createdAt } },
+              { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
+            ],
+          },
+        ]
+      : [boostInactive];
     const orderBy: Prisma.AnonymousPostOrderByWithRelationInput[] =
       sort === 'recommend'
         ? [{ likeCount: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
@@ -133,6 +187,26 @@ export class SquareService {
       where: baseWhere,
       orderBy,
       take: fetchSize,
+      include: anonId
+        ? { likes: { where: { anonId }, select: { id: true }, take: 1 } }
+        : undefined,
+    });
+  }
+
+  // 树洞推广帖查询：屏蔽隔离同样生效；红线——只读 boostUntil，不涉及任何真实 uid
+  private async fetchBoostedAnonPosts(anonId: string | null, take: number) {
+    const where: Prisma.AnonymousPostWhereInput = {
+      status: PostStatus.APPROVED,
+      boostUntil: { gt: new Date() },
+    };
+    if (anonId) {
+      const blockedPeers = await this.treehole.getBlockedPeerSet(anonId);
+      if (blockedPeers.size > 0) where.anonId = { notIn: [...blockedPeers] };
+    }
+    return this.prisma.anonymousPost.findMany({
+      where,
+      orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take,
       include: anonId
         ? { likes: { where: { anonId }, select: { id: true }, take: 1 } }
         : undefined,
@@ -202,6 +276,7 @@ export class SquareService {
       images: string[];
       mood: string | null;
       likeCount: number;
+      boostUntil: Date | null;
       createdAt: Date;
       likes?: { id: string }[];
     },
@@ -216,9 +291,9 @@ export class SquareService {
       likeCount: p.likeCount,
       // anonId 缺失时 liked 恒 false；有 anonId 时按 likes 关联判断
       liked: anonId ? (p.likes?.length ?? 0) > 0 : false,
-      // 树洞 union feed 的 boost 置顶处理为合并后待补（见改动记录 follow-up #2），暂不映射
-      boosted: false,
-      boostUntil: null,
+      // 树洞推广在广场 union feed 生效（boostUntil 实时判断，懒过滤）
+      boosted: p.boostUntil != null && p.boostUntil.getTime() > Date.now(),
+      boostUntil: p.boostUntil ? p.boostUntil.toISOString() : null,
       createdAt: p.createdAt.toISOString(),
     };
   }
