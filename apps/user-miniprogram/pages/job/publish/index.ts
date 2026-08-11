@@ -6,12 +6,13 @@ import { suggestPlaces, type PoiInfoVo } from '../../../services/place-suggest';
 //  1. onLoad 调 wx.getLocation 定位 → 调百度 reverse  → 反查 poiId/lng/lat/city → 锁定为初始"我的位置"
 //  2. 搜索框 input:防抖 300ms 调 suggestPlaces → 候选列表实时展示
 //  3. 点击候选:锁定 poiId/lng/lat/city → 列表收起 → 搜索框显示选中地址
-//  4. 点"下一步":跳到 post-create,带 6 字段 (selectedKey/address/poiId/lng/lat/city)
+//  4. 点"下一步":跳到 post-create,带 7 字段 (selectedKey/categoryLabel/address/poiId/lng/lat/city)
 // 注:不显示地图组件,纯搜索框 + 候选列表(按王晨曦 2026-08-11 原方案)
 Page({
   data: {
     categories: [] as JobCategoryGridItem[],
     selectedKey: '' as string,
+    categoryLabel: '' as string,
     location: {
       address: '',
       poiId: '',
@@ -98,7 +99,8 @@ Page({
 
   onPickCategory(e: WechatMiniprogram.TouchEvent) {
     const key = e.currentTarget.dataset.key as string;
-    this.setData({ selectedKey: key });
+    const item = this.data.categories.find((c) => c.key === key);
+    this.setData({ selectedKey: key, categoryLabel: item?.label ?? '' });
     this.refreshCanSubmit();
   },
 
@@ -168,9 +170,10 @@ Page({
 
   onNext() {
     if (!this.data.canSubmit) return;
-    const { selectedKey, location } = this.data;
+    const { selectedKey, categoryLabel, location } = this.data;
     const q =
       `selectedKey=${encodeURIComponent(selectedKey)}` +
+      `&categoryLabel=${encodeURIComponent(categoryLabel)}` +
       `&address=${encodeURIComponent(location.address)}` +
       `&poiId=${encodeURIComponent(location.poiId)}` +
       `&lng=${location.lng}&lat=${location.lat}` +
