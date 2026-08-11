@@ -81,5 +81,5 @@
       "desc": "用于显示附近岗位和工作地点占位"
     }
   },
-  "requiredPrivateInfos": ["getFuzzyLocation", "chooseMedia", "requestSubscribeMessage"]
+  "requiredPrivateInfos": ["getFuzzyLocation"]
 }
