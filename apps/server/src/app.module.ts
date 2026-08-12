@@ -15,6 +15,7 @@ import { LicenseModule } from './license/license.module';
 import { MerchantModule } from './modules/merchant/merchant.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { CommunityModule } from './modules/community/community.module';
 import { TreeholeModule } from './modules/treehole/treehole.module';
 import { SquareModule } from './modules/square/square.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -41,6 +42,7 @@ import { UploadModule } from './modules/upload/upload.module';
     MerchantModule,
     JobModule,
     PaymentModule,
+    CommunityModule,
     TreeholeModule,
     SquareModule,
     AdminModule,

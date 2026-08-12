@@ -1,0 +1,22 @@
+<view class="page">
+  <!-- LOGO 选择 -->
+  <view class="logo-row" bindtap="chooseLogo">
+    <image wx:if="{{logo}}" class="logo" src="{{logo}}" mode="aspectFill" />
+    <view wx:else class="logo logo-fallback">{{uploading ? '上传中…' : '＋'}}</view>
+    <view class="logo-tip">{{logo ? '点击更换 LOGO' : '上传圈子 LOGO（可选）'}}</view>
+  </view>
+
+  <!-- 名称 -->
+  <view class="field">
+    <text class="label">圈子名称 *</text>
+    <input class="input" placeholder="1-20 个字，如：综合大学" maxlength="20" value="{{name}}" bindinput="onNameInput" />
+  </view>
+
+  <!-- 简介 -->
+  <view class="field">
+    <text class="label">圈子简介</text>
+    <textarea class="textarea" placeholder="一句话介绍这个圈子（可选）" maxlength="200" value="{{description}}" bindinput="onDescInput" auto-height />
+  </view>
+
+  <button class="submit-btn" bindtap="submit" disabled="{{submitting}}">{{submitting ? '创建中…' : '创建圈子'}}</button>
+</view>

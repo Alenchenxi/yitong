@@ -302,6 +302,45 @@ export class AdminController {
     return ok(await this.admin.setPostTopic(id, body.topicId ?? null));
   }
 
+  // ===== Banner 广告位管理 =====
+  @Get('banners')
+  async listBanners(@Query('communityId') communityId?: string, @Query('keyword') keyword?: string) {
+    return ok(await this.admin.listBanners(communityId, keyword));
+  }
+  @Post('banners')
+  async createBanner(@Body() body: { title: string; imageUrl: string; linkUrl?: string | null; communityId?: string | null; sortOrder?: number }) {
+    return ok(await this.admin.createBanner(body));
+  }
+  @Put('banners/:id')
+  async updateBanner(
+    @Param('id') id: string,
+    @Body() body: Partial<{ title: string; imageUrl: string; linkUrl: string | null; communityId: string | null; sortOrder: number; status: string }>,
+  ) {
+    return ok(await this.admin.updateBanner(id, body));
+  }
+  @Delete('banners/:id')
+  async deleteBanner(@Param('id') id: string) {
+    return ok(await this.admin.deleteBanner(id));
+  }
+  @Post('banners/:id/toggle')
+  async toggleBanner(@Param('id') id: string, @Body() body: { enabled: boolean }) {
+    return ok(await this.admin.toggleBanner(id, body.enabled));
+  }
+
+  // ===== 圈子（Community）管理 =====
+  @Get('communities')
+  async listCommunities(@Query('status') status?: string, @Query('keyword') keyword?: string) {
+    return ok(await this.admin.listCommunities(status, keyword));
+  }
+  @Post('communities/:id/disable')
+  async disableCommunity(@Param('id') id: string) {
+    return ok(await this.admin.disableCommunity(id));
+  }
+  @Post('communities/:id/enable')
+  async enableCommunity(@Param('id') id: string) {
+    return ok(await this.admin.enableCommunity(id));
+  }
+
   // ===== P2-30 管理员自助管理（AdminUser CRUD）=====
   // 列表：keyword 模糊匹配 username / openid；响应带 isSelf 给前端 disable「删除自己」按钮
   @Get('admins')

@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import {
   AppStatus,
+  CommunityStatus,
   JobCategory,
   JobDuration,
   JobPostStatus,
@@ -12,8 +13,10 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import { CommunityService } from '../community/community.service';
 import { LocationService } from './location.service';
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
+import type { JobPostVo } from './types';
 import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto, UpdateJobPostDto } from './dto/job.dto';
 
 // 看板时间范围 -> since 阈值（day=24h, week=7d, month=30d, all=不限）
@@ -33,6 +36,7 @@ export class JobService {
     private readonly moderation: ModerationService,
     private readonly notification: NotificationService,
     private readonly location: LocationService,
+    private readonly community: CommunityService,
   ) {}
 
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
@@ -55,9 +59,22 @@ export class JobService {
 
     const days = dto.duration === JobDuration.D90 ? 90 : 30;
     const expireAt = new Date(Date.now() + days * 86_400_000);
+    // 圈子：发岗归属圈子（商家显式选圈 -> 校验 ACTIVE；缺省商家当前圈子 -> 默认）
+    let communityId: string;
+    if (dto.communityId) {
+      const c = await this.prisma.community.findUnique({
+        where: { id: dto.communityId },
+        select: { status: true },
+      });
+      if (!c || c.status !== 'ACTIVE') throw new BizException(40006, '圈子不存在或不可用', HttpStatus.BAD_REQUEST);
+      communityId = dto.communityId;
+    } else {
+      communityId = await this.community.getActiveCommunityId(merchantUid);
+    }
     const post = await this.prisma.jobPost.create({
       data: {
         merchantId: merchant.id,
+        communityId,
         title: dto.title,
         description: dto.description,
         requirements: dto.requirements ?? null,
@@ -324,6 +341,11 @@ export class JobService {
       if (q.salaryMin !== undefined) f.gte = q.salaryMin;
       if (q.salaryMax !== undefined) f.lte = q.salaryMax;
       where.salaryAmount = f;
+    }
+    // 圈子：按圈子过滤岗位（缺省 = 全量）；圈子禁用则岗位不可见
+    if (q.communityId) {
+      where.communityId = q.communityId;
+      where.community = { is: { status: CommunityStatus.ACTIVE } };
     }
     if (q.cursor) {
       const t = new Date(q.cursor);
@@ -872,7 +894,7 @@ export class JobService {
     return p;
   }
 
-  private toPostVo(p: {
+  toPostVo(p: {
     id: string;
     merchantId: string;
     title: string;
@@ -901,7 +923,7 @@ export class JobService {
     deletedAt?: Date | null; // M3-07 软删字段
     createdAt: Date;
     merchant?: { shopName: string };
-  }) {
+  }): JobPostVo {
     return {
       id: p.id,
       merchantId: p.merchantId,

@@ -4,6 +4,8 @@ import {
   type JobPostVoExt,
   type JobTemplateVo,
 } from '../../../services/job';
+import { listCommunities, type CommunityVo } from '../../../services/community';
+import type { AppInstance } from '../../../app';
 
 interface PeriodOpt {
   label: string;
@@ -49,6 +51,11 @@ Page({
     attractivenessLabel: '吸引力计算中…',
     seed: 0,
     submitting: false,
+    // 圈子：发岗归属圈子（下拉选择，默认商家当前圈子）
+    communities: [] as CommunityVo[],
+    selectedCommunityId: '',
+    selectedCommunityName: '',
+    selectedCommunityIndex: 0,
   },
 
   onLoad(opts: Record<string, string>) {
@@ -65,7 +72,34 @@ Page({
       'form.locationLat': Number(opts.lat ?? 0),
       'form.locationCity': decodeURIComponent(opts.city ?? ''),
     });
+    this.loadCommunities();
     this.generate();
+  },
+
+  // 加载圈子供发岗选择：默认当前圈子（app.globalData.activeCommunityId），否则第一个
+  async loadCommunities() {
+    try {
+      const list = await listCommunities();
+      if (list.length === 0) return;
+      const app = getApp<AppInstance>();
+      const activeId = app.globalData.activeCommunityId;
+      const prefer = list.find((c) => c.id === activeId) ?? list[0]!;
+      const idx = list.findIndex((c) => c.id === prefer.id);
+      this.setData({
+        communities: list,
+        selectedCommunityId: prefer.id,
+        selectedCommunityName: prefer.name,
+        selectedCommunityIndex: idx >= 0 ? idx : 0,
+      });
+    } catch {
+      /* 圈子加载失败不阻断发岗（服务端兜底商家当前圈子） */
+    }
+  },
+
+  onPickCommunity(e: WechatMiniprogram.TouchEvent) {
+    const idx = Number(e.detail.value || 0);
+    const c = this.data.communities[idx];
+    if (c) this.setData({ selectedCommunityId: c.id, selectedCommunityName: c.name, selectedCommunityIndex: idx });
   },
 
   async generate() {
@@ -165,6 +199,7 @@ Page({
         workPeriods,
         headcount,
         duration: f.duration,
+        communityId: this.data.selectedCommunityId || undefined,
       });
       wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${f.duration}` });
     } catch (e) {

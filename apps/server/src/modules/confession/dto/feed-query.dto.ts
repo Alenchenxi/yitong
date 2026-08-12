@@ -19,4 +19,9 @@ export class FeedQueryDto {
   @IsOptional()
   @IsIn(['latest', 'hot', 'recommend', 'follow'])
   sort?: FeedSort = 'latest';
+
+  // 圈子（Community）作用域：按圈子过滤表白墙帖；缺省 = 全量
+  @IsOptional()
+  @IsString()
+  communityId?: string;
 }

@@ -112,6 +112,11 @@ export class CreateJobPostDto {
 
   @IsIn(['D30', 'D90'])
   duration!: 'D30' | 'D90';
+
+  // 圈子：发岗归属圈子（可选；缺省服务端取 merchant 当前圈子 -> 默认）
+  @IsOptional()
+  @IsString()
+  communityId?: string;
 }
 
 // M3-04 编辑岗位：所有字段 optional（duration 不可改，由 service 校验）
@@ -288,6 +293,11 @@ export class JobListQueryDto {
   @IsOptional()
   @IsIn(['nearest'])
   sort?: 'nearest';
+
+  // 圈子：按圈子过滤岗位（缺省 = 全量）
+  @IsOptional()
+  @IsString()
+  communityId?: string;
 
   /** 用户当前经度（sort=nearest 时必传，GCJ-02 坐标） */
   @IsOptional()

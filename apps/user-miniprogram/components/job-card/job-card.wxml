@@ -1,0 +1,15 @@
+<view class="job-card yt-card" bindtap="onTap">
+  <view class="head">
+    <text class="title">{{job.title}}</text>
+    <text class="salary">{{job.salary}}</text>
+  </view>
+  <view class="badges" wx:if="{{job.urgent || job.online}}">
+    <text class="bd bd-urgent" wx:if="{{job.urgent}}">急招</text>
+    <text class="bd bd-online" wx:if="{{job.online}}">可线上</text>
+  </view>
+  <view class="shop">{{job.merchantShopName}}</view>
+  <view class="meta">
+    <text class="meta-item">📍 {{job.location}}</text>
+    <text class="meta-item">⏱ {{job.duration === 'D90' ? '90天' : '30天'}}</text>
+  </view>
+</view>

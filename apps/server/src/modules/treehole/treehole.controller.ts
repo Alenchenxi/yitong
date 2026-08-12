@@ -77,6 +77,7 @@ export class TreeholeController {
     @Query('limit') limit?: string,
     @Query('sort') sort?: string,
     @Query('mood') mood?: string,
+    @Query('communityId') communityId?: string,
     @Req() req?: Request,
   ) {
     const anonId = (req as AuthenticatedRequest).user!.uid;
@@ -86,6 +87,7 @@ export class TreeholeController {
         limit: parsePositiveInt(limit, 20, 1, 50),
         sort: sort === 'recommend' ? 'recommend' : 'latest',
         mood,
+        communityId,
       }),
     );
   }

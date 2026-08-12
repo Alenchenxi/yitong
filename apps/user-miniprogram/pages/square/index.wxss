@@ -24,6 +24,47 @@
 .search-icon { font-size: 24rpx; }
 .search-ph { font-size: 26rpx; color: var(--yt-text-sub); }
 
+/* 圈子头卡 */
+.community-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin: 16rpx 24rpx 0;
+  padding: 24rpx;
+  border-radius: 16rpx;
+}
+.c-logo {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 20rpx;
+  flex-shrink: 0;
+}
+.c-logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 40rpx;
+  font-weight: 600;
+}
+.c-info { flex: 1; min-width: 0; }
+.c-name {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--yt-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c-stats { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 8rpx; }
+.c-empty { flex: 1; }
+.c-switch {
+  font-size: 24rpx;
+  color: var(--yt-text-sub);
+  flex-shrink: 0;
+}
+
 /* 公告栏 */
 .announce-bar {
   background: var(--yt-primary-lighter);
@@ -34,21 +75,88 @@
 .announce-swiper { height: 40rpx; }
 .announce-text { font-size: 24rpx; color: var(--yt-primary-dark); line-height: 40rpx; }
 
+/* 广告位轮播 */
+.banner-wrap { margin: 16rpx 24rpx 0; }
+.banner-swiper { height: 220rpx; border-radius: 16rpx; overflow: hidden; }
+.banner-img { width: 100%; height: 220rpx; border-radius: 16rpx; }
+
+/* 今日上头 */
+.hot-section { margin-top: 24rpx; }
+.hot-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--yt-text-main);
+  padding: 0 24rpx;
+  margin-bottom: 16rpx;
+}
+.hot-scroll {
+  white-space: nowrap;
+  padding: 0 16rpx;
+}
+.hot-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 16rpx;
+  width: 520rpx;
+  background: var(--yt-card);
+  border: 1rpx solid var(--yt-border);
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-right: 16rpx;
+  white-space: normal;
+  vertical-align: top;
+}
+.hot-rank {
+  width: 48rpx;
+  height: 48rpx;
+  line-height: 48rpx;
+  text-align: center;
+  border-radius: 12rpx;
+  background: var(--yt-primary-lighter);
+  color: var(--yt-primary-dark);
+  font-size: 28rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.hot-info { flex: 1; min-width: 0; }
+.hot-badge {
+  display: inline-block;
+  font-size: 20rpx;
+  color: var(--yt-text-sub);
+  background: var(--yt-disabled-bg);
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  margin-bottom: 8rpx;
+}
+.hot-content {
+  font-size: 26rpx;
+  color: var(--yt-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-all;
+}
+.hot-views { font-size: 22rpx; color: var(--yt-text-sub); margin-top: 8rpx; }
+
 /* 主 tab */
 .main-tabs {
   display: flex;
-  gap: 40rpx;
-  padding: 16rpx 24rpx;
+  gap: 32rpx;
+  padding: 20rpx 24rpx;
   background: var(--yt-card);
   position: sticky;
   top: 96rpx;
   z-index: 9;
+  margin-top: 8rpx;
 }
 .main-tab {
   font-size: 28rpx;
   color: var(--yt-text-sub);
   padding: 8rpx 0;
   position: relative;
+  flex-shrink: 0;
 }
 .main-tab.active { color: var(--yt-text-main); font-weight: 600; }
 .main-tab.active::after {
@@ -65,6 +173,7 @@
 
 /* 帖子流 */
 .list { padding: 16rpx 24rpx; }
+.feed-item { margin-bottom: 20rpx; }
 .loading-tip { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 24rpx 0; }
 
 /* 悬浮发帖按钮 */

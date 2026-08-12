@@ -1,6 +1,6 @@
 import { handleResponseAuth } from './auth-error';
 
-export type UploadType = 'common' | 'posts' | 'anon' | 'avatars' | 'merchant' | 'voice';
+export type UploadType = 'common' | 'posts' | 'anon' | 'avatars' | 'merchant' | 'voice' | 'community' | 'banner';
 
 // 通用上传：wx.chooseMedia 拿到本地路径 -> wx.uploadFile 传 /uploads(图片) /uploads/video(视频) /uploads/voice(语音) -> 返回 {url}
 // 注意：uploadFile 不能复用 request 封装（它走 multipart/form-data 而非 JSON），

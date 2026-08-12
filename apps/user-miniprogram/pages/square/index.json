@@ -2,6 +2,7 @@
   "navigationBarTitleText": "广场",
   "enablePullDownRefresh": true,
   "usingComponents": {
-    "post-card": "/components/post-card/post-card"
+    "post-card": "/components/post-card/post-card",
+    "job-card": "/components/job-card/job-card"
   }
 }

@@ -7,6 +7,21 @@
     </view>
   </view>
 
+  <!-- 圈子头卡：LOGO + 名称 + 动态数/成员数（点击进圈子列表/切换） -->
+  <view class="community-card yt-card" bindtap="goCommunityList">
+    <image wx:if="{{community.logo}}" class="c-logo" src="{{community.logo}}" mode="aspectFill" />
+    <view wx:else class="c-logo c-logo-fallback">{{community ? community.name[0] : '圈'}}</view>
+    <view class="c-info" wx:if="{{community}}">
+      <view class="c-name">{{community.name}}</view>
+      <view class="c-stats">动态 {{community.postCount}} · 成员 {{community.memberCount}}</view>
+    </view>
+    <view class="c-switch" wx:if="{{community}}">切换 ›</view>
+    <view class="c-info c-empty" wx:else>
+      <view class="c-name">未加入圈子</view>
+      <view class="c-stats">点击选择或创建圈子</view>
+    </view>
+  </view>
+
   <!-- 公告栏 -->
   <view class="announce-bar" wx:if="{{announcements.length > 0}}">
     <swiper class="announce-swiper" autoplay circular interval="4000" vertical>
@@ -16,20 +31,54 @@
     </swiper>
   </view>
 
-  <!-- 主 tab：推荐 / 最新（CR-001:「关注」tab 移除，匿名帖无 follow 语义） -->
-  <view class="main-tabs">
-    <view class="main-tab {{activeMainTab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchMainTab">推荐</view>
-    <view class="main-tab {{activeMainTab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchMainTab">最新</view>
+  <!-- 广告位轮播（Banner，圈子 + 全局） -->
+  <view class="banner-wrap" wx:if="{{banners.length > 0}}">
+    <swiper class="banner-swiper" autoplay circular interval="4000" indicator-dots indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff">
+      <swiper-item wx:for="{{banners}}" wx:key="id">
+        <image class="banner-img" src="{{item.imageUrl}}" mode="aspectFill" />
+      </swiper-item>
+    </swiper>
   </view>
 
-  <!-- 混合流 -->
+  <!-- 今日上头：近24h 浏览量 Top10 横向滚动 -->
+  <view class="hot-section" wx:if="{{todayHit.length > 0}}">
+    <view class="hot-title">⚡ 今日上头</view>
+    <scroll-view class="hot-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view
+        class="hot-item"
+        wx:for="{{todayHit}}"
+        wx:key="data.id"
+        data-id="{{item.data.id}}"
+        data-kind="{{item.kind}}"
+        bindtap="goTodayHit"
+      >
+        <view class="hot-rank">{{index + 1}}</view>
+        <view class="hot-info">
+          <view class="hot-badge">{{item.kind === 'anon_post' ? '树洞' : '表白墙'}}</view>
+          <view class="hot-content">{{item.data.content}}</view>
+          <view class="hot-views">👀 {{item.viewCount}}</view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 4 tab：圈子动态 / 表白墙 / 树洞 / 兼职 -->
+  <view class="main-tabs">
+    <view class="main-tab {{activeTab === 'dynamic' ? 'active' : ''}}" data-tab="dynamic" bindtap="switchTab">圈子动态</view>
+    <view class="main-tab {{activeTab === 'confession' ? 'active' : ''}}" data-tab="confession" bindtap="switchTab">表白墙</view>
+    <view class="main-tab {{activeTab === 'treehole' ? 'active' : ''}}" data-tab="treehole" bindtap="switchTab">树洞</view>
+    <view class="main-tab {{activeTab === 'job' ? 'active' : ''}}" data-tab="job" bindtap="switchTab">兼职</view>
+  </view>
+
+  <!-- 混合流 / 各 tab 列表：按 kind 分发 -->
   <view class="list" wx:if="{{items.length > 0}}">
     <block wx:for="{{items}}" wx:key="data.id">
-      <!-- CR-001: 按 kind 分发渲染，匿名卡传 anonymous/disabled -->
-      <view wx:if="{{item.kind === 'post'}}" data-id="{{item.data.id}}" data-kind="post" bindtap="goPostDetail">
+      <!-- 表白墙帖：post-card 内部 onTap 跳详情 -->
+      <view wx:if="{{item.kind === 'post'}}" class="feed-item">
         <post-card post="{{item.data}}" bind:like="onLike"></post-card>
       </view>
-      <view wx:elif="{{item.kind === 'anon_post'}}" data-id="{{item.data.id}}" data-kind="anon_post" bindtap="goPostDetail">
+      <!-- 树洞帖：匿名卡降级，父级 bindtap 分发跳树洞详情 -->
+      <view wx:elif="{{item.kind === 'anon_post'}}" class="feed-item" data-id="{{item.data.id}}" data-kind="anon_post" bindtap="goPostDetail">
         <post-card
           post="{{item.data}}"
           anonymous="{{true}}"
@@ -37,6 +86,10 @@
           disabledReason="请前往树洞签发匿名身份后互动"
           bind:like="onLike"
         ></post-card>
+      </view>
+      <!-- 兼职岗：job-card 内部 onTap 跳岗位详情 -->
+      <view wx:elif="{{item.kind === 'job_post'}}" class="feed-item">
+        <job-card job="{{item.data}}"></job-card>
       </view>
     </block>
     <view class="loading-tip" wx:if="{{loading}}">加载中...</view>

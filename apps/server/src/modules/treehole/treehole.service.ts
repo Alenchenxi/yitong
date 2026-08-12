@@ -1,12 +1,13 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { MatchStatus, PostStatus, Prisma } from '@prisma/client';
+import { CommunityStatus, MatchStatus, PostStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { ImService } from '../chat/im.service';
 import { ChatService } from '../chat/chat.service';
+import { CommunityService, DEFAULT_COMMUNITY_ID } from '../community/community.service';
 import type { CreateAnonPostDto } from './dto/create-anon-post.dto';
 import type { UpdateAnonProfileDto } from './dto/update-anon-profile.dto';
 import {
@@ -42,6 +43,7 @@ export class TreeholeService {
     private readonly moderation: ModerationService,
     private readonly im: ImService,
     private readonly chat: ChatService,
+    private readonly community: CommunityService,
   ) {}
 
   // 换匿名 token：find/create AnonymousProfile（userId->anonId，后台可追溯），签 anonToken（含 anonId，不含 uid）
@@ -235,8 +237,18 @@ export class TreeholeService {
     if (dto.mood) {
       await this.assertTagsInLibrary('mood', [dto.mood]);
     }
+    // 圈子：树洞帖归属当前圈子（服务端取数：AnonymousProfile.anonId -> userId -> active community；红线：仅内部取数，响应只含 anonId）
+    let communityId = DEFAULT_COMMUNITY_ID;
+    const profile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { userId: true },
+    });
+    if (profile) {
+      communityId = await this.community.getActiveCommunityId(profile.userId);
+    }
     const post = await this.prisma.anonymousPost.create({
       data: {
+        communityId,
         anonId,
         content: dto.content,
         images: dto.images ?? [],
@@ -249,11 +261,16 @@ export class TreeholeService {
 
   async listPosts(
     anonId: string,
-    opts: { cursor?: string; limit?: number; sort?: 'latest' | 'recommend'; mood?: string } = {},
+    opts: { cursor?: string; limit?: number; sort?: 'latest' | 'recommend'; mood?: string; communityId?: string } = {},
   ) {
     const limit = opts.limit ?? 20;
     const baseWhere: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED };
     if (opts.mood) baseWhere.mood = opts.mood;
+    if (opts.communityId) {
+      baseWhere.communityId = opts.communityId;
+      // 圈子禁用则树洞帖不可见（广场作用域）
+      baseWhere.community = { is: { status: CommunityStatus.ACTIVE } };
+    }
     // P0-16 广场隔离：排除与当前用户互相屏蔽的对端帖子
     const blockedPeers = await this.getBlockedPeerSet(anonId);
     if (blockedPeers.size > 0) baseWhere.anonId = { notIn: [...blockedPeers] };
@@ -333,6 +350,8 @@ export class TreeholeService {
     if (await this.isBlockedEither(anonId, post.anonId)) {
       throw new BizException(30005, '内容不可见', HttpStatus.FORBIDDEN);
     }
+    // 圈子：浏览量埋点（ContentView 去重；红线：viewer 用 anonId，绝不存真实 uid）
+    this.community.recordContentView('anon_post', id, anonId).catch(() => undefined);
     return this.toVo(post);
   }
 

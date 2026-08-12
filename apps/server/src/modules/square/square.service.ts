@@ -1,19 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, PostStatus, PostVisibility } from '@prisma/client';
+import { CommunityStatus, JobPostStatus, Prisma, PostStatus, PostVisibility } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TreeholeService } from '../treehole/treehole.service';
+import { CommunityService } from '../community/community.service';
+import { JobService } from '../job/job.service';
 import type { PostVo } from '../confession/types';
 import type { AnonPostVo } from '../treehole/types';
-import type { FeedItemVo, SquareFeedResult } from './types';
-import type { SquareFeedQueryDto, SquareFeedSort } from './dto';
+import type { FeedItemVo, SquareFeedResult, SquareTodayHitResult, TodayHitItem } from './types';
+import type { SquareFeedQueryDto, SquareFeedSort, SquareTodayHitQueryDto } from './dto';
 
-// CR-001 广场 union feed：合并表白墙公开帖 + 树洞个人匿名动态
+// CR-001 广场 union feed（扩展为圈子广场数据模块）：
+// 合并表白墙公开帖 + 树洞个人匿名动态 + 兼职岗位（圈子动态混合流），按圈子（communityId）作用域过滤。
+// 曝光度 = 付费推广（boostUntil>now）前置，仅表白墙/树洞两源；岗位无推广逻辑。
 // 红线：anon_post kind 的 data 严禁回填 authorId/authorNickname/authorAvatarUrl 等真实身份字段
 @Injectable()
 export class SquareService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly treehole: TreeholeService,
+    private readonly community: CommunityService,
+    private readonly job: JobService,
   ) {}
 
   /**
@@ -34,27 +40,31 @@ export class SquareService {
     const limit = q.limit ?? 20;
     const sort: SquareFeedSort = q.sort ?? 'recommend';
     const fetchSize = limit * 2;
+    // 圈子作用域：缺省取用户当前圈子（单真相源 = active community）
+    const communityId = q.communityId ?? (await this.community.getActiveCommunityId(uid));
     // 推广置顶仅首页（无 cursor）前置；翻页只走普通流，游标/hasMore 均按普通流计算
     const isFirstPage = !q.cursor;
 
-    // 并行拉取双源普通流 + （首页）双源推广帖（不串行，提性能）
-    const [posts, anonPosts, boostedPosts, boostedAnonPosts] = await Promise.all([
-      this.fetchApprovedPosts(uid, sort, fetchSize, q.cursor),
-      this.fetchApprovedAnonPosts(anonId, sort, fetchSize, q.cursor),
-      isFirstPage ? this.fetchBoostedPosts(uid, limit) : Promise.resolve([]),
-      isFirstPage ? this.fetchBoostedAnonPosts(anonId, limit) : Promise.resolve([]),
+    // 并行拉取三源普通流 + （首页）双源推广帖（不串行，提性能）
+    const [posts, anonPosts, jobs, boostedPosts, boostedAnonPosts] = await Promise.all([
+      this.fetchApprovedPosts(uid, sort, fetchSize, q.cursor, communityId),
+      this.fetchApprovedAnonPosts(anonId, sort, fetchSize, q.cursor, communityId),
+      this.fetchApprovedJobs(communityId, sort, fetchSize, q.cursor),
+      isFirstPage ? this.fetchBoostedPosts(uid, limit, communityId) : Promise.resolve([]),
+      isFirstPage ? this.fetchBoostedAnonPosts(anonId, limit, communityId) : Promise.resolve([]),
     ]);
 
     // 普通流：VO 映射 + 合并排序 + 分页切片
     const normal = this.mergeAndPaginate(
       posts.map((p) => ({ kind: 'post' as const, data: this.toPostVo(p) })),
       anonPosts.map((p) => ({ kind: 'anon_post' as const, data: this.toAnonPostVo(p, anonId) })),
+      jobs.map((p) => ({ kind: 'job_post' as const, data: this.job.toPostVo(p) })),
       limit,
     );
     if (!isFirstPage) return normal;
 
     // 推广帖（双源）按 boostUntil desc 合并，前置到首页顶部；普通流已排除推广中，无重复
-    const boostedItems: FeedItemVo[] = [
+    const boostedItems: Array<{ kind: 'post'; data: PostVo } | { kind: 'anon_post'; data: AnonPostVo }> = [
       ...boostedPosts.map((p) => ({ kind: 'post' as const, data: this.toPostVo(p) })),
       ...boostedAnonPosts.map((p) => ({ kind: 'anon_post' as const, data: this.toAnonPostVo(p, anonId) })),
     ];
@@ -68,15 +78,16 @@ export class SquareService {
   }
 
   /**
-   * 合并两个 FeedItemVo 列表，按 createdAt desc（id 兜底避同时间戳错位），
+   * 合并多个 FeedItemVo 列表（post/anon_post/job_post），按 createdAt desc（id 兜底避同时间戳错位），
    * 切片取前 limit 条并计算 nextCursor（base64url JSON 编码的 {t, id}）。
    */
   private mergeAndPaginate(
     postItems: FeedItemVo[],
     anonItems: FeedItemVo[],
+    jobItems: FeedItemVo[],
     limit: number,
   ): SquareFeedResult {
-    const merged: FeedItemVo[] = [...postItems, ...anonItems];
+    const merged: FeedItemVo[] = [...postItems, ...anonItems, ...jobItems];
     merged.sort((a, b) => {
       const cmp = b.data.createdAt.localeCompare(a.data.createdAt);
       return cmp !== 0 ? cmp : b.data.id.localeCompare(a.data.id);
@@ -93,7 +104,8 @@ export class SquareService {
     uid: string,
     sort: SquareFeedSort,
     fetchSize: number,
-    cursor?: string,
+    cursor: string | undefined,
+    communityId: string,
   ) {
     const cur = cursor ? this.decodeCursor(cursor) : null;
     // 普通流排除推广中（boostUntil > now）。SQL 三值逻辑：NOT(NULL > now) = unknown 会漏 NULL 行，
@@ -103,6 +115,8 @@ export class SquareService {
       status: PostStatus.APPROVED,
       visibility: PostVisibility.PUBLIC,
       deletedAt: null,
+      communityId,
+      community: { is: { status: CommunityStatus.ACTIVE } },
       AND: cur
         ? [
             boostInactive,
@@ -132,12 +146,14 @@ export class SquareService {
   }
 
   // ===== 推广帖查询（boostUntil > now，仅首页前置；两源对称）=====
-  private async fetchBoostedPosts(uid: string, take: number) {
+  private async fetchBoostedPosts(uid: string, take: number, communityId: string) {
     return this.prisma.post.findMany({
       where: {
         status: PostStatus.APPROVED,
         visibility: PostVisibility.PUBLIC,
         deletedAt: null,
+        communityId,
+        community: { is: { status: CommunityStatus.ACTIVE } },
         boostUntil: { gt: new Date() },
       },
       orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
@@ -150,15 +166,55 @@ export class SquareService {
     });
   }
 
-  // ===== AnonymousPost 部分查询（复用 treehole.service.getBlockedPeerSet 屏蔽隔离）=====
-  private async fetchApprovedAnonPosts(
-    anonId: string | null,
+  // ===== JobPost 部分查询（兼职混合流；岗位无 boost 前置，仅普通流）=====
+  private async fetchApprovedJobs(
+    communityId: string,
     sort: SquareFeedSort,
     fetchSize: number,
     cursor?: string,
   ) {
     const cur = cursor ? this.decodeCursor(cursor) : null;
-    const baseWhere: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED };
+    const where: Prisma.JobPostWhereInput = {
+      communityId,
+      community: { is: { status: CommunityStatus.ACTIVE } },
+      status: JobPostStatus.PUBLISHED,
+      deletedAt: null,
+      expireAt: { gt: new Date() },
+      ...(cur
+        ? {
+            OR: [
+              { createdAt: { lt: cur.createdAt } },
+              { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
+            ],
+          }
+        : {}),
+    };
+    const orderBy: Prisma.JobPostOrderByWithRelationInput[] =
+      sort === 'recommend'
+        ? [{ featured: 'desc' }, { featuredAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+        : [{ createdAt: 'desc' }, { id: 'desc' }];
+    return this.prisma.jobPost.findMany({
+      where,
+      orderBy,
+      take: fetchSize,
+      include: { merchant: { select: { shopName: true } } },
+    });
+  }
+
+  // ===== AnonymousPost 部分查询（复用 treehole.service.getBlockedPeerSet 屏蔽隔离）=====
+  private async fetchApprovedAnonPosts(
+    anonId: string | null,
+    sort: SquareFeedSort,
+    fetchSize: number,
+    cursor: string | undefined,
+    communityId: string,
+  ) {
+    const cur = cursor ? this.decodeCursor(cursor) : null;
+    const baseWhere: Prisma.AnonymousPostWhereInput = {
+      status: PostStatus.APPROVED,
+      communityId,
+      community: { is: { status: CommunityStatus.ACTIVE } },
+    };
     // P0-16 屏蔽隔离延续到广场 union 列表（仅当有 anonId 时计算）
     if (anonId) {
       const blockedPeers = await this.treehole.getBlockedPeerSet(anonId);
@@ -194,9 +250,11 @@ export class SquareService {
   }
 
   // 树洞推广帖查询：屏蔽隔离同样生效；红线——只读 boostUntil，不涉及任何真实 uid
-  private async fetchBoostedAnonPosts(anonId: string | null, take: number) {
+  private async fetchBoostedAnonPosts(anonId: string | null, take: number, communityId: string) {
     const where: Prisma.AnonymousPostWhereInput = {
       status: PostStatus.APPROVED,
+      communityId,
+      community: { is: { status: CommunityStatus.ACTIVE } },
       boostUntil: { gt: new Date() },
     };
     if (anonId) {
@@ -211,6 +269,56 @@ export class SquareService {
         ? { likes: { where: { anonId }, select: { id: true }, take: 1 } }
         : undefined,
     });
+  }
+
+  // ===== 今日上头：近24h 浏览量 TopN（跨 表白墙帖 + 树洞帖，按圈子过滤）=====
+  async todayHit(uid: string, anonId: string | null, q: SquareTodayHitQueryDto): Promise<SquareTodayHitResult> {
+    const limit = Math.min(50, Math.max(1, q.limit ?? 10));
+    const communityId = q.communityId ?? (await this.community.getActiveCommunityId(uid));
+    const rows = await this.community.getTodayHot(communityId, limit);
+    if (rows.length === 0) return { list: [] };
+
+    const postIds = rows.filter((r) => r.targetType === 'post').map((r) => r.targetId);
+    const anonIds = rows.filter((r) => r.targetType === 'anon_post').map((r) => r.targetId);
+    const [posts, anonPosts] = await Promise.all([
+      postIds.length > 0
+        ? this.prisma.post.findMany({
+            where: { id: { in: postIds }, status: PostStatus.APPROVED, visibility: PostVisibility.PUBLIC, deletedAt: null },
+            include: {
+              author: { select: { id: true, nickname: true, avatarUrl: true } },
+              _count: { select: { comments: true } },
+              postLikes: { where: { userId: uid }, select: { id: true }, take: 1 },
+            },
+          })
+        : Promise.resolve([]),
+      anonIds.length > 0
+        ? this.prisma.anonymousPost.findMany({
+            where: { id: { in: anonIds }, status: PostStatus.APPROVED },
+            include: anonId
+              ? { likes: { where: { anonId }, select: { id: true }, take: 1 } }
+              : undefined,
+          })
+        : Promise.resolve([]),
+    ]);
+    const postById = new Map(posts.map((p) => [p.id, p]));
+    const anonById = new Map(anonPosts.map((p) => [p.id, p]));
+    const list: TodayHitItem[] = [];
+    for (const r of rows) {
+      if (r.targetType === 'post') {
+        const p = postById.get(r.targetId);
+        if (p) list.push({ kind: 'post', data: this.toPostVo(p), viewCount: r.viewCount });
+      } else {
+        const a = anonById.get(r.targetId);
+        if (a) list.push({ kind: 'anon_post', data: this.toAnonPostVo(a, anonId), viewCount: r.viewCount });
+      }
+    }
+    return { list };
+  }
+
+  // ===== 广告位 Banner（圈子 + 全局，sortOrder asc）=====
+  async banners(uid: string, communityId?: string) {
+    const cid = communityId ?? (await this.community.getActiveCommunityId(uid));
+    return this.community.listBanners(cid);
   }
 
   // ===== VO 映射 =====

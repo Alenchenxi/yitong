@@ -36,6 +36,11 @@ model User {
   commentLikes CommentLike[]
   searchHistories SearchHistory[]
   jobImpressions JobImpression[]
+  activeCommunityId String?            @map("active_community_id") // 圈子：当前圈子（每用户一个，可切换）
+  activeCommunity   Community?         @relation("CommunityActiveUser", fields: [activeCommunityId], references: [id], onDelete: SetNull)
+  ownedCommunities  Community[]        @relation("CommunityOwner")
+  communityMembers  CommunityMember[]
+  @@index([activeCommunityId])
   @@map("users")
 }
 enum Role {
@@ -113,6 +118,7 @@ model Circle {
 model Post {
   id          String         @id @default(cuid())
   circleId    String         @map("circle_id")
+  communityId String         @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
   authorId    String         @map("author_id")
   content     String
   images      String[]
@@ -133,11 +139,13 @@ model Post {
   editedAt    DateTime?      @map("edited_at")    // P1-10 最后编辑时间
   deletedAt   DateTime?      @map("deleted_at")   // P1-10 作者软删
   circle      Circle         @relation(fields: [circleId], references: [id])
+  community   Community      @relation(fields: [communityId], references: [id], onDelete: Restrict)
   author      User           @relation(fields: [authorId], references: [id])
   topic       Topic?         @relation(fields: [topicId], references: [id])
   postLikes   PostLike[]
   comments    Comment[]
   activityTopics ActivityTopicPost[]
+  @@index([communityId, status, visibility, createdAt])
   @@index([circleId, status, createdAt])
   @@index([status, createdAt])
   @@index([authorId, deletedAt])
@@ -195,16 +203,19 @@ model PostLike {
 
 // ===== 树洞（匿名）=====
 model AnonymousPost {
-  id        String     @id @default(cuid())
-  anonId    String     @map("anon_id")
-  content   String
-  images    String[]
-  mood      String?    @map("mood")   // P0-13 情绪分类：开心/emo/吐槽/求安慰/学习/恋爱/迷茫
-  status    PostStatus @default(PENDING)
-  createdAt DateTime   @default(now()) @map("created_at")
-  likeCount Int        @default(0) @map("like_count")
+  id          String     @id @default(cuid())
+  communityId String     @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
+  anonId      String     @map("anon_id")
+  content     String
+  images      String[]
+  mood        String?    @map("mood")   // P0-13 情绪分类：开心/emo/吐槽/求安慰/学习/恋爱/迷茫
+  status      PostStatus @default(PENDING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  likeCount   Int        @default(0) @map("like_count")
   boostUntil DateTime? @map("boost_until") // 内容推广：付费置顶曝光到期（null=未推广；>now 即推广中）
-  likes    AnonPostLike[]
+  community   Community  @relation(fields: [communityId], references: [id], onDelete: Restrict)
+  likes       AnonPostLike[]
+  @@index([communityId, status, createdAt])
   @@index([createdAt])
   @@index([mood, createdAt])
   @@index([boostUntil])
@@ -551,6 +562,7 @@ enum MerchantStatus {
 model JobPost {
   id           String        @id @default(cuid())
   merchantId   String        @map("merchant_id")
+  communityId  String        @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
   title        String
   description  String
   requirements String?       @map("requirements")                     // P0-19 任职要求（可空，与工作内容分开）
@@ -580,9 +592,11 @@ model JobPost {
   deletedAt    DateTime?     @map("deleted_at")    // M3-07 商家硬删草稿（软删字段，null=未删；list/get 全链路过滤 deletedAt:null）
   createdAt    DateTime      @default(now()) @map("created_at")
   merchant     Merchant      @relation(fields: [merchantId], references: [id])
+  community    Community     @relation(fields: [communityId], references: [id], onDelete: Restrict)
   applications JobApplication[]
   views        JobView[]
   impressions  JobImpression[]
+  @@index([communityId, status, createdAt])
   @@index([status, expireAt])
   @@index([status, createdAt])
   @@index([status, urgent, createdAt])
@@ -790,4 +804,87 @@ enum ModerationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ===== 圈子（Community）=====
+// 说明：圈子是「用户可加入/创建/切换」的社区（非表白墙发帖分类 Circle）。
+// 圈子内承载 表白墙(Post) / 树洞(AnonymousPost) / 兼职(JobPost) 三类内容（三类都按圈子隔离）。
+enum CommunityStatus {
+  ACTIVE
+  DISABLED
+}
+model Community {
+  id          String            @id @default(cuid())
+  name        String
+  logo        String?
+  description String?
+  ownerId     String?           @map("owner_id") // 默认圈子平台所有，nullable；用户创建时=creator
+  status      CommunityStatus   @default(ACTIVE)
+  memberCount Int               @default(0) @map("member_count") // 成员数（join/leave 时维护）
+  postCount   Int               @default(0) @map("post_count")   // 动态数 = 表白墙帖数（Post create/软删时维护）
+  createdAt   DateTime          @default(now()) @map("created_at")
+  owner       User?             @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  activeUsers User[]            @relation("CommunityActiveUser")
+  members     CommunityMember[]
+  posts       Post[]
+  anonPosts   AnonymousPost[]
+  jobPosts    JobPost[]
+  banners     Banner[]
+  @@index([status, createdAt])
+  @@index([status, memberCount])
+  @@map("communities")
+}
+
+enum CommunityMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+model CommunityMember {
+  id          String              @id @default(cuid())
+  communityId String              @map("community_id")
+  userId      String              @map("user_id")
+  role        CommunityMemberRole @default(MEMBER)
+  joinedAt    DateTime            @default(now()) @map("joined_at")
+  community   Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([communityId, userId])
+  @@index([userId, joinedAt])
+  @@map("community_members")
+}
+
+// ===== 广告位（Banner，轮播图）=====
+enum BannerStatus {
+  ENABLED
+  DISABLED
+}
+model Banner {
+  id          String       @id @default(cuid())
+  title       String
+  imageUrl    String       @map("image_url")
+  linkUrl     String?      @map("link_url")     // 可空：广告跳转链接
+  communityId String?      @map("community_id") // null = 全局轮播（所有圈子可见）
+  sortOrder   Int          @default(0) @map("sort_order")
+  status      BannerStatus @default(ENABLED)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  community   Community?   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  @@index([communityId, status, sortOrder])
+  @@map("banners")
+}
+
+// ===== 浏览量（ContentView，去重记录）=====
+// 对齐 JobImpression 模式：同 (target, viewer, hourBucket) 只记 1 次（防止刷量）。
+// 今日上头 = 近24h 本表行数按 target 聚合 TopN。
+// 红线：anon_post 的 viewerKey 用 anonId，绝不存真实 uid（本表无 userId 列）。
+model ContentView {
+  id         String   @id @default(cuid())
+  targetType String   @map("target_type") // 'post' | 'anon_post'
+  targetId   String   @map("target_id")
+  viewerKey  String   @map("viewer_key")  // post→uid；anon_post→anonId
+  hourBucket Int      @map("hour_bucket") // Math.floor(Date.now()/3_600_000)
+  createdAt  DateTime @default(now()) @map("created_at")
+  @@unique([targetType, targetId, viewerKey, hourBucket])
+  @@index([targetType, targetId, createdAt])
+  @@index([createdAt]) // 近24h 聚合加速
+  @@map("content_views")
 }

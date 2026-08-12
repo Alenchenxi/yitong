@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { JobPostStatus, MerchantStatus, PostStatus, Prisma, Role } from '@prisma/client';
+import { BannerStatus, CommunityStatus, JobPostStatus, MerchantStatus, PostStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfessionService } from '../confession/confession.service';
@@ -1009,5 +1009,98 @@ export class AdminService {
       select: { id: true, nickname: true, avatarUrl: true },
     });
     return users;
+  }
+
+  // ===== Banner 广告位管理 =====
+  async listBanners(communityId?: string, keyword?: string) {
+    return this.prisma.banner.findMany({
+      where: {
+        ...(communityId ? { communityId } : {}),
+        ...(keyword ? { title: { contains: keyword, mode: 'insensitive' } } : {}),
+      },
+      orderBy: [{ communityId: 'asc' }, { sortOrder: 'asc' }],
+      include: { community: { select: { name: true } } },
+    });
+  }
+  async createBanner(dto: {
+    title: string;
+    imageUrl: string;
+    linkUrl?: string | null;
+    communityId?: string | null;
+    sortOrder?: number;
+  }) {
+    return this.prisma.banner.create({
+      data: {
+        title: dto.title,
+        imageUrl: dto.imageUrl,
+        linkUrl: dto.linkUrl ?? null,
+        communityId: dto.communityId ?? null,
+        sortOrder: dto.sortOrder ?? 0,
+        status: BannerStatus.ENABLED,
+      },
+    });
+  }
+  async updateBanner(
+    id: string,
+    dto: Partial<{
+      title: string;
+      imageUrl: string;
+      linkUrl: string | null;
+      communityId: string | null;
+      sortOrder: number;
+      status: string;
+    }>,
+  ) {
+    const existing = await this.prisma.banner.findUnique({ where: { id } });
+    if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
+    const data: Prisma.BannerUpdateInput = {};
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.imageUrl !== undefined) data.imageUrl = dto.imageUrl;
+    if (dto.linkUrl !== undefined) data.linkUrl = dto.linkUrl;
+    if (dto.communityId !== undefined) {
+      data.community = dto.communityId ? { connect: { id: dto.communityId } } : { disconnect: true };
+    }
+    if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
+    if (dto.status !== undefined) data.status = dto.status === 'DISABLED' ? BannerStatus.DISABLED : BannerStatus.ENABLED;
+    return this.prisma.banner.update({ where: { id }, data });
+  }
+  async deleteBanner(id: string) {
+    const existing = await this.prisma.banner.findUnique({ where: { id } });
+    if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
+    await this.prisma.banner.delete({ where: { id } });
+    return { id, deleted: true };
+  }
+  async toggleBanner(id: string, enabled: boolean) {
+    const existing = await this.prisma.banner.findUnique({ where: { id } });
+    if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
+    return this.prisma.banner.update({
+      where: { id },
+      data: { status: enabled ? BannerStatus.ENABLED : BannerStatus.DISABLED },
+    });
+  }
+
+  // ===== 圈子（Community）管理 =====
+  async listCommunities(status?: string, keyword?: string) {
+    return this.prisma.community.findMany({
+      where: {
+        ...(status ? { status: status === 'DISABLED' ? CommunityStatus.DISABLED : CommunityStatus.ACTIVE } : {}),
+        ...(keyword ? { name: { contains: keyword, mode: 'insensitive' } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+  async disableCommunity(id: string) {
+    const existing = await this.prisma.community.findUnique({ where: { id } });
+    if (!existing) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    const updated = await this.prisma.community.update({ where: { id }, data: { status: CommunityStatus.DISABLED } });
+    this.confession.invalidateFeedCache(); // 圈子禁用 → 清表白墙 feed 缓存（communityId 作用域内容即时隐藏）
+    return updated;
+  }
+  async enableCommunity(id: string) {
+    const existing = await this.prisma.community.findUnique({ where: { id } });
+    if (!existing) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    const updated = await this.prisma.community.update({ where: { id }, data: { status: CommunityStatus.ACTIVE } });
+    this.confession.invalidateFeedCache();
+    return updated;
   }
 }

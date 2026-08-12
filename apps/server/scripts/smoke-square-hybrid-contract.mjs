@@ -96,7 +96,8 @@ await contract('1.1 GET /square/feed?sort=recommend returns mixed post + anon_po
   const items = r.body.data?.list ?? [];
   const kinds = new Set(items.map((i) => i.kind));
   for (const k of kinds) {
-    if (!['post', 'anon_post'].includes(k)) throw new Error(`unexpected kind: ${k}`);
+    // CR-002 圈子：mixed feed 新增 job_post 合法 kind
+    if (!['post', 'anon_post', 'job_post'].includes(k)) throw new Error(`unexpected kind: ${k}`);
   }
   // 至少应有 list 数组（可能为空数据）
   if (!Array.isArray(items)) throw new Error('data.list is not an array');

@@ -1,0 +1,61 @@
+/* 兼职岗位卡片（广场 圈子动态 混合流用） */
+.job-card {
+  background: var(--yt-card);
+  border-radius: 16rpx;
+  border: 1rpx solid var(--yt-border);
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+.title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--yt-text-main);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.salary {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--yt-primary-dark);
+  flex-shrink: 0;
+}
+.badges {
+  margin-top: 12rpx;
+  display: flex;
+  gap: 12rpx;
+}
+.bd {
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+}
+.bd-urgent {
+  background: var(--yt-primary-lighter);
+  color: var(--yt-primary-dark);
+}
+.bd-online {
+  background: var(--yt-disabled-bg);
+  color: var(--yt-text-sub);
+}
+.shop {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--yt-text-sub);
+}
+.meta {
+  margin-top: 12rpx;
+  display: flex;
+  gap: 24rpx;
+}
+.meta-item {
+  font-size: 24rpx;
+  color: var(--yt-text-sub);
+}

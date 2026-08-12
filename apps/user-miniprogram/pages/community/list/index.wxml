@@ -1,0 +1,50 @@
+<view class="page">
+  <!-- 顶部：标题 + 创建圈子入口 -->
+  <view class="topbar">
+    <text class="title">圈子</text>
+    <view class="create-btn" bindtap="goCreate">＋ 创建圈子</view>
+  </view>
+
+  <!-- 我的圈子 -->
+  <view class="section">
+    <view class="section-title">我的圈子</view>
+    <view wx:if="{{myCommunities.length === 0 && !loading}}" class="yt-empty">
+      <view class="yt-empty-emoji">🏠</view>
+      <view class="yt-empty-text">还没有加入圈子，去下面找找吧</view>
+    </view>
+    <view class="card yt-card" wx:for="{{myCommunities}}" wx:key="id" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onSwitch">
+      <image wx:if="{{item.logo}}" class="logo" src="{{item.logo}}" mode="aspectFill" />
+      <view wx:else class="logo logo-fallback">{{item.name[0]}}</view>
+      <view class="info">
+        <view class="name-row">
+          <text class="name">{{item.name}}</text>
+          <text class="active-tag" wx:if="{{item.id === activeId}}">当前</text>
+        </view>
+        <view class="stats">动态 {{item.postCount}} · 成员 {{item.memberCount}}</view>
+      </view>
+      <view class="switch-tip">{{item.id === activeId ? '' : '切换'}}</view>
+    </view>
+  </view>
+
+  <!-- 全部圈子 -->
+  <view class="section">
+    <view class="section-title">发现圈子</view>
+    <view class="card yt-card" wx:for="{{allCommunities}}" wx:key="id" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="{{item.isMember ? 'onSwitch' : 'onJoin'}}">
+      <image wx:if="{{item.logo}}" class="logo" src="{{item.logo}}" mode="aspectFill" />
+      <view wx:else class="logo logo-fallback">{{item.name[0]}}</view>
+      <view class="info">
+        <view class="name-row">
+          <text class="name">{{item.name}}</text>
+        </view>
+        <view class="stats">动态 {{item.postCount}} · 成员 {{item.memberCount}}</view>
+      </view>
+      <view class="join-tip">{{item.isMember ? (item.id === activeId ? '当前' : '切换') : '加入'}}</view>
+    </view>
+    <view class="yt-empty" wx:if="{{!loading && allCommunities.length === 0}}">
+      <view class="yt-empty-emoji">🚀</view>
+      <view class="yt-empty-text">还没有圈子，创建第一个吧</view>
+    </view>
+  </view>
+
+  <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
+</view>

@@ -1,9 +1,10 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { Prisma, PostStatus } from '@prisma/client';
+import { CommunityStatus, Prisma, PostStatus } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import { CommunityService } from '../community/community.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { FeedQueryDto } from './dto/feed-query.dto';
@@ -65,8 +66,8 @@ function invalidateFeedCache() {
   feedCache.clear();
 }
 
-function feedCacheKey(uid: string, limit: number, sort: string): string {
-  return `${uid}:${limit}:${sort}`;
+function feedCacheKey(uid: string, limit: number, sort: string, communityId?: string): string {
+  return `${uid}:${limit}:${sort}:${communityId ?? 'all'}`;
 }
 
 // 游标 = base64url JSON { t: createdAtIso, id }，用于 (createdAt DESC, id DESC) 的稳定分页
@@ -114,6 +115,7 @@ export class ConfessionService {
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
     private readonly notification: NotificationService,
+    private readonly community: CommunityService,
   ) {}
 
   listCircles() {
@@ -172,22 +174,32 @@ export class ConfessionService {
 
     const isAnonymous = !!dto.isAnonymous && !isDraftOrPrivate; // 匿名仅用于公开发布
 
-    const post = await this.prisma.post.create({
-      data: {
-        circleId,
-        authorId: uid,
-        content: dto.content,
-        images: dto.images ?? [],
-        tags: dto.tags ?? [],
-        isAnonymous,
-        anonName: isAnonymous ? generateAnonName() : null,
-        videoUrl: dto.videoUrl ?? null,
-        videoCover: dto.videoCover ?? null,
-        status: PostStatus.APPROVED,
-        visibility,
-        publishAt,
-      },
-      include: postInclude(uid),
+    // 圈子：发帖归属当前圈子（单真相源 = active community）+ 动态数 postCount++
+    const communityId = await this.community.getActiveCommunityId(uid);
+    const post = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.post.create({
+        data: {
+          circleId,
+          communityId,
+          authorId: uid,
+          content: dto.content,
+          images: dto.images ?? [],
+          tags: dto.tags ?? [],
+          isAnonymous,
+          anonName: isAnonymous ? generateAnonName() : null,
+          videoUrl: dto.videoUrl ?? null,
+          videoCover: dto.videoCover ?? null,
+          status: PostStatus.APPROVED,
+          visibility,
+          publishAt,
+        },
+        include: postInclude(uid),
+      });
+      await tx.community.update({
+        where: { id: communityId },
+        data: { postCount: { increment: 1 } },
+      });
+      return created;
     });
     if (!isScheduled) invalidateFeedCache();
     return this.toPostVo(post);
@@ -196,17 +208,18 @@ export class ConfessionService {
   async feed(uid: string, query: FeedQueryDto): Promise<FeedResult> {
     const limit = query.limit ?? 20;
     const sort = query.sort ?? 'latest';
-    const cacheKey = feedCacheKey(uid, limit, sort);
-    // 仅首页（无 cursor）发现流走 5 分钟内存缓存；按用户+sort 分桶，避免 liked 状态串用
+    const communityId = query.communityId;
+    const cacheKey = feedCacheKey(uid, limit, sort, communityId);
+    // 仅首页（无 cursor）发现流走 5 分钟内存缓存；按用户+sort+圈子 分桶，避免 liked 状态串用
     if (!query.cursor && limit <= 20) {
       const cached = feedCache.get(cacheKey);
       if (cached && cached.expiresAt > Date.now()) return cached.data;
     }
     const result = sort === 'latest'
-      ? await this.queryPosts(uid, query, undefined)
+      ? await this.queryPosts(uid, query, undefined, communityId)
       : sort === 'follow'
         ? await this.queryFollowPosts(uid, query)
-        : await this.queryHotPosts(uid, query, undefined, sort);
+        : await this.queryHotPosts(uid, query, undefined, communityId, sort);
     if (!query.cursor && limit <= 20) {
       feedCache.set(cacheKey, { data: result, expiresAt: Date.now() + FEED_CACHE_TTL_MS });
     }
@@ -318,6 +331,8 @@ export class ConfessionService {
       include: postInclude(uid),
     });
     if (!post) throw new BizException(20003, '帖子不存在');
+    // 圈子：浏览量埋点（ContentView 去重，fire-and-forget；今日上头 = 近24h 聚合）
+    this.community.recordContentView('post', id, uid).catch(() => undefined);
     return this.toPostVo(post);
   }
 
@@ -358,11 +373,17 @@ export class ConfessionService {
   async deletePost(uid: string, postId: string) {
     const post = await this.prisma.post.findFirst({
       where: { id: postId, deletedAt: null },
-      select: { id: true, authorId: true },
+      select: { id: true, authorId: true, communityId: true },
     });
     if (!post) throw new BizException(20003, '帖子不存在', HttpStatus.NOT_FOUND);
     if (post.authorId !== uid) throw new BizException(10003, '只有作者可删除', HttpStatus.FORBIDDEN);
     await this.prisma.post.update({ where: { id: postId }, data: { deletedAt: new Date() } });
+    // 圈子动态数 postCount--（best-effort）
+    if (post.communityId) {
+      this.prisma.community
+        .update({ where: { id: post.communityId }, data: { postCount: { decrement: 1 } } })
+        .catch(() => undefined);
+    }
     invalidateFeedCache();
     return { deleted: true };
   }
@@ -688,6 +709,7 @@ export class ConfessionService {
     uid: string,
     query: FeedQueryDto,
     circleId: string | undefined,
+    communityId?: string,
   ): Promise<FeedResult> {
     const limit = query.limit ?? 20;
     const cursor = query.cursor ? decodeCursor(query.cursor) : null;
@@ -709,6 +731,11 @@ export class ConfessionService {
       AND: [boostInactive],
     };
     if (circleId) where.circleId = circleId;
+    if (communityId) {
+      where.communityId = communityId;
+      // 圈子禁用则内容不可见（广场作用域下 admin disable 后 feed 空）
+      where.community = { is: { status: CommunityStatus.ACTIVE } };
+    }
     if (cursor) {
       // 与游标条件 AND 嵌套（不能扁平化进同一 OR，否则推广中帖会因命中游标漏入）
       where.AND = [
@@ -728,6 +755,7 @@ export class ConfessionService {
       visibility: 'PUBLIC',
       pinned: true,
       ...(circleId ? { circleId } : {}),
+      ...(communityId ? { communityId, community: { is: { status: CommunityStatus.ACTIVE } } } : {}),
     };
 
     const boostedWhere: Prisma.PostWhereInput = {
@@ -737,6 +765,7 @@ export class ConfessionService {
       pinned: false,
       boostUntil: { gt: now },
       ...(circleId ? { circleId } : {}),
+      ...(communityId ? { communityId, community: { is: { status: CommunityStatus.ACTIVE } } } : {}),
     };
 
     const [posts, pinnedPosts, boostedPosts] = await Promise.all([
@@ -778,6 +807,7 @@ export class ConfessionService {
     uid: string,
     query: FeedQueryDto,
     circleId: string | undefined,
+    communityId: string | undefined,
     sort: 'hot' | 'recommend',
   ): Promise<FeedResult> {
     const limit = query.limit ?? 20;
@@ -787,6 +817,7 @@ export class ConfessionService {
       deletedAt: null,
       visibility: 'PUBLIC',
       ...(circleId ? { circleId } : {}),
+      ...(communityId ? { communityId, community: { is: { status: CommunityStatus.ACTIVE } } } : {}),
     };
     // 三档合并：置顶 -> 推广中 -> 普通（各档内部按热度排序），再 slice 到 limit
     const orderBy: Prisma.PostOrderByWithRelationInput[] =

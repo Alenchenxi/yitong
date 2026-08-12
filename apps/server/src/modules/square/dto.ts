@@ -19,4 +19,23 @@ export class SquareFeedQueryDto {
   @IsOptional()
   @IsIn(['recommend', 'latest'])
   sort?: SquareFeedSort = 'recommend';
+
+  // 圈子（Community）作用域：缺省取用户当前圈子
+  @IsOptional()
+  @IsString()
+  communityId?: string;
+}
+
+// 今日上头：近24h 浏览量 TopN（默认 10，max 50）
+export class SquareTodayHitQueryDto {
+  @IsOptional()
+  @IsString()
+  communityId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number = 10;
 }

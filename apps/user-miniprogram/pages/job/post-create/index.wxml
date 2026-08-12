@@ -143,6 +143,17 @@
     </view>
   </view>
 
+  <!-- 归属圈子 -->
+  <view class="field" wx:if="{{communities.length > 0}}">
+    <view class="label">发布圈子</view>
+    <picker range="{{communities}}" range-key="name" value="{{selectedCommunityIndex}}" bindchange="onPickCommunity">
+      <view class="readonly-row">
+        <text class="value">{{selectedCommunityName || '选择圈子'}}</text>
+        <text class="link">选择</text>
+      </view>
+    </picker>
+  </view>
+
   <view class="action">
     <button
       class="btn-primary {{submitting ? 'disabled' : ''}}"

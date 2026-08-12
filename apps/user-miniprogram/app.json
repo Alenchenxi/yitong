@@ -44,6 +44,8 @@
     "pages/treehole/quiz/index",
     "pages/treehole/matches/index",
     "pages/admin/index",
+    "pages/community/list/index",
+    "pages/community/create/index",
     "pages/notifications/index",
     "pages/favorites/index",
     "pages/referral/index",

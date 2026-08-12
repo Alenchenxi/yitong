@@ -1,0 +1,51 @@
+.page { padding: 32rpx 24rpx; }
+.logo-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 40rpx;
+}
+.logo {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 28rpx;
+}
+.logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--yt-disabled-bg);
+  color: var(--yt-text-sub);
+  font-size: 56rpx;
+  border: 1rpx dashed var(--yt-border);
+}
+.logo-tip { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 16rpx; }
+.field { margin-bottom: 32rpx; }
+.label { font-size: 28rpx; color: var(--yt-text-main); font-weight: 600; display: block; margin-bottom: 12rpx; }
+.input {
+  background: var(--yt-card);
+  border: 1rpx solid var(--yt-border);
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+}
+.textarea {
+  background: var(--yt-card);
+  border: 1rpx solid var(--yt-border);
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 140rpx;
+}
+.submit-btn {
+  margin-top: 48rpx;
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 30rpx;
+  border-radius: 999rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+}
+.submit-btn[disabled] { opacity: 0.6; }

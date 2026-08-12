@@ -140,6 +140,8 @@ export function createJobPost(data: {
   locationLng?: number;
   locationLat?: number;
   locationCity?: string;
+  // 圈子：发岗归属圈子（可选；缺省服务端取商家当前圈子）
+  communityId?: string;
 }) {
   return request<JobPostVoExt>({ url: '/job-posts', method: 'POST', data });
 }
@@ -160,6 +162,8 @@ export interface JobListFilter {
   sort?: 'nearest';
   userLng?: number;
   userLat?: number;
+  // 圈子：按圈子过滤岗位（广场兼职 tab 用）
+  communityId?: string;
 }
 
 export function listJobPosts(filter: JobListFilter = {}) {
@@ -177,6 +181,7 @@ export function listJobPosts(filter: JobListFilter = {}) {
   if (filter.sort) params.push(`sort=${filter.sort}`);
   if (filter.userLng !== undefined) params.push(`userLng=${filter.userLng}`);
   if (filter.userLat !== undefined) params.push(`userLat=${filter.userLat}`);
+  if (filter.communityId) params.push(`communityId=${encodeURIComponent(filter.communityId)}`);
   params.push('limit=20');
   if (filter.cursor) params.push(`cursor=${encodeURIComponent(filter.cursor)}`);
   return request<JobListResult>({ url: `/job-posts?${params.join('&')}` });

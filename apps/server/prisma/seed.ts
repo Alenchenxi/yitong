@@ -9,6 +9,20 @@ const DEFAULT_CIRCLES = [
   { name: '日常闲聊', icon: '💬' },
 ];
 
+// 圈子（Community）种子：默认圈子 id 固定 cm_default（迁移回填引用同一 id），幂等按 id 查重
+const DEFAULT_COMMUNITY = {
+  id: 'cm_default',
+  name: '综合大学',
+  status: 'ACTIVE' as const,
+};
+
+// 广告位占位 Banner（幂等按 id；prod 由管理端换真图）
+const DEFAULT_BANNERS = [
+  { id: 'bn_seed_1', title: '欢迎来到综合大学圈', imageUrl: 'https://mock-minio.example.com/banners/seed-1.png', communityId: 'cm_default', sortOrder: 1 },
+  { id: 'bn_seed_2', title: '新学期招新活动', imageUrl: 'https://mock-minio.example.com/banners/seed-2.png', communityId: 'cm_default', sortOrder: 2 },
+  { id: 'bn_seed_g1', title: '平台公告：文明发言', imageUrl: 'https://mock-minio.example.com/banners/seed-global-1.png', communityId: null, sortOrder: 1 },
+];
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -21,6 +35,24 @@ async function main() {
   }
   // eslint-disable-next-line no-console
   console.log(`seed: ${created}/${DEFAULT_CIRCLES.length} circles created`);
+
+  // 圈子（Community）：默认圈子（迁移已建则跳过）
+  const existsCommunity = await prisma.community.findUnique({ where: { id: DEFAULT_COMMUNITY.id } });
+  if (!existsCommunity) {
+    await prisma.community.create({ data: DEFAULT_COMMUNITY });
+    console.log(`seed: community ${DEFAULT_COMMUNITY.name} created`);
+  }
+  // 占位 Banner
+  let createdBanners = 0;
+  for (const b of DEFAULT_BANNERS) {
+    const exists = await prisma.banner.findUnique({ where: { id: b.id } });
+    if (exists) continue;
+    await prisma.banner.create({
+      data: { id: b.id, title: b.title, imageUrl: b.imageUrl, linkUrl: null, communityId: b.communityId, sortOrder: b.sortOrder, status: 'ENABLED' },
+    });
+    createdBanners += 1;
+  }
+  if (createdBanners > 0) console.log(`seed: ${createdBanners}/${DEFAULT_BANNERS.length} banners created`);
 
   // 管理员预设 openid 绑定：开发期用 mock（mock code2session 对 code='admin' 返回 'mock_admin'）；
   // 上线前设环境变量 ADMIN_OPENID 为真实管理员 openid。

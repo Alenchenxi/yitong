@@ -6,7 +6,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import type { MulterFile } from './types';
 
 // 允许的上传类型（桶内文件夹名）：common 兜底，posts 表白墙帖，anon 树洞匿名帖，avatars 头像，merchant 商家资质，voice 语音消息
-export const ALLOWED_UPLOAD_TYPES = ['common', 'posts', 'anon', 'avatars', 'merchant', 'voice'] as const;
+export const ALLOWED_UPLOAD_TYPES = ['common', 'posts', 'anon', 'avatars', 'merchant', 'voice', 'community', 'banner'] as const;
 export type UploadType = (typeof ALLOWED_UPLOAD_TYPES)[number];
 
 // MinIO 图片上传：单桶，按 type 分文件夹（type/date/uuid.ext）。
