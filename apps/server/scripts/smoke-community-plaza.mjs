@@ -106,6 +106,11 @@ async function cleanup(prisma) {
     r = await prisma.community.deleteMany({ where: { id: { in: cids } } });
     console.log(`  communities deleteMany: ${r.count}`);
   }
+  // merchant 必须先于 user 删除（merchant.userId 无级联，漏删会在 users 删除后遗留孤儿 merchant）
+  if (created.merchantIds.length) {
+    let r = await prisma.merchant.deleteMany({ where: { id: { in: created.merchantIds } } });
+    console.log(`  merchants deleteMany: ${r.count}`);
+  }
   if (created.userIds.length) {
     const uids = created.userIds;
     let r = await prisma.notification.deleteMany({ where: { userId: { in: uids } } });
@@ -120,6 +125,8 @@ async function cleanup(prisma) {
   // 自验证
   const leftover = await prisma.community.count({ where: { id: { in: created.communityIds } } });
   assert(leftover === 0, '自验证：测试圈子已清空');
+  const merchantLeft = await prisma.merchant.count({ where: { id: { in: created.merchantIds } } });
+  assert(merchantLeft === 0, '自验证：测试商家已清空');
   console.log('[cleanup] 清理完成');
 }
 
