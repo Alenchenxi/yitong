@@ -185,8 +185,20 @@ Page({
     wx.navigateTo({ url: '/pages/content-search/index' });
   },
 
+  // FAB：先弹底部菜单选发帖类型（表白墙 / 树洞），再跳对应发布页
   goCreate() {
-    wx.navigateTo({ url: '/pages/post-create/index' });
+    wx.showActionSheet({
+      itemList: ['表白墙', '树洞'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          // 表白墙 → 表白墙发布页（发帖分类）
+          wx.navigateTo({ url: '/pages/post-create/index' });
+        } else if (res.tapIndex === 1) {
+          // 树洞 → 树洞发布页（匿名身份）
+          wx.navigateTo({ url: '/pages/treehole/post/index' });
+        }
+      },
+    });
   },
 
   // 按 kind 分发跳详情（anon_post 用于树洞，job_post 岗位；post 兜底表白墙）
