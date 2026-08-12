@@ -44,6 +44,41 @@
   border-color: var(--yt-primary);
   font-weight: 600;
 }
+.picker {
+  /* 复用 .input 盒子，文本垂直居中 */
+  display: flex;
+  align-items: center;
+  min-height: 44rpx;
+}
+.placeholder { color: var(--yt-text-sub); }
+.locked-location {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: var(--yt-text-main);
+  background: var(--yt-primary-lighter);
+  padding: 16rpx 24rpx;
+  border-radius: 12rpx;
+}
+.candidates {
+  margin-top: 16rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 12rpx;
+  background: var(--yt-card);
+  max-height: 600rpx;
+  overflow-y: auto;
+}
+.candidate {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid var(--yt-border);
+}
+.candidate:last-child { border-bottom: none; }
+.candidate-icon { font-size: 28rpx; flex: 0 0 auto; }
+.candidate-info { flex: 1 1 auto; min-width: 0; }
+.candidate-address { font-size: 28rpx; color: var(--yt-text-main); }
+.candidate-city { font-size: 22rpx; color: var(--yt-text-sub); padding-top: 4rpx; }
 .textarea {
   background: var(--yt-card);
   border: 1rpx solid var(--yt-border);
