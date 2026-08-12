@@ -9,6 +9,9 @@ export interface CommunityVo {
   name: string;
   logo: string | null;
   description: string | null;
+  category: string;
+  region: string | null;
+  location: string | null;
   memberCount: number;
   postCount: number;
   status: CommunityStatusVo;

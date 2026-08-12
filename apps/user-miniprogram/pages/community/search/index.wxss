@@ -1,0 +1,89 @@
+.page { padding: 20rpx 24rpx 40rpx; }
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+.input {
+  flex: 1;
+  background: var(--yt-disabled-bg);
+  border-radius: 999rpx;
+  padding: 12rpx 24rpx;
+  font-size: 28rpx;
+}
+.search-btn {
+  font-size: 28rpx;
+  color: var(--yt-primary-dark);
+  font-weight: 600;
+}
+
+.section { margin-top: 24rpx; }
+.section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.section-title { font-size: 26rpx; color: var(--yt-text-main); font-weight: 600; }
+.section-action { font-size: 24rpx; color: var(--yt-text-sub); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.chip {
+  padding: 10rpx 24rpx;
+  background: var(--yt-disabled-bg);
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  color: var(--yt-text-sub);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+}
+.logo {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 20rpx;
+  flex-shrink: 0;
+}
+.logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 36rpx;
+  font-weight: 600;
+}
+.info { flex: 1; min-width: 0; }
+.name-row { display: flex; align-items: center; gap: 12rpx; }
+.name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--yt-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.joined-tag {
+  font-size: 20rpx;
+  color: var(--yt-primary-dark);
+  background: var(--yt-primary-lighter);
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+.stats { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 6rpx; }
+.action {
+  font-size: 24rpx;
+  color: var(--yt-primary-dark);
+  background: var(--yt-primary-lighter);
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.empty { text-align: center; color: var(--yt-text-sub); padding: 40rpx 0; font-size: 24rpx; }
+.loading { text-align: center; color: var(--yt-text-sub); padding: 24rpx 0; font-size: 24rpx; }

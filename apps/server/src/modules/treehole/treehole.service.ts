@@ -263,13 +263,16 @@ export class TreeholeService {
 
   async listPosts(
     anonId: string,
-    opts: { cursor?: string; limit?: number; sort?: 'latest' | 'recommend'; mood?: string; communityId?: string } = {},
+    opts: { cursor?: string; limit?: number; sort?: 'latest' | 'recommend'; mood?: string; communityId?: string; keyword?: string } = {},
   ) {
     const limit = opts.limit ?? 20;
     const baseWhere: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED };
     if (opts.mood) baseWhere.mood = opts.mood;
-    if (opts.communityId) {
-      baseWhere.communityId = opts.communityId;
+    if (opts.keyword?.trim()) baseWhere.content = { contains: opts.keyword.trim(), mode: 'insensitive' };
+    // 读路径圈子兜底：缺省解析用户当前圈子，未加入兜底默认圈（不抛 80014）
+    const communityId = opts.communityId ?? (await this.resolveListCommunity(anonId));
+    if (communityId) {
+      baseWhere.communityId = communityId;
       // 圈子禁用则树洞帖不可见（广场作用域）
       baseWhere.community = { is: { status: CommunityStatus.ACTIVE } };
     }
@@ -331,6 +334,16 @@ export class TreeholeService {
     const nextCursor = hasMore && last ? last.createdAt.toISOString() : null;
     const list = opts.cursor ? slice : [...boostedPosts, ...slice];
     return { list: list.map((p) => this.toVo(p)), nextCursor, hasMore };
+  }
+
+  /** 列表圈子缺省解析：anonId -> userId -> 当前圈子，未加入/无画像兜底默认圈（读路径不抛 80014） */
+  private async resolveListCommunity(anonId: string): Promise<string> {
+    const profile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { userId: true },
+    });
+    if (!profile) return DEFAULT_COMMUNITY_ID;
+    return this.community.resolveFeedCommunityId(profile.userId);
   }
 
   // 我的匿名帖：按 userId -> anonId 查（用 access token，非 anon）

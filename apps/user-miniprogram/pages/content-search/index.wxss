@@ -1,0 +1,60 @@
+.page { padding: 20rpx 24rpx 40rpx; }
+
+.search-bar { display: flex; align-items: center; gap: 16rpx; margin-bottom: 20rpx; }
+.input {
+  flex: 1;
+  background: var(--yt-disabled-bg);
+  border-radius: 999rpx;
+  padding: 12rpx 24rpx;
+  font-size: 28rpx;
+}
+.search-btn { font-size: 28rpx; color: var(--yt-primary-dark); font-weight: 600; }
+
+.tabs { display: flex; gap: 32rpx; padding: 12rpx 8rpx; border-bottom: 1rpx solid var(--yt-border); }
+.tab { font-size: 28rpx; color: var(--yt-text-sub); padding: 8rpx 0; position: relative; }
+.tab.active { color: var(--yt-text-main); font-weight: 600; }
+.tab.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 32rpx;
+  height: 4rpx;
+  background: var(--yt-primary);
+  border-radius: 2rpx;
+}
+
+.section { margin-top: 24rpx; }
+.section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.section-title { font-size: 26rpx; color: var(--yt-text-main); font-weight: 600; }
+.section-action { font-size: 24rpx; color: var(--yt-text-sub); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.chip {
+  padding: 10rpx 24rpx;
+  background: var(--yt-disabled-bg);
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  color: var(--yt-text-sub);
+}
+
+.post { background: var(--yt-card); border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.post-badge {
+  display: inline-block;
+  font-size: 20rpx;
+  color: var(--yt-text-sub);
+  background: var(--yt-disabled-bg);
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  margin-bottom: 8rpx;
+}
+.post-content { font-size: 28rpx; line-height: 1.6; color: var(--yt-text-main); word-break: break-word; }
+.post-meta { font-size: 22rpx; color: var(--yt-text-sub); margin-top: 12rpx; }
+
+.job { background: var(--yt-card); border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.job-title { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); }
+.job-meta { font-size: 22rpx; color: var(--yt-text-sub); margin-top: 12rpx; }
+
+.empty { text-align: center; color: var(--yt-text-sub); padding: 40rpx 0; font-size: 24rpx; }
+.loading { text-align: center; color: var(--yt-text-sub); padding: 24rpx 0; font-size: 24rpx; }

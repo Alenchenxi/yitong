@@ -1,0 +1,46 @@
+<view class="page">
+  <view class="search-bar">
+    <input class="input" placeholder="搜索圈子" value="{{q}}" bindinput="onInput" bindconfirm="onConfirm" confirm-type="search" focus="{{true}}" />
+    <text class="search-btn" bindtap="runSearch">搜索</text>
+  </view>
+
+  <!-- 无搜索：历史 -->
+  <block wx:if="{{!hasSearched}}">
+    <view class="section" wx:if="{{history.length}}">
+      <view class="section-head">
+        <text class="section-title">历史搜索</text>
+        <text class="section-action" bindtap="clearHistoryTap">清空</text>
+      </view>
+      <view class="chips">
+        <text class="chip" wx:for="{{history}}" wx:key="*this" data-kw="{{item}}" catchtap="tapHistory">{{item}}</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- 搜索结果 -->
+  <block wx:else>
+    <view
+      class="card yt-card"
+      wx:for="{{results}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      data-name="{{item.name}}"
+      data-member="{{item.isMember}}"
+      bindtap="onTapResult"
+    >
+      <image wx:if="{{item.logo}}" class="logo" src="{{item.logo}}" mode="aspectFill" />
+      <view wx:else class="logo logo-fallback">{{item.name[0]}}</view>
+      <view class="info">
+        <view class="name-row">
+          <text class="name">{{item.name}}</text>
+          <text class="joined-tag" wx:if="{{item.isMember}}">已加入</text>
+        </view>
+        <view class="stats">{{item.memberCount}} 成员 · 动态 {{item.postCount}}</view>
+      </view>
+      <view class="action">{{item.isMember ? '切换' : '加入'}}</view>
+    </view>
+    <view class="empty" wx:if="{{!loading && results.length === 0}}">无结果</view>
+  </block>
+
+  <view class="loading" wx:if="{{loading}}">搜索中…</view>
+</view>

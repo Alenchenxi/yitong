@@ -1,0 +1,21 @@
+<view class="page">
+  <view class="head">
+    <view class="head-title">选择一个圈子</view>
+    <view class="head-sub">加入圈子，和同学一起玩</view>
+    <view class="create-btn" bindtap="goCreate">＋ 创建圈子</view>
+  </view>
+
+  <view class="list">
+    <view class="card yt-card" wx:for="{{circles}}" wx:key="id" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onJoin">
+      <image wx:if="{{item.logo}}" class="logo" src="{{item.logo}}" mode="aspectFill" />
+      <view wx:else class="logo logo-fallback">{{item.name[0]}}</view>
+      <view class="info">
+        <view class="name">{{item.name}}</view>
+        <view class="stats">{{item.memberCount}} 成员</view>
+      </view>
+      <view class="join-tip">加入</view>
+    </view>
+  </view>
+
+  <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
+</view>

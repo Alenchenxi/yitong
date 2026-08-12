@@ -847,6 +847,9 @@ model Community {
   name        String
   logo        String?
   description String?
+  category    String            @default("校园") // 圈子类型（广场左侧分类：校园/兴趣/生活/兼职）
+  region      String?                            // 所在地区（城市/校区，仅展示，广场不过滤）
+  location    String?                            // 所在地点（具体地址/POI，仅展示）
   ownerId     String?           @map("owner_id") // 默认圈子平台所有，nullable；用户创建时=creator
   status      CommunityStatus   @default(ACTIVE)
   memberCount Int               @default(0) @map("member_count") // 成员数（join/leave 时维护）

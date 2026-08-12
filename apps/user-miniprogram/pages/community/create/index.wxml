@@ -12,6 +12,32 @@
     <input class="input" placeholder="1-20 个字，如：综合大学" maxlength="20" value="{{name}}" bindinput="onNameInput" />
   </view>
 
+  <!-- 类型 -->
+  <view class="field">
+    <text class="label">圈子类型 *</text>
+    <view class="chips">
+      <view
+        class="chip {{category === item ? 'active' : ''}}"
+        wx:for="{{categories}}"
+        wx:key="*this"
+        data-cat="{{item}}"
+        bindtap="pickCategory"
+      >{{item}}</view>
+    </view>
+  </view>
+
+  <!-- 所在地区 -->
+  <view class="field">
+    <text class="label">所在地区 *</text>
+    <input class="input" placeholder="如：南校区 / 城市名" maxlength="30" value="{{region}}" bindinput="onRegionInput" />
+  </view>
+
+  <!-- 所在地点 -->
+  <view class="field">
+    <text class="label">所在地点 *</text>
+    <input class="input" placeholder="如：大学生活动中心 / 具体地址" maxlength="50" value="{{location}}" bindinput="onLocationInput" />
+  </view>
+
   <!-- 简介 -->
   <view class="field">
     <text class="label">圈子简介</text>

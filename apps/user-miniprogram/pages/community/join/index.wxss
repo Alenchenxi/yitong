@@ -1,0 +1,60 @@
+.page { padding: 24rpx; }
+
+.head { text-align: center; padding: 24rpx 0 32rpx; }
+.head-title { font-size: 38rpx; font-weight: 700; color: var(--yt-text-main); }
+.head-sub { font-size: 26rpx; color: var(--yt-text-sub); margin-top: 8rpx; }
+.create-btn {
+  display: inline-block;
+  margin-top: 24rpx;
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 28rpx;
+  font-weight: 600;
+  padding: 16rpx 48rpx;
+  border-radius: 999rpx;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  border-radius: 16rpx;
+}
+.logo {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 20rpx;
+  flex-shrink: 0;
+}
+.logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 40rpx;
+  font-weight: 600;
+}
+.info { flex: 1; min-width: 0; }
+.name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--yt-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stats { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 8rpx; }
+.join-tip {
+  font-size: 26rpx;
+  color: var(--yt-primary-dark);
+  background: var(--yt-primary-lighter);
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.loading-tip { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 24rpx 0; }

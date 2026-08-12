@@ -14,4 +14,9 @@ export class SearchPostsQueryDto {
   @Min(1)
   @Max(50)
   limit?: number;
+
+  // 内容搜索按圈子过滤（content-search 页传递当前圈子 id）
+  @IsOptional()
+  @IsString()
+  communityId?: string;
 }

@@ -1,8 +1,31 @@
 <view class="page">
-  <!-- 顶部：标题 + 创建圈子入口 -->
-  <view class="topbar">
-    <text class="title">圈子</text>
-    <view class="create-btn" bindtap="goCreate">＋ 创建圈子</view>
+  <!-- 当前圈子头卡：非成员预览时显示预览圈子 + 「加入」 -->
+  <view class="active-card yt-card">
+    <block wx:if="{{preview}}">
+      <image wx:if="{{preview.logo}}" class="a-logo" src="{{preview.logo}}" mode="aspectFill" />
+      <view wx:else class="a-logo a-logo-fallback">{{preview.name[0]}}</view>
+      <view class="a-info">
+        <view class="a-name">{{preview.name}}</view>
+        <view class="a-stats">动态 {{preview.postCount}} · 成员 {{preview.memberCount}}</view>
+      </view>
+      <view class="a-join" bindtap="onJoinPreview">加入</view>
+    </block>
+    <block wx:elif="{{active}}">
+      <image wx:if="{{active.logo}}" class="a-logo" src="{{active.logo}}" mode="aspectFill" />
+      <view wx:else class="a-logo a-logo-fallback">{{active.name[0]}}</view>
+      <view class="a-info">
+        <view class="a-name">{{active.name}}</view>
+        <view class="a-stats">动态 {{active.postCount}} · 成员 {{active.memberCount}}</view>
+      </view>
+      <view class="a-more" bindtap="onMore">···</view>
+    </block>
+    <block wx:else>
+      <view class="a-logo a-logo-fallback">圈</view>
+      <view class="a-info">
+        <view class="a-name">未加入圈子</view>
+        <view class="a-stats">去加入一个圈子开始吧</view>
+      </view>
+    </block>
   </view>
 
   <!-- 我的圈子 -->
@@ -10,7 +33,7 @@
     <view class="section-title">我的圈子</view>
     <view wx:if="{{myCommunities.length === 0 && !loading}}" class="yt-empty">
       <view class="yt-empty-emoji">🏠</view>
-      <view class="yt-empty-text">还没有加入圈子，去下面找找吧</view>
+      <view class="yt-empty-text">还没有加入圈子，去广场逛逛吧</view>
     </view>
     <view class="card yt-card" wx:for="{{myCommunities}}" wx:key="id" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onSwitch">
       <image wx:if="{{item.logo}}" class="logo" src="{{item.logo}}" mode="aspectFill" />
@@ -26,23 +49,22 @@
     </view>
   </view>
 
-  <!-- 全部圈子 -->
-  <view class="section">
-    <view class="section-title">发现圈子</view>
-    <view class="card yt-card" wx:for="{{allCommunities}}" wx:key="id" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="{{item.isMember ? 'onSwitch' : 'onJoin'}}">
-      <image wx:if="{{item.logo}}" class="logo" src="{{item.logo}}" mode="aspectFill" />
-      <view wx:else class="logo logo-fallback">{{item.name[0]}}</view>
-      <view class="info">
-        <view class="name-row">
-          <text class="name">{{item.name}}</text>
-        </view>
-        <view class="stats">动态 {{item.postCount}} · 成员 {{item.memberCount}}</view>
-      </view>
-      <view class="join-tip">{{item.isMember ? (item.id === activeId ? '当前' : '切换') : '加入'}}</view>
+  <!-- 圈子入口：广场 / 搜索 / 创建 -->
+  <view class="entries yt-card">
+    <view class="entry" bindtap="goPlaza">
+      <text class="entry-icon">🏙️</text>
+      <text class="entry-text">圈子广场</text>
+      <text class="entry-arrow">›</text>
     </view>
-    <view class="yt-empty" wx:if="{{!loading && allCommunities.length === 0}}">
-      <view class="yt-empty-emoji">🚀</view>
-      <view class="yt-empty-text">还没有圈子，创建第一个吧</view>
+    <view class="entry" bindtap="goSearchCircle">
+      <text class="entry-icon">🔎</text>
+      <text class="entry-text">搜索圈子</text>
+      <text class="entry-arrow">›</text>
+    </view>
+    <view class="entry" bindtap="goCreate">
+      <text class="entry-icon">＋</text>
+      <text class="entry-text">创建圈子</text>
+      <text class="entry-arrow">›</text>
     </view>
   </view>
 

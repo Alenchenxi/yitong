@@ -29,6 +29,21 @@
   padding: 20rpx 24rpx;
   font-size: 28rpx;
 }
+.chips { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.chip {
+  padding: 14rpx 36rpx;
+  background: var(--yt-disabled-bg);
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  color: var(--yt-text-sub);
+  border: 2rpx solid transparent;
+}
+.chip.active {
+  background: var(--yt-primary-lighter);
+  color: var(--yt-primary-dark);
+  border-color: var(--yt-primary);
+  font-weight: 600;
+}
 .textarea {
   background: var(--yt-card);
   border: 1rpx solid var(--yt-border);

@@ -162,12 +162,14 @@ export function listPosts(
   sort?: 'latest' | 'recommend',
   mood?: string,
   communityId?: string,
+  keyword?: string,
 ): Promise<{ list: AnonPostVo[]; nextCursor: string | null; hasMore: boolean }> {
   const params = ['limit=20'];
   if (cursor) params.push(`cursor=${encodeURIComponent(cursor)}`);
   if (sort) params.push(`sort=${sort}`);
   if (mood) params.push(`mood=${encodeURIComponent(mood)}`);
   if (communityId) params.push(`communityId=${encodeURIComponent(communityId)}`);
+  if (keyword) params.push(`keyword=${encodeURIComponent(keyword)}`);
   return anonRequest({ url: `/treehole/posts?${params.join('&')}`, method: 'GET' });
 }
 

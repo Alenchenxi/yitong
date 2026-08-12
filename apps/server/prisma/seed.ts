@@ -13,8 +13,17 @@ const DEFAULT_CIRCLES = [
 const DEFAULT_COMMUNITY = {
   id: 'cm_default',
   name: '综合大学',
+  category: '校园',
   status: 'ACTIVE' as const,
 };
+
+// 补充圈子种子（id 幂等；让加入页 / 圈子广场有真实观感。logo 留空走前端首字占位）
+const SEED_COMMUNITIES = [
+  { id: 'cm_seed_life', name: '校园生活互助', category: '生活', region: '北校区', location: '学生公寓', memberCount: 186, postCount: 342 },
+  { id: 'cm_seed_study', name: '考研自习联盟', category: '校园', region: '东校区', location: '图书馆', memberCount: 152, postCount: 208 },
+  { id: 'cm_seed_esports', name: '电竞兴趣社', category: '兴趣', region: '南校区', location: '大学生活动中心', memberCount: 97, postCount: 121 },
+  { id: 'cm_seed_parttime', name: '校园兼职信息', category: '兼职', region: '全校区', location: '勤工助学中心', memberCount: 64, postCount: 89 },
+];
 
 // 广告位占位 Banner（幂等按 id；prod 由管理端换真图）
 const DEFAULT_BANNERS = [
@@ -42,6 +51,17 @@ async function main() {
     await prisma.community.create({ data: DEFAULT_COMMUNITY });
     console.log(`seed: community ${DEFAULT_COMMUNITY.name} created`);
   }
+  // 补充圈子（幂等按 id）
+  let createdExtraCommunities = 0;
+  for (const c of SEED_COMMUNITIES) {
+    const exists = await prisma.community.findUnique({ where: { id: c.id } });
+    if (exists) continue;
+    await prisma.community.create({
+      data: { ...c, logo: null, description: null, status: 'ACTIVE' },
+    });
+    createdExtraCommunities += 1;
+  }
+  if (createdExtraCommunities > 0) console.log(`seed: ${createdExtraCommunities}/${SEED_COMMUNITIES.length} extra communities created`);
   // 占位 Banner
   let createdBanners = 0;
   for (const b of DEFAULT_BANNERS) {

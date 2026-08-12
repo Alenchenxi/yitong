@@ -1,18 +1,56 @@
 .page { padding: 24rpx; }
-.topbar {
+
+/* 当前圈子头卡 */
+.active-card {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24rpx;
+  gap: 20rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 32rpx;
+  border-radius: 20rpx;
 }
-.title { font-size: 36rpx; font-weight: 600; color: var(--yt-text-main); }
-.create-btn {
+.a-logo {
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 24rpx;
+  flex-shrink: 0;
+}
+.a-logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 44rpx;
+  font-weight: 600;
+}
+.a-info { flex: 1; min-width: 0; }
+.a-name {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--yt-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.a-stats { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 10rpx; }
+.a-more {
+  font-size: 36rpx;
+  color: var(--yt-text-sub);
+  padding: 8rpx 16rpx;
+  flex-shrink: 0;
+}
+.a-join {
   background: var(--yt-primary);
   color: var(--yt-text-main);
   font-size: 26rpx;
-  padding: 12rpx 24rpx;
+  font-weight: 600;
+  padding: 12rpx 32rpx;
   border-radius: 999rpx;
+  flex-shrink: 0;
 }
+
+/* 我的圈子 */
 .section { margin-bottom: 32rpx; }
 .section-title { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); margin-bottom: 16rpx; }
 .card {
@@ -56,9 +94,27 @@
   flex-shrink: 0;
 }
 .stats { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 6rpx; }
-.switch-tip, .join-tip {
+.switch-tip {
   font-size: 24rpx;
   color: var(--yt-text-sub);
   flex-shrink: 0;
 }
+
+/* 圈子入口 */
+.entries {
+  border-radius: 16rpx;
+  padding: 8rpx 24rpx;
+}
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid var(--yt-border);
+}
+.entry:last-child { border-bottom: none; }
+.entry-icon { font-size: 32rpx; }
+.entry-text { flex: 1; font-size: 28rpx; color: var(--yt-text-main); }
+.entry-arrow { font-size: 30rpx; color: var(--yt-text-sub); }
+
 .loading-tip { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 24rpx 0; }

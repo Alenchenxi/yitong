@@ -208,7 +208,8 @@ export class ConfessionService {
   async feed(uid: string, query: FeedQueryDto): Promise<FeedResult> {
     const limit = query.limit ?? 20;
     const sort = query.sort ?? 'latest';
-    const communityId = query.communityId;
+    // 读路径圈子兜底：缺省取当前圈子，未加入兜底默认圈（不抛 80014）
+    const communityId = await this.community.resolveFeedCommunityId(uid, query.communityId);
     const cacheKey = feedCacheKey(uid, limit, sort, communityId);
     // 仅首页（无 cursor）发现流走 5 分钟内存缓存；按用户+sort+圈子 分桶，避免 liked 状态串用
     if (!query.cursor && limit <= 20) {
@@ -1129,8 +1130,8 @@ export class ConfessionService {
     return { published, failed };
   }
 
-  // P1-05 搜索帖子内容（大小写不敏感包含）
-  async searchPosts(uid: string, q: string, limit: number) {
+  // P1-05 搜索帖子内容（大小写不敏感包含）；content-search 按圈子过滤
+  async searchPosts(uid: string, q: string, limit: number, communityId?: string) {
     const kw = q.trim();
     if (!kw) return { list: [] as PostVo[] };
     const posts = await this.prisma.post.findMany({
@@ -1139,6 +1140,7 @@ export class ConfessionService {
         deletedAt: null,
         visibility: 'PUBLIC',
         content: { contains: kw, mode: 'insensitive' },
+        ...(communityId ? { communityId } : {}),
       },
       orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
       take: limit,

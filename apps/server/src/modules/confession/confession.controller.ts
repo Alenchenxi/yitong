@@ -116,7 +116,7 @@ export class ConfessionController {
   @Get('posts/search')
   async searchPosts(@Query() q: SearchPostsQueryDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user?.uid ?? '';
-    return ok(await this.confession.searchPosts(uid, q.q, q.limit ?? 20));
+    return ok(await this.confession.searchPosts(uid, q.q, q.limit ?? 20, q.communityId));
   }
 
   @Get('users/search')

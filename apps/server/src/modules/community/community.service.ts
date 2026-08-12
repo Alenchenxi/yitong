@@ -14,6 +14,7 @@ const ERR_COMMUNITY_NOT_FOUND = 80010;
 const ERR_COMMUNITY_DISABLED = 80011;
 const ERR_ALREADY_MEMBER = 80012;
 const ERR_NOT_MEMBER = 80013;
+const ERR_NOT_JOINED = 80014; // 未加入任何圈子（写路径引导加入）
 const ERR_COMMUNITY_FORBIDDEN = 80015;
 
 @Injectable()
@@ -24,10 +25,10 @@ export class CommunityService {
   ) {}
 
   /**
-   * 用户当前圈子 id（惰性确保）：
-   * - 已有 activeCommunityId 且圈子 ACTIVE → 直接返回
-   * - 否则兜底默认圈子：确保成员记录 + memberCount + 写 User.activeCommunityId
-   * 在发帖/发岗等写入口调用，单真相源 = active community。
+   * 用户当前圈子 id（写路径单真相源）：
+   * - 已有 activeCommunityId 且圈子 ACTIVE → 返回
+   * - 否则抛 80014「请先加入圈子」（不再惰性自动加入 cm_default，否则加入页永不出现）
+   * 发帖/发岗等写入口调用；读路径（feed/banners）用 resolveFeedCommunityId 兜底默认圈。
    */
   async getActiveCommunityId(uid: string): Promise<string> {
     const user = await this.prisma.user.findUnique({
@@ -42,24 +43,29 @@ export class CommunityService {
       });
       if (active && active.status === CommunityStatus.ACTIVE) return activeId;
     }
-    // 兜底默认圈子（幂等：并发下 P2002 由唯一约束兜底）
-    const member = await this.prisma.communityMember.findUnique({
-      where: { communityId_userId: { communityId: DEFAULT_COMMUNITY_ID, userId: uid } },
-      select: { id: true },
-    });
-    if (!member) {
-      await this.prisma.communityMember.create({
-        data: { communityId: DEFAULT_COMMUNITY_ID, userId: uid, role: CommunityMemberRole.MEMBER },
-      });
-      await this.prisma.community.update({
-        where: { id: DEFAULT_COMMUNITY_ID },
-        data: { memberCount: { increment: 1 } },
-      });
-    }
-    await this.prisma.user.update({
+    throw new BizException(ERR_NOT_JOINED, '请先加入圈子', HttpStatus.FORBIDDEN);
+  }
+
+  /**
+   * 读路径圈子兜底（feed/banners/今日上头等）：
+   * - 显式传入 communityId → 直接用
+   * - 否则取用户当前圈子，ACTIVE 才用；未加入/失效 → 兜底默认圈子 cm_default（不抛错）
+   * 写路径（发帖/发岗）仍走 getActiveCommunityId 严格抛 80014。
+   */
+  async resolveFeedCommunityId(uid: string, requested?: string | null): Promise<string> {
+    if (requested) return requested;
+    const user = await this.prisma.user.findUnique({
       where: { id: uid },
-      data: { activeCommunityId: DEFAULT_COMMUNITY_ID },
+      select: { activeCommunityId: true },
     });
+    const activeId = user?.activeCommunityId;
+    if (activeId) {
+      const active = await this.prisma.community.findUnique({
+        where: { id: activeId },
+        select: { status: true },
+      });
+      if (active && active.status === CommunityStatus.ACTIVE) return activeId;
+    }
     return DEFAULT_COMMUNITY_ID;
   }
 
@@ -80,12 +86,37 @@ export class CommunityService {
     }
   }
 
-  /** 全部 ACTIVE 圈子 + 当前用户 isMember/myRole */
-  async listPublic(uid: string): Promise<CommunityVo[]> {
+  /** 全部 ACTIVE 圈子 + 当前用户 isMember/myRole；可选按 category 过滤（广场左侧分类） */
+  async listPublic(uid: string, category?: string): Promise<CommunityVo[]> {
     const [communities, memberships] = await Promise.all([
       this.prisma.community.findMany({
-        where: { status: CommunityStatus.ACTIVE },
+        where: {
+          status: CommunityStatus.ACTIVE,
+          ...(category ? { category } : {}),
+        },
         orderBy: [{ memberCount: 'desc' }, { createdAt: 'asc' }],
+      }),
+      this.prisma.communityMember.findMany({
+        where: { userId: uid },
+        select: { communityId: true, role: true },
+      }),
+    ]);
+    const memberMap = new Map(memberships.map((m) => [m.communityId, m.role]));
+    return communities.map((c) => this.toVo(c, memberMap.get(c.id) ?? null));
+  }
+
+  /** 圈子搜索：name 模糊匹配（ACTIVE，最多 20 条） */
+  async search(uid: string, keyword: string): Promise<CommunityVo[]> {
+    const kw = keyword.trim();
+    if (!kw) return [];
+    const [communities, memberships] = await Promise.all([
+      this.prisma.community.findMany({
+        where: {
+          status: CommunityStatus.ACTIVE,
+          name: { contains: kw, mode: 'insensitive' },
+        },
+        orderBy: [{ memberCount: 'desc' }, { createdAt: 'asc' }],
+        take: 20,
       }),
       this.prisma.communityMember.findMany({
         where: { userId: uid },
@@ -112,11 +143,16 @@ export class CommunityService {
     };
   }
 
-  /** 惰性确保的当前圈子（广场启动引导） */
-  async getActive(uid: string): Promise<CommunityVo> {
-    const activeId = await this.getActiveCommunityId(uid);
+  /** 当前圈子（未加入 / active 失效 → null，由广场引导到加入页） */
+  async getActive(uid: string): Promise<CommunityVo | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: uid },
+      select: { activeCommunityId: true },
+    });
+    const activeId = user?.activeCommunityId;
+    if (!activeId) return null;
     const community = await this.prisma.community.findUnique({ where: { id: activeId } });
-    if (!community) throw new BizException(ERR_COMMUNITY_NOT_FOUND, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (!community || community.status !== CommunityStatus.ACTIVE) return null;
     const member = await this.prisma.communityMember.findUnique({
       where: { communityId_userId: { communityId: activeId, userId: uid } },
       select: { role: true },
@@ -148,6 +184,9 @@ export class CommunityService {
           name,
           logo: dto.logo ?? null,
           description: dto.description?.trim() || null,
+          category: dto.category,
+          region: dto.region.trim(),
+          location: dto.location.trim(),
           ownerId: uid,
           memberCount: 1,
         },
@@ -260,6 +299,9 @@ export class CommunityService {
       name: c.name,
       logo: c.logo,
       description: c.description,
+      category: c.category,
+      region: c.region,
+      location: c.location,
       memberCount: c.memberCount,
       postCount: c.postCount,
       status: c.status,

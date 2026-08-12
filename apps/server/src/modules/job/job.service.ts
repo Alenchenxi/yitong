@@ -342,9 +342,13 @@ export class JobService {
       if (q.salaryMax !== undefined) f.lte = q.salaryMax;
       where.salaryAmount = f;
     }
-    // 圈子：按圈子过滤岗位（缺省 = 全量）；圈子禁用则岗位不可见
+    // 圈子：按圈子过滤岗位；公开列表缺省 = 用户当前圈子，未加入兜底默认圈（读路径不抛 80014）；mine 列表不强过滤
     if (q.communityId) {
       where.communityId = q.communityId;
+      where.community = { is: { status: CommunityStatus.ACTIVE } };
+    } else if (q.mine !== 1) {
+      const communityId = await this.community.resolveFeedCommunityId(uid);
+      where.communityId = communityId;
       where.community = { is: { status: CommunityStatus.ACTIVE } };
     }
     if (q.cursor) {

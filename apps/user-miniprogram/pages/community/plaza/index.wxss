@@ -1,0 +1,90 @@
+.page { height: 100vh; display: flex; flex-direction: column; }
+
+.layout { flex: 1; display: flex; overflow: hidden; }
+
+/* 左侧类型列表 */
+.left {
+  width: 180rpx;
+  background: var(--yt-disabled-bg);
+  height: 100%;
+  flex-shrink: 0;
+}
+.cat {
+  padding: 32rpx 24rpx;
+  font-size: 28rpx;
+  color: var(--yt-text-sub);
+  text-align: center;
+  position: relative;
+}
+.cat.active {
+  background: var(--yt-card);
+  color: var(--yt-text-main);
+  font-weight: 600;
+}
+.cat.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6rpx;
+  height: 40rpx;
+  background: var(--yt-primary);
+  border-radius: 3rpx;
+}
+
+/* 右侧圈子列表 */
+.right { flex: 1; height: 100%; padding: 20rpx; box-sizing: border-box; }
+.card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  border-radius: 16rpx;
+}
+.logo {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 20rpx;
+  flex-shrink: 0;
+}
+.logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 36rpx;
+  font-weight: 600;
+}
+.info { flex: 1; min-width: 0; }
+.name-row { display: flex; align-items: center; gap: 12rpx; }
+.name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--yt-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.joined-tag {
+  font-size: 20rpx;
+  color: var(--yt-primary-dark);
+  background: var(--yt-primary-lighter);
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+.stats { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 6rpx; }
+.join-btn {
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 24rpx;
+  font-weight: 600;
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.loading-tip { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 24rpx 0; }

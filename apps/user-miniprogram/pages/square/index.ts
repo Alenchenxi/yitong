@@ -56,26 +56,40 @@ Page({
     const prevCommunityId = this.data.community?.id ?? '';
     await this.ensureCommunity();
     const newCommunityId = this.data.community?.id ?? '';
-    if (newCommunityId && newCommunityId !== prevCommunityId) {
-      // 圈子变化（首载或切换）→ 刷新 头卡/轮播/今日上头/列表
-      await this.refreshOps();
-      await this.reloadFeed();
-    } else if (this.data.items.length === 0) {
-      this.reloadFeed();
+    if (newCommunityId) {
+      // 已加入圈子：复位加入页门闩（便于退出圈子后再次引导）
+      app.globalData.joinGate = false;
+      if (newCommunityId !== prevCommunityId) {
+        // 圈子变化（首载或切换）→ 刷新 头卡/轮播/今日上头/列表
+        await this.refreshOps();
+        await this.reloadFeed();
+      } else if (this.data.items.length === 0) {
+        this.reloadFeed();
+      }
+    } else if (!app.globalData.joinGate) {
+      // 未加入任何圈子 → 引导加入页（门闩防返回无限跳）
+      app.globalData.joinGate = true;
+      wx.navigateTo({ url: '/pages/community/join/index' });
     }
     listAnnouncements().then((a) => this.setData({ announcements: a })).catch(() => {});
   },
 
-  // 当前圈子：优先服务端 getActiveCommunity（惰性确保默认），落 globalData 供发帖作用域
+  // 当前圈子：服务端 getActiveCommunity（未加入 → null，广场显示空态并引导加入页），落 globalData 供发帖作用域
   async ensureCommunity() {
     const app = getApp<AppInstance>();
     try {
       const c = await getActiveCommunity();
-      app.globalData.activeCommunityId = c.id;
-      this.setData({ community: c });
+      if (c) {
+        app.globalData.activeCommunityId = c.id;
+        this.setData({ community: c });
+      } else {
+        app.globalData.activeCommunityId = '';
+        this.setData({ community: null });
+      }
     } catch {
       const cid = app.globalData.activeCommunityId;
       if (cid) this.setData({ community: { id: cid } as CommunityVo });
+      else this.setData({ community: null });
     }
   },
 
@@ -161,8 +175,14 @@ Page({
     wx.navigateTo({ url: '/pages/community/list/index' });
   },
 
+  // 顶部搜索栏左侧切换按钮 → 圈子切换页
+  goSwitch() {
+    wx.navigateTo({ url: '/pages/community/list/index' });
+  },
+
+  // 广场搜索栏 → 内容搜索页（表白墙 / 树洞 / 兼职）
   goSearch() {
-    wx.navigateTo({ url: '/pages/confession-search/index' });
+    wx.navigateTo({ url: '/pages/content-search/index' });
   },
 
   goCreate() {

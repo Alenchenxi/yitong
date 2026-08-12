@@ -2,8 +2,9 @@
  * 圈子（Community）+ 广场改造 smoke
  *
  * 覆盖：
- *   - 默认圈子自动加入 / getActiveCommunity
- *   - 创建圈子（OWNER + memberCount 1 + 置 active）/ 他人加入 + 切换
+ *   - 未加入 → getActiveCommunity 返回 null（加入页门）；读路径兜底默认圈 / 写路径拒 80014
+ *   - 创建圈子（category/region/location 校验 + OWNER + memberCount 1 + 置 active）/ 他人加入 + 切换
+ *   - 圈子列表 category 过滤 + 圈子搜索 keyword
  *   - 表白墙帖圈属隔离（发帖归属 active community；feed communityId 过滤）
  *   - 树洞帖圈属（anonId -> userId -> active community；x-anon-token 鉴权）
  *   - 岗位圈属（merchant 发岗选圈 + 付费发布；job-posts communityId 过滤）
@@ -141,22 +142,41 @@ async function cleanup(prisma) {
     created.userIds.push(M.user.id);
     console.log('  A=', A.user.id, 'B=', B.user.id, 'M=', M.user.id);
 
-    // ============ 1. 默认圈子自动加入 ============
+    // ============ 1. 未加入圈子 → active=null（加入页门）+ 读路径兜底 + 写路径拒 ============
     const act = await call('GET', '/community/active', A.accessToken);
-    assert(act.body.code === 0 && act.body.data.id === 'cm_default', 'getActiveCommunity 默认圈 cm_default');
-    assert(act.body.data.isMember === true, '默认圈自动成为成员');
+    assert(act.body.code === 0 && act.body.data === null, '未加入圈子时 getActiveCommunity 返回 null');
     const mine1 = await call('GET', '/community/mine', A.accessToken);
-    assert(mine1.body.data.activeId === 'cm_default', 'mine.activeId = cm_default');
+    assert(mine1.body.data.activeId === null && mine1.body.data.list.length === 0, 'mine.activeId = null 且无圈子');
+    // 读路径缺省 communityId → 兜底默认圈 cm_default，不抛错
+    const feedFallback = await call('GET', '/posts/feed?sort=latest&limit=20', A.accessToken);
+    assert(feedFallback.body.code === 0 && Array.isArray(feedFallback.body.data.list), '读路径 feed 缺省兜底默认圈（不抛错）');
+    // 写路径（发帖）未加入 → 80014 请先加入圈子
+    const someCircle = (await call('GET', '/circles', A.accessToken)).body.data[0];
+    const writeReject = await call('POST', `/circles/${someCircle.id}/posts`, A.accessToken, { content: `未加入发帖_${sfx}` });
+    assert(writeReject.status === 403 && writeReject.body.code === 80014, '未加入圈子发帖 → 80014 请先加入圈子');
 
-    // ============ 2. A 创建圈子 → OWNER + memberCount 1 + 置 active ============
+    // ============ 2. A 创建圈子（category/region/location）→ OWNER + memberCount 1 + 置 active ============
     const cName = `测试圈${sfx}`;
-    const c = await call('POST', '/community', A.accessToken, { name: cName });
+    const badCat = await call('POST', '/community', A.accessToken, { name: `${cName}_bad`, category: '非法分类', region: '杭州', location: '某地' });
+    assert(badCat.status === 400, '非法 category 创建 → 400');
+    const c = await call('POST', '/community', A.accessToken, { name: cName, category: '校园', region: '杭州', location: '浙大玉泉校区' });
     assert(c.body.code === 0 && c.body.data.isMember && c.body.data.myRole === 'OWNER', 'A 建圈 → OWNER');
     assert(c.body.data.memberCount === 1, '建圈 memberCount = 1');
+    assert(c.body.data.category === '校园' && c.body.data.region === '杭州' && c.body.data.location === '浙大玉泉校区', '建圈写入 category/region/location');
     const cid = c.body.data.id;
     created.communityIds.push(cid);
     const act2 = await call('GET', '/community/active', A.accessToken);
     assert(act2.body.data.id === cid, '建圈后 active = 新圈');
+    // 圈子列表 category 过滤
+    const listCampus = await call('GET', '/community/list?category=校园', A.accessToken);
+    assert((listCampus.body.data || []).some((x) => x.id === cid), 'list?category=校园 含新圈');
+    const listPart = await call('GET', '/community/list?category=兼职', A.accessToken);
+    assert(!(listPart.body.data || []).some((x) => x.id === cid), 'list?category=兼职 不含新圈（过滤生效）');
+    // 圈子搜索 keyword
+    const sHit = await call('GET', `/community/search?keyword=${encodeURIComponent(cName)}`, A.accessToken);
+    assert((sHit.body.data || []).some((x) => x.id === cid), 'search keyword 命中新圈');
+    const sMiss = await call('GET', '/community/search?keyword=不存在的圈子xyz', A.accessToken);
+    assert(sMiss.body.code === 0 && (sMiss.body.data || []).length === 0, 'search 无关 keyword 空结果');
 
     // ============ 3. B 加入 + 切换 ============
     const listB = await call('GET', '/community/list', B.accessToken);
@@ -274,10 +294,13 @@ async function cleanup(prisma) {
     const detailAfter = await call('GET', `/community/${cid}`, A.accessToken);
     assert(detailAfter.body.data.memberCount === 1, 'leave 后 memberCount = 1');
     const actB2 = await call('GET', '/community/active', B.accessToken);
-    assert(actB2.body.data.id === 'cm_default', 'B leave 后 active 兜底默认圈');
+    assert(actB2.body.data === null, 'B leave 后 active 回 null（不再自动回默认圈）');
+    const mineB2 = await call('GET', '/community/mine', B.accessToken);
+    assert(mineB2.body.data.activeId === null && !(mineB2.body.data.list || []).some((x) => x.id === cid), 'B leave 后 mine 无该圈且 activeId=null');
 
     // ============ 10. admin disable/enable ============
     const adm = await login('admin', 'Cm_Admin', 'admin');
+    created.userIds.push(adm.user.id);
     const dis = await call('POST', `/admin/communities/${cid}/disable`, adm.accessToken);
     assert(dis.body.code === 0, 'admin disable 圈子');
     const joinAfterDis = await call('POST', `/community/${cid}/join`, B.accessToken);

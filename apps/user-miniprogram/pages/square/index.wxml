@@ -1,9 +1,15 @@
 <view class="page">
-  <!-- 顶部搜索 -->
+  <!-- 顶部搜索：左侧切换按钮（当前圈子） + 搜索栏 -->
   <view class="topbar">
+    <view class="circle-switch" bindtap="goSwitch">
+      <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
+      <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
+      <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
+      <text class="cs-arrow">▾</text>
+    </view>
     <view class="search-box" bindtap="goSearch">
       <text class="search-icon">🔍</text>
-      <text class="search-ph">找人或搜索圈子</text>
+      <text class="search-ph">找人或搜索内容</text>
     </view>
   </view>
 

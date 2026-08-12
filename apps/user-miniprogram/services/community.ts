@@ -7,6 +7,9 @@ export interface CommunityVo {
   name: string;
   logo: string | null;
   description: string | null;
+  category: string;
+  region: string | null;
+  location: string | null;
   memberCount: number;
   postCount: number;
   status: 'ACTIVE' | 'DISABLED';
@@ -22,9 +25,15 @@ export interface BannerVo {
   linkUrl: string | null;
 }
 
-/** 全部 ACTIVE 圈子 + 当前用户 isMember/myRole */
-export function listCommunities(): Promise<CommunityVo[]> {
-  return request<CommunityVo[]>({ url: '/community/list' });
+/** 全部 ACTIVE 圈子 + 当前用户 isMember/myRole；可选按 category 过滤（广场左侧分类） */
+export function listCommunities(category?: string): Promise<CommunityVo[]> {
+  const query = category ? `?category=${encodeURIComponent(category)}` : '';
+  return request<CommunityVo[]>({ url: `/community/list${query}` });
+}
+
+/** 圈子搜索（name 模糊匹配，最多 20 条） */
+export function searchCommunities(keyword: string): Promise<CommunityVo[]> {
+  return request<CommunityVo[]>({ url: `/community/search?keyword=${encodeURIComponent(keyword)}` });
 }
 
 /** 我加入的圈子 + 当前 activeId */
@@ -32,9 +41,9 @@ export function listMyCommunities(): Promise<{ activeId: string | null; list: Co
   return request<{ activeId: string | null; list: CommunityVo[] }>({ url: '/community/mine' });
 }
 
-/** 惰性确保的当前圈子（广场启动引导） */
-export function getActiveCommunity(): Promise<CommunityVo> {
-  return request<CommunityVo>({ url: '/community/active' });
+/** 当前圈子（未加入任何圈子 → null，由广场引导到加入页） */
+export function getActiveCommunity(): Promise<CommunityVo | null> {
+  return request<CommunityVo | null>({ url: '/community/active' });
 }
 
 /** 圈子详情 */
@@ -42,8 +51,8 @@ export function getCommunity(id: string): Promise<CommunityVo> {
   return request<CommunityVo>({ url: `/community/${id}` });
 }
 
-/** 创建圈子（creator → OWNER + 成员 + 置当前） */
-export function createCommunity(data: { name: string; logo?: string; description?: string }): Promise<CommunityVo> {
+/** 创建圈子（creator → OWNER + 成员 + 置当前；category/region/location 必填） */
+export function createCommunity(data: { name: string; logo?: string; description?: string; category: string; region: string; location: string }): Promise<CommunityVo> {
   return request<CommunityVo>({ url: '/community', method: 'POST', data });
 }
 

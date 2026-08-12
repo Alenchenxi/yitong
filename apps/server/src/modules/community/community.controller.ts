@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
 import type { AuthenticatedRequest } from '../auth/types';
@@ -12,8 +12,14 @@ export class CommunityController {
   constructor(private readonly community: CommunityService) {}
 
   @Get('list')
-  async list(@Req() req: AuthenticatedRequest) {
-    return ok(await this.community.listPublic(req.user!.uid));
+  async list(@Req() req: AuthenticatedRequest, @Query('category') category?: string) {
+    return ok(await this.community.listPublic(req.user!.uid, category || undefined));
+  }
+
+  // 圈子搜索（静态路由先于 :id）
+  @Get('search')
+  async search(@Req() req: AuthenticatedRequest, @Query('keyword') keyword: string) {
+    return ok(await this.community.search(req.user!.uid, keyword ?? ''));
   }
 
   @Get('mine')

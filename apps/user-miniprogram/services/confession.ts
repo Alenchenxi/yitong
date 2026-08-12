@@ -289,9 +289,10 @@ export function toggleCommentLike(commentId: string) {
 }
 
 // P1-05/06/07 搜索：帖子 / 用户 / 话题 / 热搜词
-export function searchPosts(q: string, limit = 20) {
+export function searchPosts(q: string, limit = 20, communityId?: string) {
+  const cid = communityId ? `&communityId=${encodeURIComponent(communityId)}` : '';
   return request<PostSearchResult>({
-    url: `/posts/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+    url: `/posts/search?q=${encodeURIComponent(q)}&limit=${limit}${cid}`,
   });
 }
 export function searchUsers(q: string, limit = 20) {

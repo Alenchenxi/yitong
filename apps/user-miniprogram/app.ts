@@ -31,6 +31,7 @@ App({
     anonToken: '', // CR-001 树洞匿名 token
     anonId: '',    // CR-001 当前 anonId
     activeCommunityId: '', // 圈子：当前圈子 id（广场头卡/作用域；切换后更新）
+    joinGate: false, // 圈子：加入页门闩（广场 onShow 未加入时只跳一次，返回不再无限跳）
   },
 
   onLaunch() {
@@ -67,10 +68,10 @@ App({
     // CR-001: 登录后尝试签发 anonToken（user 角色进广场需要；失败不影响登录流程）
     if (role === 'user') {
       getAnonymousToken().catch(() => {}); // 静默失败：首次未访问树洞无匿名身份，进入树洞时重试
-      // 圈子：登录后拉取当前圈子（惰性确保默认圈子），落全局供广场头卡/发帖作用域使用
+      // 圈子：登录后拉取当前圈子（未加入 → null 不写，由广场引导到加入页），落全局供广场头卡/发帖作用域使用
       getActiveCommunity()
         .then((c) => {
-          this.globalData.activeCommunityId = c.id;
+          if (c) this.globalData.activeCommunityId = c.id;
         })
         .catch(() => {});
     }
@@ -104,6 +105,7 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
     anonToken: string;
     anonId: string;
     activeCommunityId: string;
+    joinGate: boolean;
     loginReady: boolean;
   };
   loginWithRole: (role: 'user' | 'merchant' | 'admin', referralCode?: string) => Promise<void>;

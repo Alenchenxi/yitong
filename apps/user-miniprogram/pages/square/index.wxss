@@ -24,6 +24,42 @@
 .search-icon { font-size: 24rpx; }
 .search-ph { font-size: 26rpx; color: var(--yt-text-sub); }
 
+/* 圈子切换按钮（搜索栏左侧） */
+.circle-switch {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  background: var(--yt-disabled-bg);
+  border-radius: 999rpx;
+  padding: 6rpx 16rpx 6rpx 8rpx;
+  max-width: 260rpx;
+  flex-shrink: 0;
+}
+.cs-logo {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+.cs-logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--yt-primary);
+  color: var(--yt-text-main);
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.cs-name {
+  font-size: 26rpx;
+  color: var(--yt-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140rpx;
+}
+.cs-arrow { font-size: 20rpx; color: var(--yt-text-sub); }
+
 /* 圈子头卡 */
 .community-card {
   display: flex;

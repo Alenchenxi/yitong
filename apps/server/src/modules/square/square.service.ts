@@ -40,8 +40,8 @@ export class SquareService {
     const limit = q.limit ?? 20;
     const sort: SquareFeedSort = q.sort ?? 'recommend';
     const fetchSize = limit * 2;
-    // 圈子作用域：缺省取用户当前圈子（单真相源 = active community）
-    const communityId = q.communityId ?? (await this.community.getActiveCommunityId(uid));
+    // 圈子作用域：缺省取用户当前圈子；未加入兜底默认圈子（读路径不抛 80014）
+    const communityId = await this.community.resolveFeedCommunityId(uid, q.communityId);
     // 推广置顶仅首页（无 cursor）前置；翻页只走普通流，游标/hasMore 均按普通流计算
     const isFirstPage = !q.cursor;
 
@@ -278,7 +278,7 @@ export class SquareService {
   // ===== 今日上头：近24h 浏览量 TopN（跨 表白墙帖 + 树洞帖，按圈子过滤）=====
   async todayHit(uid: string, anonId: string | null, q: SquareTodayHitQueryDto): Promise<SquareTodayHitResult> {
     const limit = Math.min(50, Math.max(1, q.limit ?? 10));
-    const communityId = q.communityId ?? (await this.community.getActiveCommunityId(uid));
+    const communityId = await this.community.resolveFeedCommunityId(uid, q.communityId);
     const rows = await this.community.getTodayHot(communityId, limit);
     if (rows.length === 0) return { list: [] };
 
@@ -321,7 +321,7 @@ export class SquareService {
 
   // ===== 广告位 Banner（圈子 + 全局，sortOrder asc）=====
   async banners(uid: string, communityId?: string) {
-    const cid = communityId ?? (await this.community.getActiveCommunityId(uid));
+    const cid = await this.community.resolveFeedCommunityId(uid, communityId);
     return this.community.listBanners(cid);
   }
 
