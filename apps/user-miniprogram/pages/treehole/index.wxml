@@ -53,12 +53,12 @@
       <view class="row">
         <text class="time">{{item.timeText}}</text>
         <view class="row-stats">
-          <text class="stat">💬 {{item.commentCount || ''}}</text>
-          <text class="stat">👁 {{item.viewCount || ''}}</text>
+          <text class="stat">💬 {{item.commentCount || 0}}</text>
+          <text class="stat">👁 {{item.viewCount || 0}}</text>
           <!-- 转发给微信好友：open-type=share 触发宿主页 onShareAppMessage；catchtap 吞冒泡防跳详情 -->
           <button class="share-btn" open-type="share" data-id="{{item.id}}" catchtap="onShareTap">↗</button>
           <view class="like {{item.liked ? 'liked' : ''}}" data-id="{{item.id}}" catchtap="onLike">
-            {{item.liked ? '♥' : '♡'}} {{item.likeCount || ''}}
+            {{item.liked ? '♥' : '♡'}} {{item.likeCount || 0}}
           </view>
         </view>
       </view>

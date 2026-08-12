@@ -64,15 +64,15 @@
   <view class="actions">
     <view class="action {{disabled ? 'action-disabled' : ''}}" catchtap="onLike">
       <text class="icon {{post.liked ? 'liked' : ''}}">{{post.liked ? '♥' : '♡'}}</text>
-      <text class="count">{{post.likeCount || ''}}</text>
+      <text class="count">{{post.likeCount || 0}}</text>
     </view>
     <view class="action {{disabled ? 'action-disabled' : ''}}" catchtap="onComment">
       <text class="icon">💬</text>
-      <text class="count">{{post.commentCount || ''}}</text>
+      <text class="count">{{post.commentCount || 0}}</text>
     </view>
     <view class="action">
       <text class="icon">👁</text>
-      <text class="count">{{post.viewCount || ''}}</text>
+      <text class="count">{{post.viewCount || 0}}</text>
     </view>
     <!-- 转发给微信好友：open-type=share 触发宿主页 onShareAppMessage；catchtap 吞冒泡防跳详情 -->
     <button
