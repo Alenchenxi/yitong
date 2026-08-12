@@ -70,5 +70,17 @@
       <text class="icon">💬</text>
       <text class="count">{{post.commentCount || ''}}</text>
     </view>
+    <view class="action">
+      <text class="icon">👁</text>
+      <text class="count">{{post.viewCount || ''}}</text>
+    </view>
+    <!-- 转发给微信好友：open-type=share 触发宿主页 onShareAppMessage；catchtap 吞冒泡防跳详情 -->
+    <button
+      wx:if="{{shareable}}"
+      class="action share-btn"
+      open-type="share"
+      data-id="{{post.id}}"
+      catchtap="onShareTap"
+    >↗</button>
   </view>
 </view>

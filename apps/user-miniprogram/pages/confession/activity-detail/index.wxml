@@ -5,7 +5,7 @@
     <view class="desc" wx:if="{{topic.description}}">{{topic.description}}</view>
   </view>
   <view class="list" wx:if="{{posts.length > 0}}">
-    <post-card wx:for="{{posts}}" wx:key="id" post="{{item}}" bind:like="onLike"></post-card>
+    <post-card wx:for="{{posts}}" wx:key="id" post="{{item}}" bind:like="onLike" shareable="{{true}}"></post-card>
   </view>
   <view class="yt-empty" wx:elif="{{!loading}}">
     <view class="yt-empty-emoji">📭</view>

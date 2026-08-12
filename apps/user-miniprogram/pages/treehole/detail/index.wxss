@@ -24,3 +24,56 @@
 }
 .empty { padding-top: 260rpx; text-align: center; color: #999; }
 .empty-title { font-size: 28rpx; }
+
+/* 统计条：浏览数 / 评论数 / 转发 */
+.stats { display: flex; align-items: center; gap: 28rpx; margin-top: 20rpx; padding-top: 16rpx; border-top: 1rpx solid #f0f0f0; font-size: 24rpx; color: #999; }
+.share-btn { font-size: 24rpx; color: #999 !important; background: transparent !important; line-height: normal; padding: 0; margin: 0; }
+.share-btn::after { border: none; }
+
+/* 评论区（平铺，最新优先） */
+.comments { background: #fff; border-radius: 16rpx; padding: 28rpx; margin-top: 24rpx; }
+.comments-title { font-size: 28rpx; font-weight: 600; color: #222; margin-bottom: 20rpx; }
+.comment { padding: 20rpx 0; border-bottom: 1rpx solid #f4f4f4; }
+.comment:last-child { border-bottom: none; }
+.c-head { display: flex; align-items: center; gap: 12rpx; }
+.c-lz { font-size: 20rpx; font-weight: 600; color: #1D2129; background: #F9C801; border-radius: 999rpx; padding: 2rpx 14rpx; }
+.c-anon { font-size: 26rpx; font-weight: 600; color: #6b7fd7; }
+.c-time { font-size: 22rpx; color: #aaa; }
+.c-content { margin-top: 10rpx; font-size: 28rpx; line-height: 1.6; color: #222; white-space: pre-wrap; word-break: break-word; }
+.c-actions { display: flex; justify-content: flex-end; margin-top: 10rpx; }
+.c-like { font-size: 24rpx; color: #999; }
+.c-like.liked { color: #ff4d6d; }
+.tip { text-align: center; font-size: 24rpx; color: #999; padding: 24rpx 0 8rpx; }
+
+/* 底部评论输入条 */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx;
+  background: #fff;
+  border-top: 1rpx solid #eee;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.04);
+  z-index: 10;
+}
+.bar-input {
+  flex: 1;
+  height: 72rpx;
+  background: #f5f6f8;
+  border-radius: 999rpx;
+  padding: 0 28rpx;
+  font-size: 28rpx;
+}
+.bar-send { margin: 0; background: #F9C801; color: #1D2129; font-size: 26rpx; font-weight: 600; border-radius: 999rpx; }
+.bar-send[disabled] { background: #f0f0f0; color: #bbb; }
+
+/* 匿名引导 */
+.anon-guide { padding-top: 200rpx; text-align: center; }
+.anon-guide-emoji { font-size: 96rpx; }
+.anon-guide-title { margin-top: 24rpx; font-size: 32rpx; font-weight: 600; color: #222; }
+.anon-guide-desc { margin-top: 12rpx; font-size: 26rpx; color: #999; }
+.anon-guide-btn { margin-top: 48rpx; background: #F9C801; color: #1D2129; font-size: 30rpx; font-weight: 600; border-radius: 999rpx; width: 400rpx; }

@@ -128,6 +128,7 @@ model Post {
   videoUrl    String?        @map("video_url")
   videoCover  String?        @map("video_cover")
   likeCount   Int            @default(0) @map("like_count")
+  viewCount   Int            @default(0) @map("view_count") // 累计浏览数（PV）：详情接口 fire-and-forget 自增；与 circle 计划 ContentView（今日上头去重）并存
   status      PostStatus     @default(PENDING)
   visibility  PostVisibility @default(PUBLIC)  // P1-11 草稿/私密投稿
   pinned      Boolean        @default(false) // P2-05 置顶
@@ -212,9 +213,11 @@ model AnonymousPost {
   status      PostStatus @default(PENDING)
   createdAt   DateTime   @default(now()) @map("created_at")
   likeCount   Int        @default(0) @map("like_count")
+  viewCount   Int        @default(0) @map("view_count") // 累计浏览数（PV）：详情接口 fire-and-forget 自增
   boostUntil DateTime? @map("boost_until") // 内容推广：付费置顶曝光到期（null=未推广；>now 即推广中）
   community   Community  @relation(fields: [communityId], references: [id], onDelete: Restrict)
   likes       AnonPostLike[]
+  comments    AnonComment[]
   @@index([communityId, status, createdAt])
   @@index([createdAt])
   @@index([mood, createdAt])
@@ -231,6 +234,32 @@ model AnonPostLike {
   post      AnonymousPost  @relation(fields: [postId], references: [id])
   @@unique([postId, anonId])
   @@map("anon_post_likes")
+}
+
+// 树洞匿名评论：anonId 标识评论者，0 真实 uid（守匿名红线）。平铺无回复 thread，最新优先。
+model AnonComment {
+  id        String          @id @default(cuid())
+  postId    String          @map("post_id")
+  anonId    String          @map("anon_id") // 评论者匿名 id（不含真实 uid）
+  content   String
+  likeCount Int             @default(0) @map("like_count")
+  createdAt DateTime        @default(now()) @map("created_at")
+  post      AnonymousPost   @relation(fields: [postId], references: [id])
+  likes     AnonCommentLike[]
+  @@index([postId, createdAt])
+  @@map("anon_comments")
+}
+
+// 树洞匿名评论点赞（commentId+anonId 唯一，支持去重/取消）
+model AnonCommentLike {
+  id        String      @id @default(cuid())
+  commentId String      @map("comment_id")
+  anonId    String      @map("anon_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+  comment   AnonComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  @@unique([commentId, anonId])
+  @@index([commentId])
+  @@map("anon_comment_likes")
 }
 
 // P0-16 树洞匿名屏蔽：blocker 屏蔽 blocked（按 anonId，0 真实 uid，守匿名红线）

@@ -162,7 +162,9 @@ export class ConfessionController {
   @Get('posts/:id')
   async getPost(@Param('id') id: string, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.confession.getPost(uid, id));
+    const result = await this.confession.getPost(uid, id);
+    void this.confession.incrementViewCount(id).catch(() => undefined); // 累计浏览数 PV（fire-and-forget）
+    return ok(result);
   }
 
   @Post('posts/:id/like')

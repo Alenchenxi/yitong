@@ -478,4 +478,13 @@ Page({
       },
     });
   },
+
+  // 转发给微信好友：详情页转发按钮 + 右上角菜单分享都走这里
+  onShareAppMessage() {
+    const p = this.data.post;
+    return {
+      title: p ? p.content.slice(0, 20) : '表白墙',
+      path: `/pages/post-detail/index?id=${this.postId}`,
+    };
+  },
 });

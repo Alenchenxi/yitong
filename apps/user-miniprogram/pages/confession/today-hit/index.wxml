@@ -1,7 +1,7 @@
 <view class="page">
   <view class="hint">⚡ 近 24 小时最热内容</view>
   <view class="list" wx:if="{{posts.length > 0}}">
-    <post-card wx:for="{{posts}}" wx:key="id" post="{{item}}" bind:like="onLike"></post-card>
+    <post-card wx:for="{{posts}}" wx:key="id" post="{{item}}" bind:like="onLike" shareable="{{true}}"></post-card>
     <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
     <view class="loading-tip" wx:elif="{{!hasMore}}">没有更多了</view>
   </view>

@@ -12,9 +12,31 @@ export interface AnonPostVo {
   mood: string | null; // P0-13 情绪分类
   likeCount: number;
   liked: boolean;
+  commentCount: number; // 评论数（动态 _count）
+  viewCount: number; // 累计浏览数（PV），详情接口 fire-and-forget 自增
   boosted: boolean; // 内容推广：付费置顶曝光中
   boostUntil: string | null; // 推广到期时间 ISO
   createdAt: string;
+}
+
+// 树洞评论 VO（匿名，区分楼主；0 真实 uid）
+export interface AnonCommentVo {
+  id: string;
+  postId: string;
+  authorAnonId: string; // 评论者匿名 id（0 真实 uid）
+  content: string;
+  likeCount: number;
+  liked: boolean;
+  isLZ: boolean; // 楼主标记：authorAnonId === post.anonId
+  createdAt: string;
+}
+
+// 本地分页结果（与后端 PageResult<T> 对齐）
+export interface PageResult<T> {
+  list: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface AnonTokenResp {
@@ -192,6 +214,23 @@ export function skipAnonMatch(matchId: string): Promise<MatchResp> {
 
 export function toggleAnonPostLike(postId: string): Promise<{ liked: boolean; likeCount: number }> {
   return anonRequest({ url: `/treehole/posts/${postId}/like`, method: 'POST' });
+}
+
+// ===== 树洞评论（anonToken 鉴权，与帖点赞同一匿名态）=====
+export function listAnonComments(
+  postId: string,
+  page = 1,
+  pageSize = 20,
+): Promise<PageResult<AnonCommentVo>> {
+  return anonRequest({ url: `/treehole/posts/${postId}/comments?page=${page}&pageSize=${pageSize}`, method: 'GET' });
+}
+
+export function createAnonComment(postId: string, content: string): Promise<AnonCommentVo> {
+  return anonRequest({ url: `/treehole/posts/${postId}/comments`, method: 'POST', data: { content } });
+}
+
+export function toggleAnonCommentLike(commentId: string): Promise<{ liked: boolean; likeCount: number }> {
+  return anonRequest({ url: `/treehole/comments/${commentId}/like`, method: 'POST' });
 }
 
 export function joinParty(): Promise<PartyResp> {

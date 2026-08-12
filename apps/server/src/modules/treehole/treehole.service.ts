@@ -10,6 +10,7 @@ import { ChatService } from '../chat/chat.service';
 import { CommunityService, DEFAULT_COMMUNITY_ID } from '../community/community.service';
 import type { CreateAnonPostDto } from './dto/create-anon-post.dto';
 import type { UpdateAnonProfileDto } from './dto/update-anon-profile.dto';
+import type { AnonCommentVo } from './types';
 import {
   QUESTIONNAIRE_BANK,
   QUIZ_RESULT_CONFIG,
@@ -255,6 +256,7 @@ export class TreeholeService {
         mood: dto.mood ?? null,
         status: PostStatus.APPROVED,
       },
+      include: { _count: { select: { comments: true } } },
     });
     return this.toVo(post);
   }
@@ -275,7 +277,10 @@ export class TreeholeService {
     const blockedPeers = await this.getBlockedPeerSet(anonId);
     if (blockedPeers.size > 0) baseWhere.anonId = { notIn: [...blockedPeers] };
 
-    const include = { likes: { where: { anonId }, select: { id: true }, take: 1 } };
+    const include = {
+      likes: { where: { anonId }, select: { id: true }, take: 1 },
+      _count: { select: { comments: true } },
+    };
     const now = new Date();
 
     // P0-13 推荐：热度（点赞）+ 新鲜度，take limit 不分页；推广中（boostUntil>now）前置
@@ -336,6 +341,7 @@ export class TreeholeService {
       where: { anonId: profile.anonId },
       orderBy: { createdAt: 'desc' },
       take: 50,
+      include: { _count: { select: { comments: true } } },
     });
     return { list: posts.map((p) => this.toVo(p)) };
   }
@@ -343,7 +349,10 @@ export class TreeholeService {
   async getPost(anonId: string, id: string) {
     const post = await this.prisma.anonymousPost.findFirst({
       where: { id, status: PostStatus.APPROVED },
-      include: { likes: { where: { anonId }, select: { id: true }, take: 1 } },
+      include: {
+        likes: { where: { anonId }, select: { id: true }, take: 1 },
+        _count: { select: { comments: true } },
+      },
     });
     if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
     // P0-16 广场隔离：互相屏蔽则详情不可见
@@ -819,6 +828,125 @@ export class TreeholeService {
     return { liked: !!liked, likeCount: after?.likeCount ?? post.likeCount + 1 };
   }
 
+  // ===== 树洞匿名评论（平铺无回复，最新优先）=====
+
+  // 创建评论：验帖 + 屏蔽 + 内容安全（命中抛 90002），写 anonId（0 真实 uid）
+  async createComment(anonId: string, postId: string, content: string): Promise<AnonCommentVo> {
+    const post = await this.prisma.anonymousPost.findFirst({
+      where: { id: postId, status: PostStatus.APPROVED },
+      select: { id: true, anonId: true },
+    });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    // P0-16 互相屏蔽：不可评论
+    if (await this.isBlockedEither(anonId, post.anonId)) {
+      throw new BizException(30005, '内容不可见', HttpStatus.FORBIDDEN);
+    }
+    await this.moderation.checkText(content);
+    const comment = await this.prisma.anonComment.create({
+      data: { postId, anonId, content },
+    });
+    return this.toCommentVo(comment, post.anonId);
+  }
+
+  // 评论列表：page 分页，最新优先；每条带当前匿名态是否已赞 + 楼主标记
+  async listComments(anonId: string, postId: string, page: number, pageSize: number) {
+    const post = await this.prisma.anonymousPost.findFirst({
+      where: { id: postId, status: PostStatus.APPROVED },
+      select: { id: true, anonId: true },
+    });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (await this.isBlockedEither(anonId, post.anonId)) {
+      throw new BizException(30005, '内容不可见', HttpStatus.FORBIDDEN);
+    }
+    const [comments, total] = await Promise.all([
+      this.prisma.anonComment.findMany({
+        where: { postId },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { likes: { where: { anonId }, select: { id: true }, take: 1 } },
+      }),
+      this.prisma.anonComment.count({ where: { postId } }),
+    ]);
+    return {
+      list: comments.map((c) => this.toCommentVo(c, post.anonId)),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  // 评论点赞 toggle（去重/取消，镜像 confession toggleCommentLike）
+  async toggleCommentLike(anonId: string, commentId: string) {
+    const comment = await this.prisma.anonComment.findUnique({ where: { id: commentId } });
+    if (!comment) throw new BizException(30010, '评论不存在', HttpStatus.NOT_FOUND);
+    const existing = await this.prisma.anonCommentLike.findUnique({
+      where: { commentId_anonId: { commentId, anonId } },
+    });
+    if (existing) {
+      try {
+        await this.prisma.$transaction([
+          this.prisma.anonCommentLike.delete({ where: { id: existing.id } }),
+          this.prisma.anonComment.update({ where: { id: commentId }, data: { likeCount: { decrement: 1 } } }),
+        ]);
+      } catch (e) {
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025')) throw e;
+      }
+      const after = await this.prisma.anonComment.findUnique({ where: { id: commentId }, select: { likeCount: true } });
+      const liked = await this.prisma.anonCommentLike.findUnique({
+        where: { commentId_anonId: { commentId, anonId } },
+        select: { id: true },
+      });
+      return { liked: !!liked, likeCount: Math.max(0, after?.likeCount ?? comment.likeCount - 1) };
+    }
+    try {
+      await this.prisma.$transaction([
+        this.prisma.anonCommentLike.create({ data: { commentId, anonId } }),
+        this.prisma.anonComment.update({ where: { id: commentId }, data: { likeCount: { increment: 1 } } }),
+      ]);
+    } catch (e) {
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
+    }
+    const after = await this.prisma.anonComment.findUnique({ where: { id: commentId }, select: { likeCount: true } });
+    const liked = await this.prisma.anonCommentLike.findUnique({
+      where: { commentId_anonId: { commentId, anonId } },
+      select: { id: true },
+    });
+    return { liked: !!liked, likeCount: after?.likeCount ?? comment.likeCount + 1 };
+  }
+
+  // 累计浏览数自增（fire-and-forget；updateMany 避免并发删帖 P2025）
+  async incrementViewCount(postId: string): Promise<void> {
+    await this.prisma.anonymousPost.updateMany({
+      where: { id: postId },
+      data: { viewCount: { increment: 1 } },
+    });
+  }
+
+  private toCommentVo(
+    c: {
+      id: string;
+      postId: string;
+      anonId: string;
+      content: string;
+      likeCount: number;
+      createdAt: Date;
+      likes?: { id: string }[];
+    },
+    postAnonId: string,
+  ): AnonCommentVo {
+    return {
+      id: c.id,
+      postId: c.postId,
+      authorAnonId: c.anonId,
+      content: c.content,
+      likeCount: c.likeCount,
+      liked: (c.likes?.length ?? 0) > 0,
+      isLZ: c.anonId === postAnonId,
+      createdAt: c.createdAt.toISOString(),
+    };
+  }
+
   private randomNickname(): string {
     const a = NICK_A[Math.floor(Math.random() * NICK_A.length)];
     const b = NICK_B[Math.floor(Math.random() * NICK_B.length)];
@@ -886,9 +1014,11 @@ export class TreeholeService {
     mood: string | null;
     status: PostStatus;
     likeCount: number;
+    viewCount: number;
     boostUntil: Date | null;
     createdAt: Date;
     likes?: { id: string }[];
+    _count?: { comments: number };
   }) {
     return {
       id: p.id,
@@ -898,6 +1028,8 @@ export class TreeholeService {
       mood: p.mood,
       likeCount: p.likeCount,
       liked: (p.likes?.length ?? 0) > 0,
+      commentCount: p._count?.comments ?? 0,
+      viewCount: p.viewCount,
       boosted: p.boostUntil ? p.boostUntil.getTime() > Date.now() : false, // 内容推广
       boostUntil: p.boostUntil ? p.boostUntil.toISOString() : null,
       createdAt: p.createdAt.toISOString(),

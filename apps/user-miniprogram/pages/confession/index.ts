@@ -101,4 +101,13 @@ Page({
       });
     }
   },
+
+  // 转发给微信好友：post-card 转发按钮触发（data-id 定位），无 id 时 fallback 本页
+  onShareAppMessage(e: { target?: { dataset?: { id?: string } } }) {
+    const id = e?.target?.dataset?.id ?? '';
+    return {
+      title: '表白墙',
+      path: id ? `/pages/post-detail/index?id=${id}` : '/pages/confession/index',
+    };
+  },
 });

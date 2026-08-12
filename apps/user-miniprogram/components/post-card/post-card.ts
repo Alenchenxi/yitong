@@ -24,6 +24,12 @@ Component({
       type: String,
       value: '请前往树洞签发匿名身份后互动',
     },
+    // 转发给微信好友：宿主页传 true 时卡片显示转发按钮（open-type=share 触发宿主页 onShareAppMessage）
+    // 默认 false —— 广场（square）不传则无转发按钮，避免宿主无 onShareAppMessage 时分享失效
+    shareable: {
+      type: Boolean,
+      value: false,
+    },
   },
   data: {
     timeText: '',
@@ -80,7 +86,16 @@ Component({
       }
       const p = this.data.post as { id?: string } | null;
       if (!p?.id) return;
+      // 匿名卡（树洞）→ 树洞详情并聚焦评论；实名卡（表白墙）→ 表白墙详情并聚焦评论
+      if (this.data.anonymous) {
+        wx.navigateTo({ url: `/pages/treehole/detail/index?id=${p.id}&focus=1` });
+        return;
+      }
       wx.navigateTo({ url: `/pages/post-detail/index?id=${p.id}&focus=1` });
+    },
+    // 转发按钮 catchtap 吞冒泡：open-type=share 交给宿主页 onShareAppMessage，阻止冒泡到卡片 onTap 跳详情
+    onShareTap() {
+      // noop：仅阻止冒泡
     },
     previewImage(e: WechatMiniprogram.TouchEvent) {
       const { src } = e.currentTarget.dataset as { src: string };

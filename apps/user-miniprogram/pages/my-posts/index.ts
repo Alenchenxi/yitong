@@ -93,6 +93,7 @@ Page({
             likeCount: 0,
             liked: false,
             commentCount: 0,
+            viewCount: 0,
             visibility: 'PUBLIC' as const,
             pinned: false,
             featured: false,

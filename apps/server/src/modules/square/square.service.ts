@@ -243,9 +243,11 @@ export class SquareService {
       where: baseWhere,
       orderBy,
       take: fetchSize,
-      include: anonId
-        ? { likes: { where: { anonId }, select: { id: true }, take: 1 } }
-        : undefined,
+      include: {
+        _count: { select: { comments: true } },
+        // anonId 缺失时匿名帖 liked 恒 false（不查 likes）
+        ...(anonId ? { likes: { where: { anonId }, select: { id: true }, take: 1 } } : {}),
+      },
     });
   }
 
@@ -265,9 +267,11 @@ export class SquareService {
       where,
       orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
       take,
-      include: anonId
-        ? { likes: { where: { anonId }, select: { id: true }, take: 1 } }
-        : undefined,
+      include: {
+        _count: { select: { comments: true } },
+        // anonId 缺失时匿名帖 liked 恒 false（不查 likes）
+        ...(anonId ? { likes: { where: { anonId }, select: { id: true }, take: 1 } } : {}),
+      },
     });
   }
 
@@ -335,6 +339,7 @@ export class SquareService {
     videoUrl: string | null;
     videoCover: string | null;
     likeCount: number;
+    viewCount: number;
     visibility: PostVisibility;
     pinned: boolean;
     featured: boolean;
@@ -364,6 +369,7 @@ export class SquareService {
       likeCount: post.likeCount,
       liked: post.postLikes.length > 0,
       commentCount: post._count.comments,
+      viewCount: post.viewCount,
       visibility: post.visibility,
       pinned: post.pinned,
       featured: post.featured,
@@ -384,9 +390,11 @@ export class SquareService {
       images: string[];
       mood: string | null;
       likeCount: number;
+      viewCount: number;
       boostUntil: Date | null;
       createdAt: Date;
       likes?: { id: string }[];
+      _count?: { comments: number };
     },
     anonId: string | null,
   ): AnonPostVo {
@@ -397,6 +405,8 @@ export class SquareService {
       images: p.images,
       mood: p.mood,
       likeCount: p.likeCount,
+      commentCount: p._count?.comments ?? 0,
+      viewCount: p.viewCount,
       // anonId 缺失时 liked 恒 false；有 anonId 时按 likes 关联判断
       liked: anonId ? (p.likes?.length ?? 0) > 0 : false,
       // 树洞推广在广场 union feed 生效（boostUntil 实时判断，懒过滤）

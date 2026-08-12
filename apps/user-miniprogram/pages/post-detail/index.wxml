@@ -33,6 +33,8 @@
     <view class="stats">
       <text>♥ {{post.likeCount}}</text>
       <text>💬 {{post.commentCount}}</text>
+      <text>👁 {{post.viewCount}}</text>
+      <button class="share-btn" open-type="share">↗ 转发</button>
       <text class="report-link" bindtap="onReport">举报</text>
       <text class="fav-link {{post.favorited ? 'faved' : ''}}" bindtap="onFavorite">{{post.favorited ? '★' : '☆'}} 收藏</text>
     </view>

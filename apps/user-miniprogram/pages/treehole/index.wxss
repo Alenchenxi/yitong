@@ -92,6 +92,10 @@
 .content { font-size: 30rpx; line-height: 1.6; color: var(--yt-text-main); margin: 12rpx 0; white-space: pre-wrap; }
 .row { display: flex; justify-content: space-between; align-items: center; margin-top: 12rpx; }
 .time { font-size: 22rpx; color: var(--yt-text-sub); }
+.row-stats { display: flex; align-items: center; gap: 20rpx; }
+.stat { font-size: 22rpx; color: var(--yt-text-sub); }
+.share-btn { font-size: 26rpx; color: var(--yt-text-sub) !important; background: transparent !important; line-height: normal; padding: 0; margin: 0; }
+.share-btn::after { border: none; }
 .like { font-size: 26rpx; color: var(--yt-text-sub); }
 .like.liked { color: var(--yt-primary); }
 .tip { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 24rpx 0; }

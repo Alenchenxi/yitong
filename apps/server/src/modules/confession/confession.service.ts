@@ -336,6 +336,14 @@ export class ConfessionService {
     return this.toPostVo(post);
   }
 
+  // 累计浏览数自增（fire-and-forget；updateMany 避免并发删帖 P2025）
+  async incrementViewCount(postId: string): Promise<void> {
+    await this.prisma.post.updateMany({
+      where: { id: postId, deletedAt: null },
+      data: { viewCount: { increment: 1 } },
+    });
+  }
+
   // P1-10 帖子编辑（仅作者；过内容安全；status 保持 APPROVED；UPDATE editedAt）
   async editPost(uid: string, postId: string, openid: string, dto: CreatePostDto): Promise<PostVo> {
     const post = await this.prisma.post.findFirst({
@@ -941,6 +949,7 @@ export class ConfessionService {
       likeCount: post.likeCount,
       liked: post.postLikes.length > 0,
       commentCount: post._count.comments,
+      viewCount: post.viewCount,
       visibility: post.visibility,
       pinned: post.pinned, // P2-05
       featured: post.featured, // P2-05

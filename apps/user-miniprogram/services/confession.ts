@@ -24,6 +24,7 @@ export interface PostVo {
   likeCount: number;
   liked: boolean;
   commentCount: number;
+  viewCount: number; // 累计浏览数（PV），详情接口 fire-and-forget 自增
   visibility: PostVisibility;
   pinned: boolean; // P2-05 置顶
   featured: boolean; // P2-05 加精

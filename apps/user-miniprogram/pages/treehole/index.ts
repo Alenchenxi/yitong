@@ -134,6 +134,20 @@ Page({
     if (id) wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
   },
 
+  // 转发给微信好友：列表卡片转发按钮 + 右上角菜单分享
+  onShareAppMessage(e: { target?: { dataset?: { id?: string } } }) {
+    const id = e?.target?.dataset?.id ?? this.data.posts[0]?.id ?? '';
+    return {
+      title: '树洞匿名分享',
+      path: id ? `/pages/treehole/detail/index?id=${id}` : '/pages/treehole/index',
+    };
+  },
+
+  // 转发按钮 catchtap 吞冒泡（防卡片 onTap 跳详情）
+  onShareTap() {
+    // noop
+  },
+
   async onLike(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
     const idx = this.data.posts.findIndex((p) => p.id === id);

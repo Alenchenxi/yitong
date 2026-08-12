@@ -154,3 +154,15 @@
 }
 
 .count { min-width: 32rpx; }
+
+/* 转发按钮：重置 button 默认样式，与 .action 对齐 */
+.share-btn {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  line-height: inherit;
+  font-size: 32rpx;
+  color: var(--yt-text-sub);
+}
+.share-btn::after { border: none; }

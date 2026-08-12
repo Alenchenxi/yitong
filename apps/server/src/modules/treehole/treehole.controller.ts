@@ -9,6 +9,8 @@ import { AnonGuard } from './anon.guard';
 import { TreeholeService } from './treehole.service';
 import { CreateAnonPostDto } from './dto/create-anon-post.dto';
 import { UpdateAnonProfileDto } from './dto/update-anon-profile.dto';
+import { CreateAnonCommentDto } from './dto/create-anon-comment.dto';
+import { AnonCommentsQueryDto } from './dto/anon-comments-query.dto';
 
 @Controller('treehole')
 export class TreeholeController {
@@ -104,7 +106,9 @@ export class TreeholeController {
   @Get('posts/:id')
   async getPost(@Param('id') id: string, @Req() req: Request) {
     const anonId = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.treehole.getPost(anonId, id));
+    const result = await this.treehole.getPost(anonId, id);
+    void this.treehole.incrementViewCount(id).catch(() => undefined); // 累计浏览数 PV（fire-and-forget）
+    return ok(result);
   }
 
   @Public()
@@ -114,6 +118,37 @@ export class TreeholeController {
   async toggleLike(@Param('id') id: string, @Req() req: Request) {
     const anonId = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.treehole.toggleAnonPostLike(anonId, id));
+  }
+
+  // ===== 树洞匿名评论（AnonGuard 鉴权；posts/:id/comments 段数多于 posts/:id 无匹配冲突）=====
+  @Public()
+  @UseGuards(AnonGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 匿名评论 5/min（API 规范 §8）
+  @Post('posts/:id/comments')
+  async createComment(@Param('id') id: string, @Body() dto: CreateAnonCommentDto, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.createComment(anonId, id, dto.content));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('posts/:id/comments')
+  async listComments(
+    @Param('id') id: string,
+    @Query() q: AnonCommentsQueryDto,
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listComments(anonId, id, q.page ?? 1, q.pageSize ?? 20));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('comments/:id/like')
+  async toggleCommentLike(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.toggleCommentLike(anonId, id));
   }
 
   @Public()

@@ -87,6 +87,8 @@
   margin-top: 20rpx; padding-top: 16rpx; border-top: 1rpx solid #f0f0f0;
 }
 .report-link { margin-left: auto; color: #ccc; font-size: 22rpx; }
+.share-btn { font-size: 22rpx; color: var(--yt-text-sub) !important; background: transparent !important; line-height: normal; padding: 0; margin: 0; }
+.share-btn::after { border: none; }
 .fav-link { color: var(--yt-text-weak); font-size: 22rpx; margin-right: 16rpx; }
 .fav-link.faved { color: var(--yt-primary); }
 .follow-btn { padding: 8rpx 24rpx; border-radius: 999rpx; background: var(--yt-primary); color: var(--yt-text-main); font-size: 24rpx; font-weight: 600; margin-left: 16rpx; }
