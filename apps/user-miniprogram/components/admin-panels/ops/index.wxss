@@ -1,3 +1,14 @@
 @import "../admin-common.wxss";
 
-/* ops 无额外页面级样式，全部复用 admin-common（.adm-page + padding-bottom:160rpx 等） */
+/* ops 额外页面级样式（广告位 / 圈子管理） */
+.adm-status--danger { background: rgba(245, 63, 63, 0.15); color: var(--yt-danger); } /* 已禁用/下线 危险 */
+
+.adm-item-title-row { display: flex; align-items: center; gap: 12rpx; }
+.adm-default-tag { font-size: 20rpx; color: var(--yt-text-sub); background: var(--yt-disabled-bg); padding: 4rpx 12rpx; border-radius: 999rpx; }
+
+.adm-upload-row { display: flex; align-items: center; gap: 16rpx; margin-bottom: 16rpx; }
+.adm-banner-preview { width: 160rpx; height: 80rpx; border-radius: 8rpx; background: var(--yt-disabled-bg); flex-shrink: 0; }
+.adm-banner-thumb { width: 120rpx; height: 60rpx; border-radius: 6rpx; margin-top: 8rpx; display: block; }
+
+.adm-search-row { display: flex; gap: 12rpx; align-items: center; margin-bottom: 16rpx; }
+.adm-search-row .adm-input { flex: 1; }

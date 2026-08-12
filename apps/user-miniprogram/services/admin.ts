@@ -330,3 +330,68 @@ export function createAdmin(userId: string) {
 export function deleteAdmin(id: string) {
   return request<{ id: string; deleted: boolean }>({ url: `/admin/admins/${id}`, method: 'DELETE' });
 }
+
+// ===== 广告位 Banner 管理 =====
+export interface AdminBannerVo {
+  id: string;
+  title: string;
+  imageUrl: string;
+  linkUrl: string | null;
+  communityId: string | null;
+  community?: { name: string } | null;
+  sortOrder: number;
+  status: 'ENABLED' | 'DISABLED';
+  createdAt: string;
+}
+export function listBannersAdmin(communityId?: string, keyword?: string) {
+  const params: string[] = [];
+  if (communityId) params.push(`communityId=${encodeURIComponent(communityId)}`);
+  if (keyword) params.push(`keyword=${encodeURIComponent(keyword)}`);
+  return request<AdminBannerVo[]>({ url: `/admin/banners${params.length ? `?${params.join('&')}` : ''}` });
+}
+export function createBannerAdmin(data: {
+  title: string;
+  imageUrl: string;
+  linkUrl?: string | null;
+  communityId?: string | null;
+  sortOrder?: number;
+}) {
+  return request<AdminBannerVo>({ url: '/admin/banners', method: 'POST', data });
+}
+export function updateBannerAdmin(
+  id: string,
+  data: Partial<{ title: string; imageUrl: string; linkUrl: string | null; communityId: string | null; sortOrder: number; status: string }>,
+) {
+  return request<AdminBannerVo>({ url: `/admin/banners/${id}`, method: 'PUT', data });
+}
+export function deleteBannerAdmin(id: string) {
+  return request<{ id: string; deleted: boolean }>({ url: `/admin/banners/${id}`, method: 'DELETE' });
+}
+export function toggleBannerAdmin(id: string, enabled: boolean) {
+  return request<AdminBannerVo>({ url: `/admin/banners/${id}/toggle`, method: 'POST', data: { enabled } });
+}
+
+// ===== 圈子（Community）管理 =====
+export interface AdminCommunityVo {
+  id: string;
+  name: string;
+  logo: string | null;
+  description: string | null;
+  ownerId: string | null;
+  status: 'ACTIVE' | 'DISABLED';
+  memberCount: number;
+  postCount: number;
+  createdAt: string;
+}
+export function listCommunitiesAdmin(status?: string, keyword?: string) {
+  const params: string[] = [];
+  if (status) params.push(`status=${status}`);
+  if (keyword) params.push(`keyword=${encodeURIComponent(keyword)}`);
+  return request<AdminCommunityVo[]>({ url: `/admin/communities${params.length ? `?${params.join('&')}` : ''}` });
+}
+export function disableCommunityAdmin(id: string) {
+  return request<AdminCommunityVo>({ url: `/admin/communities/${id}/disable`, method: 'POST' });
+}
+export function enableCommunityAdmin(id: string) {
+  return request<AdminCommunityVo>({ url: `/admin/communities/${id}/enable`, method: 'POST' });
+}

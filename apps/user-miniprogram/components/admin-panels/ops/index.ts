@@ -19,13 +19,24 @@ import {
   updatePricing,
   getBoostPlans,
   updateBoostPlanPrice,
+  listBannersAdmin,
+  createBannerAdmin,
+  updateBannerAdmin,
+  deleteBannerAdmin,
+  toggleBannerAdmin,
+  listCommunitiesAdmin,
+  disableCommunityAdmin,
+  enableCommunityAdmin,
   type ActivityTopicVo,
   type TopicVo,
   type AnonTagVo,
   type AdminJobPostVo,
   type PricingVo,
   type BoostPlanVo,
+  type AdminBannerVo,
+  type AdminCommunityVo,
 } from '../../../services/admin';
+import { uploadImage } from '../../../services/upload';
 import {
   listAllAnnouncements,
   createAnnouncement,
@@ -34,8 +45,8 @@ import {
   type AdminAnnouncementVo,
 } from '../../../services/announcement';
 
-type Sub = 'announce' | 'activity' | 'topic' | 'tags' | 'jobs' | 'pricing' | 'boost';
-const SUBS: Sub[] = ['announce', 'activity', 'topic', 'tags', 'jobs', 'pricing', 'boost'];
+type Sub = 'announce' | 'activity' | 'topic' | 'tags' | 'jobs' | 'pricing' | 'boost' | 'banner' | 'community';
+const SUBS: Sub[] = ['announce', 'activity', 'topic', 'tags', 'jobs', 'pricing', 'boost', 'banner', 'community'];
 
 Component({
   options: {
@@ -85,6 +96,19 @@ Component({
     boostPlans: [] as BoostPlanVo[],
     editingBoostCode: '',
     editingBoostPrice: '',
+    // 广告位 Banner
+    banners: [] as AdminBannerVo[],
+    bnTitle: '',
+    bnImageUrl: '',
+    bnLinkUrl: '',
+    bnSortOrder: '',
+    bnUploading: false,
+    editingBannerId: '',
+    editingBannerSort: '',
+    editingBannerLink: '',
+    // 圈子
+    communities: [] as AdminCommunityVo[],
+    cmKeyword: '',
     loading: false,
   },
 
@@ -136,6 +160,10 @@ Component({
           this.setData({ pricing: await getPricing() });
         } else if (sub === 'boost') {
           this.setData({ boostPlans: await getBoostPlans() });
+        } else if (sub === 'banner') {
+          this.setData({ banners: await listBannersAdmin() });
+        } else if (sub === 'community') {
+          this.setData({ communities: await listCommunitiesAdmin(undefined, this.data.cmKeyword || undefined) });
         }
       } catch {
         /* toast */
@@ -359,6 +387,91 @@ Component({
     },
     cancelEditBoost() {
       this.setData({ editingBoostCode: '', editingBoostPrice: '' });
+    },
+
+    // ===== 广告位 Banner =====
+    onBannerInput(e: WechatMiniprogram.Input) {
+      const field = e.currentTarget.dataset.field as 'bnTitle' | 'bnLinkUrl' | 'bnSortOrder';
+      this.setData({ [field]: e.detail.value } as Record<string, string>);
+    },
+    async chooseBannerImage() {
+      if (this.data.bnUploading) return;
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        success: (res) => {
+          const file = res.tempFiles[0];
+          if (!file) return;
+          this.setData({ bnUploading: true });
+          uploadImage(file.tempFilePath, 'banner')
+            .then((url) => this.setData({ bnImageUrl: url }))
+            .catch(() => {})
+            .finally(() => this.setData({ bnUploading: false }));
+        },
+      });
+    },
+    async createBanner() {
+      if (!this.data.bnTitle.trim() || !this.data.bnImageUrl) {
+        wx.showToast({ title: '请填标题并上传图片', icon: 'none' });
+        return;
+      }
+      await createBannerAdmin({
+        title: this.data.bnTitle.trim(),
+        imageUrl: this.data.bnImageUrl,
+        linkUrl: this.data.bnLinkUrl.trim() || null,
+        sortOrder: Number(this.data.bnSortOrder) || 0,
+        communityId: null, // 全局轮播（圈子维度广告后续按圈配置）
+      });
+      wx.showToast({ title: '已创建', icon: 'success' });
+      this.setData({ bnTitle: '', bnImageUrl: '', bnLinkUrl: '', bnSortOrder: '' });
+      this.load();
+    },
+    async toggleBanner(e: WechatMiniprogram.TouchEvent) {
+      const { id, enabled } = e.currentTarget.dataset as { id: string; enabled: boolean };
+      await toggleBannerAdmin(id, !enabled);
+      this.load();
+    },
+    startEditBanner(e: WechatMiniprogram.TouchEvent) {
+      const { id, sort, link } = e.currentTarget.dataset as { id: string; sort: number; link?: string | null };
+      this.setData({ editingBannerId: id, editingBannerSort: String(sort), editingBannerLink: link ?? '' });
+    },
+    onEditBannerInput(e: WechatMiniprogram.Input) {
+      const field = e.currentTarget.dataset.field as 'editingBannerSort' | 'editingBannerLink';
+      this.setData({ [field]: e.detail.value } as Record<string, string>);
+    },
+    async saveBanner() {
+      if (!this.data.editingBannerId) return;
+      await updateBannerAdmin(this.data.editingBannerId, {
+        sortOrder: Number(this.data.editingBannerSort) || 0,
+        linkUrl: this.data.editingBannerLink || null,
+      });
+      wx.showToast({ title: '已保存', icon: 'success' });
+      this.setData({ editingBannerId: '', editingBannerSort: '', editingBannerLink: '' });
+      this.load();
+    },
+    cancelEditBanner() {
+      this.setData({ editingBannerId: '', editingBannerSort: '', editingBannerLink: '' });
+    },
+    async deleteBanner(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      await deleteBannerAdmin(id);
+      wx.showToast({ title: '已删除', icon: 'success' });
+      this.load();
+    },
+
+    // ===== 圈子（Community）管理 =====
+    onCommunitySearch(e: WechatMiniprogram.Input) {
+      this.setData({ cmKeyword: e.detail.value });
+    },
+    async searchCommunities() {
+      this.setData({ communities: await listCommunitiesAdmin(undefined, this.data.cmKeyword.trim() || undefined) });
+    },
+    async toggleCommunity(e: WechatMiniprogram.TouchEvent) {
+      const { id, disabled } = e.currentTarget.dataset as { id: string; disabled: boolean };
+      if (disabled) await enableCommunityAdmin(id);
+      else await disableCommunityAdmin(id);
+      wx.showToast({ title: disabled ? '已启用' : '已禁用', icon: 'success' });
+      this.load();
     },
   },
 });
