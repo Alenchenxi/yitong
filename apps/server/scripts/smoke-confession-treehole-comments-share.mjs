@@ -2,17 +2,21 @@
  * 表白墙 + 树洞：评论 / 累计浏览数(PV) / 转发前置依赖 — 独立 smoke
  *
  * 覆盖契约：
- *   1. 树洞评论（平铺无回复）：
+ *   1. 圈子门禁（circle 功能合并后写路径单真相源）：新用户未加入圈子发树洞帖抛 80014；
+ *      加入 cm_default 后发帖成功（treehole/confession 写路径都走 getActiveCommunityId）
+ *   2. 树洞评论（平铺无回复）：
  *      - createComment 返回 authorAnonId === anonId（红线：评论作者是匿名 id，非真实 uid）
  *      - 楼主标记 isLZ：作者本人评论 isLZ=true，他人评论 isLZ=false
  *      - listComments 最新优先、total 正确
  *      - 评论 VO 不含 authorId/userId/uid（红线断言）
  *      - AnonPostVo.commentCount 动态 _count
- *   2. 评论点赞 toggle：{liked, likeCount} 往返（1 → 0）
- *   3. 累计浏览数（fire-and-forget 自增）：
+ *   3. 评论点赞 toggle：{liked, likeCount} 往返（1 → 0）
+ *   4. 累计浏览数（fire-and-forget 自增）：
  *      - 树洞 GET /treehole/posts/:id 每次 viewCount >= 前值 + 1
  *      - 表白墙 GET /posts/:id 每次 viewCount >= 前值 + 1
- *   4. 红线：anonId !== 真实 uid
+ *   5. 红线：anonId !== 真实 uid
+ *
+ * 清理：删除 smoke 创建的成员行并恢复 community.memberCount/postCount（join +1 / 发帖 +1 归位）。
  *
  * 用法：
  *   1. 启 server（mock 模式）：cd apps/server && npx nest start
@@ -80,6 +84,11 @@ const created = {
   anonPostIds: [],
   anonCommentIds: [],
   postIds: [],
+  // 圈子：circle 功能合并后，写路径（发帖）须先加入圈子（getActiveCommunityId 门禁，未加入抛 80014）。
+  // smoke 记录 join 的成员行 + join 前 memberCount，清理时删行并恢复计数。
+  communityMemberRows: [], // { communityId, userId }
+  cmMemberCountBefore: {}, // communityId -> join 前 memberCount
+  cmPostCountBefore: {}, // communityId -> 表白墙帖创建前 postCount（发帖 postCount++，清理恢复）
 };
 const uniq = (arr) => [...new Set(arr)];
 let marker = '';
@@ -120,6 +129,19 @@ async function cleanup(prisma) {
   await del('posts', () => prisma.post.deleteMany({ where: { id: { in: inEmpty(postIds) } } }));
   await del('anonymous_profiles', () => prisma.anonymousProfile.deleteMany({ where: { userId: { in: inEmpty(userIds) } } }));
   await del('user_roles', () => prisma.userRole.deleteMany({ where: { userId: { in: inEmpty(userIds) } } }));
+  // 圈子成员：删本 smoke join 的成员行 + 恢复 memberCount（join 时 +1，清理归位）
+  for (const row of created.communityMemberRows) {
+    const r = await prisma.communityMember.deleteMany({ where: { communityId: row.communityId, userId: row.userId } });
+    if (r.count > 0) {
+      await prisma.community.update({ where: { id: row.communityId }, data: { memberCount: { decrement: 1 } } });
+    }
+  }
+  // 表白墙帖 postCount++ 恢复（confession createPost 发帖时对当前圈子 postCount +1）
+  for (const cid of Object.keys(created.cmPostCountBefore)) {
+    if (postIds.length > 0) {
+      await prisma.community.update({ where: { id: cid }, data: { postCount: { decrement: postIds.length } } });
+    }
+  }
   await del('users', () => prisma.user.deleteMany({ where: { id: { in: inEmpty(userIds) } } }));
 
   // 清理后逐表自验证（AGENTS.md §10 第 7 条）
@@ -130,10 +152,20 @@ async function cleanup(prisma) {
     comments: await prisma.comment.count({ where: { postId: { in: inEmpty(postIds) } } }),
     posts: await prisma.post.count({ where: { id: { in: inEmpty(postIds) } } }),
     anonymous_profiles: await prisma.anonymousProfile.count({ where: { userId: { in: inEmpty(userIds) } } }),
+    community_members: await prisma.communityMember.count({ where: { userId: { in: inEmpty(userIds) } } }),
     users: await prisma.user.count({ where: { id: { in: inEmpty(userIds) } } }),
   };
   for (const [table, count] of Object.entries(remain)) {
     assertEq(count, 0, `清理自验证 ${table}=0`, `remain=${count}`);
+  }
+  // 圈子 memberCount / postCount 恢复断言（join 时 memberCount+1；表白墙发帖 postCount+1，清理后应回到原始值）
+  for (const [cid, before] of Object.entries(created.cmMemberCountBefore)) {
+    const after = await prisma.community.findUnique({ where: { id: cid }, select: { memberCount: true } });
+    assertEq(after?.memberCount, before, `圈子 ${cid} memberCount 恢复为 join 前 ${before}`, `now=${after?.memberCount}`);
+  }
+  for (const [cid, before] of Object.entries(created.cmPostCountBefore)) {
+    const after = await prisma.community.findUnique({ where: { id: cid }, select: { postCount: true } });
+    assertEq(after?.postCount, before, `圈子 ${cid} postCount 恢复为发帖前 ${before}`, `now=${after?.postCount}`);
   }
   console.log('[cleanup] 清理完成并逐表自验证为 0');
 }
@@ -156,6 +188,18 @@ async function cleanup(prisma) {
     // ===== 红线：anonId 不含真实 uid =====
     const anonA = await signAnon(A.accessToken);
     assert(anonA.anonId !== A.user.id, '红线：anonId !== 真实 uid', `anonId=${anonA.anonId} uid=${A.user.id}`);
+
+    // ===== 圈子门禁：circle 功能合并后写路径单真相源，新用户未加入圈子发树洞帖抛 80014 =====
+    const gateRes = await call('POST', '/treehole/posts', anonA.anonToken, { content: `ctcs gate ${marker}` });
+    assertEq(gateRes.body.code, 80014, '未加入圈子发树洞帖抛 80014', JSON.stringify(gateRes.body).slice(0, 120));
+
+    // 加入默认圈子 cm_default（join 置 activeCommunityId）后才可发帖；记录 join 前 memberCount 供清理断言
+    created.cmMemberCountBefore.cm_default = (
+      await prisma.community.findUnique({ where: { id: 'cm_default' }, select: { memberCount: true } })
+    )?.memberCount;
+    const joinRes = await call('POST', '/community/cm_default/join', A.accessToken, {});
+    assertEq(joinRes.body.code, 0, '加入默认圈子 cm_default', JSON.stringify(joinRes.body).slice(0, 120));
+    created.communityMemberRows.push({ communityId: 'cm_default', userId: A.user.id });
 
     // ===== 树洞帖 + 浏览数自增 =====
     const postRes = await call('POST', '/treehole/posts', anonA.anonToken, { content: `ctcs 树洞帖 ${marker}` });
@@ -217,6 +261,10 @@ async function cleanup(prisma) {
     const circles = await call('GET', '/circles', A.accessToken);
     const circleId = circles.body.data[0]?.id;
     assert(typeof circleId === 'string' && circleId.length > 0, '获取圈子 id');
+    // 表白墙帖归属当前圈子（cm_default），发帖 postCount++；记录发帖前值供清理断言
+    created.cmPostCountBefore.cm_default = (
+      await prisma.community.findUnique({ where: { id: 'cm_default' }, select: { postCount: true } })
+    )?.postCount;
     const cPost = await call('POST', `/circles/${circleId}/posts`, A.accessToken, { content: `ctcs 表白墙 ${marker}` });
     assertEq(cPost.body.code, 0, '创建表白墙帖', JSON.stringify(cPost.body).slice(0, 120));
     const cPostId = cPost.body.data.id;
