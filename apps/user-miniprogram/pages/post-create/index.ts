@@ -45,7 +45,7 @@ Page({
   data: {
     circles: [],
     selectedCircleId: '',
-    selectedCircleName: '选择圈子',
+    selectedCircleName: '选择分类',
     content: '',
     hasContent: false,
     images: [],
@@ -72,7 +72,7 @@ Page({
     if (!app.requireAuth()) return;
     const circles = await listCircles().catch(() => []);
     let selectedId = options.circleId ?? '';
-    let selectedName = '选择圈子';
+    let selectedName = '选择分类';
     if (selectedId) {
       const c = circles.find((x) => x.id === selectedId);
       if (c) selectedName = `${c.icon ? c.icon + ' ' : ''}${c.name}`;
@@ -268,7 +268,7 @@ Page({
       return;
     }
     if (!this.data.selectedCircleId) {
-      wx.showToast({ title: '请选择圈子', icon: 'none' });
+      wx.showToast({ title: '请选择分类', icon: 'none' });
       return;
     }
 

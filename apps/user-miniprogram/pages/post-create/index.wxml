@@ -1,7 +1,7 @@
 <view class="page">
-  <!-- 圈子选择 -->
+  <!-- 分类选择 -->
   <view class="row" bindtap="openCirclePicker">
-    <text class="label">圈子</text>
+    <text class="label">分类</text>
     <view class="value">
       <text>{{selectedCircleName}}</text>
       <text class="arrow">›</text>
@@ -114,10 +114,10 @@
   >{{submitting ? '发布中...' : (visibility === 'DRAFT' ? '保存草稿' : visibility === 'PRIVATE' ? '保存私密' : (isAnonymous ? '匿名发布' : '发布'))}}</button>
 </view>
 
-<!-- 圈子选择弹窗 -->
+<!-- 分类选择弹窗 -->
 <view class="mask" wx:if="{{showCirclePicker}}" bindtap="closeCirclePicker">
   <view class="picker" catchtap="">
-    <view class="picker-title">选择圈子</view>
+    <view class="picker-title">选择分类</view>
     <scroll-view scroll-y class="picker-list">
       <view
         wx:for="{{circles}}"

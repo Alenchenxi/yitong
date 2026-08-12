@@ -182,7 +182,7 @@
 }
 .submit[disabled] { background: #FFF7D1 !important; color: #C9CDD4 !important; }
 
-/* 圈子弹窗 */
+/* 分类弹窗 */
 .mask {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.4);
