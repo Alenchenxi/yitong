@@ -191,7 +191,7 @@
     <view class="adm-item" wx:for="{{banners}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title">{{item.title}}</text>
-        <text class="adm-item-sub">{{item.community?.name ? item.community.name + ' · ' : '全局 · '}}<text class="adm-status {{item.status === 'ENABLED' ? 'adm-status--approved' : 'adm-status--neutral'}}">{{item.status === 'ENABLED' ? '启用' : '停用'}}</text> · 排序 {{item.sortOrder}}</text>
+        <text class="adm-item-sub">{{item.community ? item.community.name + ' · ' : '全局 · '}}<text class="adm-status {{item.status === 'ENABLED' ? 'adm-status--approved' : 'adm-status--neutral'}}">{{item.status === 'ENABLED' ? '启用' : '停用'}}</text> · 排序 {{item.sortOrder}}</text>
         <image wx:if="{{item.imageUrl}}" class="adm-banner-thumb" src="{{item.imageUrl}}" mode="aspectFill" />
       </view>
       <view class="adm-item-actions">
