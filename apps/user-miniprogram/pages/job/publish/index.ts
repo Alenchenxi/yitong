@@ -1,12 +1,14 @@
 import { getJobCategories, type JobCategoryGridItem } from '../../../services/job';
 import { suggestPlaces, reverseGeocode, type PoiInfoVo } from '../../../services/place-suggest';
+import { listCommunities, type CommunityVo } from '../../../services/community';
+import type { AppInstance } from '../../../app';
 
 // 岗位发布同页入口(2026-08-11):类别网格 + 搜索选点 同页
 // 交互:
 //  1. onLoad 调 wx.getFuzzyLocation 定位 → 调百度 reverse → 反查 poiId/lng/lat/city → 自动锁定为默认选点
 //  2. 搜索框 input:防抖 300ms 调 suggestPlaces → 候选列表实时展示
 //  3. 点击候选:锁定 poiId/lng/lat/city → 列表收起 → 搜索框显示选中地址
-//  4. 点"下一步":跳到 post-create,带 7 字段 (selectedKey/categoryLabel/address/poiId/lng/lat/city)
+//  4. 点"下一步":跳到 post-create,带 8 字段 (selectedKey/categoryLabel/address/poiId/lng/lat/city + communityId)
 // 注:不显示地图组件,纯搜索框 + 候选列表(按王晨曦 2026-08-11 原方案)
 // 反查失败(silent):降级到「当前位置占位」+ 提示「未识别当前位置,请搜索」,不阻断流程
 Page({
@@ -21,6 +23,12 @@ Page({
       lat: 0,
       city: '',
     },
+    // 圈子：发岗归属圈子（类别宫格与工作地点之间；默认商家当前圈子，可改）
+    communities: [] as CommunityVo[],
+    selectedCommunityId: '' as string,
+    selectedCommunityName: '' as string,
+    selectedCommunityIndex: 0 as number,
+    communityLoadFailed: false as boolean, // 圈子列表加载失败：字段仍展示，点击重试
     // 搜索框状态
     searchInput: '',
     searchFocus: false,
@@ -38,6 +46,48 @@ Page({
   onLoad() {
     this.loadCategories();
     this.startLocate();
+    this.loadCommunities();
+  },
+
+  // 加载圈子供发岗选择：默认当前圈子（app.globalData.activeCommunityId），否则第一个
+  // 加载失败不阻断发岗（post-create 服务端兜底商家当前圈子），但字段仍展示、可点击重试
+  async loadCommunities() {
+    try {
+      const list = await listCommunities();
+      if (list.length === 0) {
+        this.setData({ communities: [], communityLoadFailed: true });
+        return;
+      }
+      const app = getApp<AppInstance>();
+      const activeId = app.globalData.activeCommunityId;
+      const prefer = list.find((c) => c.id === activeId) ?? list[0]!;
+      const idx = list.findIndex((c) => c.id === prefer.id);
+      this.setData({
+        communities: list,
+        selectedCommunityId: prefer.id,
+        selectedCommunityName: prefer.name,
+        selectedCommunityIndex: idx >= 0 ? idx : 0,
+        communityLoadFailed: false,
+      });
+    } catch {
+      this.setData({ communityLoadFailed: true });
+    }
+  },
+
+  onPickCommunity(e: WechatMiniprogram.TouchEvent) {
+    // 列表为空（加载失败）：点击重试，不静默失效
+    if (this.data.communities.length === 0) {
+      this.loadCommunities();
+      return;
+    }
+    const idx = Number(e.detail.value || 0);
+    const c = this.data.communities[idx];
+    if (c) this.setData({ selectedCommunityId: c.id, selectedCommunityName: c.name, selectedCommunityIndex: idx });
+  },
+
+  // 圈子列表为空（加载失败）时，picker 的 bindchange 大概率不触发，用行 tap 兜底触发重载
+  onTapCircleField() {
+    if (this.data.communities.length === 0) this.loadCommunities();
   },
 
   async loadCategories() {
@@ -196,13 +246,17 @@ Page({
   onNext() {
     if (!this.data.canSubmit) return;
     const { selectedKey, categoryLabel, location } = this.data;
-    const q =
+    let q =
       `selectedKey=${encodeURIComponent(selectedKey)}` +
       `&categoryLabel=${encodeURIComponent(categoryLabel)}` +
       `&address=${encodeURIComponent(location.address)}` +
       `&poiId=${encodeURIComponent(location.poiId)}` +
       `&lng=${location.lng}&lat=${location.lat}` +
       `&city=${encodeURIComponent(location.city)}`;
+    // 发布圈子：把 publish 页所选圈子传给 post-create，让它预选同一圈子（未选/加载失败则不传，post-create 回落当前圈子）
+    if (this.data.selectedCommunityId) {
+      q += `&communityId=${encodeURIComponent(this.data.selectedCommunityId)}`;
+    }
     wx.navigateTo({ url: `/pages/job/post-create/index?${q}` });
   },
 

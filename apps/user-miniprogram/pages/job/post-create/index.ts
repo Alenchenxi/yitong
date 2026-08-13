@@ -57,6 +57,7 @@ Page({
     selectedCommunityName: '',
     selectedCommunityIndex: 0,
     communityLoadFailed: false, // 圈子列表加载失败：字段仍展示，点击重试
+    pendingCommunityId: '', // publish 页已选圈子（opts.communityId），加载后优先预选
   },
 
   onLoad(opts: Record<string, string>) {
@@ -72,6 +73,7 @@ Page({
       'form.locationLng': Number(opts.lng ?? 0),
       'form.locationLat': Number(opts.lat ?? 0),
       'form.locationCity': decodeURIComponent(opts.city ?? ''),
+      pendingCommunityId: opts.communityId ?? '',
     });
     this.loadCommunities();
     this.generate();
@@ -88,7 +90,9 @@ Page({
       }
       const app = getApp<AppInstance>();
       const activeId = app.globalData.activeCommunityId;
-      const prefer = list.find((c) => c.id === activeId) ?? list[0]!;
+      // 预选优先级：publish 页所选圈子（pendingCommunityId）> 当前圈子 > 第一个
+      const pending = this.data.pendingCommunityId;
+      const prefer = list.find((c) => c.id === pending) ?? list.find((c) => c.id === activeId) ?? list[0]!;
       const idx = list.findIndex((c) => c.id === prefer.id);
       this.setData({
         communities: list,
