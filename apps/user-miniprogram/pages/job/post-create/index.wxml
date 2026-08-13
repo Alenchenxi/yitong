@@ -62,6 +62,17 @@
     </view>
   </view>
 
+  <!-- 归属圈子（职位类别和工作地点之间；新建岗位默认当前圈子，可改） -->
+  <view class="field">
+    <view class="label">发布圈子</view>
+    <picker range="{{communities}}" range-key="name" value="{{selectedCommunityIndex}}" bindchange="onPickCommunity">
+      <view class="readonly-row" bindtap="onTapCommunityField">
+        <text class="value">{{selectedCommunityName || (communityLoadFailed ? '圈子加载失败，点击重试' : '选择圈子')}}</text>
+        <text class="link">{{communityLoadFailed ? '重试' : '选择'}}</text>
+      </view>
+    </picker>
+  </view>
+
   <!-- 工作地点(只读,锁定) -->
   <view class="field">
     <view class="label">工作地点</view>
@@ -141,17 +152,6 @@
         data-d="D90"
       >90 天发布</view>
     </view>
-  </view>
-
-  <!-- 归属圈子 -->
-  <view class="field" wx:if="{{communities.length > 0}}">
-    <view class="label">发布圈子</view>
-    <picker range="{{communities}}" range-key="name" value="{{selectedCommunityIndex}}" bindchange="onPickCommunity">
-      <view class="readonly-row">
-        <text class="value">{{selectedCommunityName || '选择圈子'}}</text>
-        <text class="link">选择</text>
-      </view>
-    </picker>
   </view>
 
   <view class="action">

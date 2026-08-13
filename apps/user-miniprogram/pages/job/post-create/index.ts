@@ -56,6 +56,7 @@ Page({
     selectedCommunityId: '',
     selectedCommunityName: '',
     selectedCommunityIndex: 0,
+    communityLoadFailed: false, // 圈子列表加载失败：字段仍展示，点击重试
   },
 
   onLoad(opts: Record<string, string>) {
@@ -77,10 +78,14 @@ Page({
   },
 
   // 加载圈子供发岗选择：默认当前圈子（app.globalData.activeCommunityId），否则第一个
+  // 加载失败不阻断发岗（服务端兜底商家当前圈子），但字段仍展示、可点击重试
   async loadCommunities() {
     try {
       const list = await listCommunities();
-      if (list.length === 0) return;
+      if (list.length === 0) {
+        this.setData({ communities: [], communityLoadFailed: true });
+        return;
+      }
       const app = getApp<AppInstance>();
       const activeId = app.globalData.activeCommunityId;
       const prefer = list.find((c) => c.id === activeId) ?? list[0]!;
@@ -90,16 +95,27 @@ Page({
         selectedCommunityId: prefer.id,
         selectedCommunityName: prefer.name,
         selectedCommunityIndex: idx >= 0 ? idx : 0,
+        communityLoadFailed: false,
       });
     } catch {
-      /* 圈子加载失败不阻断发岗（服务端兜底商家当前圈子） */
+      this.setData({ communityLoadFailed: true });
     }
   },
 
   onPickCommunity(e: WechatMiniprogram.TouchEvent) {
+    // 列表为空（加载失败）：点击重试，不静默失效
+    if (this.data.communities.length === 0) {
+      this.loadCommunities();
+      return;
+    }
     const idx = Number(e.detail.value || 0);
     const c = this.data.communities[idx];
     if (c) this.setData({ selectedCommunityId: c.id, selectedCommunityName: c.name, selectedCommunityIndex: idx });
+  },
+
+  // 圈子列表为空（加载失败）时，picker 的 bindchange 大概率不触发，用行 tap 兜底触发重载
+  onTapCommunityField() {
+    if (this.data.communities.length === 0) this.loadCommunities();
   },
 
   async generate() {
