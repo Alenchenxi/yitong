@@ -75,7 +75,7 @@ Page({
       if (!result.wxPayParams) {
         this.setData({ result });
         wx.showToast({ title: '支付成功', icon: 'success' });
-        setTimeout(() => wx.redirectTo({ url: '/pages/payment/success/index?jobPostId=' + this.data.jobPostId }), 1200);
+        setTimeout(() => wx.reLaunch({ url: '/pages/merchant/index?tab=jobs' }), 1200);
         return;
       }
       // 生产:拉起微信支付
@@ -96,7 +96,7 @@ Page({
         });
         if (synced.status === 'PAID') {
           wx.showToast({ title: '支付成功', icon: 'success' });
-          setTimeout(() => wx.redirectTo({ url: '/pages/payment/success/index?jobPostId=' + this.data.jobPostId }), 1200);
+          setTimeout(() => wx.reLaunch({ url: '/pages/merchant/index?tab=jobs' }), 1200);
         } else {
           wx.showToast({ title: synced.message || '支付确认中', icon: 'none' });
         }
