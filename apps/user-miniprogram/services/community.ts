@@ -12,10 +12,16 @@ export interface CommunityVo {
   location: string | null;
   memberCount: number;
   postCount: number;
-  status: 'ACTIVE' | 'DISABLED';
+  status: 'ACTIVE' | 'DISABLED' | 'PENDING'; // P2-26 加 PENDING
+  rejectReason: string | null; // P2-26 仅被拒态有值
   isMember: boolean;
   myRole: 'OWNER' | 'ADMIN' | 'MEMBER' | null;
   createdAt: string;
+}
+
+/** P2-26 创建圈子返回（带 pending 切 toast） */
+export interface CreateCommunityResult extends CommunityVo {
+  pending: boolean;
 }
 
 export interface BannerVo {
@@ -41,6 +47,17 @@ export function listMyCommunities(): Promise<{ activeId: string | null; list: Co
   return request<{ activeId: string | null; list: CommunityVo[] }>({ url: '/community/mine' });
 }
 
+/** P2-26 creator 视角分桶：我的全部圈子（已加入 / 待审核 / 未通过） */
+export interface MyCommunitiesAll {
+  activeId: string | null;
+  joined: CommunityVo[];
+  pending: CommunityVo[];
+  rejected: CommunityVo[];
+}
+export function listMyCommunitiesAll(): Promise<MyCommunitiesAll> {
+  return request<MyCommunitiesAll>({ url: '/community/mine/all' });
+}
+
 /** 当前圈子（未加入任何圈子 → null，由广场引导到加入页） */
 export function getActiveCommunity(): Promise<CommunityVo | null> {
   return request<CommunityVo | null>({ url: '/community/active' });
@@ -51,9 +68,15 @@ export function getCommunity(id: string): Promise<CommunityVo> {
   return request<CommunityVo>({ url: `/community/${id}` });
 }
 
-/** 创建圈子（creator → OWNER + 成员 + 置当前；category/region/location 必填） */
-export function createCommunity(data: { name: string; logo?: string; description?: string; category: string; region: string; location: string }): Promise<CommunityVo> {
-  return request<CommunityVo>({ url: '/community', method: 'POST', data });
+/** 创建圈子（creator → OWNER + 成员 + 置当前；category/region/location 必填）
+ *  P2-26 返回 CreateCommunityResult 含 pending 标记，按此切 toast 文案 */
+export function createCommunity(data: { name: string; logo?: string; description?: string; category: string; region: string; location: string }): Promise<CreateCommunityResult> {
+  return request<CreateCommunityResult>({ url: '/community', method: 'POST', data });
+}
+
+/** P2-26 creator 重提被拒圈 */
+export function resubmitCommunity(id: string): Promise<CreateCommunityResult> {
+  return request<CreateCommunityResult>({ url: `/community/${id}/resubmit`, method: 'POST' });
 }
 
 /** 加入圈子（同时置为当前圈子） */

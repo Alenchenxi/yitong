@@ -377,10 +377,13 @@ export interface AdminCommunityVo {
   name: string;
   logo: string | null;
   description: string | null;
-  ownerId: string | null;
-  status: 'ACTIVE' | 'DISABLED';
+  ownerId: string | null;             // P2-26
+  status: 'ACTIVE' | 'DISABLED' | 'PENDING'; // P2-26 加 PENDING
   memberCount: number;
   postCount: number;
+  rejectReason: string | null;        // P2-26
+  reviewedBy: string | null;          // P2-26
+  reviewedAt: string | null;          // P2-26
   createdAt: string;
 }
 export function listCommunitiesAdmin(status?: string, keyword?: string) {
@@ -394,4 +397,34 @@ export function disableCommunityAdmin(id: string) {
 }
 export function enableCommunityAdmin(id: string) {
   return request<AdminCommunityVo>({ url: `/admin/communities/${id}/enable`, method: 'POST' });
+}
+
+// ===== P2-26 圈子审核 =====
+export function approveCommunityAdmin(id: string) {
+  return request<AdminCommunityVo>({ url: `/admin/communities/${id}/approve`, method: 'POST' });
+}
+export function rejectCommunityAdmin(id: string, reason: string) {
+  return request<AdminCommunityVo>({
+    url: `/admin/communities/${id}/reject`,
+    method: 'POST',
+    data: { reason },
+  });
+}
+
+// ===== P2-26 全局配置 =====
+export interface AppConfigVo {
+  key: string;
+  value: unknown;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+export function getAppSettings(): Promise<AppConfigVo[]> {
+  return request<AppConfigVo[]>({ url: '/admin/settings' });
+}
+export function updateAppSetting(key: string, value: unknown): Promise<AppConfigVo> {
+  return request<AppConfigVo>({
+    url: `/admin/settings/${encodeURIComponent(key)}`,
+    method: 'PUT',
+    data: { value },
+  });
 }

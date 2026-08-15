@@ -1,0 +1,153 @@
+/* P2-26 我的圈子页 3 tab */
+
+.page {
+  min-height: 100vh;
+  background: var(--yt-bg, #f7f7f7);
+  padding-bottom: 48rpx;
+}
+
+.tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1rpx solid #e5e6eb;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 28rpx 0 24rpx;
+  font-size: 28rpx;
+  color: #86909c;
+  position: relative;
+}
+.tab.on {
+  color: #1d2129;
+  font-weight: 500;
+}
+.tab.on::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 8rpx;
+  width: 48rpx;
+  height: 4rpx;
+  background: #f9c801;
+  border-radius: 2rpx;
+}
+.tab .count {
+  font-size: 22rpx;
+  color: #86909c;
+  margin-left: 4rpx;
+}
+
+/* 卡片：与文档 UI 规范 §3 一致（背景白 + 16rpx 圆角 + 24rpx 内边距 + 1rpx 边框） */
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  margin: 24rpx 32rpx;
+  padding: 24rpx 32rpx;
+  border: 1rpx solid #e5e6eb;
+  position: relative;
+}
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #1d2129;
+}
+.card-meta {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #86909c;
+}
+.card-region {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #c9cdd4;
+}
+.card-tip {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #4e5969;
+  background: #fff7d1;
+  border-radius: 8rpx;
+  padding: 12rpx 16rpx;
+}
+
+.card-rejected {
+  border-color: #f53f3f;
+}
+.card-rejected .reject-reason {
+  margin-top: 16rpx;
+  background: #ffeded;
+  border: 1rpx solid #f53f3f;
+  border-radius: 8rpx;
+  padding: 16rpx;
+}
+.reject-label {
+  color: #f53f3f;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+.reject-text {
+  color: #1d2129;
+  font-size: 26rpx;
+  margin-left: 8rpx;
+}
+
+.status {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+}
+.status-pending {
+  background: rgba(255, 176, 32, 0.15);
+  color: #ffb020;
+}
+.status-rejected {
+  background: rgba(245, 63, 63, 0.15);
+  color: #f53f3f;
+}
+
+/* 按钮：主按钮 88rpx / 圆角 12rpx（UI 规范 §6） */
+.btn-primary {
+  height: 88rpx;
+  border-radius: 12rpx;
+  background: #f9c801;
+  color: #1d2129;
+  font-size: 30rpx;
+  font-weight: 500;
+  border: none;
+  margin-top: 24rpx;
+}
+.btn-primary[disabled] {
+  background: #f2f3f5;
+  color: #c9cdd4;
+}
+.btn-secondary {
+  height: 88rpx;
+  border-radius: 12rpx;
+  background: #fff;
+  color: #1d2129;
+  font-size: 30rpx;
+  border: 1rpx solid #e5e6eb;
+  margin-top: 16rpx;
+}
+
+/* 空状态：linear 图标 + 一句原因 + 主操作（UI 规范 §10） */
+.empty {
+  text-align: center;
+  padding: 200rpx 64rpx 0;
+}
+.empty-text {
+  font-size: 28rpx;
+  color: #86909c;
+  margin-bottom: 48rpx;
+}

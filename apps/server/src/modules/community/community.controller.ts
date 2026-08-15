@@ -27,6 +27,12 @@ export class CommunityController {
     return ok(await this.community.listMine(req.user!.uid));
   }
 
+  // P2-26 creator 视角分桶（我加入/待审核/未通过），mine 静态路由先于 :id
+  @Get('mine/all')
+  async mineAll(@Req() req: AuthenticatedRequest) {
+    return ok(await this.community.listMineAll(req.user!.uid));
+  }
+
   // 广场启动引导：惰性确保的当前圈子
   @Get('active')
   async active(@Req() req: AuthenticatedRequest) {
@@ -57,5 +63,12 @@ export class CommunityController {
   @Post('switch')
   async switchActive(@Req() req: AuthenticatedRequest, @Body() dto: SwitchCommunityDto) {
     return ok(await this.community.switchActive(req.user!.uid, dto.communityId));
+  }
+
+  // P2-26 creator 自己重提被拒圈（5/min 比创建宽）
+  @Post(':id/resubmit')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  async resubmit(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return ok(await this.community.resubmit(id, req.user!.uid));
   }
 }

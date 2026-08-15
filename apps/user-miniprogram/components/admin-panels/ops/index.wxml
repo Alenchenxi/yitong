@@ -9,7 +9,8 @@
     <view class="adm-subtab {{sub === 'pricing' ? 'on' : ''}}" data-sub="pricing" bindtap="switchSub">单价</view>
     <view class="adm-subtab {{sub === 'boost' ? 'on' : ''}}" data-sub="boost" bindtap="switchSub">推广价</view>
     <view class="adm-subtab {{sub === 'banner' ? 'on' : ''}}" data-sub="banner" bindtap="switchSub">广告位</view>
-    <view class="adm-subtab {{sub === 'community' ? 'on' : ''}}" data-sub="community" bindtap="switchSub">圈子</view>
+    <view class="adm-subtab {{sub === 'community' ? 'on' : ''}}" data-sub="community" bindtap="switchSub">圈子<text wx:if="{{cmPendingCount > 0}}" style="color:#F53F3F;font-size:20rpx;margin-left:6rpx;">·{{cmPendingCount}}</text></view>
+    <view class="adm-subtab {{sub === 'settings' ? 'on' : ''}}" data-sub="settings" bindtap="switchSub">设置</view>
   </scroll-view>
 
   <!-- 公告 -->
@@ -218,19 +219,46 @@
       <input class="adm-input" placeholder="按圈子名称搜索" value="{{cmKeyword}}" bindinput="onCommunitySearch" confirm-type="search" bindconfirm="searchCommunities" />
       <button size="mini" bindtap="searchCommunities">搜索</button>
     </view>
+    <view class="adm-filter">
+      <view class="adm-filter-btn {{cmStatus === '' ? 'on' : ''}}" data-s="" bindtap="switchCmStatus">全部</view>
+      <view class="adm-filter-btn {{cmStatus === 'PENDING' ? 'on' : ''}}" data-s="PENDING" bindtap="switchCmStatus">待审核{{cmPendingCount > 0 ? ' ('+cmPendingCount+')' : ''}}</view>
+      <view class="adm-filter-btn {{cmStatus === 'ACTIVE' ? 'on' : ''}}" data-s="ACTIVE" bindtap="switchCmStatus">已通过</view>
+      <view class="adm-filter-btn {{cmStatus === 'DISABLED' ? 'on' : ''}}" data-s="DISABLED" bindtap="switchCmStatus">已禁用</view>
+    </view>
     <view class="adm-item" wx:for="{{communities}}" wx:key="id">
       <view class="adm-item-main">
         <view class="adm-item-title-row">
           <text class="adm-item-title">{{item.name}}</text>
-          <text class="adm-status {{item.status === 'ACTIVE' ? 'adm-status--approved' : 'adm-status--danger'}}">{{item.status === 'ACTIVE' ? '正常' : '已禁用'}}</text>
+          <text class="adm-status {{item.status === 'ACTIVE' ? 'adm-status--approved' : item.status === 'PENDING' ? 'adm-status--pending' : 'adm-status--rejected'}}">
+            {{item.status === 'ACTIVE' ? '已通过' : item.status === 'PENDING' ? '待审核' : '已禁用'}}
+          </text>
         </view>
-        <text class="adm-item-sub">成员 {{item.memberCount}} · 动态 {{item.postCount}}{{item.ownerId ? ' · 有圈主' : ''}}</text>
+        <text class="adm-item-sub">成员 {{item.memberCount}} · 动态 {{item.postCount}}{{item.ownerId ? ' · 有圈主' : ''}}{{item.rejectReason ? ' · 拒绝原因: ' + item.rejectReason : ''}}</text>
       </view>
       <view class="adm-item-actions">
-        <button wx:if="{{item.id !== 'cm_default'}}" size="mini" data-id="{{item.id}}" data-disabled="{{item.status === 'DISABLED'}}" bindtap="toggleCommunity">{{item.status === 'DISABLED' ? '启用' : '禁用'}}</button>
-        <text wx:else class="adm-default-tag">默认圈</text>
+        <text wx:if="{{item.id === 'cm_default'}}" class="adm-default-tag">默认圈</text>
+        <block wx:elif="{{item.status === 'PENDING'}}">
+          <button size="mini" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="approveCommunity">通过</button>
+          <button size="mini" type="warn" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="rejectCommunity">拒绝</button>
+        </block>
+        <button wx:else size="mini" data-id="{{item.id}}" data-disabled="{{item.status === 'DISABLED'}}" bindtap="toggleCommunity">{{item.status === 'DISABLED' ? '启用' : '禁用'}}</button>
       </view>
     </view>
     <view class="adm-empty" wx:if="{{communities.length === 0}}">暂无圈子</view>
+  </block>
+
+  <!-- P2-26 全局设置（功能开关）-->
+  <block wx:if="{{sub === 'settings'}}">
+    <view class="adm-section-title">功能开关</view>
+    <view class="adm-item" wx:for="{{appConfigs}}" wx:key="key">
+      <view class="adm-item-main">
+        <text class="adm-item-title">{{item.key === 'community.need_review' ? '建圈审核' : item.key}}</text>
+        <text class="adm-item-sub">{{item.key === 'community.need_review' ? '开启后，用户创建的圈子需审核通过才可使用' : ''}}</text>
+      </view>
+      <view class="adm-item-actions">
+        <switch wx:if="{{item.key === 'community.need_review'}}" checked="{{item.value === true}}" color="#F9C801" disabled="{{togglingNeedReview}}" bindchange="toggleNeedReview" />
+      </view>
+    </view>
+    <view class="adm-empty" wx:if="{{appConfigs.length === 0}}">暂无配置</view>
   </block>
 </view>

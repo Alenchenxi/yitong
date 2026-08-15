@@ -13,6 +13,8 @@ import { ResolveReportDto } from './dto/resolve-report.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { ListAdminsDto } from './dto/list-admins.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
+import { UpdateAppConfigDto } from './dto/update-app-config.dto';
+import { RejectCommunityDto } from './dto/reject-community.dto';
 import { Body, Param, Post, Put, UseGuards } from '@nestjs/common';
 
 @Controller('admin')
@@ -339,6 +341,32 @@ export class AdminController {
   @Post('communities/:id/enable')
   async enableCommunity(@Param('id') id: string) {
     return ok(await this.admin.enableCommunity(id));
+  }
+
+  // ===== P2-26 圈子审核 =====
+  @Post('communities/:id/approve')
+  async approveCommunity(@Param('id') id: string, @Req() req: Request) {
+    const openid = (req as AuthenticatedRequest).user!.openid;
+    return ok(await this.admin.approveCommunity(id, openid));
+  }
+  @Post('communities/:id/reject')
+  async rejectCommunity(@Param('id') id: string, @Body() dto: RejectCommunityDto, @Req() req: Request) {
+    const openid = (req as AuthenticatedRequest).user!.openid;
+    return ok(await this.admin.rejectCommunity(id, openid, dto.reason));
+  }
+
+  // ===== P2-26 全局配置 KV =====
+  @Get('settings')
+  getSettings() {
+    return ok(this.admin.getSettings());
+  }
+  @Put('settings/:key')
+  // P2-26: 必须 async + await，否则 admin.updateSetting 抛 BizException 时
+  // Promise rejection 不会被 NestJS 捕获 → unhandledRejection 进程崩溃；
+  // 即便不 throw，ok(<Promise>) 同步返回 Promise 对象，response data 也会变 {}
+  async updateSetting(@Param('key') key: string, @Body() dto: UpdateAppConfigDto, @Req() req: Request) {
+    const openid = (req as AuthenticatedRequest).user!.openid;
+    return ok(await this.admin.updateSetting(key, dto.value, openid));
   }
 
   // ===== P2-30 管理员自助管理（AdminUser CRUD）=====

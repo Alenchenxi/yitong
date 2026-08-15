@@ -27,6 +27,10 @@ import {
   listCommunitiesAdmin,
   disableCommunityAdmin,
   enableCommunityAdmin,
+  approveCommunityAdmin,
+  rejectCommunityAdmin,
+  getAppSettings,
+  updateAppSetting,
   type ActivityTopicVo,
   type TopicVo,
   type AnonTagVo,
@@ -35,6 +39,7 @@ import {
   type BoostPlanVo,
   type AdminBannerVo,
   type AdminCommunityVo,
+  type AppConfigVo,
 } from '../../../services/admin';
 import { uploadImage } from '../../../services/upload';
 import {
@@ -45,8 +50,8 @@ import {
   type AdminAnnouncementVo,
 } from '../../../services/announcement';
 
-type Sub = 'announce' | 'activity' | 'topic' | 'tags' | 'jobs' | 'pricing' | 'boost' | 'banner' | 'community';
-const SUBS: Sub[] = ['announce', 'activity', 'topic', 'tags', 'jobs', 'pricing', 'boost', 'banner', 'community'];
+type Sub = 'announce' | 'activity' | 'topic' | 'tags' | 'jobs' | 'pricing' | 'boost' | 'banner' | 'community' | 'settings';
+const SUBS: Sub[] = ['announce', 'activity', 'topic', 'tags', 'jobs', 'pricing', 'boost', 'banner', 'community', 'settings'];
 
 Component({
   options: {
@@ -109,6 +114,11 @@ Component({
     // 圈子
     communities: [] as AdminCommunityVo[],
     cmKeyword: '',
+    cmStatus: '' as '' | 'PENDING' | 'ACTIVE' | 'DISABLED', // P2-26 圈子状态筛选
+    cmPendingCount: 0,
+    // P2-26 全局设置
+    appConfigs: [] as AppConfigVo[],
+    togglingNeedReview: false,
     loading: false,
   },
 
@@ -163,7 +173,13 @@ Component({
         } else if (sub === 'banner') {
           this.setData({ banners: await listBannersAdmin() });
         } else if (sub === 'community') {
-          this.setData({ communities: await listCommunitiesAdmin(undefined, this.data.cmKeyword || undefined) });
+          const list = await listCommunitiesAdmin(this.data.cmStatus || undefined, this.data.cmKeyword || undefined);
+          const pendingCount = (await listCommunitiesAdmin('PENDING')).length;
+          this.setData({ communities: list, cmPendingCount: pendingCount });
+        } else if (sub === 'settings') {
+          // P2-26 全局配置
+          const cfgList = await getAppSettings();
+          this.setData({ appConfigs: cfgList });
         }
       } catch {
         /* toast */
@@ -464,7 +480,12 @@ Component({
       this.setData({ cmKeyword: e.detail.value });
     },
     async searchCommunities() {
-      this.setData({ communities: await listCommunitiesAdmin(undefined, this.data.cmKeyword.trim() || undefined) });
+      this.load();
+    },
+    switchCmStatus(e: WechatMiniprogram.TouchEvent) {
+      const s = e.currentTarget.dataset.s as '' | 'PENDING' | 'ACTIVE' | 'DISABLED';
+      this.setData({ cmStatus: s });
+      this.load();
     },
     async toggleCommunity(e: WechatMiniprogram.TouchEvent) {
       const { id, disabled } = e.currentTarget.dataset as { id: string; disabled: boolean };
@@ -472,6 +493,57 @@ Component({
       else await disableCommunityAdmin(id);
       wx.showToast({ title: disabled ? '已启用' : '已禁用', icon: 'success' });
       this.load();
+    },
+    // P2-26 待审圈子：通过
+    async approveCommunity(e: WechatMiniprogram.TouchEvent) {
+      const { id, name } = e.currentTarget.dataset as { id: string; name: string };
+      wx.showModal({
+        title: '通过审核',
+        content: `确定通过「${name}」的审核？`,
+        success: async (r) => {
+          if (!r.confirm) return;
+          await approveCommunityAdmin(id);
+          wx.showToast({ title: '已通过', icon: 'success' });
+          this.load();
+        },
+      });
+    },
+    // P2-26 待审圈子：拒绝（弹原因输入框）
+    rejectCommunity(e: WechatMiniprogram.TouchEvent) {
+      const { id, name } = e.currentTarget.dataset as { id: string; name: string };
+      // 小程序 showModal 不支持 textarea，改用多行 confirm + 提示用户跳转
+      wx.showModal({
+        title: `拒绝「${name}」`,
+        content: '确定拒绝此圈子的审核？',
+        editable: true,
+        placeholderText: '拒绝理由（1-200 字，必填）',
+        success: async (r) => {
+          if (!r.confirm) return;
+          const reason = (r.content || '').trim();
+          if (reason.length < 1 || reason.length > 200) {
+            wx.showToast({ title: '拒绝理由 1-200 字', icon: 'none' });
+            return;
+          }
+          await rejectCommunityAdmin(id, reason);
+          wx.showToast({ title: '已拒绝', icon: 'success' });
+          this.load();
+        },
+      });
+    },
+    // P2-26 全局设置 - 建圈审核开关
+    async toggleNeedReview(e: WechatMiniprogram.SwitchChange) {
+      const next = e.detail.value;
+      if (this.data.togglingNeedReview) return;
+      this.setData({ togglingNeedReview: true });
+      try {
+        await updateAppSetting('community.need_review', next);
+        wx.showToast({ title: next ? '已开启审核' : '已关闭审核', icon: 'success' });
+        this.load();
+      } catch {
+        /* toast */
+      } finally {
+        this.setData({ togglingNeedReview: false });
+      }
     },
   },
 });

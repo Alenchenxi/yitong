@@ -841,6 +841,7 @@ enum ModerationStatus {
 enum CommunityStatus {
   ACTIVE
   DISABLED
+  PENDING  // P2-26 待管理员审核（仅 creator 可见）
 }
 model Community {
   id          String            @id @default(cuid())
@@ -855,6 +856,10 @@ model Community {
   memberCount Int               @default(0) @map("member_count") // 成员数（join/leave 时维护）
   postCount   Int               @default(0) @map("post_count")   // 动态数 = 表白墙帖数（Post create/软删时维护）
   createdAt   DateTime          @default(now()) @map("created_at")
+  // P2-26 审核留痕字段
+  reviewedBy   String?   @map("reviewed_by")    // AdminUser.openid
+  reviewedAt   DateTime? @map("reviewed_at")
+  rejectReason String?   @map("reject_reason") @db.VarChar(200)
   owner       User?             @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   activeUsers User[]            @relation("CommunityActiveUser")
   members     CommunityMember[]
@@ -864,7 +869,19 @@ model Community {
   banners     Banner[]
   @@index([status, createdAt])
   @@index([status, memberCount])
+  @@index([ownerId, status])  // P2-26 creator 视角查"我的全部圈子"
   @@map("communities")
+}
+
+// ===== P2-26 全局配置 KV（通用 FeatureFlag / 系统参数）=====
+model AppConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique                    // 例 "community.need_review"
+  value     Json                                  // 任意 JSON（boolean / number / object / string）
+  updatedBy String?  @map("updated_by")          // 最后修改者（admin openid 或 'seed'）
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("app_configs")
 }
 
 enum CommunityMemberRole {

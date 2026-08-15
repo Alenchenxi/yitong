@@ -49,6 +49,7 @@
     "pages/community/plaza/index",
     "pages/community/search/index",
     "pages/community/create/index",
+    "pages/community/mine/index",
     "pages/content-search/index",
     "pages/notifications/index",
     "pages/favorites/index",

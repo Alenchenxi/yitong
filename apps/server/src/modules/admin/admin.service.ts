@@ -1081,9 +1081,18 @@ export class AdminService {
 
   // ===== 圈子（Community）管理 =====
   async listCommunities(status?: string, keyword?: string) {
+    // P2-26 扩 status 过滤支持 PENDING
+    const statusEnum =
+      status === 'PENDING'
+        ? CommunityStatus.PENDING
+        : status === 'DISABLED'
+        ? CommunityStatus.DISABLED
+        : status === 'ACTIVE'
+        ? CommunityStatus.ACTIVE
+        : null;
     return this.prisma.community.findMany({
       where: {
-        ...(status ? { status: status === 'DISABLED' ? CommunityStatus.DISABLED : CommunityStatus.ACTIVE } : {}),
+        ...(statusEnum ? { status: statusEnum } : {}),
         ...(keyword ? { name: { contains: keyword, mode: 'insensitive' } } : {}),
       },
       orderBy: { createdAt: 'desc' },
@@ -1102,5 +1111,114 @@ export class AdminService {
     const updated = await this.prisma.community.update({ where: { id }, data: { status: CommunityStatus.ACTIVE } });
     this.confession.invalidateFeedCache();
     return updated;
+  }
+
+  // ===== P2-26 圈子审核 approve / reject =====
+  async approveCommunity(id: string, reviewerId: string) {
+    const c = await this.prisma.community.findUnique({ where: { id } });
+    if (!c) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (c.status !== CommunityStatus.PENDING) {
+      throw new BizException(40004, '仅待审核圈子可通过', HttpStatus.BAD_REQUEST);
+    }
+    const updated = await this.prisma.community.update({
+      where: { id },
+      data: {
+        status: CommunityStatus.ACTIVE,
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        rejectReason: null,
+      },
+    });
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'community',
+        targetId: id,
+        reason: '审核通过',
+        status: 'APPROVED',
+        reviewerId,
+      },
+    });
+    // 通知 creator（不通知自己）
+    if (c.ownerId && c.ownerId !== reviewerId) {
+      void this.notification
+        .create({
+          userId: c.ownerId,
+          type: NotificationType.COMMUNITY_APPROVED,
+          title: '圈子 · 审核通过',
+          content: `你的圈子「${c.name}」已通过审核，现在可以使用了`,
+          targetType: 'community',
+          targetId: id,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify community approved failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    }
+    return updated;
+  }
+
+  async rejectCommunity(id: string, reviewerId: string, reason: string) {
+    const c = await this.prisma.community.findUnique({ where: { id } });
+    if (!c) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (c.status !== CommunityStatus.PENDING) {
+      throw new BizException(40004, '仅待审核圈子可拒绝', HttpStatus.BAD_REQUEST);
+    }
+    const updated = await this.prisma.community.update({
+      where: { id },
+      data: {
+        status: CommunityStatus.DISABLED,
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        rejectReason: reason,
+      },
+    });
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'community',
+        targetId: id,
+        reason,
+        status: 'REJECTED',
+        reviewerId,
+      },
+    });
+    // 通知 creator（不通知自己）
+    if (c.ownerId && c.ownerId !== reviewerId) {
+      void this.notification
+        .create({
+          userId: c.ownerId,
+          type: NotificationType.COMMUNITY_REJECTED,
+          title: '圈子 · 审核未通过',
+          content: `你的圈子「${c.name}」未通过审核：${reason}`,
+          targetType: 'community',
+          targetId: id,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify community rejected failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    }
+    return updated;
+  }
+
+  // ===== P2-26 全局配置 KV（白名单 AppConfig）=====
+  private static readonly APP_CONFIG_ALLOWLIST = new Set<string>(['community.need_review']);
+
+  async getSettings() {
+    const rows = await this.prisma.appConfig.findMany({ orderBy: { key: 'asc' } });
+    return rows.map((r) => ({
+      key: r.key,
+      value: r.value,
+      updatedAt: r.updatedAt.toISOString(),
+      updatedBy: r.updatedBy,
+    }));
+  }
+
+  async updateSetting(key: string, value: unknown, updatedBy: string) {
+    if (!AdminService.APP_CONFIG_ALLOWLIST.has(key)) {
+      throw new BizException(40004, `不支持的配置项: ${key}`, HttpStatus.BAD_REQUEST);
+    }
+    return this.prisma.appConfig.upsert({
+      where: { key },
+      update: { value: value as Prisma.InputJsonValue, updatedBy },
+      create: { key, value: value as Prisma.InputJsonValue, updatedBy },
+    });
   }
 }

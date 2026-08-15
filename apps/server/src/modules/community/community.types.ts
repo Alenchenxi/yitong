@@ -1,7 +1,7 @@
 // 圈子（Community）VO 定义
 // 说明：圈子是「用户可加入/创建/切换」的社区（非表白墙发帖分类 Circle）。
 
-export type CommunityStatusVo = 'ACTIVE' | 'DISABLED';
+export type CommunityStatusVo = 'ACTIVE' | 'DISABLED' | 'PENDING'; // P2-26 加 PENDING
 export type CommunityRoleVo = 'OWNER' | 'ADMIN' | 'MEMBER';
 
 export interface CommunityVo {
@@ -15,6 +15,8 @@ export interface CommunityVo {
   memberCount: number;
   postCount: number;
   status: CommunityStatusVo;
+  /** P2-26 拒绝原因（仅 DISABLED-from-rejected 圈有值） */
+  rejectReason: string | null;
   isMember: boolean;
   myRole: CommunityRoleVo | null;
   createdAt: string;
@@ -23,6 +25,22 @@ export interface CommunityVo {
 export interface CommunityMineResult {
   activeId: string | null;
   list: CommunityVo[];
+}
+
+/** P2-26 creator 视角「我的全部圈子」分桶结果 */
+export interface CommunityMineAllResult {
+  activeId: string | null;
+  /** status=ACTIVE 的我创圈（含通过后的我自己 + 我加入的常规圈） */
+  joined: CommunityVo[];
+  /** status=PENDING 的我创圈（待审核，自己可见） */
+  pending: CommunityVo[];
+  /** status=DISABLED 且 rejectReason 非空 的我创圈（被拒） */
+  rejected: CommunityVo[];
+}
+
+/** P2-26 创建圈子的返回（CommunityVo + pending 标记，用于前端切 toast） */
+export interface CreateCommunityResult extends CommunityVo {
+  pending: boolean;
 }
 
 export interface BannerVo {

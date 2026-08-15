@@ -142,6 +142,12 @@ Page({
         location,
       });
       const app = getApp<AppInstance>();
+      // P2-26: 审核开关开启 → status=PENDING，不切 activeCommunityId，跳到我的圈子-待审核
+      if (c.pending) {
+        wx.showToast({ title: '已提交，等待审核', icon: 'none', duration: 1500 });
+        setTimeout(() => wx.reLaunch({ url: '/pages/community/mine/index?tab=pending' }), 600);
+        return;
+      }
       app.globalData.activeCommunityId = c.id;
       app.globalData.joinGate = false;
       wx.showToast({ title: '创建成功', icon: 'success' });

@@ -159,6 +159,23 @@ async function main() {
   }
   // eslint-disable-next-line no-console
   console.log(`seed: ${tagCreated}/${DEFAULT_ANON_TAGS.length} anon tags created`);
+
+  // P2-26 全局配置默认值：建圈审核开关默认关（保持开箱即用延续旧 ACTIVE 行为）
+  const configUpserts = [
+    { key: 'community.need_review', value: false, updatedBy: 'seed' },
+  ];
+  let configCreated = 0;
+  for (const c of configUpserts) {
+    const exists = await prisma.appConfig.findUnique({ where: { key: c.key } });
+    if (!exists) {
+      await prisma.appConfig.create({ data: c });
+      configCreated += 1;
+    }
+  }
+  if (configCreated > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`seed: ${configCreated}/${configUpserts.length} app configs created (community.need_review=false default)`);
+  }
 }
 
 main()

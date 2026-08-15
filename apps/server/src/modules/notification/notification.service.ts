@@ -42,6 +42,9 @@ export const NotificationType = {
   TICKET_REPLY: 'ticket_reply',
   // E4 支付成功（商家付费发布岗位完成）
   PAYMENT_PAID: 'payment_paid',
+  // P2-26 圈子创建审核结果
+  COMMUNITY_APPROVED: 'community_approved',
+  COMMUNITY_REJECTED: 'community_rejected',
 } as const;
 
 @Injectable()
@@ -134,6 +137,8 @@ export class NotificationService {
       'user_muted',
       'report_result',
       'ticket_reply',
+      'community_approved', // P2-26 圈子审核通过
+      'community_rejected', // P2-26 圈子审核拒绝
     ],
     // order 类：E4 支付成功通知（退款通知待退款闭环接入后补）
     order: ['payment_paid'],
