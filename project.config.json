@@ -11,7 +11,9 @@
       "disablePlugins": [],
       "outputPath": ""
     },
-    "useCompilerPlugins": ["typescript"],
+    "useCompilerPlugins": [
+      "typescript"
+    ],
     "condition": false
   },
   "compileType": "miniprogram",
@@ -21,6 +23,6 @@
     "ignore": [],
     "include": []
   },
-  "appid": "wx6a5034bb04012e76",
+  "appid": "wxdbd5f6431283865d",
   "editorSetting": {}
 }
