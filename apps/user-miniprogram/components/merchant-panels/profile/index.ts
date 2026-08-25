@@ -179,6 +179,16 @@ Component({
     goSettings() {
       wx.navigateTo({ url: '/pages/settings/index' });
     },
+    openPrivacyGuide() {
+      wx.openPrivacyContract({
+        fail: () => {
+          wx.showToast({
+            title: '暂时无法打开隐私指引',
+            icon: 'none',
+          });
+        },
+      });
+    },
     goRegister() {
       wx.navigateTo({ url: '/pages/merchant/register/index' });
     },

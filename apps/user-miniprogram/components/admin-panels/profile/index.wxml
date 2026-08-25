@@ -24,6 +24,12 @@
     <view class="profile-menu" hover-class="adm-hover" bindtap="goSettings"><text>设置</text><text class="profile-arrow">›</text></view>
   </view>
 
+  <!-- 关于 -->
+  <view class="yt-card profile-section">
+    <view class="profile-section-title">关于</view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="openPrivacyGuide"><text>用户隐私保护指引</text><text class="profile-arrow">›</text></view>
+  </view>
+
   <!-- 切换角色 -->
   <view class="yt-card profile-section" wx:if="{{myRoles.length > 1}}">
     <view class="profile-section-title">切换角色</view>
