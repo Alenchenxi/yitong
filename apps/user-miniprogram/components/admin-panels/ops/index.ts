@@ -179,7 +179,12 @@ Component({
         } else if (sub === 'settings') {
           // P2-26 全局配置
           const cfgList = await getAppSettings();
-          this.setData({ appConfigs: cfgList });
+          const hasNeedReview = cfgList.some((item) => item.key === 'community.need_review');
+          this.setData({
+            appConfigs: hasNeedReview
+              ? cfgList
+              : [{ key: 'community.need_review', value: false, updatedAt: '', updatedBy: null }, ...cfgList],
+          });
         }
       } catch {
         /* toast */

@@ -357,8 +357,8 @@ export class AdminController {
 
   // ===== P2-26 全局配置 KV =====
   @Get('settings')
-  getSettings() {
-    return ok(this.admin.getSettings());
+  async getSettings() {
+    return ok(await this.admin.getSettings());
   }
   @Put('settings/:key')
   // P2-26: 必须 async + await，否则 admin.updateSetting 抛 BizException 时

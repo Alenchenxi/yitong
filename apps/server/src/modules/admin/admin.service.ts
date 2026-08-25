@@ -1203,12 +1203,16 @@ export class AdminService {
 
   async getSettings() {
     const rows = await this.prisma.appConfig.findMany({ orderBy: { key: 'asc' } });
-    return rows.map((r) => ({
-      key: r.key,
-      value: r.value,
-      updatedAt: r.updatedAt.toISOString(),
-      updatedBy: r.updatedBy,
-    }));
+    const rowByKey = new Map(rows.map((r) => [r.key, r]));
+    return [...AdminService.APP_CONFIG_ALLOWLIST].map((key) => {
+      const row = rowByKey.get(key);
+      return {
+        key,
+        value: row?.value ?? false,
+        updatedAt: row?.updatedAt.toISOString() ?? '',
+        updatedBy: row?.updatedBy ?? null,
+      };
+    });
   }
 
   async updateSetting(key: string, value: unknown, updatedBy: string) {
