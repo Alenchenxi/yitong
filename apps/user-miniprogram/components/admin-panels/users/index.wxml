@@ -51,7 +51,7 @@
   <!-- 管理员（P2-30） -->
   <block wx:if="{{sub === 'admins'}}">
     <view class="adm-search">
-      <input class="adm-search-input" placeholder="搜用户名/openid" value="{{adminKeyword}}" bindinput="onAdminKeywordInput" bindconfirm="searchAdmins" />
+      <input class="adm-search-input" placeholder="搜昵称/用户名/openid" value="{{adminKeyword}}" bindinput="onAdminKeywordInput" bindconfirm="searchAdmins" />
       <button size="mini" bindtap="searchAdmins">搜索</button>
       <button size="mini" class="adm-btn--primary" bindtap="openAddDialog">添加</button>
     </view>

@@ -356,6 +356,9 @@ export class AdminController {
   }
 
   // ===== P2-26 全局配置 KV =====
+  // ⚠️ 同步 controller 调 async service 会让 response.data 变 {}（ok(Promise) 序列化空对象）；
+  // service 抛 BizException 时也会触发 unhandledRejection（NestJS 异常过滤器抓不到非 Promise 返回）。
+  // 与同文件 updateSetting 一致：必须 async + await。
   @Get('settings')
   async getSettings() {
     return ok(await this.admin.getSettings());
@@ -370,29 +373,29 @@ export class AdminController {
   }
 
   // ===== P2-30 管理员自助管理（AdminUser CRUD）=====
-  // 列表：keyword 模糊匹配 username / openid；响应带 isSelf 给前端 disable「删除自己」按钮
+  // 列表：keyword 模糊匹配关联用户昵称 / username / openid；响应带 isSelf 给前端 disable「删除自己」按钮
   @Get('admins')
-  listAdmins(@Query() q: ListAdminsDto, @Req() req: Request) {
+  async listAdmins(@Query() q: ListAdminsDto, @Req() req: Request) {
     const openid = (req as AuthenticatedRequest).user!.openid;
-    return ok(this.admin.listAdmins(q.keyword, openid));
+    return ok(await this.admin.listAdmins(q.keyword, openid));
   }
 
   // 搜索候选 User（用于"添加管理员"弹窗）：排除已是 admin
   @Get('users/search')
-  searchCandidateUsers(@Query() q: SearchUsersDto) {
-    return ok(this.admin.searchCandidateUsers(q.keyword));
+  async searchCandidateUsers(@Query() q: SearchUsersDto) {
+    return ok(await this.admin.searchCandidateUsers(q.keyword));
   }
 
   // 添加管理员：body { userId } -> 查 User openid -> upsert AdminUser + UserRole.ADMIN
   @Post('admins')
-  createAdmin(@Body() dto: CreateAdminDto) {
-    return ok(this.admin.createAdmin(dto.userId));
+  async createAdmin(@Body() dto: CreateAdminDto) {
+    return ok(await this.admin.createAdmin(dto.userId));
   }
 
   // 删除管理员：自删保护 + 至少保留 1 个 admin（service 内校验）
   @Delete('admins/:id')
-  deleteAdmin(@Param('id') id: string, @Req() req: Request) {
+  async deleteAdmin(@Param('id') id: string, @Req() req: Request) {
     const openid = (req as AuthenticatedRequest).user!.openid;
-    return ok(this.admin.deleteAdmin(id, openid));
+    return ok(await this.admin.deleteAdmin(id, openid));
   }
 }

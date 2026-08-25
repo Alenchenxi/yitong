@@ -293,6 +293,31 @@ async function main(): Promise<void> {
     assert(linked?.isSelf === true, 'openid 匹配时 isSelf=true');
     assert(orphan?.isSelf === false, 'openid 不匹配时 isSelf=false');
   }
+  {
+    const prisma = new FakePrisma();
+    prisma.users.push(user('u-nickname-search', '展示昵称同学', 'openid-nickname-search'));
+    prisma.admins.push({
+      id: 'a-nickname-search',
+      username: 'seed_admin_name',
+      openid: 'openid-nickname-search',
+      createdAt: new Date(),
+    });
+    const service = serviceFor(prisma);
+    const rows = await service.listAdmins('展示昵称');
+    assert(
+      rows.some((a) => a.id === 'a-nickname-search' && a.linkedUser?.nickname === '展示昵称同学'),
+      '管理员列表支持按关联 User.nickname 模糊搜索',
+    );
+    const usernameRows = await service.listAdmins('SEED_ADMIN');
+    assert(usernameRows.some((a) => a.id === 'a-nickname-search'), '管理员列表支持按 username 忽略大小写模糊搜索');
+
+    const openidRows = await service.listAdmins('NICKNAME-SEARCH');
+    assert(openidRows.some((a) => a.id === 'a-nickname-search'), '管理员列表支持按 openid 忽略大小写模糊搜索');
+
+    const allRows = await service.listAdmins('   ');
+    assert(allRows.length === 1 && allRows[0]?.id === 'a-nickname-search', '空白 keyword 返回全量管理员');
+
+  }
 
   console.log(`\n==== 管理员管理冒烟结果：${passed} 通过 / ${failed} 失败 ====`);
   if (failed > 0) process.exitCode = 1;

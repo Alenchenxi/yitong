@@ -906,13 +906,11 @@ export class AdminService {
   // 自检：当前 admin 的 openid === 被删 AdminUser.openid 即"删自己" → 40004
   // 删除时同步删 UserRole.ADMIN，避免"AdminUser 没了但 UserRole.ADMIN 还在"的不一致
 
-  // 列管理员（关联查 User 拿头像昵称；isSelf 给前端 disable「删除自己」按钮用）
+  // 列管理员（关联查 User 拿头像昵称；keyword 对展示昵称/username/openid 统一模糊筛选；
+  // isSelf 给前端 disable「删除自己」按钮用）
   async listAdmins(keyword?: string, currentOpenid?: string) {
     const kw = keyword?.trim();
     const admins = await this.prisma.adminUser.findMany({
-      where: kw
-        ? { OR: [{ username: { contains: kw, mode: 'insensitive' } }, { openid: { contains: kw, mode: 'insensitive' } }] }
-        : {},
       orderBy: { createdAt: 'desc' },
     });
     // 风险3 相关：admin openid 可能为 null（未绑微信的占位 admin），反查时统一 filter
@@ -924,7 +922,7 @@ export class AdminService {
         })
       : [];
     const userByOpenid = new Map(users.map((u) => [u.openid, u]));
-    return admins.map((a) => {
+    const rows = admins.map((a) => {
       const u = a.openid ? userByOpenid.get(a.openid) : undefined;
       return {
         id: a.id,
@@ -936,6 +934,14 @@ export class AdminService {
         isSelf: !!currentOpenid && !!a.openid && a.openid === currentOpenid,
       };
     });
+    if (!kw) return rows;
+
+    const normalizedKw = kw.toLocaleLowerCase();
+    return rows.filter((a) =>
+      a.username.toLocaleLowerCase().includes(normalizedKw)
+      || (a.openid ?? '').toLocaleLowerCase().includes(normalizedKw)
+      || (a.linkedUser?.nickname ?? '').toLocaleLowerCase().includes(normalizedKw),
+    );
   }
 
   // 添加管理员：userId -> 查 User -> 取 openid -> upsert AdminUser + UserRole.ADMIN
