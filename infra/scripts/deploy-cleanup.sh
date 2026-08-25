@@ -89,7 +89,6 @@ run_prune() {
   summary="$(grep -E '^Total|reclaimed|deleted' /tmp/yitong-prune-$$.log 2>/dev/null | tail -3 | tr '\n' '|' || true)"
   if [[ -n "$summary" ]]; then
     log "    $summary"
-  else
   fi
   rm -f /tmp/yitong-prune-$$.log
 }
