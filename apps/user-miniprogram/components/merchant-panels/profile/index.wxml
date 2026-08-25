@@ -86,12 +86,6 @@
     </view>
   </block>
 
-  <!-- 关于 -->
-  <view class="section yt-card">
-    <view class="section-title">关于</view>
-    <view class="menu-item" bindtap="openPrivacyGuide"><text>用户隐私保护指引</text><text class="arrow">›</text></view>
-  </view>
-
   <!-- 切换角色 -->
   <view class="section yt-card" wx:if="{{myRoles.length > 1}}">
     <view class="section-title">切换角色</view>
@@ -107,6 +101,12 @@
       <text wx:elif="{{switchingRole === item}}" style="font-size:24rpx;color:var(--yt-text-sub)">切换中…</text>
       <text wx:else class="arrow">›</text>
     </view>
+  </view>
+
+  <!-- 关于 -->
+  <view class="section yt-card">
+    <view class="section-title">关于</view>
+    <view class="menu-item" bindtap="openPrivacyGuide"><text>用户隐私保护指引</text><text class="arrow">›</text></view>
   </view>
 
   <button class="logout-btn" bindtap="logout">退出登录</button>
