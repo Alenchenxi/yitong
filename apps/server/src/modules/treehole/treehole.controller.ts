@@ -181,6 +181,15 @@ export class TreeholeController {
     );
   }
 
+  // P1-16 从历史记录恢复指定活跃匹配，不触发重新匹配
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('matches/:id/resume')
+  async resumeMatch(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.resumeMatch(anonId, id));
+  }
+
   // P1-16 跳过/不喜欢当前匹配 + 重新匹配
   @Public()
   @UseGuards(AnonGuard)

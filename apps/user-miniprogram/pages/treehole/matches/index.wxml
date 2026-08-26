@@ -4,7 +4,9 @@
       class="match-card {{item.status === 'ACTIVE' ? 'active' : 'closed'}}"
       wx:for="{{list}}"
       wx:key="id"
-      data-item="{{item}}"
+      data-match-id="{{item.id}}"
+      data-peer-anon-id="{{item.peerAnonId}}"
+      data-status="{{item.status}}"
       bindtap="openChat"
     >
       <view class="mc-head">

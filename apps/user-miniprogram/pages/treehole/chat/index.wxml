@@ -1,5 +1,18 @@
 <view class="page">
-  <block wx:if="{{!matched}}">
+  <block wx:if="{{!pageReady}}">
+    <view class="center">
+      <view class="hint">正在加载...</view>
+    </view>
+  </block>
+
+  <block wx:elif="{{restoring}}">
+    <view class="center">
+      <view class="emoji">🔮</view>
+      <view class="hint">正在恢复对话...</view>
+    </view>
+  </block>
+
+  <block wx:elif="{{!matched}}">
     <view class="center">
       <view class="emoji">🔮</view>
       <view class="hint">随机匹配一位陌生人匿名聊天</view>

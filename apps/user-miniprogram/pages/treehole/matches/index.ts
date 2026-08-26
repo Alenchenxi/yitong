@@ -77,11 +77,15 @@ Page({
 
   // 点击 ACTIVE 匹配 -> 跳聊天页继续聊
   openChat(e: WechatMiniprogram.TouchEvent) {
-    const item = e.currentTarget.dataset.item as MatchHistoryItem;
-    if (!item || item.status !== 'ACTIVE') {
+    const matchId = String(e.currentTarget.dataset.matchId ?? '');
+    const peerAnonId = String(e.currentTarget.dataset.peerAnonId ?? '');
+    const status = String(e.currentTarget.dataset.status ?? '');
+    if (!matchId || !peerAnonId || status !== 'ACTIVE') {
       wx.showToast({ title: '匹配已关闭', icon: 'none' });
       return;
     }
-    wx.navigateTo({ url: `/pages/treehole/chat/index?peerAnonId=${item.peerAnonId}` });
+    wx.navigateTo({
+      url: `/pages/treehole/chat/index?matchId=${encodeURIComponent(matchId)}&peerAnonId=${encodeURIComponent(peerAnonId)}`,
+    });
   },
 });

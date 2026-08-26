@@ -523,6 +523,60 @@ export class TreeholeService {
     return { list, total, page, pageSize };
   }
 
+  // P1-16 从匹配历史恢复指定活跃会话；不进入匹配队列，也不创建新匹配
+  async resumeMatch(anonId: string, matchId: string) {
+    const match = await this.prisma.chatMatch.findUnique({
+      where: { id: matchId },
+      select: {
+        id: true,
+        anonIdA: true,
+        anonIdB: true,
+        status: true,
+        matchScore: true,
+        matchedTags: true,
+        expireAt: true,
+      },
+    });
+    if (!match) throw new BizException(30010, '匹配不存在', HttpStatus.NOT_FOUND);
+    if (match.anonIdA !== anonId && match.anonIdB !== anonId) {
+      throw new BizException(10003, '无权访问此匹配', HttpStatus.FORBIDDEN);
+    }
+    if (match.status !== MatchStatus.ACTIVE) {
+      throw new BizException(30010, '匹配已结束', HttpStatus.GONE);
+    }
+    if (match.expireAt && match.expireAt.getTime() <= Date.now()) {
+      await this.prisma.chatMatch.update({
+        where: { id: match.id },
+        data: { status: MatchStatus.CLOSED },
+      });
+      throw new BizException(30010, '匹配已结束', HttpStatus.GONE);
+    }
+
+    const peerAnonId = match.anonIdA === anonId ? match.anonIdB : match.anonIdA;
+    if (await this.isBlockedEither(anonId, peerAnonId)) {
+      await this.prisma.chatMatch.update({
+        where: { id: match.id },
+        data: { status: MatchStatus.CLOSED },
+      });
+      throw new BizException(30005, '你已屏蔽对方或被对方屏蔽', HttpStatus.FORBIDDEN);
+    }
+
+    const [imCredential, peerTags] = await Promise.all([
+      this.im.getImCredential(anonId),
+      this.getDisplayTags(peerAnonId),
+    ]);
+    return {
+      matchId: match.id,
+      peerAnonId,
+      imCredential,
+      waiting: false,
+      matchScore: match.matchScore ?? 0,
+      matchedTags: match.matchedTags,
+      peerTags,
+      expireAt: match.expireAt ? match.expireAt.toISOString() : null,
+    };
+  }
+
   // P1-17 定时关闭过期活跃匹配（cron 调用；惰性关闭在 expireIfStale）
   async closeExpiredMatches() {
     const result = await this.prisma.chatMatch.updateMany({

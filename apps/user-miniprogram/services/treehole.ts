@@ -82,12 +82,12 @@ let anonToken = '';
 let anonId = '';
 
 interface AppLike {
-  globalData: { apiBase: string };
+  globalData: { apiBase: string; anonToken?: string };
 }
 
 export function hasAnonToken() {
   // CR-001: 优先从 globalData 读（持久化恢复），fallback 模块级变量
-  const app = getApp<{ globalData: { anonToken?: string } }>();
+  const app = getApp<AppLike>();
   return !!(app.globalData.anonToken || anonToken);
 }
 export function getAnonId() {
@@ -135,11 +135,12 @@ export function getAnonymousToken(): Promise<AnonTokenResp> {
 function anonRequest<T>(opts: { url: string; method: 'GET' | 'POST' | 'DELETE'; data?: unknown }): Promise<T> {
   return new Promise((resolve, reject) => {
     const app = getApp<AppLike>();
+    const requestAnonToken = app.globalData.anonToken || anonToken;
     wx.request({
       url: `${app.globalData.apiBase}${opts.url}`,
       method: opts.method,
       data: opts.data as WechatMiniprogram.IAnyObject | undefined,
-      header: { 'Content-Type': 'application/json', Authorization: `Bearer ${anonToken}` },
+      header: { 'Content-Type': 'application/json', Authorization: `Bearer ${requestAnonToken}` },
       success: (r) => {
         const b = r.data as { code: number; data?: T; message?: string };
         if (b.code === 0 && b.data !== undefined) {
@@ -207,6 +208,10 @@ export interface MatchHistoryResult {
 
 export function listAnonMatches(page = 1, pageSize = 20): Promise<MatchHistoryResult> {
   return anonRequest({ url: `/treehole/matches?page=${page}&pageSize=${pageSize}`, method: 'GET' });
+}
+
+export function resumeAnonMatch(matchId: string): Promise<MatchResp> {
+  return anonRequest({ url: `/treehole/matches/${encodeURIComponent(matchId)}/resume`, method: 'GET' });
 }
 
 // P1-16 跳过/不喜欢当前匹配 + 重新匹配

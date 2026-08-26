@@ -3,6 +3,7 @@ import {
   hasAnonToken,
   getAnonymousToken,
   matchAnon,
+  resumeAnonMatch,
   skipAnonMatch,
   getAnonId,
   sendAnonMessage,
@@ -27,7 +28,9 @@ interface Msg {
 
 Page({
   data: {
+    pageReady: false,
     matching: false,
+    restoring: false,
     matched: false,
     matchId: '',
     peerAnonId: '',
@@ -51,17 +54,71 @@ Page({
   recordCancel: false,
   audioCtx: null as WechatMiniprogram.InnerAudioContext | null,
 
-  async onLoad() {
+  async onLoad(options: { matchId?: string; peerAnonId?: string }) {
+    const hasResumeParams = Boolean(options.matchId || options.peerAnonId);
+    const resumeTarget = this.parseResumeTarget(options);
+    this.setData({ pageReady: true, restoring: hasResumeParams });
+
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!hasAnonToken()) {
       try {
         await getAnonymousToken();
       } catch {
+        if (hasResumeParams) this.handleRestoreFailure('暂时无法恢复对话');
         return;
       }
     }
     this.initRecorder();
+    if (hasResumeParams && !resumeTarget) {
+      this.handleRestoreFailure();
+      return;
+    }
+    if (resumeTarget) {
+      await this.restoreMatch(resumeTarget.matchId, resumeTarget.peerAnonId);
+    }
+  },
+
+  parseResumeTarget(options: { matchId?: string; peerAnonId?: string }) {
+    try {
+      const matchId = decodeURIComponent(options.matchId ?? '').trim();
+      const peerAnonId = decodeURIComponent(options.peerAnonId ?? '').trim();
+      return matchId && peerAnonId ? { matchId, peerAnonId } : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async restoreMatch(matchId: string, peerAnonId: string) {
+    wx.showLoading({ title: '正在恢复对话...', mask: true });
+    try {
+      const result = await resumeAnonMatch(matchId);
+      if (
+        result.waiting ||
+        result.matchId !== matchId ||
+        result.peerAnonId !== peerAnonId ||
+        !result.imCredential
+      ) {
+        throw new Error('匹配记录不一致');
+      }
+      await this.applyMatch(result);
+      this.setData({ restoring: false });
+      wx.hideLoading();
+    } catch {
+      wx.hideLoading();
+      this.handleRestoreFailure();
+    }
+  },
+
+  handleRestoreFailure(title = '该匹配已结束') {
+    wx.showToast({ title, icon: 'none' });
+    setTimeout(() => {
+      if (getCurrentPages().length > 1) {
+        wx.navigateBack();
+      } else {
+        wx.redirectTo({ url: '/pages/treehole/matches/index' });
+      }
+    }, 600);
   },
 
   async startMatch() {
