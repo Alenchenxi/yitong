@@ -195,6 +195,13 @@ Page({
     }
   },
 
+  goAuthor() {
+    const anonId = this.data.post?.anonId;
+    if (anonId) {
+      wx.navigateTo({ url: `/pages/treehole/author/index?anonId=${encodeURIComponent(anonId)}` });
+    }
+  },
+
   // 内容推广：作者提升曝光（付费置顶；树洞帖真实用户以 access token 付费，库内 AnonymousPost 仍 0 uid）
   onBoost() {
     const post = this.data.post;

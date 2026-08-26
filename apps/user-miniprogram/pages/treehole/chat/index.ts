@@ -34,6 +34,7 @@ Page({
     matched: false,
     matchId: '',
     peerAnonId: '',
+    matchKind: 'RANDOM' as 'RANDOM' | 'DIRECT',
     matchScore: 0,
     matchedTags: [] as string[],
     peerTags: [] as string[],
@@ -155,6 +156,7 @@ Page({
       matched: true,
       matchId: r.matchId ?? '',
       peerAnonId: r.peerAnonId,
+      matchKind: r.matchKind ?? 'RANDOM',
       matchScore: r.matchScore ?? 0,
       matchedTags: r.matchedTags ?? [],
       peerTags: r.peerTags ?? [],
@@ -252,7 +254,7 @@ Page({
       }
       if (r.waiting) {
         // 无新对象，回到未匹配状态
-        this.setData({ matched: false, matchId: '', peerAnonId: '', messages: [] });
+        this.setData({ matched: false, matchId: '', peerAnonId: '', matchKind: 'RANDOM', messages: [] });
         wx.showToast({ title: '暂无更多对象', icon: 'none' });
       } else {
         await this.applyMatch(r);

@@ -33,8 +33,9 @@
       </view>
     </view>
     <view class="top-bar">
+      <view class="session-label" wx:if="{{matchKind === 'DIRECT'}}">匿名聊天</view>
       <view class="countdown {{expired ? 'expired' : ''}}" wx:if="{{remainingText}}">⏳ {{remainingText}}</view>
-      <view class="skip-btn" bindtap="skipPeer">跳过</view>
+      <view class="skip-btn" wx:if="{{matchKind === 'RANDOM'}}" bindtap="skipPeer">跳过</view>
       <view class="block-btn" bindtap="blockPeer">屏蔽</view>
     </view>
     <view class="msgs">

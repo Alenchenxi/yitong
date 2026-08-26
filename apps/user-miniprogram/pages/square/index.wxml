@@ -91,6 +91,7 @@
           disabled="{{!anonTokenReady}}"
           disabledReason="请前往树洞签发匿名身份后互动"
           bind:like="onLike"
+          bind:author="goAnonAuthor"
         ></post-card>
       </view>
       <!-- 兼职岗：job-card 内部 onTap 跳岗位详情 -->

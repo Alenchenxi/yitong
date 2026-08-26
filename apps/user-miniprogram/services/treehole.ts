@@ -56,10 +56,22 @@ export interface MatchResp {
   peerAnonId?: string;
   imCredential?: ImCredential;
   waiting: boolean;
+  matchKind?: 'RANDOM' | 'DIRECT';
   matchScore?: number;   // P1-15 规则匹配度 0-100
   matchedTags?: string[]; // P1-15 命中标签
   peerTags?: string[];    // P1-15 peer 展示标签
   expireAt?: string | null; // P1-17 过期时间 ISO
+}
+
+export interface AnonAuthorVo {
+  anonId: string;
+  nickname: string;
+  avatar: string | null;
+  personalityTags: string[];
+  interestTags: string[];
+  moodState: string | null;
+  postCount: number;
+  isSelf: boolean;
 }
 
 export interface PartyResp {
@@ -178,6 +190,28 @@ export function getPost(id: string): Promise<AnonPostVo> {
   return anonRequest({ url: `/treehole/posts/${id}`, method: 'GET' });
 }
 
+export function getAnonAuthor(targetAnonId: string): Promise<AnonAuthorVo> {
+  return anonRequest({ url: `/treehole/authors/${encodeURIComponent(targetAnonId)}`, method: 'GET' });
+}
+
+export function listAnonAuthorPosts(
+  targetAnonId: string,
+  cursor?: string,
+): Promise<{ list: AnonPostVo[]; nextCursor: string | null; hasMore: boolean }> {
+  const qs = cursor ? `?limit=20&cursor=${encodeURIComponent(cursor)}` : '?limit=20';
+  return anonRequest({
+    url: `/treehole/authors/${encodeURIComponent(targetAnonId)}/posts${qs}`,
+    method: 'GET',
+  });
+}
+
+export function startAnonAuthorChat(targetAnonId: string): Promise<MatchResp> {
+  return anonRequest({
+    url: `/treehole/authors/${encodeURIComponent(targetAnonId)}/chat`,
+    method: 'POST',
+  });
+}
+
 export function createPost(data: { content: string; images?: string[]; mood?: string }): Promise<AnonPostVo> {
   return anonRequest({ url: '/treehole/posts', method: 'POST', data });
 }
@@ -189,6 +223,7 @@ export function matchAnon(): Promise<MatchResp> {
 // P1-16 匹配历史
 export interface MatchHistoryItem {
   id: string;
+  kind: 'RANDOM' | 'DIRECT';
   peerAnonId: string;
   peerNickname: string;
   peerAvatar: string | null;

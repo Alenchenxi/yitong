@@ -41,6 +41,7 @@
     "pages/treehole/group-detail/index",
     "pages/treehole/my-groups/index",
     "pages/treehole/profile/index",
+    "pages/treehole/author/index",
     "pages/treehole/quiz/index",
     "pages/treehole/matches/index",
     "pages/admin/index",

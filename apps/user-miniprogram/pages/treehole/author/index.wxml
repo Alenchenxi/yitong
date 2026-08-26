@@ -1,0 +1,52 @@
+<view class="page">
+  <view class="loading-state" wx:if="{{loading && !author}}">正在加载...</view>
+
+  <view class="error-state" wx:elif="{{loadFailed && !author}}">
+    <view class="error-title">无法查看该匿名用户</view>
+    <view class="error-desc">用户不存在，或你们之间已设置屏蔽</view>
+    <button class="retry-btn" bindtap="loadPage">重新加载</button>
+  </view>
+
+  <block wx:elif="{{author}}">
+    <view class="author-head">
+      <view class="author-avatar">{{author.avatar || '🌙'}}</view>
+      <view class="author-main">
+        <view class="author-name">{{author.nickname}}</view>
+        <view class="author-meta">匿名身份 · {{author.postCount}} 条动态</view>
+      </view>
+      <view class="anon-badge">匿名</view>
+    </view>
+
+    <view class="mood" wx:if="{{author.moodState}}">最近心情：{{author.moodState}}</view>
+
+    <view class="tag-list" wx:if="{{author.displayTags.length > 0}}">
+      <text class="tag" wx:for="{{author.displayTags}}" wx:key="*this">{{item}}</text>
+    </view>
+
+    <view class="section-title">动态</view>
+    <view class="post-list" wx:if="{{posts.length > 0}}">
+      <view class="post-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+        <view class="post-content">{{item.content}}</view>
+        <view class="post-images" wx:if="{{item.images.length > 0}}">
+          <image class="post-image" wx:for="{{item.images}}" wx:key="*this" src="{{item}}" mode="aspectFill"></image>
+        </view>
+        <view class="post-foot">
+          <text class="post-time">{{item.timeText}}</text>
+          <view class="post-stats">
+            <text>💬 {{item.commentCount}}</text>
+            <text>👁 {{item.viewCount}}</text>
+            <text class="like {{item.liked ? 'liked' : ''}}" data-id="{{item.id}}" catchtap="onLike">{{item.liked ? '♥' : '♡'}} {{item.likeCount}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="list-tip" wx:if="{{loadingMore}}">加载中...</view>
+      <view class="list-tip" wx:elif="{{!hasMore}}">没有更多了</view>
+    </view>
+
+    <view class="empty-posts" wx:elif="{{!loadingMore}}">TA 还没有发布动态</view>
+
+    <button class="chat-fab" bindtap="startChat" disabled="{{author.isSelf || chatting}}">
+      {{author.isSelf ? '这是你的匿名主页' : (chatting ? '正在进入聊天...' : '聊天')}}
+    </button>
+  </block>
+</view>

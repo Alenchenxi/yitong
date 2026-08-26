@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { HttpStatus } from '@nestjs/common';
-import { MatchStatus } from '@prisma/client';
+import { MatchKind, MatchStatus } from '@prisma/client';
 import { BizException } from '../../src/common/exceptions/biz.exception';
 import { TreeholeService } from '../../src/modules/treehole/treehole.service';
 
@@ -9,6 +9,7 @@ interface MatchFixture {
   anonIdA: string;
   anonIdB: string;
   status: MatchStatus;
+  kind: MatchKind;
   matchScore: number;
   matchedTags: string[];
   expireAt: Date | null;
@@ -93,6 +94,7 @@ async function main(): Promise<void> {
     anonIdA: 'anon-a',
     anonIdB: 'anon-b',
     status: MatchStatus.ACTIVE,
+    kind: MatchKind.RANDOM,
     matchScore: 88,
     matchedTags: ['夜猫子'],
     expireAt: new Date(Date.now() + 60_000),
@@ -104,6 +106,7 @@ async function main(): Promise<void> {
     assert(result.matchId === active.id, '活跃历史恢复原 matchId');
     assert(result.peerAnonId === 'anon-a', '活跃历史恢复原 peerAnonId');
     assert(result.waiting === false, '恢复接口不返回 waiting');
+    assert(result.matchKind === MatchKind.RANDOM, '恢复接口返回原会话类型');
     assert(result.imCredential.loginUserId === 'anon-b', '恢复接口返回当前匿名身份 IM 凭证');
     assert(updates.length === 0, '活跃恢复不修改匹配记录');
     assert(credentialCalls.length === 1, '活跃恢复仅申请一次 IM 凭证');

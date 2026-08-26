@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { CommunityStatus, MatchStatus, PostStatus, Prisma } from '@prisma/client';
+import { CommunityStatus, MatchKind, MatchStatus, PostStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -377,6 +377,105 @@ export class TreeholeService {
     return this.toVo(post);
   }
 
+  // P1-34 匿名作者主页：仅返回匿名画像与当前圈子动态数，严禁透出 userId。
+  async getAuthor(anonId: string, targetAnonId: string) {
+    const [profile, communityId] = await Promise.all([
+      this.getVisibleAnonProfile(anonId, targetAnonId),
+      this.resolveListCommunity(anonId),
+    ]);
+    const postCount = await this.prisma.anonymousPost.count({
+      where: {
+        anonId: targetAnonId,
+        communityId,
+        status: PostStatus.APPROVED,
+        community: { is: { status: CommunityStatus.ACTIVE } },
+      },
+    });
+    return {
+      anonId: targetAnonId,
+      nickname: profile.nickname,
+      avatar: profile.avatar,
+      personalityTags: profile.personalityTags,
+      interestTags: profile.interestTags,
+      moodState: profile.moodState,
+      postCount,
+      isSelf: anonId === targetAnonId,
+    };
+  }
+
+  // P1-34 匿名作者动态：只展示当前圈子内已审核通过的帖子。
+  async listAuthorPosts(anonId: string, targetAnonId: string, cursor?: string, limit = 20) {
+    await this.getVisibleAnonProfile(anonId, targetAnonId);
+    const communityId = await this.resolveListCommunity(anonId);
+    const where: Prisma.AnonymousPostWhereInput = {
+      anonId: targetAnonId,
+      communityId,
+      status: PostStatus.APPROVED,
+      community: { is: { status: CommunityStatus.ACTIVE } },
+    };
+    if (cursor) {
+      const t = new Date(cursor);
+      if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
+    }
+    const posts = await this.prisma.anonymousPost.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      include: {
+        likes: { where: { anonId }, select: { id: true }, take: 1 },
+        _count: { select: { comments: true } },
+      },
+    });
+    const hasMore = posts.length > limit;
+    const list = hasMore ? posts.slice(0, limit) : posts;
+    const last = list[list.length - 1];
+    return {
+      list: list.map((post) => this.toVo(post)),
+      nextCursor: hasMore && last ? last.createdAt.toISOString() : null,
+      hasMore,
+    };
+  }
+
+  // P1-34 从作者主页发起直聊：复用同一匿名身份对的有效 DIRECT 会话，不占用随机匹配。
+  async directChat(anonId: string, targetAnonId: string) {
+    if (!targetAnonId) {
+      throw new BizException(30004, '匿名用户无效', HttpStatus.BAD_REQUEST);
+    }
+    if (anonId === targetAnonId) {
+      throw new BizException(30004, '不能和自己聊天', HttpStatus.BAD_REQUEST);
+    }
+    await this.getVisibleAnonProfile(anonId, targetAnonId);
+    const directKey = [anonId, targetAnonId].sort().join(':');
+    const match = await this.prisma.chatMatch.upsert({
+      where: { directKey },
+      update: { status: MatchStatus.ACTIVE },
+      create: {
+        anonIdA: anonId,
+        anonIdB: targetAnonId,
+        kind: MatchKind.DIRECT,
+        directKey,
+        status: MatchStatus.ACTIVE,
+        matchedTags: [],
+        expireAt: null,
+      },
+    });
+    const [imCredential, peerTags] = await Promise.all([
+      this.im.getImCredential(anonId),
+      this.getDisplayTags(targetAnonId),
+    ]);
+    return {
+      matchId: match.id,
+      peerAnonId: targetAnonId,
+      imCredential,
+      waiting: false,
+      matchKind: MatchKind.DIRECT,
+      matchScore: 0,
+      matchedTags: [],
+      peerTags,
+      expireAt: null,
+    };
+  }
+
   // 1v1 随机匹配：内存队列撮合 -> ChatMatch + IM 凭证（anonId 作 loginUserId）
   async match(anonId: string) {
     this.removeFromMatchQueue(anonId);
@@ -399,6 +498,7 @@ export class TreeholeService {
             peerAnonId,
             imCredential,
             waiting: false,
+            matchKind: MatchKind.RANDOM,
             matchScore: active.matchScore ?? 0,
             matchedTags: active.matchedTags,
             peerTags,
@@ -442,6 +542,7 @@ export class TreeholeService {
         data: {
           anonIdA: bestPeer,
           anonIdB: anonId,
+          kind: MatchKind.RANDOM,
           status: MatchStatus.ACTIVE,
           matchScore: bestScore,
           matchedTags: bestMatched,
@@ -455,6 +556,7 @@ export class TreeholeService {
         peerAnonId: bestPeer,
         imCredential,
         waiting: false,
+        matchKind: MatchKind.RANDOM,
         matchScore: bestScore,
         matchedTags: bestMatched,
         peerTags,
@@ -509,6 +611,7 @@ export class TreeholeService {
       const peer = peerMap.get(peerAnonId);
       return {
         id: m.id,
+        kind: m.kind,
         peerAnonId,
         peerNickname: peer?.nickname ?? '匿名用户',
         peerAvatar: peer?.avatar ?? null,
@@ -535,6 +638,7 @@ export class TreeholeService {
         matchScore: true,
         matchedTags: true,
         expireAt: true,
+        kind: true,
       },
     });
     if (!match) throw new BizException(30010, '匹配不存在', HttpStatus.NOT_FOUND);
@@ -570,6 +674,7 @@ export class TreeholeService {
       peerAnonId,
       imCredential,
       waiting: false,
+      matchKind: match.kind,
       matchScore: match.matchScore ?? 0,
       matchedTags: match.matchedTags,
       peerTags,
@@ -592,6 +697,9 @@ export class TreeholeService {
     if (!m) throw new BizException(30010, '匹配不存在');
     if (m.anonIdA !== anonId && m.anonIdB !== anonId) {
       throw new BizException(10003, '无权操作此匹配');
+    }
+    if (m.kind !== MatchKind.RANDOM) {
+      throw new BizException(30010, '直接聊天不支持跳过', HttpStatus.BAD_REQUEST);
     }
     // 关闭当前匹配
     if (m.status === MatchStatus.ACTIVE) {
@@ -1033,12 +1141,36 @@ export class TreeholeService {
   private findActiveMatch(anonId: string) {
     return this.prisma.chatMatch.findFirst({
       where: {
+        kind: MatchKind.RANDOM,
         status: MatchStatus.ACTIVE,
         OR: [{ anonIdA: anonId }, { anonIdB: anonId }],
       },
       select: { id: true, anonIdA: true, anonIdB: true, matchScore: true, matchedTags: true, expireAt: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  private async getVisibleAnonProfile(anonId: string, targetAnonId: string) {
+    if (!targetAnonId) {
+      throw new BizException(30004, '匿名用户无效', HttpStatus.BAD_REQUEST);
+    }
+    if (anonId !== targetAnonId && await this.isBlockedEither(anonId, targetAnonId)) {
+      throw new BizException(30005, '内容不可见', HttpStatus.FORBIDDEN);
+    }
+    const profile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId: targetAnonId },
+      select: {
+        nickname: true,
+        avatar: true,
+        personalityTags: true,
+        interestTags: true,
+        moodState: true,
+      },
+    });
+    if (!profile) {
+      throw new BizException(30012, '匿名用户不存在', HttpStatus.NOT_FOUND);
+    }
+    return profile;
   }
 
   // P1-17 检查活跃匹配是否过期；过期则 CLOSE 并返回 true（调用方当作无活跃匹配）
@@ -1058,8 +1190,22 @@ export class TreeholeService {
     const profile = await this.prisma.$transaction(async (tx) => {
       await tx.anonymousPost.updateMany({ where: { anonId: oldAnonId }, data: { anonId: nextAnonId } });
       await tx.anonPostLike.updateMany({ where: { anonId: oldAnonId }, data: { anonId: nextAnonId } });
-      await tx.chatMatch.updateMany({ where: { anonIdA: oldAnonId }, data: { anonIdA: nextAnonId } });
-      await tx.chatMatch.updateMany({ where: { anonIdB: oldAnonId }, data: { anonIdB: nextAnonId } });
+      const matches = await tx.chatMatch.findMany({
+        where: { OR: [{ anonIdA: oldAnonId }, { anonIdB: oldAnonId }] },
+        select: { id: true, anonIdA: true, anonIdB: true, kind: true },
+      });
+      for (const match of matches) {
+        const anonIdA = match.anonIdA === oldAnonId ? nextAnonId : match.anonIdA;
+        const anonIdB = match.anonIdB === oldAnonId ? nextAnonId : match.anonIdB;
+        await tx.chatMatch.update({
+          where: { id: match.id },
+          data: {
+            anonIdA,
+            anonIdB,
+            directKey: match.kind === MatchKind.DIRECT ? [anonIdA, anonIdB].sort().join(':') : null,
+          },
+        });
+      }
       await tx.chatMessage.updateMany({ where: { fromId: oldAnonId }, data: { fromId: nextAnonId } });
       await tx.chatMessage.updateMany({ where: { toId: oldAnonId }, data: { toId: nextAnonId } });
       await tx.chatSession.updateMany({ where: { ownerId: oldAnonId }, data: { ownerId: nextAnonId } });

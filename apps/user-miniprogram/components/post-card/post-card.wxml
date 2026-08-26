@@ -8,13 +8,15 @@
   <view class="header">
     <!-- CR-001 匿名模式：emoji 占位头像 + 「匿名」标签 -->
     <block wx:if="{{anonymous}}">
-      <view class="avatar avatar-ph">?</view>
-      <view class="meta">
-        <view class="nickname">
-          {{post.anonNickname || '匿名用户'}}
-          <text class="anon-badge">匿名</text>
+      <view class="anon-author-hit" catchtap="onAuthor">
+        <view class="avatar avatar-ph">?</view>
+        <view class="meta">
+          <view class="nickname">
+            {{post.anonNickname || '匿名用户'}}
+            <text class="anon-badge">匿名</text>
+          </view>
+          <view class="time">{{timeText}}</view>
         </view>
-        <view class="time">{{timeText}}</view>
       </view>
     </block>
     <block wx:else>

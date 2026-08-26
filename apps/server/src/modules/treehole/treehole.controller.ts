@@ -113,6 +113,44 @@ export class TreeholeController {
     return ok(result);
   }
 
+  // P1-34 匿名作者主页与动态列表（仅匿名资料，不返回真实用户字段）
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('authors/:anonId/posts')
+  async listAuthorPosts(
+    @Param('anonId') targetAnonId: string,
+    @Query('cursor') cursor: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(
+      await this.treehole.listAuthorPosts(
+        anonId,
+        targetAnonId,
+        cursor,
+        parsePositiveInt(limit, 20, 1, 50),
+      ),
+    );
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Get('authors/:anonId')
+  async getAuthor(@Param('anonId') targetAnonId: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.getAuthor(anonId, targetAnonId));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('authors/:anonId/chat')
+  async directChat(@Param('anonId') targetAnonId: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.directChat(anonId, targetAnonId));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Throttle({ default: { ttl: 60_000, limit: 10 } })

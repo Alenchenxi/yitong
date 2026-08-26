@@ -1,6 +1,7 @@
 .page { min-height: 100vh; display: flex; flex-direction: column; }
 .center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .top-bar { display: flex; align-items: center; gap: 16rpx; padding: 16rpx 24rpx; background: #fff; border-bottom: 1rpx solid #f0f0f0; }
+.session-label { flex: 1; font-size: 26rpx; color: #4E5969; font-weight: 600; }
 .countdown { flex: 1; font-size: 24rpx; color: #B45309; }
 .countdown.expired { color: #E63946; }
 .block-btn { font-size: 26rpx; color: #E63946; padding: 6rpx 20rpx; border: 1rpx solid #E63946; border-radius: 28rpx; }

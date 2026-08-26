@@ -278,13 +278,20 @@ model ChatMatch {
   id          String      @id @default(cuid())
   anonIdA     String      @map("anon_id_a")
   anonIdB     String      @map("anon_id_b")
+  kind        MatchKind   @default(RANDOM)
+  directKey   String?     @unique @map("direct_key")
   status      MatchStatus @default(ACTIVE)
   matchScore  Int?        @map("match_score")   // P1-15 规则匹配度 0-100
   matchedTags String[]    @default([]) @map("matched_tags") // P1-15 命中标签
   expireAt    DateTime?   @map("expire_at")     // P1-17 限时聊天过期时间
   createdAt   DateTime    @default(now()) @map("created_at")
   @@index([status, expireAt])
+  @@index([kind, status, createdAt])
   @@map("chat_matches")
+}
+enum MatchKind {
+  RANDOM
+  DIRECT
 }
 enum MatchStatus {
   ACTIVE

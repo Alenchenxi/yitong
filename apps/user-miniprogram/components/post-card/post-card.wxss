@@ -18,6 +18,7 @@
   align-items: center;
   margin-bottom: 16rpx;
 }
+.anon-author-hit { display: flex; align-items: center; flex: 1; min-width: 0; }
 
 .avatar {
   width: 72rpx;

@@ -215,6 +215,13 @@ Page({
     }
   },
 
+  goAnonAuthor(e: WechatMiniprogram.CustomEvent) {
+    const anonId = (e.detail as { anonId?: string }).anonId;
+    if (anonId) {
+      wx.navigateTo({ url: `/pages/treehole/author/index?anonId=${encodeURIComponent(anonId)}` });
+    }
+  },
+
   // 今日上头条目点击：表白墙帖 → 表白墙详情；树洞帖 → 树洞详情
   goTodayHit(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;

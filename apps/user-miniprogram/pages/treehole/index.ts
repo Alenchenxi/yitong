@@ -134,6 +134,13 @@ Page({
     if (id) wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
   },
 
+  goAuthor(e: WechatMiniprogram.TouchEvent) {
+    const anonId = e.currentTarget.dataset.anonId as string;
+    if (anonId) {
+      wx.navigateTo({ url: `/pages/treehole/author/index?anonId=${encodeURIComponent(anonId)}` });
+    }
+  },
+
   // 转发给微信好友：列表卡片转发按钮 + 右上角菜单分享
   onShareAppMessage(e: { target?: { dataset?: { id?: string } } }) {
     const id = e?.target?.dataset?.id ?? this.data.posts[0]?.id ?? '';
