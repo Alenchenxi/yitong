@@ -83,13 +83,21 @@
             <text class="adm-item-sub">id: {{item.id}}</text>
           </view>
           <view class="adm-item-actions">
-            <button size="mini" class="adm-btn--primary" data-user="{{item}}" bindtap="addCandidateTap">添加</button>
+            <button
+              size="mini"
+              class="adm-btn--primary"
+              data-user-id="{{item.id}}"
+              data-user-nickname="{{item.nickname}}"
+              bindtap="addCandidateTap"
+              disabled="{{addingUserId !== ''}}"
+              loading="{{addingUserId === item.id}}"
+            >添加</button>
           </view>
         </view>
         <view class="adm-empty" wx:if="{{candidates.length === 0 && candidateKeyword}}">无匹配用户</view>
       </scroll-view>
       <view class="adm-dialog-footer">
-        <button size="mini" bindtap="closeAddDialog">关闭</button>
+        <button size="mini" bindtap="closeAddDialog" disabled="{{addingUserId !== ''}}">关闭</button>
       </view>
     </view>
   </view>

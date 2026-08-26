@@ -22,6 +22,7 @@ import {
 type Sub = 'users' | 'tickets' | 'admins';
 const SUBS: Sub[] = ['users', 'tickets', 'admins'];
 const SUB_LABELS: Record<Sub, string> = { users: '用户封禁', tickets: '工单处理', admins: '管理员' };
+let nextAddingFlowToken = 0;
 
 Component({
   options: {
@@ -51,6 +52,8 @@ Component({
     candidateKeyword: '',
     candidates: [] as CandidateUserVo[],
     showAddDialog: false,
+    addingUserId: '',
+    addingFlowToken: 0,
     loading: false,
   },
 
@@ -215,47 +218,74 @@ Component({
       this.load();
     },
     openAddDialog() {
+      if (this.data.addingUserId) return;
       this.setData({ showAddDialog: true, candidateKeyword: '', candidates: [] });
     },
     closeAddDialog() {
+      if (this.data.addingUserId) return;
       this.setData({ showAddDialog: false });
     },
     onCandidateKeywordInput(e: WechatMiniprogram.Input) {
       this.setData({ candidateKeyword: e.detail.value });
     },
-    async searchCandidates() {
+    async searchCandidates(silent = false) {
       const kw = this.data.candidateKeyword.trim();
       if (!kw) {
-        wx.showToast({ title: '请输入昵称', icon: 'none' });
+        if (silent !== true) wx.showToast({ title: '请输入昵称', icon: 'none' });
         return;
       }
       try {
         const list = await searchCandidateUsers(kw);
         this.setData({ candidates: list });
-        if (!list.length) wx.showToast({ title: '无匹配用户', icon: 'none' });
+        if (!list.length && silent !== true) wx.showToast({ title: '无匹配用户', icon: 'none' });
       } catch {
         /* toast */
       }
     },
     addCandidateTap(e: WechatMiniprogram.TouchEvent) {
-      const u = e.currentTarget.dataset.user as CandidateUserVo;
+      if (this.data.addingUserId) return;
+      const userId = e.currentTarget.dataset.userId as string;
+      const nickname = e.currentTarget.dataset.userNickname as string;
+      if (!userId) {
+        wx.showToast({ title: '用户信息无效，请重试', icon: 'none' });
+        return;
+      }
+      const flowToken = ++nextAddingFlowToken;
+      const isCurrentAddingFlow = () =>
+        this.data.addingUserId === userId && this.data.addingFlowToken === flowToken;
+      const releaseAddingLock = () => {
+        if (isCurrentAddingFlow()) {
+          this.setData({ addingUserId: '', addingFlowToken: 0 });
+        }
+      };
+      this.setData({ addingUserId: userId, addingFlowToken: flowToken });
       wx.showModal({
         title: '添加管理员',
-        content: `将「${u.nickname}」设为管理员？`,
+        content: `将「${nickname || userId}」设为管理员？`,
         confirmText: '设为管理员',
         confirmColor: '#F9C801',
         success: async (r) => {
-          if (r.confirm) {
-            try {
-              await createAdmin(u.id);
-              wx.showToast({ title: '已添加', icon: 'success' });
-              // 刷新候选列表（该用户已被设为 admin，应排除）+ 刷新管理员列表
-              await this.searchCandidates();
-              await this.load();
-            } catch {
-              /* toast */
-            }
+          if (!isCurrentAddingFlow()) return;
+          if (!r.confirm) {
+            releaseAddingLock();
+            return;
           }
+          try {
+            await createAdmin(userId);
+            // 刷新候选列表（该用户已被设为 admin，应排除）+ 刷新管理员列表
+            await this.searchCandidates(true);
+            await this.load();
+            wx.showToast({ title: '已添加管理员', icon: 'success' });
+          } catch {
+            /* toast */
+          } finally {
+            releaseAddingLock();
+          }
+        },
+        fail: () => {
+          if (!isCurrentAddingFlow()) return;
+          releaseAddingLock();
+          wx.showToast({ title: '暂时无法打开确认框', icon: 'none' });
         },
       });
     },
