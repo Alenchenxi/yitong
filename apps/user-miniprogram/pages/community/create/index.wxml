@@ -1,4 +1,15 @@
 <view class="page">
+  <!-- 圈子背景图：广场沉浸式头部使用 -->
+  <view class="background-picker" bindtap="chooseBackground">
+    <image wx:if="{{backgroundImage}}" class="background-preview" src="{{backgroundImage}}" mode="aspectFill" />
+    <view wx:else class="background-empty">
+      <view class="background-plus">＋</view>
+      <view>{{backgroundUploading ? '上传中…' : '上传圈子背景图（可选）'}}</view>
+      <view class="background-help">建议横向图片，广场顶部会自动裁切</view>
+    </view>
+    <view wx:if="{{backgroundImage}}" class="background-change">点击更换背景图</view>
+  </view>
+
   <!-- LOGO 选择 -->
   <view class="logo-row" bindtap="chooseLogo">
     <image wx:if="{{logo}}" class="logo" src="{{logo}}" mode="aspectFill" />
@@ -71,5 +82,5 @@
     <textarea class="textarea" placeholder="一句话介绍这个圈子（可选）" maxlength="200" value="{{description}}" bindinput="onDescInput" auto-height />
   </view>
 
-  <button class="submit-btn" bindtap="submit" disabled="{{submitting}}">{{submitting ? '创建中…' : '创建圈子'}}</button>
+  <button class="submit-btn" bindtap="submit" disabled="{{submitting || uploading || backgroundUploading}}">{{submitting ? '创建中…' : '创建圈子'}}</button>
 </view>

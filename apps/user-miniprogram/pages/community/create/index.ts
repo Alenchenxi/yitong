@@ -6,12 +6,13 @@ import { suggestPlaces, type PoiInfoVo } from '../../../services/place-suggest';
 // 圈子类型（与后端 COMMUNITY_CATEGORIES 对齐）
 const CATEGORIES = ['校园', '兴趣', '生活', '兼职'];
 
-// 创建圈子：LOGO（可选）+ 名称 + 类型（必选）+ 所在地区（省市区选择）+ 所在地点（地图搜索选点）+ 简介（可选）
+// 创建圈子：背景图/LOGO（可选）+ 名称 + 类型（必选）+ 所在地区 + 所在地点 + 简介（可选）
 Page({
   data: {
     name: '',
     description: '',
     logo: '',
+    backgroundImage: '',
     categories: CATEGORIES,
     category: '', // 圈子类型（必选）
     region: '', // 所在地区（picker mode=region 省市区选择，如「浙江省杭州市西湖区」）
@@ -21,6 +22,7 @@ Page({
     searchFocus: false,
     candidates: [] as PoiInfoVo[],
     uploading: false,
+    backgroundUploading: false,
     submitting: false,
   },
 
@@ -109,6 +111,23 @@ Page({
     });
   },
 
+  chooseBackground() {
+    if (this.data.backgroundUploading) return;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      success: (res) => {
+        const file = res.tempFiles[0];
+        if (!file) return;
+        this.setData({ backgroundUploading: true });
+        uploadImage(file.tempFilePath, 'community')
+          .then((url) => this.setData({ backgroundImage: url }))
+          .catch(() => {})
+          .finally(() => this.setData({ backgroundUploading: false }));
+      },
+    });
+  },
+
   async submit() {
     const name = this.data.name.trim();
     const category = this.data.category;
@@ -136,6 +155,7 @@ Page({
       const c = await createCommunity({
         name,
         logo: this.data.logo || undefined,
+        backgroundImage: this.data.backgroundImage || undefined,
         description: this.data.description.trim() || undefined,
         category,
         region,

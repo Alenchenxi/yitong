@@ -11,7 +11,7 @@
       <view wx:else class="logo logo-fallback">{{item.name[0]}}</view>
       <view class="info">
         <view class="name">{{item.name}}</view>
-        <view class="stats">{{item.memberCount}} 成员</view>
+        <view class="stats">{{item.memberCount}} 圈友</view>
       </view>
       <view class="join-tip">加入</view>
     </view>

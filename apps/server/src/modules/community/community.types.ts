@@ -8,6 +8,7 @@ export interface CommunityVo {
   id: string;
   name: string;
   logo: string | null;
+  backgroundImage: string | null;
   description: string | null;
   category: string;
   region: string | null;
@@ -41,6 +42,12 @@ export interface CommunityMineAllResult {
 /** P2-26 创建圈子的返回（CommunityVo + pending 标记，用于前端切 toast） */
 export interface CreateCommunityResult extends CommunityVo {
   pending: boolean;
+}
+
+/** 分享邀请入圈：joined=true 表示本次新加入，false 表示原本已是圈友。 */
+export interface CommunityInviteResult {
+  id: string;
+  joined: boolean;
 }
 
 export interface BannerVo {

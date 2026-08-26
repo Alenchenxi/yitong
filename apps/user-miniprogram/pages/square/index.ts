@@ -9,6 +9,7 @@ import {
 } from '../../services/treehole';
 import { listJobPosts } from '../../services/job';
 import {
+  acceptCommunityInvite,
   getActiveCommunity,
   listBanners,
   type CommunityVo,
@@ -18,6 +19,12 @@ import { listAnnouncements, type AnnouncementVo } from '../../services/announcem
 
 // 广场（圈子首页）：圈子头卡 + 广告轮播 + 今日上头 + 4 tab（圈子动态/表白墙/树洞/兼职）
 type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
+
+function inviteErrorCode(error: unknown): number | null {
+  if (!error || typeof error !== 'object' || !('code' in error)) return null;
+  const code = Number((error as { code?: unknown }).code);
+  return Number.isFinite(code) ? code : null;
+}
 
 interface PageData {
   community: CommunityVo | null;
@@ -30,6 +37,10 @@ interface PageData {
   activeTab: PlazaTab;
   announcements: AnnouncementVo[];
   anonTokenReady: boolean; // 匿名帖 disabled 判断
+  menuVisible: boolean;
+  navTop: number;
+  navHeight: number;
+  navRight: number;
 }
 
 Page({
@@ -44,11 +55,33 @@ Page({
     activeTab: 'dynamic' as PlazaTab,
     announcements: [],
     anonTokenReady: false,
+    menuVisible: false,
+    navTop: 0,
+    navHeight: 44,
+    navRight: 96,
   } as PageData,
+
+  onLoad(options: Record<string, string | undefined>) {
+    const app = getApp<AppInstance>();
+    const inviteCommunityId = options.inviteCommunityId;
+    if (inviteCommunityId) {
+      this._inviteCommunityId = inviteCommunityId;
+      app.globalData.pendingCommunityInviteId = inviteCommunityId;
+    }
+
+    const system = wx.getSystemInfoSync();
+    const menu = wx.getMenuButtonBoundingClientRect();
+    const navTop = system.statusBarHeight ?? 0;
+    const menuValid = menu.left > 0 && menu.top >= navTop && menu.width > 0 && menu.height > 0;
+    const navHeight = menuValid ? Math.max(40, (menu.top - navTop) * 2 + menu.height) : 44;
+    const navRight = menuValid ? Math.max(88, system.windowWidth - menu.left + 8) : 96;
+    this.setData({ navTop, navHeight, navRight });
+  },
 
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    await this.consumeCommunityInvite();
     // 每个 onShow 周期刷新 anonToken 状态（用户可能刚从树洞回来已签发）；缺失时静默补签
     this.setData({ anonTokenReady: hasAnonToken() });
     if (!hasAnonToken()) getAnonymousToken().catch(() => {});
@@ -72,6 +105,71 @@ Page({
       wx.navigateTo({ url: '/pages/community/join/index' });
     }
     listAnnouncements().then((a) => this.setData({ announcements: a })).catch(() => {});
+  },
+
+  // 分享进入后消费邀请：重叠 onShow 共用同一排空任务，期间到达的新邀请在页面刷新前顺序续接。
+  consumeCommunityInvite() {
+    const app = getApp<AppInstance>();
+    const pendingCommunityId = app.globalData.pendingCommunityInviteId;
+    if (pendingCommunityId && pendingCommunityId !== this._inviteCommunityId) {
+      // 热启动收到新分享时以最新邀请为准。
+      this._inviteCommunityId = pendingCommunityId;
+    }
+    if (this._inviteConsumePromise) return this._inviteConsumePromise;
+
+    const task = this.drainCommunityInvites();
+    let inFlight: Promise<void>;
+    inFlight = task.finally(() => {
+      if (this._inviteConsumePromise === inFlight) {
+        this._inviteConsumePromise = null;
+      }
+    });
+    this._inviteConsumePromise = inFlight;
+    return inFlight;
+  },
+
+  async drainCommunityInvites() {
+    let lastAttemptedCommunityId = '';
+    while (true) {
+      const app = getApp<AppInstance>();
+      const pendingCommunityId = app.globalData.pendingCommunityInviteId;
+      if (pendingCommunityId && pendingCommunityId !== this._inviteCommunityId) {
+        this._inviteCommunityId = pendingCommunityId;
+      }
+      const communityId = this._inviteCommunityId || pendingCommunityId;
+      // 同一个可恢复失败留待下次 onShow 重试，避免当前排空任务内无限循环。
+      if (!communityId || communityId === lastAttemptedCommunityId) return;
+      lastAttemptedCommunityId = communityId;
+      await this.doConsumeCommunityInvite(communityId);
+    }
+  },
+
+  async doConsumeCommunityInvite(communityId: string) {
+    const app = getApp<AppInstance>();
+    try {
+      const result = await acceptCommunityInvite(communityId);
+      this.clearCommunityInvite(communityId);
+      app.globalData.activeCommunityId = result.id;
+      app.globalData.joinGate = false;
+      wx.showToast({
+        title: result.joined ? '已加入并切换圈子' : '已切换到邀请圈子',
+        icon: 'none',
+      });
+    } catch (error) {
+      const code = inviteErrorCode(error);
+      if (code === 80010 || code === 80011) {
+        this.clearCommunityInvite(communityId);
+      }
+      // 圈子不存在/已禁用不再重试；鉴权失效或网络错误保留邀请，重新登录/onShow 后继续消费。
+    }
+  },
+
+  clearCommunityInvite(communityId: string) {
+    const app = getApp<AppInstance>();
+    if (this._inviteCommunityId === communityId) this._inviteCommunityId = '';
+    if (app.globalData.pendingCommunityInviteId === communityId) {
+      app.globalData.pendingCommunityInviteId = '';
+    }
   },
 
   // 当前圈子：服务端 getActiveCommunity（未加入 → null，广场显示空态并引导加入页），落 globalData 供发帖作用域
@@ -172,6 +270,7 @@ Page({
   },
 
   goCommunityList() {
+    this.setData({ menuVisible: false });
     wx.navigateTo({ url: '/pages/community/list/index' });
   },
 
@@ -183,6 +282,29 @@ Page({
   // 广场搜索栏 → 内容搜索页（表白墙 / 树洞 / 兼职）
   goSearch() {
     wx.navigateTo({ url: '/pages/content-search/index' });
+  },
+
+  showCommunityMenu() {
+    if (!this.data.community) return;
+    this.setData({ menuVisible: true });
+  },
+
+  hideCommunityMenu() {
+    this.setData({ menuVisible: false });
+  },
+
+  stopMenuTap() {},
+
+  onShareAppMessage() {
+    const community = this.data.community;
+    if (!community) {
+      return { title: '来燚桐发现校园生活', path: '/pages/square/index' };
+    }
+    return {
+      title: `邀请你加入「${community.name}」圈子`,
+      path: `/pages/square/index?inviteCommunityId=${encodeURIComponent(community.id)}`,
+      imageUrl: community.backgroundImage || community.logo || undefined,
+    };
   },
 
   // FAB：先弹底部菜单选发帖类型（表白墙 / 树洞），再跳对应发布页
@@ -262,4 +384,7 @@ Page({
       });
     }
   },
+
+  _inviteCommunityId: '',
+  _inviteConsumePromise: null as Promise<void> | null,
 });

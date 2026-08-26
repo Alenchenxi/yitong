@@ -6,7 +6,7 @@
       <view wx:else class="a-logo a-logo-fallback">{{preview.name[0]}}</view>
       <view class="a-info">
         <view class="a-name">{{preview.name}}</view>
-        <view class="a-stats">动态 {{preview.postCount}} · 成员 {{preview.memberCount}}</view>
+        <view class="a-stats">动态 {{preview.postCount}} · 圈友 {{preview.memberCount}}</view>
       </view>
       <view class="a-join" bindtap="onJoinPreview">加入</view>
     </block>
@@ -15,7 +15,7 @@
       <view wx:else class="a-logo a-logo-fallback">{{active.name[0]}}</view>
       <view class="a-info">
         <view class="a-name">{{active.name}}</view>
-        <view class="a-stats">动态 {{active.postCount}} · 成员 {{active.memberCount}}</view>
+        <view class="a-stats">动态 {{active.postCount}} · 圈友 {{active.memberCount}}</view>
       </view>
       <view class="a-more" bindtap="onMore">···</view>
     </block>
@@ -43,7 +43,7 @@
           <text class="name">{{item.name}}</text>
           <text class="active-tag" wx:if="{{item.id === activeId}}">当前</text>
         </view>
-        <view class="stats">动态 {{item.postCount}} · 成员 {{item.memberCount}}</view>
+        <view class="stats">动态 {{item.postCount}} · 圈友 {{item.memberCount}}</view>
       </view>
       <view class="switch-tip">{{item.id === activeId ? '' : '切换'}}</view>
     </view>

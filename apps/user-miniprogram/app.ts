@@ -6,7 +6,6 @@ import {
   type UserInfo,
 } from './utils/auth';
 import { getAnonymousToken } from './services/treehole';
-import { getActiveCommunity } from './services/community';
 
 // 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
 // FORCE_PRODUCTION 开关：true=开发者工具(develop)也强制连生产 yitongjiajiao.cn（本地不跑 server 调试真数据用）；
@@ -20,6 +19,12 @@ const apiBase = FORCE_PRODUCTION
     ? 'http://localhost:3000/api/v1'
     : PROD_API_BASE;
 
+function responseErrorCode(error: unknown): number | null {
+  if (!error || typeof error !== 'object' || !('code' in error)) return null;
+  const code = Number((error as { code?: unknown }).code);
+  return Number.isFinite(code) ? code : null;
+}
+
 App({
   globalData: {
     token: '',
@@ -32,20 +37,89 @@ App({
     anonId: '',    // CR-001 当前 anonId
     activeCommunityId: '', // 圈子：当前圈子 id（广场头卡/作用域；切换后更新）
     joinGate: false, // 圈子：加入页门闩（广场 onShow 未加入时只跳一次，返回不再无限跳）
+    pendingCommunityInviteId: '', // 分享邀请：冷/热启动先暂存，登录后由广场幂等消费
+    communityInviteRouting: false, // 分享邀请：角色切换/重进广场期间防止 onLaunch、onShow 重复路由
   },
 
-  onLaunch() {
+  onLaunch(options) {
+    const inviteCommunityId = options.query?.inviteCommunityId;
+    if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
+      this.globalData.pendingCommunityInviteId = inviteCommunityId;
+    }
     // 从 storage 恢复登录态；有 token 则按当前角色直进对应端首页
     if (restoreAuth(this)) {
       this.globalData.loginReady = true;
+      // 分享邀请优先落到用户广场；普通启动仍按上次角色进入对应首页。
+      if (this.globalData.pendingCommunityInviteId) {
+        this.routeCommunityInviteToSquare();
+        return;
+      }
       this.routeToRoleHome(this.globalData.currentRole);
       return;
     }
     // 无缓存 token → 首次进入小程序，自动以 user 身份登录直进广场
     // 失败静默留在 role-select 页（pages[0]），用户可手动选角色
     this.loginWithRole('user').then(() => {
-      this.routeToRoleHome('user');
+      if (this.globalData.pendingCommunityInviteId) {
+        this.routeCommunityInviteToSquare();
+      } else {
+        this.routeToRoleHome('user');
+      }
     }).catch(() => {});
+  },
+
+  onShow(options) {
+    const inviteCommunityId = options.query?.inviteCommunityId;
+    if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
+      this.globalData.pendingCommunityInviteId = inviteCommunityId;
+    }
+    if (this.globalData.pendingCommunityInviteId && this.globalData.token) {
+      this.routeCommunityInviteToSquare();
+    }
+  },
+
+  // 分享邀请统一路由：用户热启动时重进广场；商家/管理角色先切回用户端。
+  // 邀请 id 由广场 onShow 幂等消费，路由层只负责确保用户到达正确页面。
+  async routeCommunityInviteToSquare() {
+    if (
+      !this.globalData.pendingCommunityInviteId
+      || !this.globalData.token
+      || this.globalData.communityInviteRouting
+    ) {
+      return;
+    }
+
+    const pages = getCurrentPages();
+    const currentRoute = pages.length ? pages[pages.length - 1]?.route : '';
+    const isUserRole = this.globalData.currentRole.toLowerCase() === 'user';
+    if (isUserRole && currentRoute === 'pages/square/index') {
+      return;
+    }
+
+    this.globalData.communityInviteRouting = true;
+    try {
+      if (!isUserRole) {
+        await switchRoleUtil('user', this);
+      }
+      await new Promise<void>((resolve, reject) => {
+        wx.reLaunch({
+          url: '/pages/square/index',
+          success: () => resolve(),
+          fail: (err) => reject(err),
+        });
+      });
+    } catch (error) {
+      const code = responseErrorCode(error);
+      if (code === 10001 || code === 10002) {
+        // 商家/管理角色的缓存 token 已失效：保留邀请，仅清登录态并回登录页续接。
+        clearAuth(this);
+        this.globalData.loginReady = false;
+        wx.reLaunch({ url: '/pages/role-select/index' });
+      }
+      // 网络失败等可恢复错误保留 pendingCommunityInviteId，用户下次 onShow 可继续消费。
+    } finally {
+      this.globalData.communityInviteRouting = false;
+    }
   },
 
   // 按角色跳转对应端首页：user 表白墙(tabBar) / merchant 招聘列表(商家首页) / admin 管理端
@@ -68,12 +142,7 @@ App({
     // CR-001: 登录后尝试签发 anonToken（user 角色进广场需要；失败不影响登录流程）
     if (role === 'user') {
       getAnonymousToken().catch(() => {}); // 静默失败：首次未访问树洞无匿名身份，进入树洞时重试
-      // 圈子：登录后拉取当前圈子（未加入 → null 不写，由广场引导到加入页），落全局供广场头卡/发帖作用域使用
-      getActiveCommunity()
-        .then((c) => {
-          if (c) this.globalData.activeCommunityId = c.id;
-        })
-        .catch(() => {});
+      // 当前圈子统一由广场 onShow 拉取；避免登录预加载与邀请切换并发时旧响应回写。
     }
   },
 
@@ -106,6 +175,8 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
     anonId: string;
     activeCommunityId: string;
     joinGate: boolean;
+    pendingCommunityInviteId: string;
+    communityInviteRouting: boolean;
     loginReady: boolean;
   };
   loginWithRole: (role: 'user' | 'merchant' | 'admin', referralCode?: string) => Promise<void>;
@@ -113,4 +184,5 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
   logout: () => void;
   requireAuth: () => boolean;
   routeToRoleHome: (role: string) => void;
+  routeCommunityInviteToSquare: () => Promise<void>;
 }>;

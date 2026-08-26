@@ -14,7 +14,7 @@
     </view>
     <view class="card" wx:for="{{joined}}" wx:key="id" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onSwitch">
       <view class="card-title">{{item.name}}</view>
-      <view class="card-meta">{{item.memberCount}} 名成员 · {{item.postCount}} 条动态</view>
+      <view class="card-meta">{{item.memberCount}} 位圈友 · {{item.postCount}} 条动态</view>
       <view class="card-region" wx:if="{{item.region || item.location}}">{{item.region || ''}}{{item.location ? ' · ' + item.location : ''}}</view>
     </view>
   </block>

@@ -55,6 +55,12 @@ export class CommunityController {
     return ok(await this.community.join(req.user!.uid, id));
   }
 
+  // 好友分享邀请：幂等加入；已是圈友时只切换当前圈子
+  @Post(':id/invite-join')
+  async acceptInvite(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return ok(await this.community.acceptInvite(req.user!.uid, id));
+  }
+
   @Post(':id/leave')
   async leave(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return ok(await this.community.leave(req.user!.uid, id));

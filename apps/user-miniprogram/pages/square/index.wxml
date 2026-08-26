@@ -1,71 +1,112 @@
 <view class="page">
-  <!-- 顶部搜索：左侧切换按钮（当前圈子） + 搜索栏 -->
-  <view class="topbar">
-    <view class="circle-switch" bindtap="goSwitch">
-      <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
-      <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
-      <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
-      <text class="cs-arrow">▾</text>
-    </view>
-    <view class="search-box" bindtap="goSearch">
-      <text class="search-icon">🔍</text>
-      <text class="search-ph">找人或搜索内容</text>
-    </view>
-  </view>
+  <!-- 圈子动态上方统一为一个沉浸式容器；背景图来自当前圈子 -->
+  <view class="community-header {{community.backgroundImage ? 'has-background' : ''}}">
+    <image wx:if="{{community.backgroundImage}}" class="community-background" src="{{community.backgroundImage}}" mode="aspectFill" />
 
-  <!-- 圈子头卡：LOGO + 名称 + 动态数/成员数（点击进圈子列表/切换） -->
-  <view class="community-card yt-card" bindtap="goCommunityList">
-    <image wx:if="{{community.logo}}" class="c-logo" src="{{community.logo}}" mode="aspectFill" />
-    <view wx:else class="c-logo c-logo-fallback">{{community ? community.name[0] : '圈'}}</view>
-    <view class="c-info" wx:if="{{community}}">
-      <view class="c-name">{{community.name}}</view>
-      <view class="c-stats">动态 {{community.postCount}} · 成员 {{community.memberCount}}</view>
+    <!-- 自定义导航：占用原“广场”标题位置 -->
+    <view class="topbar" style="padding-top: {{navTop}}px; height: {{navHeight}}px; padding-right: {{navRight}}px;">
+      <view class="circle-switch" bindtap="goSwitch">
+        <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
+        <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
+        <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
+        <text class="cs-arrow">▾</text>
+      </view>
+      <view class="search-box" bindtap="goSearch">
+        <text class="search-icon">⌕</text>
+        <text class="search-ph">搜索圈内内容</text>
+      </view>
     </view>
-    <view class="c-switch" wx:if="{{community}}">切换 ›</view>
-    <view class="c-info c-empty" wx:else>
-      <view class="c-name">未加入圈子</view>
-      <view class="c-stats">点击选择或创建圈子</view>
-    </view>
-  </view>
 
-  <!-- 公告栏 -->
-  <view class="announce-bar" wx:if="{{announcements.length > 0}}">
-    <swiper class="announce-swiper" autoplay circular interval="4000" vertical>
-      <swiper-item wx:for="{{announcements}}" wx:key="id">
-        <text class="announce-text">📢 {{item.title}}：{{item.content}}</text>
-      </swiper-item>
-    </swiper>
-  </view>
-
-  <!-- 广告位轮播（Banner，圈子 + 全局） -->
-  <view class="banner-wrap" wx:if="{{banners.length > 0}}">
-    <swiper class="banner-swiper" autoplay circular interval="4000" indicator-dots indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff">
-      <swiper-item wx:for="{{banners}}" wx:key="id">
-        <image class="banner-img" src="{{item.imageUrl}}" mode="aspectFill" />
-      </swiper-item>
-    </swiper>
-  </view>
-
-  <!-- 今日上头：近24h 浏览量 Top10 横向滚动 -->
-  <view class="hot-section" wx:if="{{todayHit.length > 0}}">
-    <view class="hot-title">⚡ 今日上头</view>
-    <scroll-view class="hot-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-      <view
-        class="hot-item"
-        wx:for="{{todayHit}}"
-        wx:key="data.id"
-        data-id="{{item.data.id}}"
-        data-kind="{{item.kind}}"
-        bindtap="goTodayHit"
-      >
-        <view class="hot-rank">{{index + 1}}</view>
-        <view class="hot-info">
-          <view class="hot-badge">{{item.kind === 'anon_post' ? '树洞' : '表白墙'}}</view>
-          <view class="hot-content">{{item.data.content}}</view>
-          <view class="hot-views">👀 {{item.viewCount}}</view>
+    <view class="community-header-content">
+      <!-- 当前圈子信息；右侧改为菜单图标 -->
+      <view class="community-card">
+        <image wx:if="{{community.logo}}" class="c-logo" src="{{community.logo}}" mode="aspectFill" />
+        <view wx:else class="c-logo c-logo-fallback">{{community ? community.name[0] : '圈'}}</view>
+        <view class="c-info" wx:if="{{community}}">
+          <view class="c-name">{{community.name}}</view>
+          <view class="c-stats">动态 {{community.postCount}} · 圈友 {{community.memberCount}}</view>
+          <view class="c-description" wx:if="{{community.description}}">{{community.description}}</view>
+        </view>
+        <view class="c-menu" wx:if="{{community}}" bindtap="showCommunityMenu" aria-label="圈子菜单">•••</view>
+        <view class="c-info c-empty" wx:else bindtap="goCommunityList">
+          <view class="c-name">未加入圈子</view>
+          <view class="c-stats">点击选择或创建圈子</view>
         </view>
       </view>
-    </scroll-view>
+
+      <!-- 公告、Banner、今日上头均在同一大容器内，不再使用独立纯色卡片 -->
+      <view class="announce-bar" wx:if="{{announcements.length > 0}}">
+        <swiper class="announce-swiper" autoplay circular interval="4000" vertical>
+          <swiper-item wx:for="{{announcements}}" wx:key="id">
+            <text class="announce-text">公告 · {{item.title}}：{{item.content}}</text>
+          </swiper-item>
+        </swiper>
+      </view>
+
+      <view class="banner-wrap" wx:if="{{banners.length > 0}}">
+        <swiper class="banner-swiper" autoplay circular interval="4000" indicator-dots indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff">
+          <swiper-item wx:for="{{banners}}" wx:key="id">
+            <image class="banner-img" src="{{item.imageUrl}}" mode="aspectFill" />
+          </swiper-item>
+        </swiper>
+      </view>
+
+      <view class="hot-section" wx:if="{{todayHit.length > 0}}">
+        <view class="hot-title">今日上头</view>
+        <scroll-view class="hot-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+          <view
+            class="hot-item"
+            wx:for="{{todayHit}}"
+            wx:key="data.id"
+            data-id="{{item.data.id}}"
+            data-kind="{{item.kind}}"
+            bindtap="goTodayHit"
+          >
+            <view class="hot-rank">{{index + 1}}</view>
+            <view class="hot-info">
+              <view class="hot-badge">{{item.kind === 'anon_post' ? '树洞' : '表白墙'}}</view>
+              <view class="hot-content">{{item.data.content}}</view>
+              <view class="hot-views">浏览 {{item.viewCount}}</view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 圈子菜单：先展示当前圈子信息，再提供切换与邀请 -->
+  <view wx:if="{{menuVisible}}" class="menu-mask" bindtap="hideCommunityMenu" catchtouchmove="stopMenuTap">
+    <view class="menu-sheet" catchtap="stopMenuTap">
+      <view class="sheet-handle"></view>
+      <view class="sheet-community">
+        <image wx:if="{{community.logo}}" class="sheet-logo" src="{{community.logo}}" mode="aspectFill" />
+        <view wx:else class="sheet-logo sheet-logo-fallback">{{community.name[0]}}</view>
+        <view class="sheet-info">
+          <view class="sheet-name">{{community.name}}</view>
+          <view class="sheet-stats">{{community.memberCount}} 位圈友 · {{community.postCount}} 条动态</view>
+          <view class="sheet-description">{{community.description || community.location || '欢迎来到这个圈子'}}</view>
+        </view>
+      </view>
+      <view class="sheet-actions">
+        <button class="sheet-action" bindtap="goCommunityList">
+          <view class="sheet-action-icon">⌁</view>
+          <view class="sheet-action-text">
+            <view class="sheet-action-title">查看与切换圈子</view>
+            <view class="sheet-action-sub">管理我加入的圈子</view>
+          </view>
+          <view class="sheet-action-arrow">›</view>
+        </button>
+        <button class="sheet-action" open-type="share" bindtap="hideCommunityMenu">
+          <view class="sheet-action-icon share-icon">↗</view>
+          <view class="sheet-action-text">
+            <view class="sheet-action-title">邀请好友</view>
+            <view class="sheet-action-sub">好友打开后自动加入并切换到这里</view>
+          </view>
+          <view class="sheet-action-arrow">›</view>
+        </button>
+      </view>
+      <view class="sheet-safe"></view>
+    </view>
   </view>
 
   <!-- 4 tab：圈子动态 / 表白墙 / 树洞 / 兼职 -->

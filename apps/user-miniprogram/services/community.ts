@@ -6,6 +6,7 @@ export interface CommunityVo {
   id: string;
   name: string;
   logo: string | null;
+  backgroundImage: string | null;
   description: string | null;
   category: string;
   region: string | null;
@@ -70,7 +71,7 @@ export function getCommunity(id: string): Promise<CommunityVo> {
 
 /** 创建圈子（creator → OWNER + 成员 + 置当前；category/region/location 必填）
  *  P2-26 返回 CreateCommunityResult 含 pending 标记，按此切 toast 文案 */
-export function createCommunity(data: { name: string; logo?: string; description?: string; category: string; region: string; location: string }): Promise<CreateCommunityResult> {
+export function createCommunity(data: { name: string; logo?: string; backgroundImage?: string; description?: string; category: string; region: string; location: string }): Promise<CreateCommunityResult> {
   return request<CreateCommunityResult>({ url: '/community', method: 'POST', data });
 }
 
@@ -82,6 +83,11 @@ export function resubmitCommunity(id: string): Promise<CreateCommunityResult> {
 /** 加入圈子（同时置为当前圈子） */
 export function joinCommunity(id: string): Promise<{ id: string }> {
   return request<{ id: string }>({ url: `/community/${id}/join`, method: 'POST' });
+}
+
+/** 分享邀请幂等入圈：已是圈友时直接切换，不重复增加圈友数。 */
+export function acceptCommunityInvite(id: string): Promise<{ id: string; joined: boolean }> {
+  return request<{ id: string; joined: boolean }>({ url: `/community/${id}/invite-join`, method: 'POST' });
 }
 
 /** 退出圈子（圈主不可退） */

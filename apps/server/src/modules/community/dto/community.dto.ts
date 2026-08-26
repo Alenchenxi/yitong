@@ -15,6 +15,10 @@ export class CreateCommunityDto {
 
   @IsOptional()
   @IsString()
+  backgroundImage?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(200)
   description?: string;
 

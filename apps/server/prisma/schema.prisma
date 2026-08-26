@@ -854,6 +854,7 @@ model Community {
   id          String            @id @default(cuid())
   name        String
   logo        String?
+  backgroundImage String?       @map("background_image")
   description String?
   category    String            @default("校园") // 圈子类型（广场左侧分类：校园/兴趣/生活/兼职）
   region      String?                            // 所在地区（城市/校区，仅展示，广场不过滤）

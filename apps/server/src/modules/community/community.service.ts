@@ -7,6 +7,7 @@ import type {
   BannerVo,
   CommunityMineAllResult,
   CommunityMineResult,
+  CommunityInviteResult,
   CommunityStatusVo,
   CommunityVo,
   CreateCommunityResult,
@@ -196,6 +197,11 @@ export class CommunityService {
     const name = dto.name.trim();
     await this.moderation.checkText(name, openid);
     if (dto.description) await this.moderation.checkText(dto.description, openid);
+    await Promise.all(
+      [dto.logo, dto.backgroundImage]
+        .filter((url): url is string => Boolean(url))
+        .map((url) => this.moderation.checkImage(url)),
+    );
 
     // P2-26 读审核开关（缺/为 false → 旧行为）
     const cfg = await this.prisma.appConfig.findUnique({ where: { key: CFG_COMMUNITY_NEED_REVIEW } });
@@ -206,6 +212,7 @@ export class CommunityService {
         data: {
           name,
           logo: dto.logo ?? null,
+          backgroundImage: dto.backgroundImage ?? null,
           description: dto.description?.trim() || null,
           category: dto.category,
           region: dto.region.trim(),
@@ -281,6 +288,11 @@ export class CommunityService {
     // 重跑内容审核（防历史脏词 + 防 admin 上次拒后才发违规内容仍残留）
     await this.moderation.checkText(c.name);
     if (c.description) await this.moderation.checkText(c.description);
+    await Promise.all(
+      [c.logo, c.backgroundImage]
+        .filter((url): url is string => Boolean(url))
+        .map((url) => this.moderation.checkImage(url)),
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.community.update({
@@ -301,21 +313,45 @@ export class CommunityService {
 
   /** 加入圈子（同时置为当前圈子） */
   async join(uid: string, id: string): Promise<{ id: string }> {
-    const community = await this.prisma.community.findUnique({ where: { id } });
-    if (!community || community.status !== CommunityStatus.ACTIVE) {
-      throw new BizException(ERR_COMMUNITY_DISABLED, '圈子不可加入', HttpStatus.BAD_REQUEST);
-    }
-    const existing = await this.prisma.communityMember.findUnique({
-      where: { communityId_userId: { communityId: id, userId: uid } },
-      select: { id: true },
-    });
-    if (existing) throw new BizException(ERR_ALREADY_MEMBER, '已加入该圈子', HttpStatus.BAD_REQUEST);
-    await this.prisma.communityMember.create({
-      data: { communityId: id, userId: uid, role: CommunityMemberRole.MEMBER },
-    });
-    await this.prisma.community.update({ where: { id }, data: { memberCount: { increment: 1 } } });
-    await this.prisma.user.update({ where: { id: uid }, data: { activeCommunityId: id } });
+    await this.addMemberAndActivate(uid, id, false);
     return { id };
+  }
+
+  /**
+   * 好友分享邀请入圈：
+   * - 圈子必须 ACTIVE；
+   * - 未加入时创建成员并只增一次 memberCount；
+   * - 已加入时不报错，直接切换 activeCommunityId；
+   * - createMany(skipDuplicates) 保证重复点击或并发请求仍保持幂等。
+   */
+  async acceptInvite(uid: string, id: string): Promise<CommunityInviteResult> {
+    return { id, joined: await this.addMemberAndActivate(uid, id, true) };
+  }
+
+  /** 普通加入与邀请加入共用同一原子事务；邀请允许已存在成员并只切换当前圈子。 */
+  private async addMemberAndActivate(uid: string, id: string, allowExisting: boolean): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      // 条件 no-op update 同时完成 ACTIVE 校验和行级写锁；与管理员禁用并发时不会使用事务外旧状态。
+      const active = await tx.community.updateMany({
+        where: { id, status: CommunityStatus.ACTIVE },
+        data: { status: CommunityStatus.ACTIVE },
+      });
+      if (active.count === 0) {
+        throw new BizException(ERR_COMMUNITY_DISABLED, '圈子不可加入', HttpStatus.BAD_REQUEST);
+      }
+      const inserted = await tx.communityMember.createMany({
+        data: [{ communityId: id, userId: uid, role: CommunityMemberRole.MEMBER }],
+        skipDuplicates: true,
+      });
+      if (inserted.count === 0 && !allowExisting) {
+        throw new BizException(ERR_ALREADY_MEMBER, '已加入该圈子', HttpStatus.BAD_REQUEST);
+      }
+      if (inserted.count > 0) {
+        await tx.community.update({ where: { id }, data: { memberCount: { increment: 1 } } });
+      }
+      await tx.user.update({ where: { id: uid }, data: { activeCommunityId: id } });
+      return inserted.count > 0;
+    });
   }
 
   /** 退出圈子（圈主不可退；若退出的是当前圈子则清空 active，下次惰性兜底默认） */
@@ -398,6 +434,7 @@ export class CommunityService {
       id: c.id,
       name: c.name,
       logo: c.logo,
+      backgroundImage: c.backgroundImage,
       description: c.description,
       category: c.category,
       region: c.region,

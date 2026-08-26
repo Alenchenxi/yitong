@@ -157,7 +157,9 @@ function post<T>(app: AppLike, url: string, body: unknown, auth: boolean): Promi
           resolve(b.data as T);
         } else {
           wx.showToast({ title: b.message ?? '请求失败', icon: 'none' });
-          reject(new Error(b.message ?? 'failed'));
+          const error = new Error(b.message ?? 'failed') as Error & { code: number };
+          error.code = b.code;
+          reject(error);
         }
       },
       fail: () => {

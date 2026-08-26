@@ -35,7 +35,7 @@
           <text class="name">{{item.name}}</text>
           <text class="joined-tag" wx:if="{{item.isMember}}">已加入</text>
         </view>
-        <view class="stats">{{item.memberCount}} 成员 · 动态 {{item.postCount}}</view>
+        <view class="stats">{{item.memberCount}} 圈友 · 动态 {{item.postCount}}</view>
       </view>
       <view class="action">{{item.isMember ? '切换' : '加入'}}</view>
     </view>

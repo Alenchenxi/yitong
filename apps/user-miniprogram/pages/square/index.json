@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "广场",
+  "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "usingComponents": {
     "post-card": "/components/post-card/post-card",
