@@ -98,7 +98,7 @@ export class JobController {
     if (uid) {
       this.job.recordView(uid, id).catch(() => undefined);
     }
-    return ok(await this.job.getPost(id));
+    return ok(await this.job.getPost(id, uid));
   }
 
   @Post('job-posts/:id/applications')

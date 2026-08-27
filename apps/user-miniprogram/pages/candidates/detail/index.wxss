@@ -11,14 +11,68 @@
 }
 .header-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 16rpx;
+}
+.candidate-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  flex: 1;
+  min-width: 0;
+}
+.candidate-avatar {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 24rpx;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.72);
+}
+.candidate-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.candidate-avatar-fallback image {
+  width: 48rpx;
+  height: 48rpx;
+  opacity: 0.72;
+}
+.candidate-main {
+  flex: 1;
+  min-width: 0;
 }
 .nick {
+  display: block;
   font-size: 36rpx;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.candidate-info-line {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: var(--yt-text-body, #4e5969);
+}
+.candidate-info-line image {
+  width: 26rpx;
+  height: 26rpx;
+  flex-shrink: 0;
+}
+.candidate-phone {
+  color: var(--yt-text-main, #1d2129);
+}
+.candidate-info-muted {
+  color: var(--yt-text-sub, #86909c);
 }
 .tag {
+  flex-shrink: 0;
   font-size: 22rpx;
   padding: 4rpx 16rpx;
   border-radius: 8rpx;
@@ -198,6 +252,18 @@
   padding: 20rpx 0;
   border-radius: 12rpx;
   font-weight: 600;
+}
+.status-action-chat {
+  background: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+}
+.status-action-icon {
+  width: 32rpx;
+  height: 32rpx;
 }
 .status-action-reject {
   background: var(--yt-card, #fff);

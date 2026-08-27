@@ -9,6 +9,8 @@
 .app-status.CANCELLED { color: #fff; background: #C9CDD4; }
 .app-time { font-size: 22rpx; color: #999; margin-top: 12rpx; }
 .app-actions { display: flex; gap: 16rpx; margin-top: 16rpx; }
+.chat-btn { background: #F9C801 !important; color: #1D2129 !important; border-radius: 32rpx !important; font-size: 24rpx !important; display: flex !important; align-items: center; gap: 6rpx; }
+.chat-btn-icon { width: 28rpx; height: 28rpx; }
 .cancel-btn { background: #fff !important; color: #E63946 !important; border: 1rpx solid #E63946 !important; border-radius: 32rpx !important; font-size: 24rpx !important; }
 .report-btn { background: #fff !important; color: #86909C !important; border: 1rpx solid #C9CDD4 !important; border-radius: 32rpx !important; font-size: 24rpx !important; }
 .review-btn { background: #ff4d6d !important; color: #fff !important; border-radius: 32rpx !important; font-size: 24rpx !important; }

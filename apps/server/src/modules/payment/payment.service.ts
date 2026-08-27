@@ -220,21 +220,41 @@ export class PaymentService {
     if (order.status !== PayStatus.PENDING) return; // 已完成，幂等
 
     if (order.scene === PayScene.JOB_PUBLISH) {
+      const merchantId = order.merchantId;
+      const jobPostId = order.jobPostId;
+      if (!merchantId) {
+        throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+      }
+      if (!jobPostId) {
+        throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+      }
       const days = order.duration === JobDuration.D90 ? 90 : 30;
       const expireAt = new Date(Date.now() + days * 86_400_000);
+      const merchant = await this.prisma.merchant.findUnique({
+        where: { id: merchantId },
+        select: { contactPhone: true, contactWechat: true },
+      });
+      if (!merchant) {
+        throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+      }
       await this.prisma.$transaction([
         this.prisma.paymentOrder.update({
           where: { id: orderId },
           data: { status: PayStatus.PAID, paidAt: new Date(), wxTransactionId: wxTransactionId ?? order.wxTransactionId },
         }),
         this.prisma.jobPost.update({
-          where: { id: order.jobPostId! },
-          data: { status: JobPostStatus.PUBLISHED, expireAt },
+          where: { id: jobPostId },
+          data: {
+            status: JobPostStatus.PUBLISHED,
+            expireAt,
+            contactPhoneSnapshot: merchant.contactPhone,
+            contactWechatSnapshot: merchant.contactWechat,
+          },
         }),
       ]);
       // 主动通知商家发布成功（PaymentOrder 无 relation，经 jobPost 取 merchant.userId）
       const post = await this.prisma.jobPost.findUnique({
-        where: { id: order.jobPostId! },
+        where: { id: jobPostId },
         include: { merchant: { select: { userId: true } } },
       });
       if (post?.merchant) {

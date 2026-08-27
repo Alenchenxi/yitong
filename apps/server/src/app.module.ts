@@ -27,6 +27,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { SupportModule } from './modules/support/support.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { JobCommunicationModule } from './modules/job-communication/job-communication.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { UploadModule } from './modules/upload/upload.module';
     ChatModule,
     MerchantModule,
     JobModule,
+    JobCommunicationModule,
     PaymentModule,
     CommunityModule,
     TreeholeModule,

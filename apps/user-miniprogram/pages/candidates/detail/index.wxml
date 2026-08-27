@@ -1,8 +1,37 @@
-<view class="page" wx:if="{{detail}}">
+<view class="page" id="basic-section" wx:if="{{detail}}">
   <!-- 头部：候选人 + 状态 + 标记 -->
   <view class="header yt-card">
     <view class="header-row">
-      <text class="nick">{{detail.user.nickname || '匿名用户'}}</text>
+      <view class="candidate-profile">
+        <image
+          wx:if="{{detail.user.avatarUrl}}"
+          class="candidate-avatar"
+          src="{{detail.user.avatarUrl}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="candidate-avatar candidate-avatar-fallback">
+          <image src="/assets/icons/recruitment/user.svg" mode="aspectFit" />
+        </view>
+        <view class="candidate-main">
+          <text class="nick">{{detail.user.nickname || '匿名用户'}}</text>
+          <view class="candidate-info-line">
+            <image src="/assets/icons/recruitment/user.svg" mode="aspectFit" />
+            <text>{{detail.resume ? (detail.resume.name || '简历未填写姓名') : '报名时未附简历'}}</text>
+          </view>
+          <view
+            wx:if="{{detail.resume && detail.resume.phone}}"
+            class="candidate-info-line candidate-phone"
+            catchtap="onPhoneCall"
+          >
+            <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit" />
+            <text>{{detail.resume.phone}}</text>
+          </view>
+          <view wx:else class="candidate-info-line candidate-info-muted">
+            <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit" />
+            <text>{{detail.resume ? '简历未提供联系方式' : '报名时未附简历，暂无联系方式'}}</text>
+          </view>
+        </view>
+      </view>
       <text class="tag tag-{{detail.status}}">{{statusLabels[detail.status]}}</text>
     </view>
     <view class="marks">
@@ -38,7 +67,7 @@
   </view>
 
   <!-- 简历 -->
-  <view class="section yt-card" wx:if="{{detail.resume}}">
+  <view class="section yt-card" id="resume-section" wx:if="{{detail.resume}}">
     <view class="section-title">简历</view>
     <view class="resume-top">
       <view>
@@ -97,11 +126,15 @@
     </view>
   </view>
 
-  <!-- 状态流转操作 -->
-  <view class="status-actions" wx:if="{{detail.status === 'PENDING' || detail.status === 'ACCEPTED'}}">
+  <!-- 状态流转与沟通操作 -->
+  <view class="status-actions">
     <view class="status-action status-action-reject" wx:if="{{detail.status === 'PENDING'}}" catchtap="onReject">未录用</view>
     <view class="status-action status-action-accept" wx:if="{{detail.status === 'PENDING'}}" catchtap="onAccept">录用</view>
     <view class="status-action status-action-complete" wx:if="{{detail.status === 'ACCEPTED'}}" catchtap="onComplete">标记完成</view>
+    <view class="status-action status-action-chat" catchtap="onChat">
+      <image class="status-action-icon" src="/assets/icons/recruitment/message-circle.svg" />
+      <text>沟通</text>
+    </view>
   </view>
 
   <view wx:if="{{loading}}" class="bottom-tip">加载中…</view>

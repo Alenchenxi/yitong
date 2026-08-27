@@ -40,6 +40,8 @@ export interface JobPostVo {
   title: string;
   description: string;
   requirements: string | null; // P0-19 任职要求
+  contactPhone: string | null; // M3-10 发岗时联系方式快照（存量回退商家资料）
+  contactWechat: string | null;
   salary: string;
   salaryAmount: number | null; // P0-18 薪资数额（auto-parse，范围筛选用）
   location: string;
@@ -119,6 +121,73 @@ export interface JobReviewVo {
   rating: number;
   content: string;
   createdAt: string;
+}
+
+// P2-34 / M4-06 岗位报名双方专属沟通
+export type JobConversationRole = 'merchant' | 'student';
+export type JobConversationMessageType = 'TEXT' | 'INTERVIEW';
+export type InterviewInvitationStatus = 'ACTIVE' | 'CANCELLED';
+
+export interface InterviewInvitationVo {
+  id: string;
+  meetingUrl: string;
+  title: string;
+  meetingDate: string;
+  meetingTime: string;
+  meetingNo: string | null;
+  password: string | null;
+  interviewerName: string;
+  status: InterviewInvitationStatus;
+  cancelledAt: string | null;
+  createdAt: string;
+}
+
+export interface JobConversationMessageVo {
+  id: string;
+  senderId: string;
+  type: JobConversationMessageType;
+  content: string;
+  clientMessageId: string | null;
+  invitation: InterviewInvitationVo | null;
+  createdAt: string;
+}
+
+export interface JobConversationVo {
+  id: string;
+  applicationId: string;
+  role: JobConversationRole;
+  readOnly: boolean;
+  applicationStatus: JobAppVo['status'];
+  jobPost: { id: string; title: string; salary: string; location: string };
+  peer: { id: string; name: string; avatarUrl: string | null };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobConversationMessagePage {
+  list: JobConversationMessageVo[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface ParsedTencentMeetingVo {
+  meetingUrl: string;
+  title: string | null;
+  meetingDate: string | null;
+  meetingTime: string | null;
+  meetingNo: string | null;
+  password: string | null;
+  interviewerName: string | null;
+}
+
+export interface CreateInterviewInvitationInput {
+  meetingUrl: string;
+  title: string;
+  meetingDate: string;
+  meetingTime: string;
+  meetingNo?: string;
+  password?: string;
+  interviewerName: string;
 }
 
 export function createJobPost(data: {
@@ -260,6 +329,50 @@ export function getPostChipLabels(post: JobPostVo): PostChipLabels {
 
 export function applyJob(postId: string, data: { resumeId?: string; answers?: string[] } = {}) {
   return request<JobAppVo>({ url: `/job-posts/${postId}/applications`, method: 'POST', data });
+}
+
+export function ensureJobConversation(applicationId: string) {
+  return request<JobConversationVo>({ url: `/job-applications/${applicationId}/conversation`, method: 'POST' });
+}
+
+export function getJobConversation(conversationId: string) {
+  return request<JobConversationVo>({ url: `/job-conversations/${conversationId}` });
+}
+
+export function listJobConversationMessages(conversationId: string, cursor?: string) {
+  const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+  return request<JobConversationMessagePage>({ url: `/job-conversations/${conversationId}/messages${qs}` });
+}
+
+export function sendJobConversationMessage(conversationId: string, content: string, clientMessageId: string) {
+  return request<JobConversationMessageVo>({
+    url: `/job-conversations/${conversationId}/messages`,
+    method: 'POST',
+    data: { content, clientMessageId },
+  });
+}
+
+export function parseTencentMeeting(applicationId: string, input: string) {
+  return request<ParsedTencentMeetingVo>({
+    url: `/job-applications/${applicationId}/interviews/parse`,
+    method: 'POST',
+    data: { input },
+  });
+}
+
+export function sendInterviewInvitation(applicationId: string, data: CreateInterviewInvitationInput) {
+  return request<JobConversationMessageVo>({
+    url: `/job-applications/${applicationId}/interviews`,
+    method: 'POST',
+    data: { ...data },
+  });
+}
+
+export function cancelInterviewInvitation(invitationId: string) {
+  return request<InterviewInvitationVo>({
+    url: `/interview-invitations/${invitationId}/cancel`,
+    method: 'POST',
+  });
 }
 
 // P0-21 简历

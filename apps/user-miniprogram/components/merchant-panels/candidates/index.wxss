@@ -256,19 +256,46 @@
 }
 .card-actions {
   display: flex;
-  gap: 16rpx;
+  gap: 12rpx;
   margin-top: 20rpx;
   padding-top: 20rpx;
   border-top: 1rpx solid var(--yt-border, #e5e6eb);
 }
 .act-btn {
   flex: 1;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
   font-size: 24rpx;
   padding: 14rpx 0;
-  border-radius: 10rpx;
+  border-radius: 12rpx;
   background: var(--yt-bg, #f6f7fb);
   color: var(--yt-text-body, #4e5969);
+}
+.act-btn-primary {
+  background: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
+  font-weight: 600;
+}
+.act-icon {
+  width: 30rpx;
+  height: 30rpx;
+  flex-shrink: 0;
+}
+.mark-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+.mark-action {
+  font-size: 21rpx;
+  padding: 7rpx 16rpx;
+  border-radius: 999rpx;
+  background: #fff;
+  border: 1rpx solid var(--yt-border, #e5e6eb);
+  color: var(--yt-text-sub, #86909c);
 }
 .act-btn-on {
   background: #e8f3ff;

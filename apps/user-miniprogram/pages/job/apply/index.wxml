@@ -1,4 +1,26 @@
-<view class="page" wx:if="{{post}}">
+<view class="success-page" wx:if="{{application}}">
+  <view class="success-card">
+    <view class="success-icon">✓</view>
+    <view class="success-title">报名成功</view>
+    <view class="success-sub">简历已发送给商家，可现在沟通岗位细节</view>
+    <view class="success-job">
+      <image class="success-job-icon" src="/assets/icons/recruitment/briefcase.svg" />
+      <view class="success-job-main">
+        <view class="success-job-title">{{post.title}}</view>
+        <view class="success-job-meta">{{post.salary}} · {{post.location}}</view>
+      </view>
+    </view>
+    <view class="success-actions">
+      <view class="success-btn success-btn-secondary" bindtap="backToJob">返回岗位</view>
+      <view class="success-btn success-btn-primary" bindtap="goChat">
+        <image class="success-btn-icon" src="/assets/icons/recruitment/message-circle.svg" />
+        <text>与商家沟通</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="page" wx:elif="{{post}}">
   <view class="post-card">
     <view class="title">{{post.title}}</view>
     <view class="sub">{{post.salary}} · {{post.location}}</view>

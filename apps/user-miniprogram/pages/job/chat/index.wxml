@@ -1,0 +1,422 @@
+<view class="page">
+  <block wx:if="{{loading}}">
+    <view class="state-wrap">
+      <view class="state-icon skeleton-icon"></view>
+      <view class="skeleton-line skeleton-title"></view>
+      <view class="skeleton-line"></view>
+      <view class="skeleton-line skeleton-short"></view>
+      <text class="state-text">正在进入岗位沟通</text>
+    </view>
+  </block>
+
+  <block wx:elif="{{loadError}}">
+    <view class="state-wrap">
+      <view class="state-icon error-icon">
+        <image src="/assets/icons/recruitment/info-circle.svg" mode="aspectFit"></image>
+      </view>
+      <text class="state-title">会话加载失败</text>
+      <text class="state-text">{{loadError}}</text>
+      <button class="state-button" bindtap="retryLoad">重新加载</button>
+    </view>
+  </block>
+
+  <block wx:elif="{{conversation}}">
+    <view class="conversation-card">
+      <view class="peer-row">
+        <view class="peer-avatar">
+          <image wx:if="{{conversation.peer.avatarUrl}}" src="{{conversation.peer.avatarUrl}}" mode="aspectFill"></image>
+          <text wx:else>{{peerInitial}}</text>
+        </view>
+        <view class="peer-main">
+          <view class="peer-name-row">
+            <text class="peer-name">{{conversation.peer.name}}</text>
+            <text class="role-chip">{{conversation.role === 'merchant' ? '候选人' : '招聘方'}}</text>
+          </view>
+          <text class="peer-caption">{{conversation.role === 'merchant' ? '正在沟通候选人' : '正在沟通报名岗位'}}</text>
+        </view>
+        <view class="secure-chip">
+          <view class="secure-dot"></view>
+          <text>站内沟通</text>
+        </view>
+      </view>
+
+      <view class="job-row" bindtap="openJobDetail" hover-class="job-row-hover" hover-stay-time="80">
+        <view class="job-icon">
+          <image src="/assets/icons/recruitment/briefcase.svg" mode="aspectFit"></image>
+        </view>
+        <view class="job-main">
+          <text class="job-title">{{conversation.jobPost.title}}</text>
+          <view class="job-meta">
+            <text class="salary">{{conversation.jobPost.salary}}</text>
+            <text class="meta-divider">·</text>
+            <text class="location">{{conversation.jobPost.location || '地点待沟通'}}</text>
+          </view>
+        </view>
+        <image class="chevron" src="/assets/icons/recruitment/chevron-right.svg" mode="aspectFit"></image>
+      </view>
+    </view>
+
+    <view wx:if="{{readOnlyText}}" class="readonly-banner">
+      <image src="/assets/icons/recruitment/info-circle.svg" mode="aspectFit"></image>
+      <text>{{readOnlyText}}</text>
+    </view>
+
+    <scroll-view
+      class="message-scroll"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+      upper-threshold="80"
+      scroll-into-view="{{scrollIntoView}}"
+      bindscrolltoupper="loadEarlier"
+    >
+      <view class="message-content">
+        <view class="history-loader" wx:if="{{loadingEarlier}}">
+          <view class="loading-dot"></view>
+          <text>正在加载更早消息</text>
+        </view>
+        <view class="history-loader" wx:elif="{{hasMore}}">
+          <text>上滑查看更早消息</text>
+        </view>
+
+        <view wx:if="{{messages.length === 0}}" class="empty-chat">
+          <view class="empty-chat-icon">
+            <image src="/assets/icons/recruitment/message-circle.svg" mode="aspectFit"></image>
+          </view>
+          <text class="empty-chat-title">从岗位开始聊起</text>
+          <text class="empty-chat-text">
+            {{conversation.role === 'merchant' ? '可以先确认候选人的到岗时间和经历' : '可以先询问工作内容、排班和到岗要求'}}
+          </text>
+        </view>
+
+        <block wx:for="{{messages}}" wx:key="clientKey">
+          <view wx:if="{{item.showDay}}" class="day-divider">
+            <text>{{item.dayText}}</text>
+          </view>
+
+          <view id="{{item.anchorId}}" class="message-row {{item.mine ? 'mine' : 'peer'}}">
+            <view wx:if="{{!item.mine}}" class="message-avatar">
+              <image wx:if="{{conversation.peer.avatarUrl}}" src="{{conversation.peer.avatarUrl}}" mode="aspectFill"></image>
+              <text wx:else>{{peerInitial}}</text>
+            </view>
+
+            <view class="message-stack {{item.type === 'INTERVIEW' ? 'interview-stack' : ''}}">
+              <view wx:if="{{item.type === 'TEXT'}}" class="text-bubble {{item.mine ? 'mine' : 'peer'}}">
+                <text user-select>{{item.content}}</text>
+              </view>
+
+              <view
+                wx:elif="{{item.invitation}}"
+                class="meeting-card {{item.invitation.status === 'CANCELLED' ? 'cancelled' : ''}}"
+              >
+                <view class="meeting-head">
+                  <view class="meeting-icon">
+                    <image src="/assets/icons/recruitment/video.svg" mode="aspectFit"></image>
+                  </view>
+                  <view class="meeting-heading">
+                    <text class="meeting-kicker">腾讯会议 · 面试邀请</text>
+                    <text class="meeting-title">{{item.invitation.title}}</text>
+                  </view>
+                  <text class="meeting-status">
+                    {{item.invitation.status === 'CANCELLED' ? '已取消' : '待面试'}}
+                  </text>
+                </view>
+
+                <view class="meeting-time-panel">
+                  <view class="meeting-date">
+                    <image src="/assets/icons/recruitment/calendar-event.svg" mode="aspectFit"></image>
+                    <text>{{item.invitation.meetingDate}}</text>
+                  </view>
+                  <view class="meeting-clock">
+                    <image src="/assets/icons/recruitment/clock.svg" mode="aspectFit"></image>
+                    <text>{{item.invitation.meetingTime}}</text>
+                  </view>
+                </view>
+
+                <view class="meeting-detail">
+                  <text class="detail-label">面试官</text>
+                  <text class="detail-value">{{item.invitation.interviewerName}}</text>
+                </view>
+                <view wx:if="{{item.invitation.meetingNo}}" class="meeting-detail">
+                  <text class="detail-label">会议号</text>
+                  <text class="detail-value mono">{{item.invitation.meetingNo}}</text>
+                  <view
+                    class="copy-action"
+                    data-value="{{item.invitation.meetingNo}}"
+                    catchtap="copyMeetingValue"
+                  >
+                    <image src="/assets/icons/recruitment/copy.svg" mode="aspectFit"></image>
+                    <text>复制</text>
+                  </view>
+                </view>
+                <view wx:if="{{item.invitation.password}}" class="meeting-detail">
+                  <text class="detail-label">会议密码</text>
+                  <text class="detail-value mono">{{item.invitation.password}}</text>
+                  <view
+                    class="copy-action"
+                    data-value="{{item.invitation.password}}"
+                    catchtap="copyMeetingValue"
+                  >
+                    <image src="/assets/icons/recruitment/copy.svg" mode="aspectFit"></image>
+                    <text>复制</text>
+                  </view>
+                </view>
+
+                <view class="meeting-actions">
+                  <button
+                    class="meeting-primary"
+                    disabled="{{item.invitation.status === 'CANCELLED'}}"
+                    data-url="{{item.invitation.meetingUrl}}"
+                    catchtap="enterMeeting"
+                  >
+                    <image src="/assets/icons/recruitment/external-link.svg" mode="aspectFit"></image>
+                    <text>进入会议</text>
+                  </button>
+                  <view
+                    class="meeting-link-action"
+                    data-value="{{item.invitation.meetingUrl}}"
+                    catchtap="copyMeetingValue"
+                  >
+                    <image src="/assets/icons/recruitment/link.svg" mode="aspectFit"></image>
+                    <text>复制链接</text>
+                  </view>
+                </view>
+
+                <view
+                  wx:if="{{conversation.role === 'merchant' && item.invitation.status === 'ACTIVE'}}"
+                  class="cancel-meeting"
+                  data-id="{{item.invitation.id}}"
+                  catchtap="cancelInvitation"
+                >取消本次邀请</view>
+              </view>
+
+              <view class="message-meta {{item.mine ? 'mine' : 'peer'}}">
+                <text>{{item.timeText}}</text>
+                <text wx:if="{{item.mine && item.sendState === 'sending'}}">发送中</text>
+                <text wx:elif="{{item.mine && item.sendState === 'sent'}}">已发送</text>
+                <view
+                  wx:elif="{{item.mine && item.sendState === 'failed'}}"
+                  class="send-failed"
+                  data-id="{{item.id}}"
+                  bindtap="retryMessage"
+                >
+                  <image src="/assets/icons/recruitment/info-circle.svg" mode="aspectFit"></image>
+                  <text>发送失败，点击重试</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </block>
+
+        <view id="message-end" class="message-end"></view>
+      </view>
+    </scroll-view>
+
+    <view wx:if="{{conversation.role === 'merchant' && extensionOpen}}" class="extension-panel">
+      <view
+        class="extension-item"
+        bindtap="openInvitation"
+      >
+        <view class="extension-icon">
+          <image src="/assets/icons/recruitment/calendar-event.svg" mode="aspectFit"></image>
+        </view>
+        <text>邀请面试</text>
+      </view>
+    </view>
+
+    <view wx:if="{{!conversation.readOnly}}" class="composer">
+      <button wx:if="{{conversation.role === 'merchant'}}" class="icon-button extension-button {{extensionOpen ? 'active' : ''}}" bindtap="toggleExtension">
+        <image wx:if="{{extensionOpen}}" src="/assets/icons/recruitment/x.svg" mode="aspectFit"></image>
+        <image wx:else src="/assets/icons/recruitment/plus.svg" mode="aspectFit"></image>
+      </button>
+      <view class="input-shell">
+        <textarea
+          class="message-input"
+          value="{{input}}"
+          placeholder="输入沟通内容"
+          maxlength="1000"
+          auto-height
+          fixed
+          show-confirm-bar="{{false}}"
+          cursor-spacing="18"
+          bindinput="onInput"
+          confirm-type="send"
+          bindconfirm="send"
+        ></textarea>
+      </view>
+      <button class="icon-button send-button" disabled="{{!canSend || sending}}" bindtap="send">
+        <image src="/assets/icons/recruitment/send.svg" mode="aspectFit"></image>
+      </button>
+    </view>
+
+    <view wx:else class="readonly-composer">
+      <image src="/assets/icons/recruitment/info-circle.svg" mode="aspectFit"></image>
+      <text>该报名已结束，不能继续发送消息</text>
+    </view>
+  </block>
+</view>
+
+<view wx:if="{{invitationOpen}}" class="sheet-mask" catchtap="closeInvitation">
+  <view class="invitation-sheet" catchtap="stopPropagation">
+    <view class="sheet-handle"></view>
+    <view class="sheet-head">
+      <view>
+        <text class="sheet-title">邀请候选人面试</text>
+        <text class="sheet-subtitle">粘贴腾讯会议分享内容，可自动识别会议信息</text>
+      </view>
+      <button class="sheet-close" bindtap="closeInvitation">
+        <image src="/assets/icons/recruitment/x.svg" mode="aspectFit"></image>
+      </button>
+    </view>
+
+    <scroll-view class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="sheet-body">
+        <view class="source-card">
+          <view class="field-head">
+            <text class="field-label">腾讯会议分享内容</text>
+            <text class="field-required">必填</text>
+          </view>
+          <textarea
+            class="source-input"
+            value="{{meetingSource}}"
+            placeholder="粘贴会议链接，或包含主题、时间、会议号的完整分享内容"
+            maxlength="2000"
+            auto-height
+            show-confirm-bar="{{false}}"
+            bindinput="onMeetingSourceInput"
+          ></textarea>
+          <button class="parse-button" disabled="{{parsing || inviting}}" bindtap="parseMeeting">
+            <image src="/assets/icons/recruitment/link.svg" mode="aspectFit"></image>
+            <text>{{parsing ? '正在识别…' : '自动识别会议信息'}}</text>
+          </button>
+        </view>
+
+        <view wx:if="{{parsed}}" class="parsed-tip">
+          <view class="parsed-check">✓</view>
+          <text>已识别会议内容，请发送前核对并补全信息</text>
+        </view>
+
+        <view class="form-section">
+          <text class="form-section-title">面试信息</text>
+
+          <view class="form-field">
+            <view class="field-head">
+              <text class="field-label">面试标题</text>
+              <text class="field-required">必填</text>
+            </view>
+            <input
+              class="field-input {{meetingErrors.title ? 'error' : ''}}"
+              value="{{meetingForm.title}}"
+              placeholder="例如：校园推广专员一面"
+              maxlength="80"
+              data-field="title"
+              bindinput="onMeetingFieldInput"
+            />
+            <text wx:if="{{meetingErrors.title}}" class="field-error-text">{{meetingErrors.title}}</text>
+          </view>
+
+          <view class="form-grid">
+            <view class="form-field grid-field">
+              <view class="field-head">
+                <text class="field-label">面试日期</text>
+                <text class="field-required">必填</text>
+              </view>
+              <picker mode="date" value="{{meetingForm.meetingDate}}" bindchange="onMeetingDateChange">
+                <view class="picker-value {{meetingForm.meetingDate ? '' : 'placeholder'}} {{meetingErrors.meetingDate ? 'error' : ''}}">
+                  <image src="/assets/icons/recruitment/calendar-event.svg" mode="aspectFit"></image>
+                  <text>{{meetingForm.meetingDate || '选择日期'}}</text>
+                </view>
+              </picker>
+              <text wx:if="{{meetingErrors.meetingDate}}" class="field-error-text">{{meetingErrors.meetingDate}}</text>
+            </view>
+
+            <view class="form-field grid-field">
+              <view class="field-head">
+                <text class="field-label">面试时间</text>
+                <text class="field-required">必填</text>
+              </view>
+              <picker mode="time" value="{{meetingForm.meetingTime}}" bindchange="onMeetingTimeChange">
+                <view class="picker-value {{meetingForm.meetingTime ? '' : 'placeholder'}} {{meetingErrors.meetingTime ? 'error' : ''}}">
+                  <image src="/assets/icons/recruitment/clock.svg" mode="aspectFit"></image>
+                  <text>{{meetingForm.meetingTime || '选择时间'}}</text>
+                </view>
+              </picker>
+              <text wx:if="{{meetingErrors.meetingTime}}" class="field-error-text">{{meetingErrors.meetingTime}}</text>
+            </view>
+          </view>
+
+          <view class="form-field">
+            <view class="field-head">
+              <text class="field-label">腾讯会议链接</text>
+              <text class="field-required">必填</text>
+            </view>
+            <view class="icon-input {{meetingErrors.meetingUrl ? 'error' : ''}}">
+              <image src="/assets/icons/recruitment/link.svg" mode="aspectFit"></image>
+              <input
+                value="{{meetingForm.meetingUrl}}"
+                placeholder="https://meeting.tencent.com/..."
+                data-field="meetingUrl"
+                bindinput="onMeetingFieldInput"
+              />
+            </view>
+            <text wx:if="{{meetingErrors.meetingUrl}}" class="field-error-text">{{meetingErrors.meetingUrl}}</text>
+          </view>
+
+          <view class="form-grid">
+            <view class="form-field grid-field">
+              <text class="field-label">会议号</text>
+              <input
+                class="field-input mono"
+                value="{{meetingForm.meetingNo}}"
+                placeholder="选填"
+                data-field="meetingNo"
+                bindinput="onMeetingFieldInput"
+              />
+            </view>
+            <view class="form-field grid-field">
+              <text class="field-label">会议密码</text>
+              <input
+                class="field-input mono"
+                value="{{meetingForm.password}}"
+                placeholder="选填"
+                data-field="password"
+                bindinput="onMeetingFieldInput"
+              />
+            </view>
+          </view>
+
+          <view class="form-field">
+            <view class="field-head">
+              <text class="field-label">面试官名称</text>
+              <text class="field-required">必填</text>
+            </view>
+            <view class="icon-input {{meetingErrors.interviewerName ? 'error' : ''}}">
+              <image src="/assets/icons/recruitment/user.svg" mode="aspectFit"></image>
+              <input
+                value="{{meetingForm.interviewerName}}"
+                placeholder="填写候选人看到的面试官名称"
+                maxlength="40"
+                data-field="interviewerName"
+                bindinput="onMeetingFieldInput"
+              />
+            </view>
+            <text wx:if="{{meetingErrors.interviewerName}}" class="field-error-text">{{meetingErrors.interviewerName}}</text>
+          </view>
+        </view>
+
+        <view class="meeting-note">
+          <image src="/assets/icons/recruitment/info-circle.svg" mode="aspectFit"></image>
+          <text>发送后将以会议卡片展示给候选人。本期支持取消邀请，暂不支持接受、拒绝和改期。</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="sheet-footer">
+      <button class="secondary-button" bindtap="closeInvitation">暂不发送</button>
+      <button class="primary-button" disabled="{{inviting || parsing}}" bindtap="submitInvitation">
+        <image src="/assets/icons/recruitment/send.svg" mode="aspectFit"></image>
+        <text>{{inviting ? '发送中…' : '发送面试邀请'}}</text>
+      </button>
+    </view>
+  </view>
+</view>

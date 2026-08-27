@@ -154,6 +154,18 @@ Page({
     wx.navigateTo({ url: '/pages/help/faq/index' });
   },
 
+  onCallContact() {
+    const phone = this.data.post?.contactPhone;
+    if (!phone) return;
+    wx.makePhoneCall({ phoneNumber: phone }).catch(() => undefined);
+  },
+
+  onCopyWechat() {
+    const wechat = this.data.post?.contactWechat;
+    if (!wechat) return;
+    wx.setClipboardData({ data: wechat });
+  },
+
   // 朋友分享保留（路径带 id）
   onShareAppMessage() {
     const post = this.data.post;

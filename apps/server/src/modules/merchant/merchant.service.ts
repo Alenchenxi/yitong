@@ -245,6 +245,9 @@ export class MerchantService {
     return {
       list: apps.map((a) => {
         const resume = a.resumeId ? (resumeMap.get(a.resumeId) ?? null) : null;
+        const resumeSummary = this.resumeSummaryFromSnapshot(a.resumeSnapshot) ?? (resume
+          ? { name: resume.name, phone: resume.phone, selfIntro: resume.selfIntro, skills: resume.skills }
+          : null);
         return {
           id: a.id,
           jobPostId: a.jobPostId,
@@ -252,9 +255,7 @@ export class MerchantService {
           userId: a.userId,
           userNickname: a.user?.nickname ?? '',
           resumeId: a.resumeId,
-          resume: resume
-            ? { name: resume.name, phone: resume.phone, selfIntro: resume.selfIntro, skills: resume.skills }
-            : null,
+          resume: resumeSummary,
           status: a.status,
           // M2-04/05 标记字段
           contactedAt: a.contactedAt?.toISOString() ?? null,
@@ -458,10 +459,11 @@ export class MerchantService {
     }
 
     // 简历无 Prisma relation，需单独查
-    const resumeRow = app.resumeId
+    const snapshotResume = this.resumeVoFromSnapshot(app.resumeSnapshot, app.resumeId, app.createdAt);
+    const resumeRow = !snapshotResume && app.resumeId
       ? await this.prisma.resume.findUnique({ where: { id: app.resumeId } })
       : null;
-    const resumeVo = resumeRow ? this.toResumeVo(resumeRow) : null;
+    const resumeVo = snapshotResume ?? (resumeRow ? this.toResumeVo(resumeRow) : null);
 
     // 状态流转历史：商家发给学生的通知（JOB_ACCEPT/REJECT/COMPLETE），targetType=application, targetId=appId
     const statusNotifs = await this.prisma.notification.findMany({
@@ -549,6 +551,48 @@ export class MerchantService {
       completeness,
       missingFields,
       updatedAt: r.updatedAt.toISOString(),
+    };
+  }
+
+  private resumeSummaryFromSnapshot(value: Prisma.JsonValue) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const snapshot = value as Prisma.JsonObject;
+    if (typeof snapshot.name !== 'string' || typeof snapshot.phone !== 'string') return null;
+    return {
+      name: snapshot.name,
+      phone: snapshot.phone,
+      selfIntro: typeof snapshot.selfIntro === 'string' ? snapshot.selfIntro : null,
+      skills: Array.isArray(snapshot.skills)
+        ? snapshot.skills.filter((item): item is string => typeof item === 'string')
+        : [],
+    };
+  }
+
+  private resumeVoFromSnapshot(value: Prisma.JsonValue, resumeId: string | null, fallbackUpdatedAt: Date) {
+    const summary = this.resumeSummaryFromSnapshot(value);
+    if (!summary || !value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const snapshot = value as Prisma.JsonObject;
+    const availabilities = Array.isArray(snapshot.availabilities)
+      ? snapshot.availabilities.filter((item): item is string => typeof item === 'string')
+      : [];
+    const experience = typeof snapshot.experience === 'string' ? snapshot.experience : null;
+    const fields = [
+      !!summary.name.trim(),
+      !!summary.phone.trim(),
+      !!summary.selfIntro?.trim(),
+      summary.skills.length > 0,
+      availabilities.length > 0,
+      !!experience?.trim(),
+    ];
+    const missingLabels = ['姓名', '联系方式', '自我介绍', '技能', '空闲时间', '工作经历'];
+    return {
+      id: resumeId ?? `snapshot-${fallbackUpdatedAt.getTime()}`,
+      ...summary,
+      availabilities,
+      experience,
+      completeness: Math.round((fields.filter(Boolean).length / fields.length) * 100),
+      missingFields: missingLabels.filter((_, index) => !fields[index]),
+      updatedAt: typeof snapshot.updatedAt === 'string' ? snapshot.updatedAt : fallbackUpdatedAt.toISOString(),
     };
   }
 

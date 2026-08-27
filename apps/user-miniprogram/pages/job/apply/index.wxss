@@ -15,3 +15,19 @@
 .q-input { background: #f5f6f8; border-radius: 12rpx; padding: 16rpx 20rpx; font-size: 28rpx; }
 .submit { width: 100%; background: #F9C801 !important; color: #1D2129 !important; border-radius: 48rpx !important; font-size: 30rpx !important; font-weight: 600; margin-top: 24rpx; }
 .submit[disabled] { background: #FFF7D1 !important; color: #C9CDD4 !important; }
+
+.success-page { min-height: 100vh; box-sizing: border-box; padding: 72rpx 24rpx; display: flex; align-items: flex-start; justify-content: center; }
+.success-card { width: 100%; background: #fff; border-radius: 24rpx; padding: 48rpx 32rpx 32rpx; box-sizing: border-box; text-align: center; box-shadow: 0 12rpx 40rpx rgba(29, 33, 41, 0.07); }
+.success-icon { width: 96rpx; height: 96rpx; line-height: 96rpx; margin: 0 auto 24rpx; border-radius: 50%; background: #F9C801; color: #1D2129; font-size: 48rpx; font-weight: 700; }
+.success-title { font-size: 38rpx; font-weight: 700; color: #1D2129; }
+.success-sub { margin-top: 12rpx; font-size: 25rpx; color: #86909C; line-height: 1.6; }
+.success-job { margin-top: 36rpx; padding: 22rpx; background: #F6F7FB; border-radius: 16rpx; display: flex; align-items: center; text-align: left; }
+.success-job-icon { width: 40rpx; height: 40rpx; margin-right: 16rpx; }
+.success-job-main { min-width: 0; flex: 1; }
+.success-job-title { font-size: 28rpx; font-weight: 600; color: #1D2129; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.success-job-meta { margin-top: 6rpx; font-size: 23rpx; color: #86909C; }
+.success-actions { display: flex; gap: 16rpx; margin-top: 36rpx; }
+.success-btn { flex: 1; min-height: 84rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; gap: 10rpx; font-size: 27rpx; font-weight: 600; }
+.success-btn-secondary { border: 1rpx solid #E5E6EB; color: #4E5969; background: #fff; }
+.success-btn-primary { background: #F9C801; color: #1D2129; }
+.success-btn-icon { width: 32rpx; height: 32rpx; }

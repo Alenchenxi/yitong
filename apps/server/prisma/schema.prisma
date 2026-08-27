@@ -40,6 +40,10 @@ model User {
   activeCommunity   Community?         @relation("CommunityActiveUser", fields: [activeCommunityId], references: [id], onDelete: SetNull)
   ownedCommunities  Community[]        @relation("CommunityOwner")
   communityMembers  CommunityMember[]
+  jobConversationsAsStudent   JobConversation[]        @relation("JobConversationStudent")
+  jobConversationsAsMerchant  JobConversation[]        @relation("JobConversationMerchant")
+  jobConversationMessages     JobConversationMessage[] @relation("JobConversationMessageSender")
+  interviewInvitationsCreated InterviewInvitation[]    @relation("InterviewInvitationCreator")
   @@index([activeCommunityId])
   @@map("users")
 }
@@ -602,6 +606,8 @@ model JobPost {
   title        String
   description  String
   requirements String?       @map("requirements")                     // P0-19 任职要求（可空，与工作内容分开）
+  contactPhoneSnapshot  String? @map("contact_phone_snapshot")  // M3-10 发岗时商家电话快照
+  contactWechatSnapshot String? @map("contact_wechat_snapshot") // M3-10 发岗时商家微信快照
   salary       String
   salaryAmount Int?          @map("salary_amount")                    // P0-18 薪资数额（auto-parse 自 salary，范围筛选用；单位差异为已知限制）
   location     String
@@ -680,6 +686,7 @@ model JobApplication {
   jobPostId    String    @map("job_post_id")
   userId       String    @map("user_id")
   resumeId     String?   @map("resume_id")                               // P0-21 报名所附简历
+  resumeSnapshot Json?   @map("resume_snapshot")                         // M2-08 报名时完整简历快照
   answers      Json?     @map("answers")                                 // P0-21 报名问题回答 [{question, answer}]
   status       AppStatus @default(PENDING)
   // M2-04/05 商家标记：已联系时间（null=未联系）；合适/不合适标记（null=未标记，可修改可清除）
@@ -689,6 +696,8 @@ model JobApplication {
   jobPost      JobPost   @relation(fields: [jobPostId], references: [id])
   user         User      @relation(fields: [userId], references: [id])
   review       JobReview[] @relation("AppReview")
+  conversation JobConversation?
+  interviewInvitations InterviewInvitation[]
   @@unique([jobPostId, userId])
   @@map("job_applications")
 }
@@ -704,6 +713,74 @@ enum AppStatus {
 enum FitMark {
   FIT
   UNFIT
+}
+
+enum JobConversationMessageType {
+  TEXT
+  INTERVIEW
+}
+
+enum InterviewInvitationStatus {
+  ACTIVE
+  CANCELLED
+}
+
+model JobConversation {
+  id             String                   @id @default(cuid())
+  applicationId  String                   @unique @map("application_id")
+  studentId      String                   @map("student_id")
+  merchantUserId String                   @map("merchant_user_id")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  application    JobApplication           @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  student        User                     @relation("JobConversationStudent", fields: [studentId], references: [id])
+  merchantUser   User                     @relation("JobConversationMerchant", fields: [merchantUserId], references: [id])
+  messages       JobConversationMessage[]
+  invitations    InterviewInvitation[]
+  @@index([studentId, updatedAt])
+  @@index([merchantUserId, updatedAt])
+  @@map("job_conversations")
+}
+
+model JobConversationMessage {
+  id                    String                     @id @default(cuid())
+  conversationId        String                     @map("conversation_id")
+  senderId              String                     @map("sender_id")
+  type                  JobConversationMessageType @default(TEXT)
+  content               String
+  clientMessageId       String?                    @map("client_message_id")
+  interviewInvitationId String?                    @unique @map("interview_invitation_id")
+  createdAt             DateTime                   @default(now()) @map("created_at")
+  conversation          JobConversation            @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender                User                       @relation("JobConversationMessageSender", fields: [senderId], references: [id])
+  interviewInvitation   InterviewInvitation?       @relation(fields: [interviewInvitationId], references: [id], onDelete: SetNull)
+  @@unique([conversationId, senderId, clientMessageId])
+  @@index([conversationId, createdAt])
+  @@map("job_conversation_messages")
+}
+
+model InterviewInvitation {
+  id              String                    @id @default(cuid())
+  applicationId   String                    @map("application_id")
+  conversationId  String                    @map("conversation_id")
+  createdById     String                    @map("created_by_id")
+  meetingUrl      String                    @map("meeting_url")
+  title           String
+  meetingDate     String                    @map("meeting_date")
+  meetingTime     String                    @map("meeting_time")
+  meetingNo       String?                   @map("meeting_no")
+  password        String?
+  interviewerName String                    @map("interviewer_name")
+  status          InterviewInvitationStatus @default(ACTIVE)
+  cancelledAt     DateTime?                 @map("cancelled_at")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  application     JobApplication            @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  conversation    JobConversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdBy       User                      @relation("InterviewInvitationCreator", fields: [createdById], references: [id])
+  message         JobConversationMessage?
+  @@index([applicationId, createdAt])
+  @@index([conversationId, createdAt])
+  @@map("interview_invitations")
 }
 
 model JobReview {

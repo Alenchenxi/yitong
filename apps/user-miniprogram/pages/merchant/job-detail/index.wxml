@@ -33,7 +33,7 @@
       <text class="info-k">职位要求</text>
       <text class="info-v">招 {{post.headcount}} 人</text>
     </view>
-    <view class="info-expand" wx:if="{{!expanded && (post.description || post.requirements)}}" bindtap="onToggleExpand">
+    <view class="info-expand" wx:if="{{!expanded && (post.description || post.requirements || post.contactPhone || post.contactWechat)}}" bindtap="onToggleExpand">
       <text>展开</text>
       <text class="arrow">⌄</text>
     </view>
@@ -49,6 +49,24 @@
     <view class="section-block" wx:if="{{post.requirements}}">
       <view class="section-h">任职要求</view>
       <view class="section-body prewrap">{{post.requirements}}</view>
+    </view>
+    <view class="section-block contact-section">
+      <view class="section-h">联系方式</view>
+      <view class="contact-empty" wx:if="{{!post.contactPhone && !post.contactWechat}}">暂未填写</view>
+      <view class="contact-row" wx:if="{{post.contactPhone}}" bindtap="onCallContact">
+        <view class="contact-left">
+          <image class="contact-icon" src="/assets/icons/recruitment/phone.svg" />
+          <text class="contact-label">联系电话</text>
+        </view>
+        <view class="contact-value">{{post.contactPhone}}</view>
+      </view>
+      <view class="contact-row" wx:if="{{post.contactWechat}}" bindtap="onCopyWechat">
+        <view class="contact-left">
+          <image class="contact-icon" src="/assets/icons/recruitment/brand-wechat.svg" />
+          <text class="contact-label">联系微信</text>
+        </view>
+        <view class="contact-value contact-copy">{{post.contactWechat}} · 复制</view>
+      </view>
     </view>
     <view class="info-collapse" bindtap="onToggleExpand">
       <text>收起</text>

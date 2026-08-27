@@ -8,6 +8,8 @@ export interface JobPostVo {
   title: string;
   description: string;
   requirements: string | null;
+  contactPhone: string | null;
+  contactWechat: string | null;
   salary: string;
   salaryAmount: number | null;
   location: string;

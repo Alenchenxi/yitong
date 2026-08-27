@@ -19,6 +19,13 @@ import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
 import type { JobPostVo } from './types';
 import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto, UpdateJobPostDto } from './dto/job.dto';
 
+const MERCHANT_CONTACT_SELECT = {
+  userId: true,
+  shopName: true,
+  contactPhone: true,
+  contactWechat: true,
+} as const;
+
 // 看板时间范围 -> since 阈值（day=24h, week=7d, month=30d, all=不限）
 function rangeToSince(range: 'day' | 'week' | 'month' | 'all'): Date | null {
   if (range === 'all') return null;
@@ -90,6 +97,8 @@ export class JobService {
         title: dto.title,
         description: dto.description,
         requirements: dto.requirements ?? null,
+        contactPhoneSnapshot: merchant.contactPhone,
+        contactWechatSnapshot: merchant.contactWechat,
         salary: dto.salary,
         salaryAmount: this.parseSalaryAmount(dto.salary),
         location: dto.location,
@@ -110,11 +119,11 @@ export class JobService {
         expireAt,
         status: JobPostStatus.PENDING,
       },
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
 
     // 发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）；此处保持 PENDING 草稿
-    return this.toPostVo(await this.refreshPost(post.id));
+    return this.toPostVo(await this.refreshPost(post.id), true);
   }
 
   // M3-04 编辑岗位：商家可编辑未下架且属于自己的岗位（PENDING / PUBLISHED 可编辑，TAKEN_DOWN / EXPIRED 不可编辑）；
@@ -205,9 +214,9 @@ export class JobService {
     const updated = await this.prisma.jobPost.update({
       where: { id: postId },
       data,
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
-    const vo = this.toPostVo(updated);
+    const vo = this.toPostVo(updated, true);
     vo.editedFromStatus = post.status;
     vo.needsRepublish = wasPublished;
     return vo;
@@ -231,9 +240,9 @@ export class JobService {
     const updated = await this.prisma.jobPost.update({
       where: { id: postId },
       data: { status: JobPostStatus.TAKEN_DOWN, takenDownAt: now },
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
-    return this.toPostVo(updated);
+    return this.toPostVo(updated, true);
   }
 
   // M3-07 商家硬删草稿：仅 PENDING 状态可删（其它走下架）；软删字段 deletedAt=now；list/get 全链路过滤 deletedAt:null。
@@ -404,7 +413,7 @@ export class JobService {
       where,
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
@@ -444,7 +453,7 @@ export class JobService {
     const candidates = await this.prisma.jobPost.findMany({
       where,
       take: 100, // 候选池上限，避免全表扫描
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
 
     // Haversine 距离（km）
@@ -478,13 +487,13 @@ export class JobService {
     };
   }
 
-  async getPost(id: string) {
+  async getPost(id: string, actorId = '') {
     const post = await this.prisma.jobPost.findUnique({
       where: { id },
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
     if (!post || post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND); // M3-07 软删过滤
-    return this.toPostVo(post);
+    return this.toPostVo(post, !!actorId && post.merchant.userId === actorId);
   }
 
   // P2-16 记录浏览事件（用于商家看板统计）
@@ -501,7 +510,7 @@ export class JobService {
       where: { status: 'PUBLISHED', featured: true, expireAt: { gt: new Date() }, deletedAt: null }, // M3-07 软删过滤
       orderBy: [{ featuredAt: 'desc' }, { createdAt: 'desc' }],
       take: Math.min(50, Math.max(1, limit)),
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
     return posts.map((p) => this.toPostVo(p));
   }
@@ -612,12 +621,22 @@ export class JobService {
 
     // P0-21 简历校验：如提供 resumeId 须为本人简历
     let resumeId: string | null = null;
+    let resumeSnapshot: Prisma.InputJsonValue | undefined;
     if (dto.resumeId) {
       const resume = await this.prisma.resume.findUnique({ where: { id: dto.resumeId } });
       if (!resume || resume.userId !== uid) {
         throw new BizException(40006, '简历无效', HttpStatus.BAD_REQUEST);
       }
       resumeId = resume.id;
+      resumeSnapshot = {
+        name: resume.name,
+        phone: resume.phone,
+        selfIntro: resume.selfIntro,
+        skills: resume.skills,
+        availabilities: resume.availabilities,
+        experience: resume.experience,
+        updatedAt: resume.updatedAt.toISOString(),
+      };
     }
 
     try {
@@ -627,6 +646,7 @@ export class JobService {
           userId: uid,
           status: AppStatus.PENDING,
           resumeId,
+          resumeSnapshot,
           answers: answersJson ?? undefined,
         },
         include: { jobPost: { select: { title: true } } },
@@ -875,7 +895,7 @@ export class JobService {
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
 
     // 3) 无报名历史 → 退回按时间倒序 top RESULT_LIMIT
@@ -931,7 +951,7 @@ export class JobService {
   private async refreshPost(id: string) {
     const p = await this.prisma.jobPost.findUnique({
       where: { id },
-      include: { merchant: { select: { shopName: true } } },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
     if (!p) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     return p;
@@ -943,6 +963,8 @@ export class JobService {
     title: string;
     description: string;
     requirements: string | null;
+    contactPhoneSnapshot?: string | null;
+    contactWechatSnapshot?: string | null;
     salary: string;
     salaryAmount: number | null;
     location: string;
@@ -966,8 +988,8 @@ export class JobService {
     takenDownAt?: Date | null;
     deletedAt?: Date | null; // M3-07 软删字段
     createdAt: Date;
-    merchant?: { shopName: string };
-  }): JobPostVo {
+    merchant?: { userId?: string; shopName: string; contactPhone?: string; contactWechat?: string | null };
+  }, exposeContact = false): JobPostVo {
     return {
       id: p.id,
       merchantId: p.merchantId,
@@ -975,6 +997,8 @@ export class JobService {
       title: p.title,
       description: p.description,
       requirements: p.requirements,
+      contactPhone: exposeContact ? (p.contactPhoneSnapshot ?? p.merchant?.contactPhone ?? null) : null,
+      contactWechat: exposeContact ? (p.contactWechatSnapshot ?? p.merchant?.contactWechat ?? null) : null,
       salary: p.salary,
       salaryAmount: p.salaryAmount,
       location: p.location,
@@ -1026,6 +1050,7 @@ export class JobService {
       jobPostId: string;
       userId: string;
       resumeId: string | null;
+      resumeSnapshot?: unknown;
       answers: unknown;
       status: AppStatus;
       createdAt: Date;
@@ -1043,9 +1068,21 @@ export class JobService {
       resumeId: a.resumeId,
       answers: a.answers,
       // P0-21 简历快照（商家查看报名时展示）
-      resume: resume ? { name: resume.name, phone: resume.phone, selfIntro: resume.selfIntro, skills: resume.skills } : null,
+      resume: this.resumeSummaryFromSnapshot(a.resumeSnapshot) ?? (resume ? { name: resume.name, phone: resume.phone, selfIntro: resume.selfIntro, skills: resume.skills } : null),
       status: a.status,
       createdAt: a.createdAt.toISOString(),
+    };
+  }
+
+  private resumeSummaryFromSnapshot(value: unknown) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const v = value as Record<string, unknown>;
+    if (typeof v.name !== 'string' || typeof v.phone !== 'string') return null;
+    return {
+      name: v.name,
+      phone: v.phone,
+      selfIntro: typeof v.selfIntro === 'string' ? v.selfIntro : null,
+      skills: Array.isArray(v.skills) ? v.skills.filter((item): item is string => typeof item === 'string') : [],
     };
   }
 

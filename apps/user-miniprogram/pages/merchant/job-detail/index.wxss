@@ -131,6 +131,14 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+.contact-section { margin-top: 24rpx; }
+.contact-row { min-height: 76rpx; display: flex; align-items: center; justify-content: space-between; border-top: 1rpx solid var(--yt-border); }
+.contact-left { display: flex; align-items: center; gap: 12rpx; }
+.contact-icon { width: 32rpx; height: 32rpx; }
+.contact-label { font-size: 26rpx; color: var(--yt-text-body); }
+.contact-value { max-width: 58%; font-size: 26rpx; color: var(--yt-text-main); text-align: right; word-break: break-all; }
+.contact-copy { color: var(--yt-primary-dark, #c59a00); }
+.contact-empty { font-size: 26rpx; color: var(--yt-text-sub); padding: 12rpx 0; }
 .info-collapse {
   display: flex;
   justify-content: center;

@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../../app';
-import { listJobPosts } from '../../../services/job';
+import { ensureJobConversation, listJobPosts } from '../../../services/job';
 import {
   batchMarkCandidates,
   listMerchantCandidates,
@@ -269,6 +269,29 @@ Component({
       const { id } = e.currentTarget.dataset as { id: string; jobPostId?: string };
       if (!id) return;
       wx.navigateTo({ url: `/pages/candidates/detail/index?id=${id}` });
+    },
+
+    onDetailTap(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      if (id) wx.navigateTo({ url: `/pages/candidates/detail/index?id=${id}&section=basic` });
+    },
+
+    onResumeTap(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      if (id) wx.navigateTo({ url: `/pages/candidates/detail/index?id=${id}&section=resume` });
+    },
+
+    async onChatTap(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      if (!id) return;
+      try {
+        wx.showLoading({ title: '进入沟通', mask: true });
+        const conversation = await ensureJobConversation(id);
+        wx.hideLoading();
+        wx.navigateTo({ url: `/pages/job/chat/index?applicationId=${id}&conversationId=${conversation.id}` });
+      } catch {
+        wx.hideLoading();
+      }
     },
 
     // M2-04 标记/取消 已联系

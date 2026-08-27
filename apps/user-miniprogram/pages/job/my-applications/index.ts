@@ -1,5 +1,12 @@
 import type { AppInstance } from '../../../app';
-import { cancelApp, listMyApplications, reportApplication, reviewApp, type JobAppVo } from '../../../services/job';
+import {
+  cancelApp,
+  ensureJobConversation,
+  listMyApplications,
+  reportApplication,
+  reviewApp,
+  type JobAppVo,
+} from '../../../services/job';
 
 const STATUS_TEXT: Record<string, string> = {
   PENDING: '待处理',
@@ -117,5 +124,18 @@ Page({
         }
       },
     });
+  },
+
+  async goChat(e: WechatMiniprogram.TouchEvent) {
+    const appId = e.currentTarget.dataset.id as string;
+    if (!appId) return;
+    try {
+      wx.showLoading({ title: '进入沟通', mask: true });
+      const conversation = await ensureJobConversation(appId);
+      wx.hideLoading();
+      wx.navigateTo({ url: `/pages/job/chat/index?applicationId=${appId}&conversationId=${conversation.id}` });
+    } catch {
+      wx.hideLoading();
+    }
   },
 });

@@ -6,6 +6,10 @@
     </view>
     <view class="app-time">{{item.createdAt}}</view>
     <view class="app-actions">
+      <button class="chat-btn" size="mini" data-id="{{item.id}}" bindtap="goChat">
+        <image class="chat-btn-icon" src="/assets/icons/recruitment/message-circle.svg" />
+        <text>沟通</text>
+      </button>
       <button
         wx:if="{{item.status === 'PENDING'}}"
         class="cancel-btn"

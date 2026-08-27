@@ -28,6 +28,7 @@
     "pages/job/my-applications/index",
     "pages/job/search/index",
     "pages/job/apply/index",
+    "pages/job/chat/index",
     "pages/candidates/detail/index",
     "pages/resume/index",
     "pages/payment/index",

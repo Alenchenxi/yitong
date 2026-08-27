@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../../app';
-import { transitionApp } from '../../../services/job';
+import { ensureJobConversation, transitionApp } from '../../../services/job';
 import {
   getMerchantCandidateDetail,
   markCandidateContacted,
@@ -13,6 +13,7 @@ Page({
     detail: null as MerchantCandidateDetailVo | null,
     loading: false,
     loaded: false,
+    sectionTarget: 'basic' as 'basic' | 'resume',
     statusLabels: {
       PENDING: '待处理',
       ACCEPTED: '已录用',
@@ -22,12 +23,15 @@ Page({
     } as Record<string, string>,
   },
 
-  onLoad(options: { id?: string }) {
+  onLoad(options: { id?: string; section?: string }) {
     if (!options?.id) {
       wx.showToast({ title: '参数错误', icon: 'none' });
       return;
     }
-    this.setData({ id: options.id });
+    this.setData({
+      id: options.id,
+      sectionTarget: options.section === 'resume' ? 'resume' : 'basic',
+    });
   },
 
   onShow() {
@@ -45,7 +49,7 @@ Page({
     this.setData({ loading: true });
     try {
       const d = await getMerchantCandidateDetail(this.data.id);
-      this.setData({ detail: d, loaded: true });
+      this.setData({ detail: d, loaded: true }, () => this.scrollToRequestedSection());
     } catch (e) {
       wx.showToast({ title: e instanceof Error ? e.message : '加载失败', icon: 'none' });
       this.setData({ loaded: true });
@@ -120,5 +124,25 @@ Page({
     const d = this.data.detail;
     if (!d?.resume?.phone) return;
     wx.makePhoneCall({ phoneNumber: d.resume.phone }).catch(() => undefined);
+  },
+
+  scrollToRequestedSection() {
+    if (this.data.sectionTarget !== 'resume' || !this.data.detail?.resume) return;
+    setTimeout(() => {
+      wx.pageScrollTo({ selector: '#resume-section', duration: 280 });
+    }, 80);
+  },
+
+  async onChat() {
+    const d = this.data.detail;
+    if (!d) return;
+    try {
+      wx.showLoading({ title: '进入沟通', mask: true });
+      const conversation = await ensureJobConversation(d.id);
+      wx.hideLoading();
+      wx.navigateTo({ url: `/pages/job/chat/index?applicationId=${d.id}&conversationId=${conversation.id}` });
+    } catch {
+      wx.hideLoading();
+    }
   },
 });

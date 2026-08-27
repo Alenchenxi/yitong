@@ -101,8 +101,22 @@
       </view>
       <!-- 单条标记操作（非批量模式）；卡片其他区域点击会跳详情 -->
       <view class="card-actions" wx:if="{{!batchMode}}">
-        <view class="act-btn {{item.contacted ? 'act-btn-on' : ''}}" data-id="{{item.id}}" data-idx="{{index}}" catchtap="onContactTap">已联系</view>
-        <view class="act-btn {{item.fitMark === 'FIT' ? 'act-btn-fit' : item.fitMark === 'UNFIT' ? 'act-btn-unfit' : ''}}" data-id="{{item.id}}" data-idx="{{index}}" catchtap="onFitMarkTap">合适度</view>
+        <view class="act-btn" data-id="{{item.id}}" catchtap="onDetailTap">
+          <image class="act-icon" src="/assets/icons/recruitment/user.svg" />
+          <text>详情</text>
+        </view>
+        <view class="act-btn" data-id="{{item.id}}" catchtap="onResumeTap">
+          <image class="act-icon" src="/assets/icons/recruitment/file-text.svg" />
+          <text>查看简历</text>
+        </view>
+        <view class="act-btn act-btn-primary" data-id="{{item.id}}" catchtap="onChatTap">
+          <image class="act-icon" src="/assets/icons/recruitment/message-circle.svg" />
+          <text>沟通</text>
+        </view>
+      </view>
+      <view class="mark-actions" wx:if="{{!batchMode}}">
+        <view class="mark-action {{item.contacted ? 'act-btn-on' : ''}}" data-id="{{item.id}}" data-idx="{{index}}" catchtap="onContactTap">{{item.contacted ? '已联系' : '标记联系'}}</view>
+        <view class="mark-action {{item.fitMark === 'FIT' ? 'act-btn-fit' : item.fitMark === 'UNFIT' ? 'act-btn-unfit' : ''}}" data-id="{{item.id}}" data-idx="{{index}}" catchtap="onFitMarkTap">{{item.fitLabel || '标记合适度'}}</view>
       </view>
     </view>
 

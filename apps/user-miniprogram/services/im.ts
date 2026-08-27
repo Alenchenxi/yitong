@@ -67,6 +67,9 @@ let onEventCb: ((m: WsMessage) => void) | null = null;
 
 export function onMessage(cb: (m: WsMessage) => void) {
   onMessageCb = cb;
+  return () => {
+    if (onMessageCb === cb) onMessageCb = null;
+  };
 }
 export function onRoomMessage(cb: (m: WsMessage) => void) {
   onRoomMessageCb = cb;
@@ -151,6 +154,8 @@ function handleMessage(m: WsMessage) {
     case 'msg':
     case 'msg-revoke':
     case 'unread-update':
+    case 'job-message':
+    case 'job-interview-cancelled':
       onMessageCb?.(m);
       break;
     case 'room-msg':

@@ -1,5 +1,13 @@
 import type { AppInstance } from '../../../app';
-import { getJobPost, getMyResume, applyJob, type JobPostVo, type ResumeVo } from '../../../services/job';
+import {
+  applyJob,
+  ensureJobConversation,
+  getJobPost,
+  getMyResume,
+  type JobAppVo,
+  type JobPostVo,
+  type ResumeVo,
+} from '../../../services/job';
 import { requestJobStatusSubscribe } from '../../../services/subscribe-message';
 
 Page({
@@ -10,6 +18,7 @@ Page({
     answers: [] as string[],
     applying: false,
     loaded: false,
+    application: null as JobAppVo | null,
   },
 
   async onLoad(query: Record<string, string | undefined>) {
@@ -72,16 +81,32 @@ Page({
     this.setData({ applying: true });
     try {
       await requestJobStatusSubscribe();
-      await applyJob(this.data.postId, {
+      const application = await applyJob(this.data.postId, {
         resumeId: this.data.resume?.id,
         answers: questions.length > 0 ? this.data.answers.map((a) => (a ?? '').trim()) : undefined,
       });
-      wx.showToast({ title: '报名成功', icon: 'success' });
-      setTimeout(() => wx.navigateBack(), 600);
+      this.setData({ application });
     } catch {
       /* 40002 重复报名 toast 已弹 */
     } finally {
       this.setData({ applying: false });
     }
+  },
+
+  async goChat() {
+    const application = this.data.application;
+    if (!application) return;
+    try {
+      wx.showLoading({ title: '进入沟通', mask: true });
+      const conversation = await ensureJobConversation(application.id);
+      wx.hideLoading();
+      wx.redirectTo({ url: `/pages/job/chat/index?applicationId=${application.id}&conversationId=${conversation.id}` });
+    } catch {
+      wx.hideLoading();
+    }
+  },
+
+  backToJob() {
+    wx.navigateBack();
   },
 });
