@@ -2,29 +2,52 @@ import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 
 const base = new URL('../../user-miniprogram/pages/square/', import.meta.url);
-const [wxml, wxss, ts, appConfigText] = await Promise.all([
+const [wxml, wxss, ts, pageConfigText, appConfigText] = await Promise.all([
   readFile(new URL('index.wxml', base), 'utf8'),
   readFile(new URL('index.wxss', base), 'utf8'),
   readFile(new URL('index.ts', base), 'utf8'),
+  readFile(new URL('index.json', base), 'utf8'),
   readFile(new URL('../../user-miniprogram/app.json', import.meta.url), 'utf8'),
 ]);
+const pageConfig = JSON.parse(pageConfigText);
 const appConfig = JSON.parse(appConfigText);
 
-const titleIndex = wxml.indexOf('class="topbar-title">广场</view>');
 const communityMenuIcon = new URL('../../user-miniprogram/assets/icons/community-menu.svg', import.meta.url);
+const topbarIndex = wxml.indexOf('class="topbar"');
 const actionsIndex = wxml.indexOf('class="header-actions"');
-assert(titleIndex >= 0, '顶部保留“广场”标题');
-assert(actionsIndex > titleIndex, '圈子切换与搜索位于“广场”标题下方');
-const topbarStyle = wxss.match(/\.topbar\s*\{[\s\S]*?\}/u)?.[0] ?? '';
-const titleStyle = wxss.match(/\.topbar-title\s*\{[\s\S]*?\}/u)?.[0] ?? '';
+const contentIndex = wxml.indexOf('class="community-header-content"');
+assert.equal(pageConfig.navigationStyle, 'custom', '广场恢复使用自定义导航');
+assert(!('navigationBarTitleText' in pageConfig), '页面配置不再声明可见“广场”标题');
+assert(!wxml.includes('class="topbar-title"'), '自定义导航不渲染“广场”标题节点');
+assert(topbarIndex >= 0 && actionsIndex > topbarIndex && actionsIndex < contentIndex, '圈子切换与搜索直接占用原标题导航区域');
 assert(
-  topbarStyle.includes('justify-content: center') &&
-    !wxml.includes('padding-right: {{navRight}}px') &&
-    !topbarStyle.includes('padding-left'),
-  '“广场”标题按页面可用宽度水平居中',
+  wxml.includes('style="padding-top: {{navTop}}px;"') &&
+    wxml.includes('height: {{navHeight}}px; padding-right: {{navRight}}px;'),
+  '导航结构使用状态栏高度、导航高度与胶囊右侧避让值',
 );
-assert(titleStyle.includes('font-weight: 400'), '“广场”标题使用正常字重');
-assert(titleStyle.includes('font-size: 17px'), '“广场”标题字号与原生导航栏标题一致');
+const topbarStyle = wxss.match(/\.topbar\s*\{[\s\S]*?\}/u)?.[0] ?? '';
+const topbarActionsStyle = wxss.match(/\.topbar-actions\s*\{[\s\S]*?\}/u)?.[0] ?? '';
+assert(
+  topbarStyle.includes('position: relative') &&
+    topbarActionsStyle.includes('display: flex') &&
+    topbarActionsStyle.includes('box-sizing: border-box'),
+  '自定义导航操作行按安全区尺寸布局',
+);
+assert(
+  ts.includes('navTop: number') &&
+    ts.includes('navHeight: number') &&
+    ts.includes('navRight: number') &&
+    ts.includes('wx.getSystemInfoSync()') &&
+    ts.includes('wx.getMenuButtonBoundingClientRect()'),
+  '页面维护状态栏、导航栏和胶囊避让数据',
+);
+assert(
+  ts.includes('const navTop = system.statusBarHeight ?? 0') &&
+    ts.includes('(menu.top - navTop) * 2 + menu.height') &&
+    ts.includes('system.screenWidth - menu.left') &&
+    ts.includes('this.setData({ navTop, navHeight, navRight })'),
+  '导航尺寸按状态栏与微信胶囊位置计算',
+);
 
 const tabBarItems = appConfig.tabBar?.list ?? [];
 assert.equal(tabBarItems.length, 5, '用户端保留 5 个底部菜单');
@@ -79,4 +102,4 @@ assert(
 assert(ts.includes('leaveCommunity(community.id)'), '退出圈子按钮调用退出接口');
 assert(ts.includes("community.myRole === 'OWNER'"), '圈主退出前端给出明确提示');
 
-console.log('圈子广场标题、底栏图标、菜单与动态刷新静态验收通过（20/20）');
+console.log('圈子广场自定义导航、底栏图标、菜单与动态刷新静态验收通过');

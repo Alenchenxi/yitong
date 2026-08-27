@@ -1,8 +1,6 @@
 {
+  "navigationStyle": "custom",
   "enablePullDownRefresh": true,
-  "navigationBarTitleText": "广场",
-  "navigationBarBackgroundColor": "#ffffff",
-  "navigationBarTextStyle": "black",
   "backgroundColor": "#F6F7FB",
   "usingComponents": {
     "post-card": "/components/post-card/post-card",

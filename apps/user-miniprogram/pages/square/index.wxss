@@ -20,12 +20,24 @@
 }
 .community-header-content { position: relative; z-index: 2; padding-bottom: 28rpx; }
 
-/* 原生导航：标题由微信 navigationBarTitleText 提供 */
+/* 自定义导航：操作入口直接占用原标题区域，右侧为微信胶囊保留空间 */
+.topbar {
+  position: relative;
+  z-index: 3;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
 .header-actions {
   display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
   gap: 12rpx;
-  padding: 12rpx 24rpx 0;
+  padding-left: 24rpx;
 }
 .circle-switch,
 .search-box {

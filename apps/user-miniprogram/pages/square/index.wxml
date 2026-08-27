@@ -3,20 +3,25 @@
   <view class="community-header {{community.backgroundImage ? 'has-background' : ''}}">
     <image wx:if="{{community.backgroundImage}}" class="community-background" src="{{community.backgroundImage}}" mode="aspectFill" />
 
-    <view class="community-header-content">
-      <!-- 圈子切换和搜索位于标题下方 -->
-      <view class="header-actions">
-        <view class="circle-switch" bindtap="goSwitch">
-          <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
-          <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
-          <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
-          <text class="cs-arrow">▾</text>
-        </view>
-        <view class="search-box" bindtap="goSearch">
-          <text class="search-icon">⌕</text>
-          <text class="search-ph">搜索圈内内容</text>
+    <!-- 自定义导航：圈子切换与搜索直接占用原标题区域，并避开微信胶囊 -->
+    <view class="topbar" style="padding-top: {{navTop}}px;">
+      <view class="topbar-actions" style="height: {{navHeight}}px; padding-right: {{navRight}}px;">
+        <view class="header-actions">
+          <view class="circle-switch" bindtap="goSwitch">
+            <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
+            <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
+            <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
+            <text class="cs-arrow">▾</text>
+          </view>
+          <view class="search-box" bindtap="goSearch">
+            <text class="search-icon">⌕</text>
+            <text class="search-ph">搜索圈内内容</text>
+          </view>
         </view>
       </view>
+    </view>
+
+    <view class="community-header-content">
       <!-- 当前圈子信息；右侧改为菜单图标 -->
       <view class="community-card">
         <image wx:if="{{community.logo}}" class="c-logo" src="{{community.logo}}" mode="aspectFill" />
