@@ -11,6 +11,7 @@ const [wxml, wxss, ts, appConfigText] = await Promise.all([
 const appConfig = JSON.parse(appConfigText);
 
 const titleIndex = wxml.indexOf('class="topbar-title">广场</view>');
+const communityMenuIcon = new URL('../../user-miniprogram/assets/icons/community-menu.svg', import.meta.url);
 const actionsIndex = wxml.indexOf('class="header-actions"');
 assert(titleIndex >= 0, '顶部保留“广场”标题');
 assert(actionsIndex > titleIndex, '圈子切换与搜索位于“广场”标题下方');
@@ -41,16 +42,21 @@ assert(
   '底部菜单的 10 个图标资源均存在且非空',
 );
 
-const switchIndex = wxml.indexOf('查看与切换圈子');
 const inviteIndex = wxml.indexOf('邀请好友');
 const leaveIndex = wxml.indexOf('退出圈子');
-assert(switchIndex >= 0, '菜单包含查看与切换圈子');
-assert(inviteIndex > switchIndex, '邀请好友位于查看与切换圈子之后');
+assert(inviteIndex >= 0, '菜单包含邀请好友');
 assert(leaveIndex > inviteIndex, '退出圈子位于邀请好友之后');
+assert(!wxml.includes('查看与切换圈子'), '下拉菜单不展示查看与切换圈子');
 
 const menuFn = ts.match(/async showCommunityMenu\(\)[\s\S]*?\n  \},/u)?.[0] ?? '';
 const onHideFn = ts.match(/onHide\(\)[\s\S]*?\n  \},/u)?.[0] ?? '';
 const onShowFn = ts.match(/async onShow\(\)[\s\S]*?\n  \},/u)?.[0] ?? '';
+assert(
+  wxml.includes('class="c-menu-icon" src="/assets/icons/community-menu.svg"') &&
+    !wxml.includes('>•••</view>'),
+  '圈子头卡使用本地标准菜单图标，不再显示文字省略号',
+);
+assert((await stat(communityMenuIcon)).size > 0, '圈子菜单 SVG 图标资源存在且非空');
 const ensureCommunityFn = ts.match(/async ensureCommunity\(\)[\s\S]*?\n  \},/u)?.[0] ?? '';
 assert(menuFn.includes('await getCommunity(current.id)'), '菜单展开前调用圈子详情接口');
 assert(menuFn.indexOf('await getCommunity(current.id)') < menuFn.indexOf('menuVisible: true'), '详情刷新完成后再展开菜单');
@@ -73,4 +79,4 @@ assert(
 assert(ts.includes('leaveCommunity(community.id)'), '退出圈子按钮调用退出接口');
 assert(ts.includes("community.myRole === 'OWNER'"), '圈主退出前端给出明确提示');
 
-console.log('圈子广场标题、底栏图标、菜单与动态刷新静态验收通过（18/18）');
+console.log('圈子广场标题、底栏图标、菜单与动态刷新静态验收通过（20/20）');

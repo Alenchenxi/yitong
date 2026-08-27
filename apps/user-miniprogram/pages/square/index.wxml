@@ -31,7 +31,15 @@
           <view class="c-stats">动态 {{community.postCount}} · 圈友 {{community.memberCount}}</view>
           <view class="c-description" wx:if="{{community.description}}">{{community.description}}</view>
         </view>
-        <view class="c-menu" wx:if="{{community}}" bindtap="showCommunityMenu" aria-label="圈子菜单">•••</view>
+        <view
+          class="c-menu"
+          wx:if="{{community}}"
+          bindtap="showCommunityMenu"
+          aria-role="button"
+          aria-label="打开圈子菜单"
+        >
+          <image class="c-menu-icon" src="/assets/icons/community-menu.svg" mode="aspectFit" />
+        </view>
         <view class="c-info c-empty" wx:else bindtap="goCommunityList">
           <view class="c-name">未加入圈子</view>
           <view class="c-stats">点击选择或创建圈子</view>
@@ -78,7 +86,7 @@
     </view>
   </view>
 
-  <!-- 圈子菜单：先展示当前圈子信息，再提供切换与邀请 -->
+  <!-- 圈子菜单：先展示当前圈子信息，再提供邀请与退出 -->
   <view wx:if="{{menuVisible}}" class="menu-mask" bindtap="hideCommunityMenu" catchtouchmove="stopMenuTap">
     <view class="menu-sheet" catchtap="stopMenuTap">
       <view class="sheet-handle"></view>
@@ -92,14 +100,6 @@
         </view>
       </view>
       <view class="sheet-actions">
-        <button class="sheet-action" bindtap="goCommunityList">
-          <view class="sheet-action-icon">⌁</view>
-          <view class="sheet-action-text">
-            <view class="sheet-action-title">查看与切换圈子</view>
-            <view class="sheet-action-sub">管理我加入的圈子</view>
-          </view>
-          <view class="sheet-action-arrow">›</view>
-        </button>
         <button class="sheet-action" open-type="share" bindtap="hideCommunityMenu">
           <view class="sheet-action-icon share-icon">↗</view>
           <view class="sheet-action-text">

@@ -137,18 +137,23 @@
 .c-empty { flex: 1; }
 .c-menu {
   flex-shrink: 0;
-  width: 68rpx;
-  height: 68rpx;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  border: 1rpx solid rgba(134, 144, 156, 0.32);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--yt-text-main);
-  font-size: 28rpx;
-  font-weight: 700;
-  letter-spacing: 2rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(134, 144, 156, 0.24);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 6rpx 20rpx rgba(31, 41, 55, 0.1);
+}
+.c-menu:active {
+  transform: scale(0.96);
+  background: rgba(249, 200, 1, 0.16);
+}
+.c-menu-icon {
+  width: 38rpx;
+  height: 38rpx;
 }
 .has-background .c-name,
 .has-background .hot-title,
