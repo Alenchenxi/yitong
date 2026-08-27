@@ -1,5 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { Community, CommunityMemberRole, CommunityStatus } from '@prisma/client';
+import {
+  Community,
+  CommunityMemberRole,
+  CommunityStatus,
+  JobPostStatus,
+  PostStatus,
+  PostVisibility,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { BizException } from '../../common/exceptions/biz.exception';
@@ -167,11 +174,14 @@ export class CommunityService {
     if (!activeId) return null;
     const community = await this.prisma.community.findUnique({ where: { id: activeId } });
     if (!community || community.status !== CommunityStatus.ACTIVE) return null;
-    const member = await this.prisma.communityMember.findUnique({
-      where: { communityId_userId: { communityId: activeId, userId: uid } },
-      select: { role: true },
-    });
-    return this.toVo(community, member?.role ?? null);
+    const [member, postCount] = await Promise.all([
+      this.prisma.communityMember.findUnique({
+        where: { communityId_userId: { communityId: activeId, userId: uid } },
+        select: { role: true },
+      }),
+      this.countVisibleDynamics(activeId),
+    ]);
+    return this.toVo(community, member?.role ?? null, postCount);
   }
 
   /** 圈子详情（DISABLED 视为不存在） */
@@ -180,11 +190,14 @@ export class CommunityService {
     if (!community || community.status !== CommunityStatus.ACTIVE) {
       throw new BizException(ERR_COMMUNITY_NOT_FOUND, '圈子不存在', HttpStatus.NOT_FOUND);
     }
-    const member = await this.prisma.communityMember.findUnique({
-      where: { communityId_userId: { communityId: id, userId: uid } },
-      select: { role: true },
-    });
-    return this.toVo(community, member?.role ?? null);
+    const [member, postCount] = await Promise.all([
+      this.prisma.communityMember.findUnique({
+        where: { communityId_userId: { communityId: id, userId: uid } },
+        select: { role: true },
+      }),
+      this.countVisibleDynamics(id),
+    ]);
+    return this.toVo(community, member?.role ?? null, postCount);
   }
 
   /** 创建圈子：creator → OWNER + 成员 + 置 active
@@ -429,7 +442,37 @@ export class CommunityService {
     return rows.map((b) => ({ id: b.id, title: b.title, imageUrl: b.imageUrl, linkUrl: b.linkUrl }));
   }
 
-  private toVo(c: Community, role: CommunityMemberRole | null): CommunityVo {
+  /** 广场动态数按当前混合流可见口径实时计算。 */
+  private async countVisibleDynamics(communityId: string): Promise<number> {
+    const now = new Date();
+    const [postCount, anonymousPostCount, jobPostCount] = await Promise.all([
+      this.prisma.post.count({
+        where: {
+          communityId,
+          status: PostStatus.APPROVED,
+          visibility: PostVisibility.PUBLIC,
+          deletedAt: null,
+        },
+      }),
+      this.prisma.anonymousPost.count({
+        where: {
+          communityId,
+          status: PostStatus.APPROVED,
+        },
+      }),
+      this.prisma.jobPost.count({
+        where: {
+          communityId,
+          status: JobPostStatus.PUBLISHED,
+          deletedAt: null,
+          expireAt: { gt: now },
+        },
+      }),
+    ]);
+    return postCount + anonymousPostCount + jobPostCount;
+  }
+
+  private toVo(c: Community, role: CommunityMemberRole | null, postCount = c.postCount): CommunityVo {
     return {
       id: c.id,
       name: c.name,
@@ -440,7 +483,7 @@ export class CommunityService {
       region: c.region,
       location: c.location,
       memberCount: c.memberCount,
-      postCount: c.postCount,
+      postCount,
       status: c.status as CommunityStatusVo,
       rejectReason: c.rejectReason ?? null,
       isMember: role !== null,

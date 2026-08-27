@@ -20,15 +20,31 @@
 }
 .community-header-content { position: relative; z-index: 2; padding-bottom: 28rpx; }
 
-/* 自定义导航：切换和搜索占用原生标题位置 */
+/* 自定义导航：保留“广场”标题，操作栏移至下方 */
 .topbar {
   position: relative;
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  justify-content: center;
   box-sizing: content-box;
-  padding-left: 24rpx;
+}
+.topbar-title {
+  /* 与使用原生导航栏的“表白墙”标题保持一致，避免不同屏宽下 rpx 产生字号漂移 */
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 400;
+  color: var(--yt-text-main);
+}
+.has-background .topbar-title {
+  color: #fff;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 12rpx 24rpx 0;
 }
 .circle-switch,
 .search-box {
@@ -297,8 +313,10 @@
   font-size: 34rpx;
 }
 .share-icon { background: var(--yt-primary-lighter); color: var(--yt-primary-dark); }
+.leave-icon { background: rgba(245, 63, 63, 0.1); color: var(--yt-danger); }
 .sheet-action-text { flex: 1; min-width: 0; }
 .sheet-action-title { font-size: 29rpx; font-weight: 600; color: var(--yt-text-main); }
+.leave-title { color: var(--yt-danger); }
 .sheet-action-sub { margin-top: 6rpx; font-size: 22rpx; color: var(--yt-text-sub); }
 .sheet-action-arrow { color: var(--yt-text-placeholder); font-size: 38rpx; font-weight: 300; }
 .sheet-safe { height: calc(env(safe-area-inset-bottom) + 16rpx); }

@@ -11,6 +11,8 @@ import { listJobPosts } from '../../services/job';
 import {
   acceptCommunityInvite,
   getActiveCommunity,
+  getCommunity,
+  leaveCommunity,
   listBanners,
   type CommunityVo,
   type BannerVo,
@@ -40,7 +42,6 @@ interface PageData {
   menuVisible: boolean;
   navTop: number;
   navHeight: number;
-  navRight: number;
 }
 
 Page({
@@ -58,7 +59,6 @@ Page({
     menuVisible: false,
     navTop: 0,
     navHeight: 44,
-    navRight: 96,
   } as PageData,
 
   onLoad(options: Record<string, string | undefined>) {
@@ -74,8 +74,7 @@ Page({
     const navTop = system.statusBarHeight ?? 0;
     const menuValid = menu.left > 0 && menu.top >= navTop && menu.width > 0 && menu.height > 0;
     const navHeight = menuValid ? Math.max(40, (menu.top - navTop) * 2 + menu.height) : 44;
-    const navRight = menuValid ? Math.max(88, system.windowWidth - menu.left + 8) : 96;
-    this.setData({ navTop, navHeight, navRight });
+    this.setData({ navTop, navHeight });
   },
 
   async onShow() {
@@ -105,6 +104,12 @@ Page({
       wx.navigateTo({ url: '/pages/community/join/index' });
     }
     listAnnouncements().then((a) => this.setData({ announcements: a })).catch(() => {});
+  },
+
+  onHide() {
+    // 离开页面时废弃未完成的详情请求，避免返回后展开旧圈子的菜单。
+    this._communityMenuRequestSeq += 1;
+    this.setData({ menuVisible: false });
   },
 
   // 分享进入后消费邀请：重叠 onShow 共用同一排空任务，期间到达的新邀请在页面刷新前顺序续接。
@@ -274,7 +279,7 @@ Page({
     wx.navigateTo({ url: '/pages/community/list/index' });
   },
 
-  // 顶部搜索栏左侧切换按钮 → 圈子切换页
+  // 标题下方操作栏左侧 → 圈子切换页
   goSwitch() {
     wx.navigateTo({ url: '/pages/community/list/index' });
   },
@@ -284,8 +289,24 @@ Page({
     wx.navigateTo({ url: '/pages/content-search/index' });
   },
 
-  showCommunityMenu() {
-    if (!this.data.community) return;
+  async showCommunityMenu() {
+    const current = this.data.community;
+    if (!current) return;
+    const requestSeq = ++this._communityMenuRequestSeq;
+    try {
+      const community = await getCommunity(current.id);
+      if (
+        requestSeq !== this._communityMenuRequestSeq ||
+        this.data.community?.id !== current.id
+      ) return;
+      this.setData({ community });
+    } catch {
+      // 详情刷新失败时仍允许打开菜单，展示页面当前已有信息。
+    }
+    if (
+      requestSeq !== this._communityMenuRequestSeq ||
+      this.data.community?.id !== current.id
+    ) return;
     this.setData({ menuVisible: true });
   },
 
@@ -294,6 +315,38 @@ Page({
   },
 
   stopMenuTap() {},
+
+  confirmLeaveCommunity() {
+    const community = this.data.community;
+    if (!community) return;
+    if (community.myRole === 'OWNER') {
+      wx.showToast({ title: '圈主不能退出圈子', icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '退出圈子',
+      content: `确定退出「${community.name}」吗？`,
+      success: (result) => {
+        if (!result.confirm) return;
+        leaveCommunity(community.id)
+          .then(() => {
+            const app = getApp<AppInstance>();
+            app.globalData.activeCommunityId = '';
+            app.globalData.joinGate = true;
+            this.setData({
+              community: null,
+              menuVisible: false,
+              items: [],
+              nextCursor: null,
+              hasMore: true,
+            });
+            wx.showToast({ title: '已退出', icon: 'success' });
+            wx.navigateTo({ url: '/pages/community/join/index' });
+          })
+          .catch(() => {});
+      },
+    });
+  },
 
   onShareAppMessage() {
     const community = this.data.community;
@@ -387,4 +440,5 @@ Page({
 
   _inviteCommunityId: '',
   _inviteConsumePromise: null as Promise<void> | null,
+  _communityMenuRequestSeq: 0,
 });

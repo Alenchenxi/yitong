@@ -3,21 +3,25 @@
   <view class="community-header {{community.backgroundImage ? 'has-background' : ''}}">
     <image wx:if="{{community.backgroundImage}}" class="community-background" src="{{community.backgroundImage}}" mode="aspectFill" />
 
-    <!-- 自定义导航：占用原“广场”标题位置 -->
-    <view class="topbar" style="padding-top: {{navTop}}px; height: {{navHeight}}px; padding-right: {{navRight}}px;">
-      <view class="circle-switch" bindtap="goSwitch">
-        <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
-        <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
-        <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
-        <text class="cs-arrow">▾</text>
-      </view>
-      <view class="search-box" bindtap="goSearch">
-        <text class="search-icon">⌕</text>
-        <text class="search-ph">搜索圈内内容</text>
-      </view>
+    <!-- 自定义导航：保留原“广场”标题 -->
+    <view class="topbar" style="padding-top: {{navTop}}px; height: {{navHeight}}px;">
+      <view class="topbar-title">广场</view>
     </view>
 
     <view class="community-header-content">
+      <!-- 圈子切换和搜索位于标题下方 -->
+      <view class="header-actions">
+        <view class="circle-switch" bindtap="goSwitch">
+          <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
+          <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
+          <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
+          <text class="cs-arrow">▾</text>
+        </view>
+        <view class="search-box" bindtap="goSearch">
+          <text class="search-icon">⌕</text>
+          <text class="search-ph">搜索圈内内容</text>
+        </view>
+      </view>
       <!-- 当前圈子信息；右侧改为菜单图标 -->
       <view class="community-card">
         <image wx:if="{{community.logo}}" class="c-logo" src="{{community.logo}}" mode="aspectFill" />
@@ -101,6 +105,14 @@
           <view class="sheet-action-text">
             <view class="sheet-action-title">邀请好友</view>
             <view class="sheet-action-sub">好友打开后自动加入并切换到这里</view>
+          </view>
+          <view class="sheet-action-arrow">›</view>
+        </button>
+        <button class="sheet-action leave-action" bindtap="confirmLeaveCommunity">
+          <view class="sheet-action-icon leave-icon">↪</view>
+          <view class="sheet-action-text">
+            <view class="sheet-action-title leave-title">退出圈子</view>
+            <view class="sheet-action-sub">退出后可重新选择或加入圈子</view>
           </view>
           <view class="sheet-action-arrow">›</view>
         </button>

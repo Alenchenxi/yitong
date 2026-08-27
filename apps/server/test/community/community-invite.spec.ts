@@ -111,6 +111,75 @@ describe('CommunityService.join', () => {
   });
 });
 
+describe('CommunityService 圈子广场动态数', () => {
+  const community = {
+    id: 'community_a',
+    name: '测试圈子',
+    logo: null,
+    backgroundImage: null,
+    description: '测试简介',
+    category: '校园',
+    region: '北京',
+    location: '测试大学',
+    memberCount: 12,
+    postCount: 99,
+    status: CommunityStatus.ACTIVE,
+    rejectReason: null,
+    createdAt: new Date('2026-08-27T00:00:00.000Z'),
+  };
+
+  function buildCountService() {
+    const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ activeCommunityId: community.id }) },
+      community: { findUnique: jest.fn().mockResolvedValue(community) },
+      communityMember: {
+        findUnique: jest.fn().mockResolvedValue({ role: CommunityMemberRole.MEMBER }),
+      },
+      post: { count: jest.fn().mockResolvedValue(2) },
+      anonymousPost: { count: jest.fn().mockResolvedValue(3) },
+      jobPost: { count: jest.fn().mockResolvedValue(4) },
+    };
+    return { service: new CommunityService(prisma as never, {} as never), prisma };
+  }
+
+  it('当前圈子应实时返回表白墙、树洞、有效兼职的混合动态总数', async () => {
+    const { service, prisma } = buildCountService();
+
+    await expect(service.getActive('user_a')).resolves.toMatchObject({ postCount: 9 });
+    expect(prisma.post.count).toHaveBeenCalledWith({
+      where: {
+        communityId: community.id,
+        status: 'APPROVED',
+        visibility: 'PUBLIC',
+        deletedAt: null,
+      },
+    });
+    expect(prisma.anonymousPost.count).toHaveBeenCalledWith({
+      where: { communityId: community.id, status: 'APPROVED' },
+    });
+    expect(prisma.jobPost.count).toHaveBeenCalledWith({
+      where: {
+        communityId: community.id,
+        status: 'PUBLISHED',
+        deletedAt: null,
+        expireAt: { gt: expect.any(Date) },
+      },
+    });
+  });
+
+  it('圈子详情接口也应重新计算动态数，供菜单展开时刷新', async () => {
+    const { service, prisma } = buildCountService();
+    prisma.post.count.mockResolvedValue(5);
+    prisma.anonymousPost.count.mockResolvedValue(1);
+    prisma.jobPost.count.mockResolvedValue(2);
+
+    await expect(service.detail('user_a', community.id)).resolves.toMatchObject({ postCount: 8 });
+    expect(prisma.post.count).toHaveBeenCalledTimes(1);
+    expect(prisma.anonymousPost.count).toHaveBeenCalledTimes(1);
+    expect(prisma.jobPost.count).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('CommunityService 圈子图片内容安全', () => {
   const dto = {
     name: '测试圈子',
