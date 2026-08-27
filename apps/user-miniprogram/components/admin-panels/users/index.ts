@@ -251,6 +251,7 @@ Component({
         return;
       }
       const flowToken = ++nextAddingFlowToken;
+      this.setData({ addingUserId: userId, addingFlowToken: flowToken });
       const isCurrentAddingFlow = () =>
         this.data.addingUserId === userId && this.data.addingFlowToken === flowToken;
       const releaseAddingLock = () => {
@@ -258,36 +259,23 @@ Component({
           this.setData({ addingUserId: '', addingFlowToken: 0 });
         }
       };
-      this.setData({ addingUserId: userId, addingFlowToken: flowToken });
-      wx.showModal({
-        title: '添加管理员',
-        content: `将「${nickname || userId}」设为管理员？`,
-        confirmText: '设为管理员',
-        confirmColor: '#F9C801',
-        success: async (r) => {
+      // 直接添加：跳过原生 wx.showModal 确认弹窗，避免与 .adm-dialog 自定义弹窗
+      // 叠加在部分基础库下进入 fail 回调；addingFlowToken 锁保证幂等与异步竞态保护。
+      void (async () => {
+        try {
+          await createAdmin(userId);
           if (!isCurrentAddingFlow()) return;
-          if (!r.confirm) {
-            releaseAddingLock();
-            return;
-          }
-          try {
-            await createAdmin(userId);
-            // 刷新候选列表（该用户已被设为 admin，应排除）+ 刷新管理员列表
-            await this.searchCandidates(true);
-            await this.load();
-            wx.showToast({ title: '已添加管理员', icon: 'success' });
-          } catch {
-            /* toast */
-          } finally {
-            releaseAddingLock();
-          }
-        },
-        fail: () => {
+          // 刷新候选列表（该用户已被设为 admin，应排除）+ 刷新管理员列表
+          await this.searchCandidates(true);
+          await this.load();
+          wx.showToast({ title: `已添加「${nickname || userId}」为管理员`, icon: 'success' });
+        } catch {
           if (!isCurrentAddingFlow()) return;
+          wx.showToast({ title: '添加失败，请重试', icon: 'none' });
+        } finally {
           releaseAddingLock();
-          wx.showToast({ title: '暂时无法打开确认框', icon: 'none' });
-        },
-      });
+        }
+      })();
     },
     deleteAdminTap(e: WechatMiniprogram.TouchEvent) {
       const a = e.currentTarget.dataset.admin as ManagerVo;
