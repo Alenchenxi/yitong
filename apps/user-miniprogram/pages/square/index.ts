@@ -40,8 +40,6 @@ interface PageData {
   announcements: AnnouncementVo[];
   anonTokenReady: boolean; // 匿名帖 disabled 判断
   menuVisible: boolean;
-  navTop: number;
-  navHeight: number;
 }
 
 Page({
@@ -57,8 +55,6 @@ Page({
     announcements: [],
     anonTokenReady: false,
     menuVisible: false,
-    navTop: 0,
-    navHeight: 44,
   } as PageData,
 
   onLoad(options: Record<string, string | undefined>) {
@@ -68,13 +64,6 @@ Page({
       this._inviteCommunityId = inviteCommunityId;
       app.globalData.pendingCommunityInviteId = inviteCommunityId;
     }
-
-    const system = wx.getSystemInfoSync();
-    const menu = wx.getMenuButtonBoundingClientRect();
-    const navTop = system.statusBarHeight ?? 0;
-    const menuValid = menu.left > 0 && menu.top >= navTop && menu.width > 0 && menu.height > 0;
-    const navHeight = menuValid ? Math.max(40, (menu.top - navTop) * 2 + menu.height) : 44;
-    this.setData({ navTop, navHeight });
   },
 
   async onShow() {

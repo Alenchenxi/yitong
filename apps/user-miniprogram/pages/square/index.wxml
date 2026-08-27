@@ -3,11 +3,6 @@
   <view class="community-header {{community.backgroundImage ? 'has-background' : ''}}">
     <image wx:if="{{community.backgroundImage}}" class="community-background" src="{{community.backgroundImage}}" mode="aspectFill" />
 
-    <!-- 自定义导航：保留原“广场”标题 -->
-    <view class="topbar" style="padding-top: {{navTop}}px; height: {{navHeight}}px;">
-      <view class="topbar-title">广场</view>
-    </view>
-
     <view class="community-header-content">
       <!-- 圈子切换和搜索位于标题下方 -->
       <view class="header-actions">

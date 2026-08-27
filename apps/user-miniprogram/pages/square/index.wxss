@@ -20,26 +20,7 @@
 }
 .community-header-content { position: relative; z-index: 2; padding-bottom: 28rpx; }
 
-/* 自定义导航：保留“广场”标题，操作栏移至下方 */
-.topbar {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: content-box;
-}
-.topbar-title {
-  /* 与使用原生导航栏的“表白墙”标题保持一致，避免不同屏宽下 rpx 产生字号漂移 */
-  font-size: 17px;
-  line-height: 1;
-  font-weight: 400;
-  color: var(--yt-text-main);
-}
-.has-background .topbar-title {
-  color: #fff;
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
-}
+/* 原生导航：标题由微信 navigationBarTitleText 提供 */
 .header-actions {
   display: flex;
   align-items: center;
