@@ -16,6 +16,7 @@ Page({
     categories: [] as JobCategoryGridItem[],
     selectedKey: '' as string,
     categoryLabel: '' as string,
+    customCategory: '' as string,
     location: {
       address: '',
       poiId: '',
@@ -187,7 +188,18 @@ Page({
   onPickCategory(e: WechatMiniprogram.TouchEvent) {
     const key = e.currentTarget.dataset.key as string;
     const item = this.data.categories.find((c) => c.key === key);
-    this.setData({ selectedKey: key, categoryLabel: item?.label ?? '' });
+    const isCustom = key === 'CUSTOM';
+    this.setData({
+      selectedKey: key,
+      categoryLabel: isCustom ? this.data.customCategory.trim() : item?.label ?? '',
+      customCategory: isCustom ? this.data.customCategory : '',
+    });
+    this.refreshCanSubmit();
+  },
+
+  onCustomCategoryInput(e: WechatMiniprogram.Input) {
+    const customCategory = e.detail.value;
+    this.setData({ customCategory, categoryLabel: customCategory.trim() });
     this.refreshCanSubmit();
   },
 
@@ -239,16 +251,20 @@ Page({
   },
 
   refreshCanSubmit() {
-    const ok = !!this.data.selectedKey && !!this.data.location.poiId;
+    const hasCategory =
+      !!this.data.selectedKey &&
+      (this.data.selectedKey !== 'CUSTOM' || !!this.data.customCategory.trim());
+    const ok = hasCategory && !!this.data.location.poiId;
     this.setData({ canSubmit: ok });
   },
 
   onNext() {
     if (!this.data.canSubmit) return;
-    const { selectedKey, categoryLabel, location } = this.data;
+    const { selectedKey, categoryLabel, customCategory, location } = this.data;
     let q =
       `selectedKey=${encodeURIComponent(selectedKey)}` +
       `&categoryLabel=${encodeURIComponent(categoryLabel)}` +
+      `&customCategory=${encodeURIComponent(selectedKey === 'CUSTOM' ? customCategory.trim() : '')}` +
       `&address=${encodeURIComponent(location.address)}` +
       `&poiId=${encodeURIComponent(location.poiId)}` +
       `&lng=${location.lng}&lat=${location.lat}` +

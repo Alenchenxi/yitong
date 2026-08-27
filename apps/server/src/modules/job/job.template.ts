@@ -12,6 +12,7 @@ import {
 
 export interface GenerateInput {
   key: CategoryKey;
+  customCategory?: string;
   location?: string;
   headcount: number;
   salaryType: 'fixed' | 'range';
@@ -54,7 +55,8 @@ function pickBySeed<T>(arr: T[], seed: number): T {
   return arr[idx]!;
 }
 
-function roleForKey(key: CategoryKey): string {
+function roleForKey(key: CategoryKey, customCategory?: string): string {
+  if (key === 'CUSTOM' && customCategory?.trim()) return customCategory.trim();
   const entry = JOB_CATEGORY_GRID.find((c) => c.key === key);
   return entry ? entry.label : '校园兼职';
 }
@@ -64,7 +66,7 @@ export function suggestTitle(input: GenerateInput): string {
   const tpl = pickBySeed(pool, input.seed);
   const base = input.salaryAmount ?? SALARY_BASELINE[input.key];
   return tpl
-    .replace('{role}', roleForKey(input.key))
+    .replace('{role}', roleForKey(input.key, input.customCategory))
     .replace('{location}', input.location?.trim() || '学校周边')
     .replace('{base}', String(base));
 }

@@ -16,6 +16,7 @@ export interface JobPostVo {
   locationLat: number | null;
   locationCity: string | null;
   category: JobCategory | null;
+  customCategory: string | null;
   settlement: Settlement | null;
   workDates: string[];
   workPeriods: string[];

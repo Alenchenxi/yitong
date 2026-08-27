@@ -17,6 +17,7 @@ Page({
   data: {
     selectedKey: '' as string,
     categoryLabel: '' as string,
+    customCategory: '' as string,
     locationCity: '' as string,
 
     form: {
@@ -64,6 +65,7 @@ Page({
     this.setData({
       selectedKey: opts.selectedKey ?? '',
       categoryLabel: decodeURIComponent(opts.categoryLabel ?? ''),
+      customCategory: decodeURIComponent(opts.customCategory ?? ''),
       // city 经 encodeURIComponent 编码传入(publish.onNext),必须 decode;
       // 否则中文城市编码后(如 %E5%8C%97%E4%BA%AC=24字符)超 CreateJobPostDto.locationCity @MaxLength(20) -> 创建 400,
       // 且顶部 chip 显示 %E5%8C%97... 乱码
@@ -123,11 +125,12 @@ Page({
   },
 
   async generate() {
-    const { selectedKey, form, seed, locationCity } = this.data;
+    const { selectedKey, customCategory, form, seed, locationCity } = this.data;
     if (!selectedKey) return;
     try {
       const data: JobTemplateVo = await getJobTemplate({
         key: selectedKey,
+        customCategory: selectedKey === 'CUSTOM' ? customCategory.trim() : undefined,
         location: locationCity || form.location,
         headcount: Number(form.headcount) || 1,
         seed,
@@ -215,6 +218,9 @@ Page({
         locationLat: f.locationLat || undefined,
         locationCity: f.locationCity || undefined,
         category,
+        customCategory:
+          this.data.selectedKey === 'CUSTOM' ? this.data.customCategory.trim() : undefined,
+        isCustomCategory: this.data.selectedKey === 'CUSTOM',
         settlement: f.settlement,
         workPeriods,
         headcount,

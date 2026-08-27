@@ -612,6 +612,7 @@ model JobPost {
   locationLat   Decimal?      @db.Decimal(10, 6) @map("location_lat") // 纬度
   locationCity  String?       @map("location_city")      // 城市（如「北京」）
   category     JobCategory?  @map("category")                          // P0-17 分类
+  customCategory String?      @map("custom_category")                   // P2-33 商家自定义岗位类型
   settlement   Settlement?   @map("settlement")                        // P0-17 结算方式
   workDates    String[]      @default([]) @map("work_dates")           // P0-17 工作日期（周一..周日/可商议）
   workPeriods  String[]      @default([]) @map("work_periods")         // P0-17 工作时段（上午/下午/晚上/全天/可商议）

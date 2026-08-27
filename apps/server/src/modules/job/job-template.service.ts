@@ -34,6 +34,10 @@ export class JobTemplateService {
     if (!isValidCategoryKey(q.key)) {
       throw new BizException(40001, `类别 key 不在白名单:${q.key}`, HttpStatus.BAD_REQUEST);
     }
+    const customCategory = q.customCategory?.trim();
+    if (q.key === 'CUSTOM' && !customCategory) {
+      throw new BizException(40003, '请输入岗位类型', HttpStatus.BAD_REQUEST);
+    }
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant || merchant.status !== 'APPROVED') {
       throw new BizException(60003, '商家资质未审核通过', HttpStatus.FORBIDDEN);
@@ -72,6 +76,7 @@ export class JobTemplateService {
     // 评分用的维度:这里只能用前端表单已填的;后端只是统计参考,真值在 createPost
     return generateDraft({
       key: cat,
+      customCategory,
       location: q.location,
       headcount: q.headcount ?? 1,
       salaryType: q.salaryType ?? 'fixed',

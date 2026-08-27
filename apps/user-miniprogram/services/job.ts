@@ -44,6 +44,7 @@ export interface JobPostVo {
   salaryAmount: number | null; // P0-18 薪资数额（auto-parse，范围筛选用）
   location: string;
   category: JobCategory | null; // P0-17 分类
+  customCategory: string | null; // P2-33 商家自定义岗位类型
   settlement: Settlement | null; // P0-17 结算方式
   workDates: string[]; // P0-17 工作日期
   workPeriods: string[]; // P0-17 工作时段
@@ -127,6 +128,8 @@ export function createJobPost(data: {
   salary: string;
   location: string;
   category: JobCategory;
+  customCategory?: string;
+  isCustomCategory?: boolean;
   settlement: Settlement;
   workDates?: string[];
   workPeriods?: string[];
@@ -205,6 +208,8 @@ export function updateJobPost(
     salary: string;
     location: string;
     category: JobCategory;
+    customCategory: string;
+    isCustomCategory: boolean;
     settlement: Settlement;
     workDates: string[];
     workPeriods: string[];
@@ -392,6 +397,7 @@ export interface JobTemplateVo {
 // 智能生成(GET /job-posts/template)
 export function getJobTemplate(params: {
   key: string;
+  customCategory?: string;
   location?: string;
   headcount?: number;
   salaryType?: 'fixed' | 'range';
@@ -399,6 +405,7 @@ export function getJobTemplate(params: {
   seed?: number;
 }) {
   const q: string[] = [`key=${encodeURIComponent(params.key)}`];
+  if (params.customCategory) q.push(`customCategory=${encodeURIComponent(params.customCategory)}`);
   if (params.location) q.push(`location=${encodeURIComponent(params.location)}`);
   if (params.headcount !== undefined) q.push(`headcount=${params.headcount}`);
   if (params.salaryType) q.push(`salaryType=${params.salaryType}`);

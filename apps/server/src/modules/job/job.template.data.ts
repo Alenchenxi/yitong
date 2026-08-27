@@ -15,6 +15,7 @@ export type CategoryKey =
   | 'SECURITY'
   | 'HOME_STREAMER'
   | 'TUTORING'
+  | 'CUSTOM'
   | 'OTHERS';
 
 // 截图 13 类 → 现有 enum(与 job.dto.ts JOB_CATEGORY_VALUES 对齐)
@@ -38,6 +39,7 @@ export const JOB_CATEGORY_GRID: ReadonlyArray<{
   { key: 'SECURITY', label: '保安', icon: '🛡', mapTo: 'LONG_TERM' },
   { key: 'HOME_STREAMER', label: '居家主播', icon: '🎥', mapTo: 'ONLINE' },
   { key: 'TUTORING', label: '家教助教', icon: '📚', mapTo: 'TUTORING' },
+  { key: 'CUSTOM', label: '自定义', icon: '💼', mapTo: 'LONG_TERM' },
   { key: 'OTHERS', label: '更多岗位', icon: '⋯', mapTo: null },
 ];
 
@@ -55,6 +57,7 @@ export const SALARY_BASELINE: Record<CategoryKey, number> = {
   SECURITY: 130,
   HOME_STREAMER: 180,
   TUTORING: 200,
+  CUSTOM: 130,
   OTHERS: 130,
 };
 
@@ -132,6 +135,12 @@ export const TITLE_TEMPLATES: Record<CategoryKey, string[]> = {
     '急招家教老师·大学生可',
     '【{location}】助教·时间灵活',
   ],
+  CUSTOM: [
+    '【{location}】招聘{role}·时间灵活',
+    '急招{role}·{base}元起',
+    '【{location}】{role}·可兼职可长期',
+    '招聘{role}·待遇面议',
+  ],
   OTHERS: ['【{location}】校园兼职·多岗位可选', '招校园兼职·时间灵活·日结'],
 };
 
@@ -192,6 +201,10 @@ export const DESCRIPTION_TEMPLATES: Record<CategoryKey, string[][]> = {
   TUTORING: [
     ['1. 中小学作业辅导或学科辅导。', '2. 上门或线上,时间灵活。', '3. 大学生可。'],
     ['1. 助教,协助主讲老师备课/答疑。', '2. 周末班。'],
+  ],
+  CUSTOM: [
+    ['1. 按岗位安排完成相关工作。', '2. 服从排班,认真负责。', '3. 具体要求可与商家沟通。'],
+    ['1. 工作内容以现场安排为准。', '2. 时间灵活,待遇面议。'],
   ],
   OTHERS: [['1. 校园周边各类兼职岗位。', '2. 时间灵活,日结/周结。']],
 };

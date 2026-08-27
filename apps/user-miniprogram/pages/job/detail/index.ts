@@ -76,7 +76,8 @@ Page({
           ...post,
           favorited: favorite?.favorited ?? false,
           // P0-17 结构化字段展示标签
-          categoryLabel: post.category ? JOB_CATEGORY_LABELS[post.category] : '',
+          categoryLabel: post.customCategory ||
+            (post.category ? JOB_CATEGORY_LABELS[post.category] : ''),
           settlementLabel: post.settlement ? SETTLEMENT_LABELS[post.settlement] : '',
           workDatesText: post.workDates.join('、'),
           workPeriodsText: post.workPeriods.join('、'),

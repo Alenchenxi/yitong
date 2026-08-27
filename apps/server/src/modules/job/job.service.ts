@@ -50,11 +50,23 @@ export class JobService {
     if (!dto.locationPoiId || dto.locationLng === undefined || dto.locationLat === undefined || !dto.locationCity) {
       throw new BizException(40003, '工作地点必须通过地图选点获得,请补全 poiId/经度/纬度/城市', HttpStatus.BAD_REQUEST);
     }
+    const customCategory = dto.customCategory?.trim() || null;
+    if (dto.isCustomCategory) {
+      if (dto.category !== JobCategory.LONG_TERM) {
+        throw new BizException(40003, '自定义岗位类型仅可用于自定义岗位', HttpStatus.BAD_REQUEST);
+      }
+      if (!customCategory) {
+        throw new BizException(40003, '请输入岗位类型', HttpStatus.BAD_REQUEST);
+      }
+    } else if (customCategory) {
+      throw new BizException(40003, '预设岗位类型不可提交自定义岗位类型', HttpStatus.BAD_REQUEST);
+    }
     await Promise.all([
       this.moderation.checkText(dto.title, openid),
       this.moderation.checkText(dto.description, openid),
       this.moderation.checkText(dto.salary, openid),
       this.moderation.checkText(dto.location, openid),
+      ...(customCategory ? [this.moderation.checkText(customCategory, openid)] : []),
     ]);
 
     const days = dto.duration === JobDuration.D90 ? 90 : 30;
@@ -86,6 +98,7 @@ export class JobService {
         locationLat: dto.locationLat,
         locationCity: dto.locationCity,
         category: dto.category,
+        customCategory,
         settlement: dto.settlement,
         workDates: this.filterWhitelist(dto.workDates, WORK_DATE_VALUES),
         workPeriods: this.filterWhitelist(dto.workPeriods, WORK_PERIOD_VALUES),
@@ -120,8 +133,23 @@ export class JobService {
       throw new BizException(40003, '已下架或已过期岗位不可编辑', HttpStatus.CONFLICT);
     }
 
+    const customCategory = dto.customCategory?.trim() || null;
+    const effectiveCategory = dto.category ?? post.category;
+    if (dto.isCustomCategory) {
+      if (effectiveCategory !== JobCategory.LONG_TERM) {
+        throw new BizException(40003, '自定义岗位类型仅可用于自定义岗位', HttpStatus.BAD_REQUEST);
+      }
+      if (!customCategory) {
+        throw new BizException(40003, '请输入岗位类型', HttpStatus.BAD_REQUEST);
+      }
+    } else if (customCategory) {
+      throw new BizException(40003, '预设岗位类型不可提交自定义岗位类型', HttpStatus.BAD_REQUEST);
+    }
+
     // 内容安全审核（仅校验有改动的文本字段）
-    const texts = [dto.title, dto.description, dto.salary, dto.location].filter((t): t is string => !!t);
+    const texts = [dto.title, dto.description, dto.salary, dto.location, customCategory]
+      .filter((t): t is string => !!t?.trim())
+      .map((t) => t.trim());
     await Promise.all(texts.map((t) => this.moderation.checkText(t, openid)));
 
     // 组装更新数据（只写入 dto 提供的字段）
@@ -149,7 +177,17 @@ export class JobService {
       data.locationLat = dto.locationLat;
       data.locationCity = dto.locationCity;
     }
-    if (dto.category !== undefined) data.category = dto.category;
+    if (dto.category !== undefined) {
+      data.category = dto.category;
+      if (dto.category !== JobCategory.LONG_TERM && dto.customCategory === undefined) {
+        data.customCategory = null;
+      }
+    }
+    if (dto.isCustomCategory === false) {
+      data.customCategory = null;
+    } else if (dto.customCategory !== undefined) {
+      data.customCategory = customCategory;
+    }
     if (dto.settlement !== undefined) data.settlement = dto.settlement;
     if (dto.workDates !== undefined) data.workDates = this.filterWhitelist(dto.workDates, WORK_DATE_VALUES);
     if (dto.workPeriods !== undefined) data.workPeriods = this.filterWhitelist(dto.workPeriods, WORK_PERIOD_VALUES);
@@ -328,6 +366,7 @@ export class JobService {
       where.OR = [
         { title: { contains: kw, mode: 'insensitive' } },
         { description: { contains: kw, mode: 'insensitive' } },
+        { customCategory: { contains: kw, mode: 'insensitive' } },
       ];
     }
     if (q.category) where.category = q.category as JobCategory;
@@ -912,6 +951,7 @@ export class JobService {
     locationLat?: { toString(): string } | null;
     locationCity?: string | null;
     category: JobCategory | null;
+    customCategory?: string | null;
     settlement: Settlement | null;
     workDates: string[];
     workPeriods: string[];
@@ -944,6 +984,7 @@ export class JobService {
       locationLat: p.locationLat ? Number(p.locationLat.toString()) : null,
       locationCity: p.locationCity ?? null,
       category: p.category,
+      customCategory: p.customCategory ?? null,
       settlement: p.settlement,
       workDates: p.workDates,
       workPeriods: p.workPeriods,

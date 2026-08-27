@@ -76,6 +76,15 @@ export class CreateJobPostDto {
   @IsIn(JOB_CATEGORY_VALUES)
   category!: (typeof JOB_CATEGORY_VALUES)[number];
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  customCategory?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isCustomCategory?: boolean;
+
   @IsIn(SETTLEMENT_VALUES)
   settlement!: (typeof SETTLEMENT_VALUES)[number];
 
@@ -178,6 +187,15 @@ export class UpdateJobPostDto {
   @IsOptional()
   @IsIn(JOB_CATEGORY_VALUES)
   category?: (typeof JOB_CATEGORY_VALUES)[number];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  customCategory?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isCustomCategory?: boolean;
 
   @IsOptional()
   @IsIn(SETTLEMENT_VALUES)

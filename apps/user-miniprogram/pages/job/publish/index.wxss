@@ -9,6 +9,20 @@
 .icon { font-size: 60rpx; }
 .label { font-size: 24rpx; color: #1D2129; }
 
+.custom-category {
+  margin-top: 20rpx;
+  padding: 0 24rpx;
+  background: #FFFFFF;
+  border: 2rpx solid #E5E6EB;
+  border-radius: 12rpx;
+}
+.custom-category-input {
+  width: 100%;
+  height: 80rpx;
+  font-size: 28rpx;
+  color: #1D2129;
+}
+
 .circle-block {
   margin-top: 32rpx; padding: 24rpx;
   background: #FFFFFF; border-radius: 16rpx;

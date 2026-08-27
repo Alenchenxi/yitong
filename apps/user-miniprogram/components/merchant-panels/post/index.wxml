@@ -13,8 +13,9 @@
   <view class="block">
     <text class="label">分类</text>
     <view class="chips">
-      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{categoryOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="pickCategory">{{item.label}}</view>
+      <view class="chip {{item.selected ? 'active' : ''}}" wx:for="{{categoryOptions}}" wx:key="value" data-value="{{item.value}}" bindtap="pickCategory"><text wx:if="{{item.icon}}">{{item.icon}} </text>{{item.label}}</view>
     </view>
+    <input wx:if="{{customSelected}}" class="custom-category-input" value="{{customCategory}}" bindinput="onCustomCategoryInput" placeholder="输入岗位类型" maxlength="20" />
   </view>
 
   <view class="block">

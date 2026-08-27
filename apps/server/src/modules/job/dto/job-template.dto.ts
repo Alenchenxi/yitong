@@ -7,6 +7,11 @@ export class JobTemplateQueryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(20)
+  customCategory?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(100)
   location?: string;
 

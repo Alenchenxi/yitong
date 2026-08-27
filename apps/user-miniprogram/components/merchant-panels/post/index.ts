@@ -16,6 +16,7 @@ import {
 interface Opt {
   value: string;
   label: string;
+  icon?: string;
   selected: boolean;
 }
 interface TagOpt {
@@ -24,11 +25,14 @@ interface TagOpt {
 }
 
 // P0-17 分类 / 结算方式选项（单选，从枚举标签生成）
-const CATEGORY_OPTIONS: Opt[] = (Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]).map((value) => ({
-  value,
-  label: JOB_CATEGORY_LABELS[value],
-  selected: false,
-}));
+const CATEGORY_OPTIONS: Opt[] = [
+  ...(Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]).map((value) => ({
+    value,
+    label: JOB_CATEGORY_LABELS[value],
+    selected: false,
+  })),
+  { value: 'CUSTOM', label: '自定义', icon: '💼', selected: false },
+];
 const SETTLEMENT_OPTIONS: Opt[] = (Object.keys(SETTLEMENT_LABELS) as Settlement[]).map((value) => ({
   value,
   label: SETTLEMENT_LABELS[value],
@@ -76,6 +80,8 @@ Component({
     locationLat: 0,
     locationCity: '',
     categoryOptions: CATEGORY_OPTIONS,
+    customSelected: false,
+    customCategory: '',
     settlementOptions: SETTLEMENT_OPTIONS,
     workDateOptions: WORK_DATE_OPTIONS,
     workPeriodOptions: WORK_PERIOD_OPTIONS,
@@ -111,7 +117,11 @@ Component({
       try {
         const post: JobPostVo = await getJobPost(id);
         // 回填单选/多选状态
-        const categoryOptions = this.data.categoryOptions.map((o) => ({ ...o, selected: o.value === post.category }));
+        const customSelected = !!post.customCategory?.trim();
+        const categoryOptions = this.data.categoryOptions.map((o) => ({
+          ...o,
+          selected: customSelected ? o.value === 'CUSTOM' : o.value === post.category,
+        }));
         const settlementOptions = this.data.settlementOptions.map((o) => ({ ...o, selected: o.value === post.settlement }));
         const workDateOptions = this.data.workDateOptions.map((o) => ({ ...o, selected: post.workDates.includes(o.label) }));
         const workPeriodOptions = this.data.workPeriodOptions.map((o) => ({ ...o, selected: post.workPeriods.includes(o.label) }));
@@ -127,6 +137,8 @@ Component({
           locationLat: ext.locationLat ?? 0,
           locationCity: ext.locationCity ?? '',
           categoryOptions,
+          customSelected,
+          customCategory: post.customCategory ?? '',
           settlementOptions,
           workDateOptions,
           workPeriodOptions,
@@ -160,6 +172,8 @@ Component({
         locationLat: 0,
         locationCity: '',
         categoryOptions: CATEGORY_OPTIONS.map((o) => ({ ...o })),
+        customSelected: false,
+        customCategory: '',
         settlementOptions: SETTLEMENT_OPTIONS.map((o) => ({ ...o })),
         workDateOptions: WORK_DATE_OPTIONS.map((o) => ({ ...o })),
         workPeriodOptions: WORK_PERIOD_OPTIONS.map((o) => ({ ...o })),
@@ -210,9 +224,15 @@ Component({
     // P0-17 分类 / 结算（单选）
     pickCategory(e: WechatMiniprogram.TouchEvent) {
       const value = e.currentTarget.dataset.value as string;
+      const customSelected = value === 'CUSTOM';
       this.setData({
         categoryOptions: this.data.categoryOptions.map((o) => ({ ...o, selected: o.value === value })),
+        customSelected,
+        customCategory: customSelected ? this.data.customCategory : '',
       });
+    },
+    onCustomCategoryInput(e: WechatMiniprogram.Input) {
+      this.setData({ customCategory: e.detail.value });
     },
     pickSettlement(e: WechatMiniprogram.TouchEvent) {
       const value = e.currentTarget.dataset.value as string;
@@ -264,7 +284,7 @@ Component({
 
     async submit() {
       if (this.data.submitting) return;
-      const { title, description, requirements, salary, location, locationPoiId, locationLng, locationLat, locationCity, duration, headcount, urgent, online, isEdit, editId } = this.data;
+      const { title, description, requirements, salary, location, locationPoiId, locationLng, locationLat, locationCity, duration, headcount, urgent, online, isEdit, editId, customCategory } = this.data;
       const category = this.data.categoryOptions.find((o) => o.selected)?.value;
       const settlement = this.data.settlementOptions.find((o) => o.selected)?.value;
       if (!title.trim() || !description.trim() || !salary.trim() || !location.trim()) {
@@ -275,6 +295,12 @@ Component({
         wx.showToast({ title: '请选择分类和结算方式', icon: 'none' });
         return;
       }
+      if (category === 'CUSTOM' && !customCategory.trim()) {
+        wx.showToast({ title: '请输入岗位类型', icon: 'none' });
+        return;
+      }
+      const persistedCategory = (category === 'CUSTOM' ? 'LONG_TERM' : category) as JobCategory;
+      const persistedCustomCategory = category === 'CUSTOM' ? customCategory.trim() : '';
       // 2026-08-11:新增岗位必须 4 字段(poiId/lng/lat/city)都锁定,否则 40003
       if (!isEdit && (!locationPoiId || locationLng === 0 || locationLat === 0 || !locationCity)) {
         wx.showToast({ title: '请先选择工作地点', icon: 'none' });
@@ -293,7 +319,9 @@ Component({
             requirements: requirements.trim() || undefined,
             salary: salary.trim(),
             location: location.trim(),
-            category: category as JobCategory,
+            category: persistedCategory,
+            customCategory: persistedCustomCategory,
+            isCustomCategory: category === 'CUSTOM',
             settlement: settlement as Settlement,
             workDates,
             workPeriods,
@@ -320,7 +348,9 @@ Component({
             locationLng,
             locationLat,
             locationCity,
-            category: category as JobCategory,
+            category: persistedCategory,
+            customCategory: persistedCustomCategory || undefined,
+            isCustomCategory: category === 'CUSTOM',
             settlement: settlement as Settlement,
             workDates,
             workPeriods,
