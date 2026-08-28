@@ -3,6 +3,7 @@
 // 运行：pnpm --filter @yitong/server exec ts-node test/admin/admin-admins.smoke.ts
 import { Role } from '@prisma/client';
 import { AdminService } from '../../src/modules/admin/admin.service';
+import { TutorJobPolicyService } from '../../src/modules/tutor-sync/tutor-job-policy.service';
 import { BizException } from '../../src/common/exceptions/biz.exception';
 import type { PrismaService } from '../../src/prisma/prisma.service';
 import type { ConfessionService } from '../../src/modules/confession/confession.service';
@@ -211,6 +212,7 @@ function serviceFor(prisma: FakePrisma): AdminService {
     prisma as unknown as PrismaService,
     {} as ConfessionService,
     {} as NotificationService,
+    new TutorJobPolicyService(),
   );
 }
 

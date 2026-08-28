@@ -1,4 +1,4 @@
-<view class="page" wx:if="{{post}}">
+<view class="page {{!isMerchantOwner && post.applyMode === 'CONTACT_ONLY' ? 'has-apply-bar' : ''}}" wx:if="{{post}}">
   <view class="title">{{post.title}}</view>
 
   <!-- P0-17 结构化标签 -->
@@ -10,14 +10,14 @@
 
   <view class="meta">
     <text class="salary">{{post.salary}}</text>
-    <text class="loc">{{post.location}} · {{post.duration === 'D90' ? '90天' : '30天'}}</text>
+    <text class="loc">{{post.location}} · {{post.validityText}}</text>
   </view>
 
   <!-- P0-19 商家信息 -->
   <view class="merchant">
     <text class="shop">{{post.merchantShopName}}</text>
-    <text class="verified">✓ 资质已认证</text>
-    <text wx:if="{{!isMerchantOwner}}" class="report-merchant" bindtap="onReportMerchant">举报商家</text>
+    <text wx:if="{{!post.isExternalSource}}" class="verified">✓ 资质已认证</text>
+    <text wx:if="{{!isMerchantOwner && !post.isExternalSource}}" class="report-merchant" bindtap="onReportMerchant">举报商家</text>
   </view>
 
   <!-- P0-17 结构化信息 -->
@@ -38,6 +38,12 @@
     <view class="section-body">{{post.requirements}}</view>
   </view>
 
+  <view class="section contact-section" wx:if="{{post.contactPhone || post.contactWechat}}">
+    <view class="section-title">联系方式</view>
+    <view class="contact-row" wx:if="{{post.contactPhone}}"><text class="contact-label">电话</text><text class="contact-value">{{post.contactPhone}}</text></view>
+    <view class="contact-row" wx:if="{{post.contactWechat}}"><text class="contact-label">微信</text><text class="contact-value">{{post.contactWechat}}</text></view>
+    <view class="contact-instruction" wx:if="{{post.contactInstruction}}">{{post.contactInstruction}}</view>
+  </view>
   <!-- P0-19 操作栏：收藏 / 分享 / 举报 -->
   <view class="actions">
     <view class="act {{post.favorited ? 'on' : ''}}" bindtap="onFavorite">{{post.favorited ? '★ 已收藏' : '☆ 收藏'}}</view>
@@ -45,7 +51,7 @@
     <view class="act report" bindtap="onReport">举报</view>
   </view>
 
-  <button wx:if="{{!isMerchantOwner}}" class="apply-btn" bindtap="apply" disabled="{{applying}}">{{applying ? '报名中…' : '立即报名'}}</button>
+  <button wx:if="{{!isMerchantOwner && post.applyMode !== 'CONTACT_ONLY'}}" class="apply-btn" bindtap="apply" disabled="{{applying}}">{{applying ? '报名中…' : '立即报名'}}</button>
 
   <!-- P0-19 风险提示（固定区块） -->
   <view class="risk">
@@ -129,6 +135,9 @@
     <view class="empty" wx:if="{{reviews.length === 0}}">暂无评价</view>
   </view>
 
+  <view wx:if="{{!isMerchantOwner && post.applyMode === 'CONTACT_ONLY'}}" class="apply-bar">
+    <button class="apply-btn" disabled="{{true}}">请联系发布方报名</button>
+  </view>
   <!-- P1-26 商家评价学生弹层 -->
   <view class="mask" wx:if="{{reviewAppId}}" bindtap="cancelMerchantReview">
     <view class="picker" catchtap="">

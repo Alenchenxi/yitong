@@ -28,6 +28,7 @@ import { ReferralModule } from './modules/referral/referral.module';
 import { SupportModule } from './modules/support/support.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { JobCommunicationModule } from './modules/job-communication/job-communication.module';
+import { TutorSyncModule } from './modules/tutor-sync/tutor-sync.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { JobCommunicationModule } from './modules/job-communication/job-communic
     MerchantModule,
     JobModule,
     JobCommunicationModule,
+    TutorSyncModule,
     PaymentModule,
     CommunityModule,
     TreeholeModule,

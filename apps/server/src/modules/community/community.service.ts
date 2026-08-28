@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { JobVisibilityPolicyService } from '../job-visibility/job-visibility.service';
 import { BizException } from '../../common/exceptions/biz.exception';
 import type {
   BannerVo,
@@ -40,9 +41,12 @@ const ERR_COMMUNITY_FORBIDDEN = 80015;
 
 @Injectable()
 export class CommunityService {
+  readonly defaultCommunityId = DEFAULT_COMMUNITY_ID;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
+    private readonly jobVisibility: JobVisibilityPolicyService,
   ) {}
 
   /**
@@ -462,10 +466,9 @@ export class CommunityService {
       }),
       this.prisma.jobPost.count({
         where: {
-          communityId,
           status: JobPostStatus.PUBLISHED,
           deletedAt: null,
-          expireAt: { gt: now },
+          AND: this.jobVisibility.buildFilters(communityId, now),
         },
       }),
     ]);

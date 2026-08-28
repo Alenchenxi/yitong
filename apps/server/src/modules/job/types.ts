@@ -1,15 +1,24 @@
-import type { JobCategory, JobDuration, JobPostStatus, Settlement } from '@prisma/client';
+import type {
+  JobApplyMode,
+  JobCategory,
+  JobDuration,
+  JobPostStatus,
+  JobVisibilityScope,
+  Settlement,
+} from '@prisma/client';
 
 // 岗位 VO（服务端 JobPostVo；前端 services/job.ts 镜像定义）
 export interface JobPostVo {
   id: string;
   merchantId: string;
   merchantShopName: string;
+  publisherName: string | null;
   title: string;
   description: string;
   requirements: string | null;
   contactPhone: string | null;
   contactWechat: string | null;
+  contactInstruction: string | null;
   salary: string;
   salaryAmount: number | null;
   location: string;
@@ -28,7 +37,11 @@ export interface JobPostVo {
   online: boolean;
   questions: string[];
   duration: JobDuration;
-  expireAt: string;
+  expireAt: string | null;
+  validityText: string;
+  visibilityScope: JobVisibilityScope;
+  applyMode: JobApplyMode;
+  isExternalSource: boolean;
   status: JobPostStatus;
   takenDownAt: string | null;
   deletedAt: string | null;

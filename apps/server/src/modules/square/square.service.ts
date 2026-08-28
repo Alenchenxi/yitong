@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TreeholeService } from '../treehole/treehole.service';
 import { CommunityService } from '../community/community.service';
 import { JobService } from '../job/job.service';
+import { JobVisibilityPolicyService } from '../job-visibility/job-visibility.service';
 import type { PostVo } from '../confession/types';
 import type { AnonPostVo } from '../treehole/types';
 import type { FeedItemVo, SquareFeedResult, SquareTodayHitResult, TodayHitItem } from './types';
@@ -20,6 +21,7 @@ export class SquareService {
     private readonly treehole: TreeholeService,
     private readonly community: CommunityService,
     private readonly job: JobService,
+    private readonly jobVisibility: JobVisibilityPolicyService,
   ) {}
 
   /**
@@ -49,7 +51,7 @@ export class SquareService {
     const [posts, anonPosts, jobs, boostedPosts, boostedAnonPosts] = await Promise.all([
       this.fetchApprovedPosts(uid, sort, fetchSize, q.cursor, communityId),
       this.fetchApprovedAnonPosts(anonId, sort, fetchSize, q.cursor, communityId),
-      this.fetchApprovedJobs(communityId, sort, fetchSize, q.cursor),
+      this.fetchApprovedJobs(communityId, fetchSize, q.cursor),
       isFirstPage ? this.fetchBoostedPosts(uid, limit, communityId) : Promise.resolve([]),
       isFirstPage ? this.fetchBoostedAnonPosts(anonId, limit, communityId) : Promise.resolve([]),
     ]);
@@ -169,30 +171,29 @@ export class SquareService {
   // ===== JobPost 部分查询（兼职混合流；岗位无 boost 前置，仅普通流）=====
   private async fetchApprovedJobs(
     communityId: string,
-    sort: SquareFeedSort,
     fetchSize: number,
     cursor?: string,
   ) {
     const cur = cursor ? this.decodeCursor(cursor) : null;
+    const andFilters = this.jobVisibility.buildFilters(communityId);
+    if (cur) {
+      andFilters.push({
+        OR: [
+          { createdAt: { lt: cur.createdAt } },
+          { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
+        ],
+      });
+    }
     const where: Prisma.JobPostWhereInput = {
-      communityId,
-      community: { is: { status: CommunityStatus.ACTIVE } },
       status: JobPostStatus.PUBLISHED,
       deletedAt: null,
-      expireAt: { gt: new Date() },
-      ...(cur
-        ? {
-            OR: [
-              { createdAt: { lt: cur.createdAt } },
-              { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
-            ],
-          }
-        : {}),
+      AND: andFilters,
     };
-    const orderBy: Prisma.JobPostOrderByWithRelationInput[] =
-      sort === 'recommend'
-        ? [{ featured: 'desc' }, { featuredAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
-        : [{ createdAt: 'desc' }, { id: 'desc' }];
+    // 混合流统一按 (createdAt,id) 游标遍历；featured 仅作为展示字段。
+    const orderBy: Prisma.JobPostOrderByWithRelationInput[] = [
+      { createdAt: 'desc' },
+      { id: 'desc' },
+    ];
     return this.prisma.jobPost.findMany({
       where,
       orderBy,

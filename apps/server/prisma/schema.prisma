@@ -629,7 +629,10 @@ model JobPost {
   online       Boolean       @default(false) @map("online")            // P0-17 是否可线上
   questions    String[]      @default([]) @map("questions")            // P0-21 报名问题（商家设置）
   duration     JobDuration
-  expireAt     DateTime      @map("expire_at")
+  expireAt     DateTime?     @map("expire_at")
+  visibilityScope JobVisibilityScope @default(COMMUNITY) @map("visibility_scope")
+  applyMode       JobApplyMode       @default(IN_APP) @map("apply_mode")
+  publisherName   String?            @map("publisher_name")
   status       JobPostStatus @default(PENDING)
   takenDownAt  DateTime?     @map("taken_down_at") // M3-05 商家主动下架时间（null=未下架或非下架状态）
   deletedAt    DateTime?     @map("deleted_at")    // M3-07 商家硬删草稿（软删字段，null=未删；list/get 全链路过滤 deletedAt:null）
@@ -639,6 +642,7 @@ model JobPost {
   applications JobApplication[]
   views        JobView[]
   impressions  JobImpression[]
+  tutorSyncBinding TutorJobSyncBinding?
   @@index([communityId, status, createdAt])
   @@index([status, expireAt])
   @@index([status, createdAt])
@@ -653,6 +657,14 @@ model JobPost {
 enum JobDuration {
   D30
   D90
+}
+enum JobVisibilityScope {
+  COMMUNITY
+  ALL_COMMUNITIES
+}
+enum JobApplyMode {
+  IN_APP
+  CONTACT_ONLY
 }
 enum JobPostStatus {
   PENDING
@@ -679,6 +691,31 @@ enum Settlement {
   WEEKLY
   MONTHLY
   COMPLETION
+}
+
+model TutorJobSyncBinding {
+  id         String   @id @default(cuid())
+  source     String
+  externalId String   @map("external_id")
+  jobPostId         String    @unique @map("job_post_id")
+  platformBlockedAt DateTime? @map("platform_blocked_at")
+  sourceActive      Boolean   @default(true) @map("source_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+
+  @@unique([source, externalId])
+  @@index([source, updatedAt])
+  @@index([source, sourceActive])
+  @@map("tutor_job_sync_bindings")
+}
+
+model TutorSyncState {
+  source          String   @id
+  lastGeneratedAt DateTime @map("last_generated_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("tutor_sync_states")
 }
 
 model JobApplication {

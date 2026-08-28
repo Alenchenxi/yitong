@@ -10,6 +10,6 @@
   <view class="shop">{{job.merchantShopName}}</view>
   <view class="meta">
     <text class="meta-item">📍 {{job.location}}</text>
-    <text class="meta-item">⏱ {{job.duration === 'D90' ? '90天' : '30天'}}</text>
+    <text class="meta-item">⏱ {{job.validityText}}</text>
   </view>
 </view>

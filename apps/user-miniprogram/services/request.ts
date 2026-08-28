@@ -21,6 +21,7 @@ export function request<T>(opts: {
   data?: Record<string, unknown>;
   header?: Record<string, string>; // CR-001 额外 header（如 x-anon-token）
   silent?: boolean; // 不弹错误 toast(默认 false 保持既有行为不变)
+  silentBizCodes?: number[]; // 指定业务错误由调用方恢复，不在请求层先弹 toast
 }): Promise<T> {
   const app = getApp<{ globalData: AppGlobalData }>();
   return new Promise((resolve, reject) => {
@@ -38,7 +39,9 @@ export function request<T>(opts: {
         if (body.code === 0) {
           resolve(body.data);
         } else {
-          if (!opts.silent) wx.showToast({ title: body.message, icon: 'none' });
+          if (!opts.silent && !opts.silentBizCodes?.includes(body.code)) {
+            wx.showToast({ title: body.message, icon: 'none' });
+          }
           handleResponseAuth(body);
           reject(body);
         }

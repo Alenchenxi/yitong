@@ -2,22 +2,35 @@ import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import {
   AppStatus,
   CommunityStatus,
+  JobApplyMode,
   JobCategory,
   JobDuration,
   JobPostStatus,
+  JobVisibilityScope,
   MerchantStatus,
   Prisma,
   Settlement,
 } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
+import { parseSalaryAmount } from '../../common/job/parse-salary-amount';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { CommunityService } from '../community/community.service';
+import { JobVisibilityPolicyService } from '../job-visibility/job-visibility.service';
 import { LocationService } from './location.service';
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
 import type { JobPostVo } from './types';
-import type { CreateJobPostDto, JobListQueryDto, JobRecommendQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto, UpdateJobPostDto } from './dto/job.dto';
+import { TutorJobPolicyService } from '../tutor-sync/tutor-job-policy.service';
+import type {
+  CreateJobPostDto,
+  JobListQueryDto,
+  JobRecommendQueryDto,
+  CreateReviewDto,
+  ApplyDto,
+  UpsertResumeDto,
+  UpdateJobPostDto,
+} from './dto/job.dto';
 
 const MERCHANT_CONTACT_SELECT = {
   userId: true,
@@ -25,6 +38,158 @@ const MERCHANT_CONTACT_SELECT = {
   contactPhone: true,
   contactWechat: true,
 } as const;
+
+interface JobListCursorPayload {
+  v: 1;
+  createdAt: string;
+  id: string;
+}
+
+interface NearestJobListCursorPayload {
+  distance: number;
+  id: string;
+}
+
+interface NearestJobRow {
+  id: string;
+  distance: number;
+}
+
+const NEAREST_JOB_LIST_CURSOR_PREFIX = 'nearest:v1:';
+const EARTH_RADIUS_KM = 6_371;
+const DISTANCE_ROUNDING_MARGIN_KM = 0.1;
+const NEAREST_SEARCH_RADII_KM = [
+  5,
+  20,
+  80,
+  320,
+  1_280,
+  5_120,
+  Math.ceil(Math.PI * EARTH_RADIUS_KM) + 1,
+] as const;
+export const JOB_LIST_CURSOR_EXPIRED_CODE = 40007;
+
+function normalizeLongitude(longitude: number): number {
+  return ((longitude + 180) % 360 + 360) % 360 - 180;
+}
+
+function buildNearestBoundingConditions(
+  lng: number,
+  lat: number,
+  radiusKm: number,
+): Prisma.Sql[] {
+  const angularRadius = radiusKm / EARTH_RADIUS_KM;
+  if (angularRadius >= Math.PI) {
+    return [
+      Prisma.sql`"jp"."location_lat" BETWEEN -90 AND 90`,
+      Prisma.sql`"jp"."location_lng" BETWEEN -180 AND 180`,
+    ];
+  }
+
+  const latRadians = lat * Math.PI / 180;
+  const minLatRadians = Math.max(-Math.PI / 2, latRadians - angularRadius);
+  const maxLatRadians = Math.min(Math.PI / 2, latRadians + angularRadius);
+  const conditions = [
+    Prisma.sql`"jp"."location_lat" BETWEEN ${minLatRadians * 180 / Math.PI} AND ${maxLatRadians * 180 / Math.PI}`,
+  ];
+  if (minLatRadians <= -Math.PI / 2 || maxLatRadians >= Math.PI / 2) {
+    return conditions;
+  }
+
+  const ratio = Math.sin(angularRadius) / Math.cos(latRadians);
+  if (Math.abs(ratio) >= 1) return conditions;
+  const longitudeDelta = Math.asin(Math.abs(ratio)) * 180 / Math.PI;
+  const minLng = normalizeLongitude(lng - longitudeDelta);
+  const maxLng = normalizeLongitude(lng + longitudeDelta);
+  if (minLng <= maxLng) {
+    conditions.push(
+      Prisma.sql`"jp"."location_lng" BETWEEN ${minLng} AND ${maxLng}`,
+    );
+  } else {
+    conditions.push(Prisma.sql`(
+      "jp"."location_lng" BETWEEN ${minLng} AND 180
+      OR "jp"."location_lng" BETWEEN -180 AND ${maxLng}
+    )`);
+  }
+  return conditions;
+}
+
+function isJobListCursorPayload(value: unknown): value is JobListCursorPayload {
+  return typeof value === 'object'
+    && value !== null
+    && 'v' in value
+    && value.v === 1
+    && 'createdAt' in value
+    && typeof value.createdAt === 'string'
+    && 'id' in value
+    && typeof value.id === 'string'
+    && value.id.length > 0;
+}
+
+function encodeJobListCursor(post: { createdAt: Date; id: string }): string {
+  const payload: JobListCursorPayload = {
+    v: 1,
+    createdAt: post.createdAt.toISOString(),
+    id: post.id,
+  };
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+}
+
+function decodeJobListCursor(cursor: string): { createdAt: Date; id: string } | null {
+  try {
+    const payload: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+    if (isJobListCursorPayload(payload)) {
+      const createdAt = new Date(payload.createdAt);
+      if (!Number.isNaN(createdAt.getTime())) return { createdAt, id: payload.id };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function encodeNearestJobListCursor(post: { _distance: number; id: string }): string {
+  const payload: NearestJobListCursorPayload = {
+    distance: post._distance,
+    id: post.id,
+  };
+  return NEAREST_JOB_LIST_CURSOR_PREFIX
+    + Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+}
+
+function decodeNearestJobListCursor(
+  cursor: string,
+): NearestJobListCursorPayload | null {
+  if (!cursor.startsWith(NEAREST_JOB_LIST_CURSOR_PREFIX)) return null;
+  try {
+    const encoded = cursor.slice(NEAREST_JOB_LIST_CURSOR_PREFIX.length);
+    const payload: unknown = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (
+      typeof payload === 'object'
+      && payload !== null
+      && 'distance' in payload
+      && typeof payload.distance === 'number'
+      && Number.isFinite(payload.distance)
+      && payload.distance >= 0
+      && 'id' in payload
+      && typeof payload.id === 'string'
+      && payload.id.length > 0
+    ) {
+      return { distance: payload.distance, id: payload.id };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function throwJobListCursorExpired(): never {
+  throw new BizException(
+    JOB_LIST_CURSOR_EXPIRED_CODE,
+    '列表游标已失效，请刷新重试',
+    HttpStatus.GONE,
+  );
+}
 
 // 看板时间范围 -> since 阈值（day=24h, week=7d, month=30d, all=不限）
 function rangeToSince(range: 'day' | 'week' | 'month' | 'all'): Date | null {
@@ -44,6 +209,8 @@ export class JobService {
     private readonly notification: NotificationService,
     private readonly location: LocationService,
     private readonly community: CommunityService,
+    private readonly jobVisibility: JobVisibilityPolicyService,
+    private readonly tutorJobPolicy: TutorJobPolicyService,
   ) {}
 
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
@@ -100,7 +267,7 @@ export class JobService {
         contactPhoneSnapshot: merchant.contactPhone,
         contactWechatSnapshot: merchant.contactWechat,
         salary: dto.salary,
-        salaryAmount: this.parseSalaryAmount(dto.salary),
+        salaryAmount: parseSalaryAmount(dto.salary),
         location: dto.location,
         locationPoiId: dto.locationPoiId,
         locationLng: dto.locationLng,
@@ -168,7 +335,7 @@ export class JobService {
     if (dto.requirements !== undefined) data.requirements = dto.requirements || null;
     if (dto.salary !== undefined) {
       data.salary = dto.salary;
-      data.salaryAmount = this.parseSalaryAmount(dto.salary);
+      data.salaryAmount = parseSalaryAmount(dto.salary);
     }
     if (dto.location !== undefined) data.location = dto.location;
     // 智能生成流程(2026-08-10):编辑模式 location 4 字段可选;前端传齐才更新(全或无,防半更新)
@@ -356,7 +523,10 @@ export class JobService {
   // 岗位列表：mine=1 商家自己的（含草稿）；否则 PUBLISHED 且未过期
   async listPosts(uid: string, q: JobListQueryDto) {
     const limit = Math.min(50, q.limit ?? 20);
+    const discoveryNow = new Date();
+    let visibleCommunityId: string | null = null;
     const where: Prisma.JobPostWhereInput = { deletedAt: null }; // M3-07 全链路过滤软删
+    const andFilters: Prisma.JobPostWhereInput[] = [];
     if (q.mine === 1) {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
       if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
@@ -365,18 +535,19 @@ export class JobService {
       if (q.status) where.status = q.status as JobPostStatus;
     } else {
       where.status = JobPostStatus.PUBLISHED;
-      where.expireAt = { gt: new Date() };
     }
     // P0-17 急招过滤（急招 tab）
     if (q.urgent === 1) where.urgent = true;
     // P0-18 筛选：关键词 / 分类 / 结算 / 地点 / 薪资范围 / 可线上
     const kw = q.keyword?.trim();
     if (kw) {
-      where.OR = [
-        { title: { contains: kw, mode: 'insensitive' } },
-        { description: { contains: kw, mode: 'insensitive' } },
-        { customCategory: { contains: kw, mode: 'insensitive' } },
-      ];
+      andFilters.push({
+        OR: [
+          { title: { contains: kw, mode: 'insensitive' } },
+          { description: { contains: kw, mode: 'insensitive' } },
+          { customCategory: { contains: kw, mode: 'insensitive' } },
+        ],
+      });
     }
     if (q.category) where.category = q.category as JobCategory;
     this.applyDiscoveryFilters(where, q);
@@ -388,33 +559,54 @@ export class JobService {
       where.salaryAmount = f;
     }
     // 圈子：按圈子过滤岗位；公开列表缺省 = 用户当前圈子，未加入兜底默认圈（读路径不抛 80014）；mine 列表不强过滤
-    if (q.communityId) {
-      where.communityId = q.communityId;
-      where.community = { is: { status: CommunityStatus.ACTIVE } };
-    } else if (q.mine !== 1) {
-      const communityId = await this.community.resolveFeedCommunityId(uid);
-      where.communityId = communityId;
-      where.community = { is: { status: CommunityStatus.ACTIVE } };
+    if (q.mine === 1) {
+      if (q.communityId) where.communityId = q.communityId;
+    } else {
+      const communityId = q.communityId ?? await this.community.resolveFeedCommunityId(uid);
+      visibleCommunityId = communityId;
+      andFilters.push(...this.jobVisibility.buildFilters(communityId, discoveryNow));
     }
-    if (q.cursor) {
-      const t = new Date(q.cursor);
-      if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
+    if (q.cursor && q.sort !== 'nearest') {
+      const cursor = decodeJobListCursor(q.cursor);
+      if (!cursor) throwJobListCursorExpired();
+      andFilters.push({
+        OR: [
+          { createdAt: { lt: cursor.createdAt } },
+          { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+        ],
+      });
     }
+    if (andFilters.length > 0) where.AND = andFilters;
 
     // "最近"tab：Haversine 距离排序（仅公开列表，非 mine 模式）
-    if (q.sort === 'nearest' && q.mine !== 1 && q.userLng != null && q.userLat != null) {
-      return this.listPostsNearest(uid, q, where, limit);
+    if (
+      q.sort === 'nearest'
+      && q.mine !== 1
+      && q.userLng !== undefined
+      && q.userLat !== undefined
+    ) {
+      if (!visibleCommunityId) {
+        throw new BizException(40003, '最近岗位仅支持公开列表', HttpStatus.BAD_REQUEST);
+      }
+      return this.listPostsNearest(
+        q,
+        where,
+        limit,
+        visibleCommunityId,
+        discoveryNow,
+      );
     }
 
     const posts = await this.prisma.jobPost.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
-    const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1]!.createdAt.toISOString() : null;
+    const cursorPost = slice.at(-1);
+    const nextCursor = hasMore && cursorPost ? encodeJobListCursor(cursorPost) : null;
 
     // M3-06 mine 模式：每岗附带待处理报名数（独立 groupBy，避免 N+1）
     let pendingMap = new Map<string, number>();
@@ -438,49 +630,185 @@ export class JobService {
   }
 
   // "最近"tab：Haversine 距离排序（GCJ-02 用户坐标 → BD-09 转换 → 与岗位 BD-09 坐标算距离）
-  private async listPostsNearest(uid: string, q: JobListQueryDto, baseWhere: Prisma.JobPostWhereInput, limit: number) {
+  private async listPostsNearest(
+    q: JobListQueryDto,
+    baseWhere: Prisma.JobPostWhereInput,
+    limit: number,
+    communityId: string,
+    now: Date,
+  ) {
+    const cursor = q.cursor ? decodeNearestJobListCursor(q.cursor) : null;
+    if (q.cursor && !cursor) throwJobListCursorExpired();
+    const { userLng, userLat } = q;
+    if (userLng === undefined || userLat === undefined) {
+      throw new BizException(40003, '最近岗位需要当前位置', HttpStatus.BAD_REQUEST);
+    }
+
     // 坐标转换
-    const bd = await this.location.convertGcj02ToBd09(q.userLng!, q.userLat!);
+    const bd = await this.location.convertGcj02ToBd09(userLng, userLat);
     // 仅查有坐标的岗位（无坐标不纳入最近排序）
     const where: Prisma.JobPostWhereInput = {
       ...baseWhere,
       locationLng: { not: null },
       locationLat: { not: null },
     };
-    const candidates = await this.prisma.jobPost.findMany({
-      where,
-      take: 100, // 候选池上限，避免全表扫描
-      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
-    });
+    const baseConditions: Prisma.Sql[] = [
+      Prisma.sql`"jp"."status" = 'PUBLISHED'::"JobPostStatus"`,
+      Prisma.sql`"jp"."deleted_at" IS NULL`,
+      Prisma.sql`"jp"."location_lng" IS NOT NULL`,
+      Prisma.sql`"jp"."location_lat" IS NOT NULL`,
+      Prisma.sql`("jp"."expire_at" IS NULL OR "jp"."expire_at" > ${now})`,
+      Prisma.sql`(
+        "jp"."visibility_scope" = CAST(
+          ${JobVisibilityScope.ALL_COMMUNITIES} AS "JobVisibilityScope"
+        )
+        OR (
+          "jp"."community_id" = ${communityId}
+          AND EXISTS (
+            SELECT 1
+            FROM "communities" AS "c"
+            WHERE "c"."id" = "jp"."community_id"
+              AND "c"."status" = CAST(
+                ${CommunityStatus.ACTIVE} AS "CommunityStatus"
+              )
+          )
+        )
+      )`,
+    ];
+    const keyword = q.keyword?.trim();
+    if (keyword) {
+      const pattern = `%${keyword}%`;
+      baseConditions.push(Prisma.sql`(
+        "jp"."title" ILIKE ${pattern}
+        OR "jp"."description" ILIKE ${pattern}
+        OR "jp"."custom_category" ILIKE ${pattern}
+      )`);
+    }
+    if (q.category) {
+      baseConditions.push(
+        Prisma.sql`"jp"."category" = CAST(${q.category} AS "JobCategory")`,
+      );
+    }
+    if (q.settlement) {
+      baseConditions.push(
+        Prisma.sql`"jp"."settlement" = CAST(${q.settlement} AS "Settlement")`,
+      );
+    }
+    if (q.location?.trim()) {
+      baseConditions.push(
+        Prisma.sql`"jp"."location" ILIKE ${`%${q.location.trim()}%`}`,
+      );
+    }
+    if (q.city?.trim()) {
+      const city = this.location.normalizeAdministrativeName(q.city);
+      baseConditions.push(
+        Prisma.sql`"jp"."location_city" ILIKE ${`%${city}%`}`,
+      );
+    }
+    if (q.salaryMin !== undefined) {
+      baseConditions.push(Prisma.sql`"jp"."salary_amount" >= ${q.salaryMin}`);
+    }
+    if (q.salaryMax !== undefined) {
+      baseConditions.push(Prisma.sql`"jp"."salary_amount" <= ${q.salaryMax}`);
+    }
+    if (q.urgent === 1) {
+      baseConditions.push(Prisma.sql`"jp"."urgent" = TRUE`);
+    }
+    if (q.online === 1) {
+      baseConditions.push(Prisma.sql`"jp"."online" = TRUE`);
+    }
 
-    // Haversine 距离（km）
-    const toRad = (d: number) => (d * Math.PI) / 180;
-    const withDistance = candidates.map((p) => {
-      const lng = Number(p.locationLng);
-      const lat = Number(p.locationLat);
-      const dLat = toRad(lat - bd.lat);
-      const dLng = toRad(lng - bd.lng);
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(bd.lat)) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const km = 6371 * c; // 地球半径 6371km
-      return { ...p, _distance: Math.round(km * 10) / 10 };
-    });
-
-    withDistance.sort((a, b) => a._distance - b._distance);
-    const slice = withDistance.slice(0, limit);
-    const nextCursor = slice.length >= limit && withDistance.length > limit
-      ? String(slice[slice.length - 1]!._distance)
+    const distance = Prisma.sql`
+      ROUND((
+        6371 * 2 * ASIN(
+          SQRT(
+            LEAST(
+              1.0,
+              POWER(
+                SIN(RADIANS(("jp"."location_lat"::double precision - ${bd.lat}) / 2)),
+                2
+              )
+              + COS(RADIANS(${bd.lat}))
+                * COS(RADIANS("jp"."location_lat"::double precision))
+                * POWER(
+                  SIN(RADIANS(("jp"."location_lng"::double precision - ${bd.lng}) / 2)),
+                  2
+                )
+            )
+          )
+        )
+      )::numeric, 1)::double precision
+    `;
+    const cursorFilter = cursor
+      ? Prisma.sql`WHERE (
+          "distance" > ${cursor.distance}
+          OR ("distance" = ${cursor.distance} AND "id" > ${cursor.id})
+        )`
+      : Prisma.empty;
+    const minimumRadius = (cursor?.distance ?? 0) + DISTANCE_ROUNDING_MARGIN_KM;
+    const matchingRadiusIndex = NEAREST_SEARCH_RADII_KM.findIndex(
+      (radius) => radius > minimumRadius,
+    );
+    const startIndex = matchingRadiusIndex >= 0
+      ? matchingRadiusIndex
+      : NEAREST_SEARCH_RADII_KM.length - 1;
+    let rankedRows: NearestJobRow[] = [];
+    for (let index = startIndex; index < NEAREST_SEARCH_RADII_KM.length; index += 1) {
+      const radius = NEAREST_SEARCH_RADII_KM[index];
+      if (radius === undefined) break;
+      const conditions = [
+        ...baseConditions,
+        ...buildNearestBoundingConditions(bd.lng, bd.lat, radius),
+      ];
+      rankedRows = await this.prisma.$queryRaw<NearestJobRow[]>(Prisma.sql`
+        WITH "ranked_jobs" AS (
+          SELECT "jp"."id" AS "id", ${distance} AS "distance"
+          FROM "job_posts" AS "jp"
+          WHERE ${Prisma.join(conditions, ' AND ')}
+        )
+        SELECT "id", "distance"
+        FROM "ranked_jobs"
+        ${cursorFilter}
+        ORDER BY "distance" ASC, "id" ASC
+        LIMIT ${limit + 1}
+      `);
+      const boundary = rankedRows[limit];
+      const safelyFilled = boundary !== undefined
+        && Number(boundary.distance) <= radius - DISTANCE_ROUNDING_MARGIN_KM;
+      if (safelyFilled || index === NEAREST_SEARCH_RADII_KM.length - 1) break;
+    }
+    const available = rankedRows.map((row) => ({
+      id: row.id,
+      _distance: Number(row.distance),
+    }));
+    const hasMore = available.length > limit;
+    const slice = available.slice(0, limit);
+    const cursorPost = slice.at(-1);
+    const nextCursor = hasMore && cursorPost
+      ? encodeNearestJobListCursor(cursorPost)
       : null;
+    const pageIds = slice.map((post) => post.id);
+    const posts = pageIds.length > 0
+      ? await this.prisma.jobPost.findMany({
+        where: { ...where, id: { in: pageIds } },
+        include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
+      })
+      : [];
+    const postById = new Map(posts.map((post) => [post.id, post]));
+    const list: Array<JobPostVo & { distance: number }> = [];
+    for (const candidate of slice) {
+      const post = postById.get(candidate.id);
+      if (!post) continue;
+      list.push({
+        ...this.toPostVo(post),
+        distance: candidate._distance,
+      });
+    }
 
     return {
-      list: slice.map((p) => ({
-        ...this.toPostVo(p),
-        distance: p._distance,
-      })),
+      list,
       nextCursor,
-      hasMore: withDistance.length > limit,
+      hasMore,
     };
   }
 
@@ -490,7 +818,26 @@ export class JobService {
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
     if (!post || post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND); // M3-07 软删过滤
-    return this.toPostVo(post, !!actorId && post.merchant.userId === actorId);
+    const isOwner = !!actorId && post.merchant.userId === actorId;
+    const isExternalTutorPost = this.tutorJobPolicy.isExternalTutorPost(post);
+    const isUnavailable = post.status !== JobPostStatus.PUBLISHED
+      || (post.expireAt !== null && post.expireAt <= new Date());
+    if (isExternalTutorPost && isUnavailable && !isOwner) {
+      throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    }
+    if (!isOwner) {
+      const communityId = await this.community.resolveFeedCommunityId(actorId);
+      const visiblePost = await this.prisma.jobPost.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+          AND: this.jobVisibility.buildFilters(communityId),
+        },
+        select: { id: true },
+      });
+      if (!visiblePost) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    }
+    return this.toPostVo(post, isOwner);
   }
 
   // P2-16 记录浏览事件（用于商家看板统计）
@@ -502,9 +849,15 @@ export class JobService {
   }
 
   // P2-15 精品岗位列表（status=PUBLISHED + featured=true，按 featuredAt 倒序）
-  async listFeatured(limit = 20) {
+  async listFeatured(uid: string, limit = 20) {
+    const communityId = await this.community.resolveFeedCommunityId(uid);
     const posts = await this.prisma.jobPost.findMany({
-      where: { status: 'PUBLISHED', featured: true, expireAt: { gt: new Date() }, deletedAt: null }, // M3-07 软删过滤
+      where: {
+        status: 'PUBLISHED',
+        featured: true,
+        deletedAt: null,
+        AND: this.jobVisibility.buildFilters(communityId),
+      }, // M3-07 软删过滤
       orderBy: [{ featuredAt: 'desc' }, { createdAt: 'desc' }],
       take: Math.min(50, Math.max(1, limit)),
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
@@ -603,7 +956,22 @@ export class JobService {
     });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     if (post.status !== JobPostStatus.PUBLISHED) throw new BizException(40003, '岗位已下架');
-    if (post.expireAt.getTime() < Date.now()) throw new BizException(40003, '岗位已过期');
+    if (post.applyMode === JobApplyMode.CONTACT_ONLY) {
+      throw new BizException(40003, '该岗位仅支持联系发布方报名', HttpStatus.BAD_REQUEST);
+    }
+    if (post.expireAt && post.expireAt.getTime() < Date.now()) throw new BizException(40003, '岗位已过期');
+    const communityId = await this.community.getActiveCommunityId(uid);
+    const visiblePost = await this.prisma.jobPost.findFirst({
+      where: {
+        id: postId,
+        deletedAt: null,
+        AND: this.jobVisibility.buildFilters(communityId),
+      },
+      select: { id: true },
+    });
+    if (!visiblePost) {
+      throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    }
 
     // P0-21 报名问题校验：有问题则必答且数量一致
     const questions = post.questions ?? [];
@@ -899,11 +1267,12 @@ export class JobService {
       include: { jobPost: { select: { location: true, merchantId: true } } },
     });
 
-    // 2) 候选池：PUBLISHED 且未过期，筛选后按时间倒序，限 100 条（避免全表扫）
+    // 2) 候选池：仅当前圈或全圈可见、PUBLISHED 且未过期，筛选后按时间倒序，限 100 条
+    const communityId = await this.community.resolveFeedCommunityId(uid);
     const where: Prisma.JobPostWhereInput = {
       status: JobPostStatus.PUBLISHED,
-      expireAt: { gt: new Date() },
       deletedAt: null, // M3-07 软删过滤
+      AND: this.jobVisibility.buildFilters(communityId),
     };
     this.applyDiscoveryFilters(where, q);
     const candidates = await this.prisma.jobPost.findMany({
@@ -998,22 +1367,33 @@ export class JobService {
     online: boolean;
     questions: string[];
     duration: JobDuration;
-    expireAt: Date;
+    expireAt: Date | null;
+    visibilityScope?: JobVisibilityScope;
+    applyMode?: JobApplyMode;
+    publisherName?: string | null;
     status: JobPostStatus;
     takenDownAt?: Date | null;
     deletedAt?: Date | null; // M3-07 软删字段
     createdAt: Date;
     merchant?: { userId?: string; shopName: string; contactPhone?: string; contactWechat?: string | null };
   }, exposeContact = false): JobPostVo {
+    const isExternalTutorPost = this.tutorJobPolicy.isExternalTutorPost(p);
+
     return {
       id: p.id,
       merchantId: p.merchantId,
-      merchantShopName: p.merchant?.shopName ?? '',
+      merchantShopName: p.publisherName ?? p.merchant?.shopName ?? '',
+      publisherName: p.publisherName ?? null,
       title: p.title,
       description: p.description,
       requirements: p.requirements,
-      contactPhone: exposeContact ? (p.contactPhoneSnapshot ?? p.merchant?.contactPhone ?? null) : null,
-      contactWechat: exposeContact ? (p.contactWechatSnapshot ?? p.merchant?.contactWechat ?? null) : null,
+      contactPhone: exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
+        ? (p.contactPhoneSnapshot ?? p.merchant?.contactPhone ?? null)
+        : null,
+      contactWechat: exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
+        ? (p.contactWechatSnapshot ?? p.merchant?.contactWechat ?? null)
+        : null,
+      contactInstruction: this.tutorJobPolicy.contactInstruction(p),
       salary: p.salary,
       salaryAmount: p.salaryAmount,
       location: p.location,
@@ -1033,7 +1413,15 @@ export class JobService {
       online: p.online,
       questions: p.questions,
       duration: p.duration,
-      expireAt: p.expireAt.toISOString(),
+      expireAt: p.expireAt ? p.expireAt.toISOString() : null,
+      validityText: p.expireAt === null
+        ? '长期有效'
+        : p.duration === JobDuration.D90
+          ? '90天'
+          : '30天',
+      visibilityScope: p.visibilityScope ?? JobVisibilityScope.COMMUNITY,
+      applyMode: p.applyMode ?? JobApplyMode.IN_APP,
+      isExternalSource: isExternalTutorPost,
       status: p.status,
       takenDownAt: p.takenDownAt ? p.takenDownAt.toISOString() : null,
       deletedAt: p.deletedAt ? p.deletedAt.toISOString() : null, // M3-07 审计字段
@@ -1049,14 +1437,6 @@ export class JobService {
     if (!input || input.length === 0) return [];
     const set = new Set<string>(allowed);
     return Array.from(new Set(input.filter((v) => set.has(v))));
-  }
-
-  // P0-18 从薪资字符串解析数额（取首个整数；"面议"/无数字返 null。单位差异为已知限制）
-  private parseSalaryAmount(salary: string): number | null {
-    const m = salary.match(/\d+/);
-    if (!m) return null;
-    const n = parseInt(m[0]!, 10);
-    return Number.isFinite(n) ? n : null;
   }
 
   private toAppVo(

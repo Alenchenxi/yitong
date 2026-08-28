@@ -40,7 +40,7 @@
       <view class="meta">
         <text class="meta-item">📍 {{item.location}}</text>
         <text class="meta-item" wx:if="{{item.distance != null}}">📏 距你 {{item.distance}} km</text>
-        <text class="meta-item">⏱ {{item.duration === 'D90' ? '90天' : '30天'}}</text>
+        <text class="meta-item">⏱ {{item.validityText}}</text>
       </view>
     </view>
     <view class="tip" wx:if="{{loading}}">加载中...</view>

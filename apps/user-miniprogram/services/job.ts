@@ -37,11 +37,13 @@ export interface JobPostVo {
   id: string;
   merchantId: string;
   merchantShopName: string;
+  publisherName: string | null;
   title: string;
   description: string;
   requirements: string | null; // P0-19 任职要求
   contactPhone: string | null; // M3-10 发岗时联系方式快照（存量回退商家资料）
   contactWechat: string | null;
+  contactInstruction: string | null;
   salary: string;
   salaryAmount: number | null; // P0-18 薪资数额（auto-parse，范围筛选用）
   location: string;
@@ -55,7 +57,11 @@ export interface JobPostVo {
   online: boolean; // P0-17 是否可线上
   questions: string[]; // P0-21 报名问题
   duration: 'D30' | 'D90';
-  expireAt: string;
+  expireAt: string | null;
+  validityText: string;
+  visibilityScope: 'COMMUNITY' | 'ALL_COMMUNITIES';
+  applyMode: 'IN_APP' | 'CONTACT_ONLY';
+  isExternalSource: boolean;
   status: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
   createdAt: string;
   // M3-06 仅 mine=1 列表返回：当前岗的 PENDING 报名数
@@ -73,6 +79,15 @@ export interface JobListResult {
   list: JobPostVo[];
   nextCursor: string | null;
   hasMore: boolean;
+}
+
+export const JOB_LIST_CURSOR_EXPIRED_CODE = 40007;
+
+export function isJobListCursorExpired(error: unknown): boolean {
+  return typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && error.code === JOB_LIST_CURSOR_EXPIRED_CODE;
 }
 
 export interface JobAppVo {
@@ -265,7 +280,10 @@ export function listJobPosts(filter: JobListFilter = {}) {
   if (filter.communityId) params.push(`communityId=${encodeURIComponent(filter.communityId)}`);
   params.push('limit=20');
   if (filter.cursor) params.push(`cursor=${encodeURIComponent(filter.cursor)}`);
-  return request<JobListResult>({ url: `/job-posts?${params.join('&')}` });
+  return request<JobListResult>({
+    url: `/job-posts?${params.join('&')}`,
+    silentBizCodes: [JOB_LIST_CURSOR_EXPIRED_CODE],
+  });
 }
 
 export interface JobRecommendFilter {

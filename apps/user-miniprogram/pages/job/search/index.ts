@@ -1,6 +1,7 @@
 import type { AppInstance } from '../../../app';
 import {
   listJobPosts,
+  isJobListCursorExpired,
   JOB_CATEGORY_LABELS,
   SETTLEMENT_LABELS,
   type JobCategory,
@@ -46,6 +47,7 @@ Page({
     nextCursor: null as string | null,
     hasMore: true,
     loading: false,
+    cursorResetAttempted: false,
     searched: false,
   },
 
@@ -102,13 +104,20 @@ Page({
   },
 
   async search() {
-    this.setData({ posts: [], nextCursor: null, hasMore: true, searched: true });
+    this.setData({
+      posts: [],
+      nextCursor: null,
+      hasMore: true,
+      searched: true,
+      cursorResetAttempted: false,
+    });
     await this.loadMore();
   },
 
   async loadMore() {
     if (this.data.loading || !this.data.hasMore) return;
     this.setData({ loading: true });
+    let resetExpiredCursor = false;
     try {
       const resp = await listJobPosts(this.buildFilter(this.data.nextCursor ?? undefined));
       this.setData({
@@ -116,11 +125,24 @@ Page({
         nextCursor: resp.nextCursor,
         hasMore: resp.hasMore,
       });
-    } catch {
-      /* toast */
+    } catch (error) {
+      if (
+        this.data.nextCursor
+        && !this.data.cursorResetAttempted
+        && isJobListCursorExpired(error)
+      ) {
+        resetExpiredCursor = true;
+        this.setData({
+          posts: [],
+          nextCursor: null,
+          hasMore: true,
+          cursorResetAttempted: true,
+        });
+      }
     } finally {
       this.setData({ loading: false });
     }
+    if (resetExpiredCursor) await this.loadMore();
   },
 
   onReachBottom() {

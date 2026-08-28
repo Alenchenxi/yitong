@@ -2,6 +2,7 @@
 // 评分/median 全在请求时实时算,落库字段不动(评分不写 DB)。
 
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { JobApplyMode } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BizException } from '../../common/exceptions/biz.exception';
 import {
@@ -52,7 +53,8 @@ export class JobTemplateService {
     const since = new Date(Date.now() - 30 * 86_400_000);
     const whereForMedian = {
       status: 'PUBLISHED' as const,
-      expireAt: { gt: new Date() },
+      applyMode: JobApplyMode.IN_APP,
+      OR: [{ expireAt: null }, { expireAt: { gt: new Date() } }],
       createdAt: { gt: since },
       ...(mapped.length > 0 ? { category: { in: mapped as ('CATERING' | 'RETAIL' | 'PROMOTION' | 'EXHIBITION' | 'TUTORING' | 'CAMPUS_AGENT' | 'ONLINE' | 'SURVEY' | 'INTERNSHIP' | 'LONG_TERM')[] } } : {}),
     };

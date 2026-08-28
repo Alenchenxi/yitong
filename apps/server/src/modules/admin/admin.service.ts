@@ -1,9 +1,17 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { BannerStatus, CommunityStatus, JobPostStatus, MerchantStatus, PostStatus, Prisma, Role } from '@prisma/client';
+import { BannerStatus, CommunityStatus, JobPostStatus, MerchantStatus, ModerationStatus, PostStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfessionService } from '../confession/confession.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import { TutorJobPolicyService } from '../tutor-sync/tutor-job-policy.service';
+import {
+  TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
+  TUTOR_SYNC_HARD_MAX_DEMANDS,
+  TUTOR_SYNC_MAX_DEMANDS_KEY,
+  TUTOR_SYNC_MIN_MAX_DEMANDS,
+  parseTutorSyncMaxDemands,
+} from '../tutor-sync/tutor-sync.settings';
 import type { UpdateBoostPlanPriceDto } from './dto/update-boost-plan-price.dto';
 import type { UpdatePricingDto } from './dto/update-pricing.dto';
 
@@ -15,6 +23,7 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly confession: ConfessionService,
     private readonly notification: NotificationService,
+    private readonly tutorJobPolicy: TutorJobPolicyService,
   ) {}
 
   // 审核队列：待审核商家 + 近期帖子（含已发布，管理员可下架）
@@ -278,18 +287,68 @@ export class AdminService {
       throw new BizException(40004, `举报已处理（${record.status}），不能重复处理`, HttpStatus.CONFLICT);
     }
     const approved = dto.action === 'approve';
-    const updated = await this.prisma.moderationRecord.update({
-      where: { id },
-      data: {
-        status: approved ? 'APPROVED' : 'REJECTED',
-        result: dto.result ?? (approved ? '举报成立' : '举报未通过核实'),
-        reviewerId,
-        resolvedAt: new Date(),
-      },
-    });
-    // 举报成立且要求下架：按目标类型处置
-    if (approved && dto.takedown) {
-      await this.takedownReportTarget(record.targetType, record.targetId, reviewerId, dto.result);
+    const resolvedStatus = approved ? ModerationStatus.APPROVED : ModerationStatus.REJECTED;
+    const resolutionData = {
+      status: resolvedStatus,
+      result: dto.result ?? (approved ? '举报成立' : '举报未通过核实'),
+      reviewerId,
+      resolvedAt: new Date(),
+    };
+    let didTakedown = false;
+    let jobMerchantUserId: string | null = null;
+
+    if (approved && record.targetType === 'job_post' && dto.takedown === true) {
+      const outcome = await this.prisma.$transaction(async (tx) => {
+        const blockedAt = new Date();
+        const shouldTakedown = await this.tutorJobPolicy.takeDownJobPostWithGuard(
+          tx,
+          record.targetId,
+          blockedAt,
+          { requireTutorBinding: false, publishedOnly: true },
+        );
+        const resolution = await tx.moderationRecord.updateMany({
+          where: { id, status: 'PENDING' },
+          data: resolutionData,
+        });
+        if (resolution.count !== 1) {
+          throw new BizException(40004, '举报已被其他管理员处理', HttpStatus.CONFLICT);
+        }
+        if (!shouldTakedown) return { didTakedown: false, merchantUserId: null };
+        const post = await tx.jobPost.findUnique({
+          where: { id: record.targetId },
+          select: { merchant: { select: { userId: true } } },
+        });
+        return { didTakedown: true, merchantUserId: post?.merchant?.userId ?? null };
+      });
+      didTakedown = outcome.didTakedown;
+      jobMerchantUserId = outcome.merchantUserId;
+    } else {
+      const resolution = await this.prisma.moderationRecord.updateMany({
+        where: { id, status: 'PENDING' },
+        data: resolutionData,
+      });
+      if (resolution.count !== 1) {
+        throw new BizException(40004, '举报已被其他管理员处理', HttpStatus.CONFLICT);
+      }
+      if (approved && dto.takedown) {
+        await this.takedownReportTarget(record.targetType, record.targetId, reviewerId, dto.result);
+        didTakedown = true;
+      }
+    }
+
+    if (jobMerchantUserId) {
+      void this.notification
+        .create({
+          userId: jobMerchantUserId,
+          type: NotificationType.POST_TAKEDOWN,
+          title: '兼职 · 岗位下架',
+          content: dto.result ? `你的岗位因举报被平台下架：${dto.result}` : '你的岗位因举报被平台下架',
+          targetType: 'job_post',
+          targetId: record.targetId,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify job takedown failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
     }
     // 通知举报人处理结果
     if (record.reporterId) {
@@ -299,7 +358,7 @@ export class AdminService {
           type: NotificationType.REPORT_RESULT,
           title: approved ? '举报 · 已受理' : '举报 · 未通过',
           content: approved
-            ? `你的举报已核实处理${dto.takedown ? '，相关内容已下架' : ''}${dto.result ? `：${dto.result}` : ''}`
+            ? `你的举报已核实处理${didTakedown ? '，相关内容已下架' : ''}${dto.result ? `：${dto.result}` : ''}`
             : `你的举报经核实不成立${dto.result ? `：${dto.result}` : ''}`,
           targetType: record.targetType,
           targetId: record.targetId,
@@ -308,34 +367,11 @@ export class AdminService {
           this.logger.warn(`notify report result failed: ${e instanceof Error ? e.message : String(e)}`),
         );
     }
-    return { id: updated.id, status: updated.status };
+    return { id, status: resolvedStatus };
   }
 
   private async takedownReportTarget(targetType: string, targetId: string, reviewerId: string, reason?: string) {
-    if (targetType === 'job_post') {
-      await this.prisma.jobPost.updateMany({
-        where: { id: targetId, status: 'PUBLISHED' },
-        data: { status: 'TAKEN_DOWN' },
-      });
-      const post = await this.prisma.jobPost.findUnique({
-        where: { id: targetId },
-        include: { merchant: { select: { userId: true } } },
-      });
-      if (post?.merchant) {
-        void this.notification
-          .create({
-            userId: post.merchant.userId,
-            type: NotificationType.POST_TAKEDOWN,
-            title: '兼职 · 岗位下架',
-            content: reason ? `你的岗位因举报被平台下架：${reason}` : '你的岗位因举报被平台下架',
-            targetType: 'job_post',
-            targetId,
-          })
-          .catch((e: unknown) =>
-            this.logger.warn(`notify job takedown failed: ${e instanceof Error ? e.message : String(e)}`),
-          );
-      }
-    } else if (targetType === 'post') {
+    if (targetType === 'post') {
       await this.takedownPost(targetId, reviewerId, reason);
     } else if (targetType === 'anon-post') {
       await this.takedownAnonPost(targetId, reviewerId, reason);
@@ -418,9 +454,17 @@ export class AdminService {
       include: { merchant: { select: { userId: true } } },
     });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
-    await this.prisma.jobPost.update({ where: { id }, data: { status: JobPostStatus.TAKEN_DOWN } });
-    await this.prisma.moderationRecord.create({
-      data: { targetType: 'job_post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
+    const blockedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await this.tutorJobPolicy.takeDownJobPostWithGuard(
+        tx,
+        id,
+        blockedAt,
+        { requireTutorBinding: false, publishedOnly: false },
+      );
+      await tx.moderationRecord.create({
+        data: { targetType: 'job_post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
+      });
     });
     if (post.merchant) {
       void this.notification
@@ -1205,16 +1249,25 @@ export class AdminService {
   }
 
   // ===== P2-26 全局配置 KV（白名单 AppConfig）=====
-  private static readonly APP_CONFIG_ALLOWLIST = new Set<string>(['community.need_review']);
+  private static readonly APP_CONFIG_KEYS = [
+    'community.need_review',
+    TUTOR_SYNC_MAX_DEMANDS_KEY,
+  ] as const;
 
   async getSettings() {
     const rows = await this.prisma.appConfig.findMany({ orderBy: { key: 'asc' } });
     const rowByKey = new Map(rows.map((r) => [r.key, r]));
-    return [...AdminService.APP_CONFIG_ALLOWLIST].map((key) => {
+    return AdminService.APP_CONFIG_KEYS.map((key) => {
       const row = rowByKey.get(key);
+      const defaultValue = key === TUTOR_SYNC_MAX_DEMANDS_KEY
+        ? TUTOR_SYNC_DEFAULT_MAX_DEMANDS
+        : false;
+      const value = key === TUTOR_SYNC_MAX_DEMANDS_KEY
+        ? (parseTutorSyncMaxDemands(row?.value) ?? defaultValue)
+        : row?.value === true;
       return {
         key,
-        value: row?.value ?? false,
+        value,
         updatedAt: row?.updatedAt.toISOString() ?? '',
         updatedBy: row?.updatedBy ?? null,
       };
@@ -1222,13 +1275,30 @@ export class AdminService {
   }
 
   async updateSetting(key: string, value: unknown, updatedBy: string) {
-    if (!AdminService.APP_CONFIG_ALLOWLIST.has(key)) {
+    if (!(AdminService.APP_CONFIG_KEYS as readonly string[]).includes(key)) {
       throw new BizException(40004, `不支持的配置项: ${key}`, HttpStatus.BAD_REQUEST);
+    }
+    let normalizedValue: boolean | number;
+    if (key === 'community.need_review') {
+      if (typeof value !== 'boolean') {
+        throw new BizException(40003, '建圈审核配置必须为布尔值', HttpStatus.BAD_REQUEST);
+      }
+      normalizedValue = value;
+    } else {
+      const maxDemands = parseTutorSyncMaxDemands(value);
+      if (maxDemands === null) {
+        throw new BizException(
+          40003,
+          `单次快照上限必须为 ${TUTOR_SYNC_MIN_MAX_DEMANDS}-${TUTOR_SYNC_HARD_MAX_DEMANDS} 的整数`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      normalizedValue = maxDemands;
     }
     return this.prisma.appConfig.upsert({
       where: { key },
-      update: { value: value as Prisma.InputJsonValue, updatedBy },
-      create: { key, value: value as Prisma.InputJsonValue, updatedBy },
+      update: { value: normalizedValue, updatedBy },
+      create: { key, value: normalizedValue, updatedBy },
     });
   }
 }

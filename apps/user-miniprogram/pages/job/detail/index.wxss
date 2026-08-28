@@ -1,4 +1,5 @@
-.page { padding: 24rpx; }
+.page { padding: 24rpx; box-sizing: border-box; }
+.has-apply-bar { padding-bottom: calc(152rpx + env(safe-area-inset-bottom)); }
 .title { font-size: 36rpx; font-weight: 600; color: #222; }
 .merchant { display: flex; align-items: center; gap: 12rpx; margin-top: 10rpx; }
 .merchant .shop { font-size: 26rpx; color: #888; }
@@ -10,6 +11,11 @@
 .loc { color: #666; font-size: 26rpx; }
 .section { margin: 24rpx 0; }
 .section-body { font-size: 30rpx; line-height: 1.6; color: #333; white-space: pre-wrap; }
+.contact-section { padding-top: 4rpx; }
+.contact-row { display: flex; gap: 24rpx; padding: 8rpx 0; font-size: 28rpx; }
+.contact-label { width: 72rpx; color: #86909C; }
+.contact-value { color: #1D2129; }
+.contact-instruction { margin-top: 10rpx; color: #F53F3F; font-size: 26rpx; line-height: 1.5; }
 
 .actions { display: flex; justify-content: space-around; align-items: center; margin: 24rpx 0; padding: 16rpx 0; border-top: 1rpx solid #f0f0f0; border-bottom: 1rpx solid #f0f0f0; }
 .act { font-size: 26rpx; color: #666; padding: 8rpx 24rpx; }
@@ -31,6 +37,17 @@
 .info-row { display: flex; justify-content: space-between; font-size: 26rpx; padding: 8rpx 0; }
 .info-k { color: #999; }
 .info-v { color: #333; }
+.apply-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+}
 .apply-btn {
   background: linear-gradient(135deg, #ff6b8a, #ff4d6d) !important;
   color: #fff !important;
@@ -39,6 +56,8 @@
   margin: 16rpx 0 32rpx;
 }
 .apply-btn[disabled] { background: #ffb3c1 !important; }
+.apply-bar .apply-btn { width: 100%; margin: 0; }
+.apply-bar .apply-btn[disabled] { background: #F2F3F5 !important; color: #C9CDD4 !important; }
 .subscribe-btn {
   margin: 0 0 16rpx;
   border-radius: 32rpx !important;

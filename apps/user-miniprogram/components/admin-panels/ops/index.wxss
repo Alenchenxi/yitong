@@ -12,3 +12,7 @@
 
 .adm-search-row { display: flex; gap: 12rpx; align-items: center; margin-bottom: 16rpx; }
 .adm-search-row .adm-input { flex: 1; }
+
+.adm-sync-field { display: flex; align-items: center; gap: 20rpx; }
+.adm-sync-field .adm-item-main { min-width: 0; flex: 1; }
+.adm-sync-limit { width: 152rpx; flex: 0 0 152rpx; text-align: center; margin-bottom: 0; }

@@ -5,6 +5,7 @@ import { HttpStatus } from '@nestjs/common';
 import { CommunityMemberRole, CommunityStatus } from '@prisma/client';
 import { BizException } from '../../src/common/exceptions/biz.exception';
 import { CommunityService } from '../../src/modules/community/community.service';
+import { JobVisibilityPolicyService } from '../../src/modules/job-visibility/job-visibility.service';
 
 type TransactionMock = {
   communityMember: { createMany: jest.Mock };
@@ -24,7 +25,11 @@ function buildService(status: CommunityStatus | null, insertedCount: number) {
   const prisma = {
     $transaction: jest.fn(async (callback: (client: TransactionMock) => Promise<unknown>) => callback(tx)),
   };
-  const service = new CommunityService(prisma as never, {} as never);
+  const service = new CommunityService(
+    prisma as never,
+    {} as never,
+    new JobVisibilityPolicyService(),
+  );
   return { service, prisma, tx };
 }
 
@@ -139,7 +144,14 @@ describe('CommunityService 圈子广场动态数', () => {
       anonymousPost: { count: jest.fn().mockResolvedValue(3) },
       jobPost: { count: jest.fn().mockResolvedValue(4) },
     };
-    return { service: new CommunityService(prisma as never, {} as never), prisma };
+    return {
+      service: new CommunityService(
+        prisma as never,
+        {} as never,
+        new JobVisibilityPolicyService(),
+      ),
+      prisma,
+    };
   }
 
   it('当前圈子应实时返回表白墙、树洞、有效兼职的混合动态总数', async () => {
@@ -159,10 +171,25 @@ describe('CommunityService 圈子广场动态数', () => {
     });
     expect(prisma.jobPost.count).toHaveBeenCalledWith({
       where: {
-        communityId: community.id,
         status: 'PUBLISHED',
         deletedAt: null,
-        expireAt: { gt: expect.any(Date) },
+        AND: [
+          {
+            OR: [
+              { visibilityScope: 'ALL_COMMUNITIES' },
+              {
+                communityId: community.id,
+                community: { is: { status: 'ACTIVE' } },
+              },
+            ],
+          },
+          {
+            OR: [
+              { expireAt: null },
+              { expireAt: { gt: expect.any(Date) } },
+            ],
+          },
+        ],
       },
     });
   });
@@ -200,7 +227,11 @@ describe('CommunityService 圈子图片内容安全', () => {
         url.includes('background') ? Promise.reject(violation) : Promise.resolve(),
       ),
     };
-    const service = new CommunityService(prisma as never, moderation as never);
+    const service = new CommunityService(
+      prisma as never,
+      moderation as never,
+      new JobVisibilityPolicyService(),
+    );
 
     await expect(service.create('user_a', dto, 'openid_a')).rejects.toBe(violation);
     expect(moderation.checkImage).toHaveBeenCalledTimes(2);
@@ -228,7 +259,11 @@ describe('CommunityService 圈子图片内容安全', () => {
         url.includes('background') ? Promise.reject(violation) : Promise.resolve(),
       ),
     };
-    const service = new CommunityService(prisma as never, moderation as never);
+    const service = new CommunityService(
+      prisma as never,
+      moderation as never,
+      new JobVisibilityPolicyService(),
+    );
 
     await expect(service.resubmit('community_a', 'user_a')).rejects.toBe(violation);
     expect(moderation.checkImage).toHaveBeenCalledTimes(2);

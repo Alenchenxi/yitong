@@ -510,7 +510,7 @@ export class MerchantService {
       user: app.user,
       jobPost: {
         ...app.jobPost,
-        expireAt: app.jobPost.expireAt.toISOString(),
+        expireAt: app.jobPost.expireAt?.toISOString() ?? null,
       },
       resume: resumeVo,
       answers,

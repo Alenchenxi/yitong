@@ -8,6 +8,8 @@ import { CreateInterviewInvitationDto } from '../../src/modules/job-communicatio
 import { JobCommunicationService } from '../../src/modules/job-communication/job-communication.service';
 import { parseTencentMeetingShare } from '../../src/modules/job-communication/tencent-meeting.parser';
 import { JobService } from '../../src/modules/job/job.service';
+import { JobVisibilityPolicyService } from '../../src/modules/job-visibility/job-visibility.service';
+import { TutorJobPolicyService } from '../../src/modules/tutor-sync/tutor-job-policy.service';
 import { MerchantService } from '../../src/modules/merchant/merchant.service';
 import { PaymentService } from '../../src/modules/payment/payment.service';
 
@@ -394,10 +396,27 @@ describe('JobService 联系方式可见性', () => {
 
   function buildJobService() {
     const prisma = {
-      jobPost: { findUnique: jest.fn().mockResolvedValue(post) },
+      jobPost: {
+        findUnique: jest.fn().mockResolvedValue(post),
+        findFirst: jest.fn().mockResolvedValue({ id: post.id }),
+      },
     };
     return {
-      service: new JobService(prisma as never, {} as never, {} as never, {} as never, {} as never),
+      service: new JobService(
+        prisma as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {
+          resolveFeedCommunityId: jest.fn().mockResolvedValue('community_a'),
+          buildVisibleJobPostFilters: jest.fn().mockReturnValue([
+            { OR: [{ visibilityScope: 'ALL_COMMUNITIES' }, { communityId: 'community_a' }] },
+            { OR: [{ expireAt: null }, { expireAt: { gt: new Date() } }] },
+          ]),
+        } as never,
+        new JobVisibilityPolicyService(),
+        new TutorJobPolicyService(),
+      ),
       prisma,
     };
   }

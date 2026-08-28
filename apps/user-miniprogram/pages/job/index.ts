@@ -1,6 +1,7 @@
 import type { AppInstance } from '../../app';
 import {
   listJobPosts,
+  isJobListCursorExpired,
   recommendJobs,
   recordJobImpressions,
   SETTLEMENT_LABELS,
@@ -19,6 +20,7 @@ Page({
     nextCursor: null as string | null,
     hasMore: true,
     loading: false,
+    cursorResetAttempted: false,
     isMerchant: false,
     userLng: 0,
     userLat: 0,
@@ -74,7 +76,12 @@ Page({
   },
 
   async reload() {
-    this.setData({ posts: [], nextCursor: null, hasMore: true });
+    this.setData({
+      posts: [],
+      nextCursor: null,
+      hasMore: true,
+      cursorResetAttempted: false,
+    });
     if (this.data.tab === 'recommend') {
       await this.loadRecommend();
     } else {
@@ -104,6 +111,7 @@ Page({
   async loadMore() {
     if (this.data.loading || !this.data.hasMore) return;
     this.setData({ loading: true });
+    let resetExpiredCursor = false;
     try {
       const isUrgent = this.data.tab === 'urgent';
       const isNearest = this.data.tab === 'nearest';
@@ -123,12 +131,25 @@ Page({
         hasMore: resp.hasMore,
       });
       this.reportImpressions(resp.list);
-    } catch {
-      /* request 层统一提示 */
+    } catch (error) {
+      if (
+        this.data.nextCursor
+        && !this.data.cursorResetAttempted
+        && isJobListCursorExpired(error)
+      ) {
+        resetExpiredCursor = true;
+        this.setData({
+          posts: [],
+          nextCursor: null,
+          hasMore: true,
+          cursorResetAttempted: true,
+        });
+      }
     } finally {
       this.setData({ loading: false });
       wx.stopPullDownRefresh();
     }
+    if (resetExpiredCursor) await this.loadMore();
   },
 
   openFilter() {

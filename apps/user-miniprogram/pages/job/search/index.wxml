@@ -44,7 +44,7 @@
       <view class="shop">{{item.merchantShopName}}</view>
       <view class="meta">
         <text class="meta-item">📍 {{item.location}}</text>
-        <text class="meta-item">⏱ {{item.duration === 'D90' ? '90天' : '30天'}}</text>
+        <text class="meta-item">⏱ {{item.validityText}}</text>
       </view>
     </view>
     <view class="tip" wx:if="{{loading}}">加载中...</view>

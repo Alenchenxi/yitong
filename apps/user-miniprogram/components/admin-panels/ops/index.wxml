@@ -250,15 +250,25 @@
   <!-- P2-26 全局设置（功能开关）-->
   <block wx:if="{{sub === 'settings'}}">
     <view class="adm-section-title">功能开关</view>
-    <view class="adm-item" wx:for="{{appConfigs}}" wx:key="key">
+    <view class="adm-item">
       <view class="adm-item-main">
-        <text class="adm-item-title">{{item.key === 'community.need_review' ? '建圈审核' : item.key}}</text>
-        <text class="adm-item-sub">{{item.key === 'community.need_review' ? '开启后，用户创建的圈子需审核通过才可使用' : ''}}</text>
+        <text class="adm-item-title">建圈审核</text>
+        <text class="adm-item-sub">开启后，用户创建的圈子需审核通过才可使用</text>
       </view>
       <view class="adm-item-actions">
-        <switch wx:if="{{item.key === 'community.need_review'}}" checked="{{item.value === true}}" color="#F9C801" disabled="{{togglingNeedReview}}" bindchange="toggleNeedReview" />
+        <switch checked="{{needReviewEnabled}}" color="#F9C801" disabled="{{togglingNeedReview}}" bindchange="toggleNeedReview" />
       </view>
     </view>
-    <view class="adm-empty" wx:if="{{appConfigs.length === 0}}">暂无配置</view>
+    <view class="adm-section-title">系统同步配置</view>
+    <view class="adm-form">
+      <view class="adm-sync-field">
+        <view class="adm-item-main">
+          <text class="adm-item-title">家教同步</text>
+          <text class="adm-item-sub">每 5 分钟同步一次 · 单次快照 1-200 条 · 默认 100 条</text>
+        </view>
+        <input class="adm-input adm-sync-limit" type="number" maxlength="3" value="{{tutorSyncMaxDemands}}" bindinput="onTutorSyncMaxInput" />
+      </view>
+      <button class="yt-btn-primary" loading="{{savingTutorSync}}" disabled="{{savingTutorSync}}" bindtap="saveTutorSyncSettings">保存同步配置</button>
+    </view>
   </block>
 </view>

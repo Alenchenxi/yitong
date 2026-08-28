@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { JobModule } from '../job/job.module';
+import { JobVisibilityModule } from '../job-visibility/job-visibility.module';
 import { SquareController } from './square.controller';
 import { SquareService } from './square.service';
 
@@ -13,6 +14,7 @@ import { SquareService } from './square.service';
 @Module({
   imports: [
     JobModule,
+    JobVisibilityModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {

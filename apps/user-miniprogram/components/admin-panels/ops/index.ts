@@ -39,7 +39,6 @@ import {
   type BoostPlanVo,
   type AdminBannerVo,
   type AdminCommunityVo,
-  type AppConfigVo,
 } from '../../../services/admin';
 import { uploadImage } from '../../../services/upload';
 import {
@@ -116,9 +115,11 @@ Component({
     cmKeyword: '',
     cmStatus: '' as '' | 'PENDING' | 'ACTIVE' | 'DISABLED', // P2-26 圈子状态筛选
     cmPendingCount: 0,
-    // P2-26 全局设置
-    appConfigs: [] as AppConfigVo[],
+    // 全局设置
+    needReviewEnabled: false,
     togglingNeedReview: false,
+    tutorSyncMaxDemands: '100',
+    savingTutorSync: false,
     loading: false,
   },
 
@@ -177,13 +178,14 @@ Component({
           const pendingCount = (await listCommunitiesAdmin('PENDING')).length;
           this.setData({ communities: list, cmPendingCount: pendingCount });
         } else if (sub === 'settings') {
-          // P2-26 全局配置
           const cfgList = await getAppSettings();
-          const hasNeedReview = cfgList.some((item) => item.key === 'community.need_review');
+          const needReview = cfgList.find((item) => item.key === 'community.need_review');
+          const maxDemands = cfgList.find((item) => item.key === 'tutor_sync.max_demands');
           this.setData({
-            appConfigs: hasNeedReview
-              ? cfgList
-              : [{ key: 'community.need_review', value: false, updatedAt: '', updatedBy: null }, ...cfgList],
+            needReviewEnabled: needReview?.value === true,
+            tutorSyncMaxDemands: typeof maxDemands?.value === 'number'
+              ? String(maxDemands.value)
+              : '100',
           });
         }
       } catch {
@@ -548,6 +550,27 @@ Component({
         /* toast */
       } finally {
         this.setData({ togglingNeedReview: false });
+      }
+    },
+    onTutorSyncMaxInput(e: WechatMiniprogram.Input) {
+      this.setData({ tutorSyncMaxDemands: e.detail.value });
+    },
+    async saveTutorSyncSettings() {
+      if (this.data.savingTutorSync) return;
+      const maxDemands = Number(this.data.tutorSyncMaxDemands);
+      if (!Number.isInteger(maxDemands) || maxDemands < 1 || maxDemands > 200) {
+        wx.showToast({ title: '请输入 1-200 的整数', icon: 'none' });
+        return;
+      }
+      this.setData({ savingTutorSync: true });
+      try {
+        await updateAppSetting('tutor_sync.max_demands', maxDemands);
+        wx.showToast({ title: '同步配置已保存', icon: 'success' });
+        this.setData({ tutorSyncMaxDemands: String(maxDemands) });
+      } catch {
+        /* toast */
+      } finally {
+        this.setData({ savingTutorSync: false });
       }
     },
   },

@@ -1,5 +1,9 @@
 import type { AppInstance } from '../../../app';
-import { ensureJobConversation, listJobPosts } from '../../../services/job';
+import {
+  ensureJobConversation,
+  isJobListCursorExpired,
+  listJobPosts,
+} from '../../../services/job';
 import {
   batchMarkCandidates,
   listMerchantCandidates,
@@ -123,14 +127,30 @@ Component({
         const names: string[] = ['全部岗位'];
         const ids: string[] = [''];
         let cursor: string | undefined;
-        for (let i = 0; i < 5; i += 1) {
-          const res = await listJobPosts(cursor ? { mine: true, cursor } : { mine: true });
+        let cursorResetAttempted = false;
+        let page = 0;
+        while (page < 5) {
+          let res: Awaited<ReturnType<typeof listJobPosts>>;
+          try {
+            res = await listJobPosts(cursor ? { mine: true, cursor } : { mine: true });
+          } catch (error) {
+            if (cursor && !cursorResetAttempted && isJobListCursorExpired(error)) {
+              cursorResetAttempted = true;
+              cursor = undefined;
+              page = 0;
+              names.splice(1);
+              ids.splice(1);
+              continue;
+            }
+            throw error;
+          }
           res.list.forEach((p) => {
             names.push(p.title);
             ids.push(p.id);
           });
           if (!res.hasMore || !res.nextCursor) break;
           cursor = res.nextCursor;
+          page += 1;
         }
         // M3-06: 如果来自 jobs panel 带 incomingJobPostId，定位到对应 picker index
         const target = this.data.incomingJobPostId;

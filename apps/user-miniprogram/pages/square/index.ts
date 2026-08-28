@@ -7,7 +7,7 @@ import {
   hasAnonToken,
   getAnonymousToken,
 } from '../../services/treehole';
-import { listJobPosts } from '../../services/job';
+import { isJobListCursorExpired, listJobPosts } from '../../services/job';
 import {
   acceptCommunityInvite,
   getActiveCommunity,
@@ -36,6 +36,7 @@ interface PageData {
   nextCursor: string | null;
   hasMore: boolean;
   loading: boolean;
+  cursorResetAttempted: boolean;
   activeTab: PlazaTab;
   announcements: AnnouncementVo[];
   anonTokenReady: boolean; // 匿名帖 disabled 判断
@@ -54,6 +55,7 @@ Page({
     nextCursor: null,
     hasMore: true,
     loading: false,
+    cursorResetAttempted: false,
     activeTab: 'dynamic' as PlazaTab,
     announcements: [],
     anonTokenReady: false,
@@ -211,7 +213,12 @@ Page({
   },
 
   async reloadFeed() {
-    this.setData({ items: [], nextCursor: null, hasMore: true });
+    this.setData({
+      items: [],
+      nextCursor: null,
+      hasMore: true,
+      cursorResetAttempted: false,
+    });
     await this.loadMore();
   },
 
@@ -219,6 +226,7 @@ Page({
     if (this.data.loading || !this.data.hasMore) return;
     const communityId = this.data.community?.id;
     this.setData({ loading: true });
+    let resetExpiredJobCursor = false;
     try {
       const tab = this.data.activeTab;
       let resp: { list: FeedItemVo[]; nextCursor: string | null; hasMore: boolean };
@@ -251,12 +259,26 @@ Page({
         nextCursor: resp.nextCursor,
         hasMore: resp.hasMore,
       });
-    } catch {
-      // toast 已在 request 内
+    } catch (error) {
+      if (
+        this.data.activeTab === 'job'
+        && this.data.nextCursor
+        && !this.data.cursorResetAttempted
+        && isJobListCursorExpired(error)
+      ) {
+        resetExpiredJobCursor = true;
+        this.setData({
+          items: [],
+          nextCursor: null,
+          hasMore: true,
+          cursorResetAttempted: true,
+        });
+      }
     } finally {
       this.setData({ loading: false });
       wx.stopPullDownRefresh();
     }
+    if (resetExpiredJobCursor) await this.loadMore();
   },
 
   onPullDownRefresh() {

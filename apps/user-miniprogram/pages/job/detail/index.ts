@@ -107,6 +107,7 @@ Page({
   },
 
   async apply() {
+    if (this.data.post?.applyMode === 'CONTACT_ONLY') return;
     // P0-21 报名走报名页（带简历 + 报名问题）
     wx.navigateTo({ url: `/pages/job/apply/index?id=${this.postId}` });
   },
