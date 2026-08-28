@@ -22,8 +22,41 @@ interface Msg {
   mine: boolean;
   type: 'text' | 'image' | 'voice';
   duration?: number; // P1-18 语音时长（秒）
+  voiceWidth?: number; // P2-36 语音气泡宽度（vw，18-50）
+  displayTime: string; // P2-36 服务端消息时间
   id?: string; // 服务端消息 id（撤回匹配用，含 HTTP 返回值；远端 WS 推送的消息会带 id）
   deleted?: boolean; // 撤回标记
+}
+
+const MAX_VOICE_SECONDS = 60;
+
+function formatMessageTime(value?: string | number) {
+  if (value === undefined || value === '') return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const now = new Date();
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const time = `${hour}:${minute}`;
+  if (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  ) {
+    return time;
+  }
+  const monthDay = `${date.getMonth() + 1}月${date.getDate()}日`;
+  return `${monthDay} ${time}`;
+}
+
+function normalizeVoiceDuration(duration?: number) {
+  const rounded = Math.round(duration ?? 1);
+  return Math.min(MAX_VOICE_SECONDS, Math.max(1, rounded));
+}
+
+function getVoiceWidth(duration?: number) {
+  const seconds = normalizeVoiceDuration(duration);
+  return Math.round((18 + ((seconds - 1) / (MAX_VOICE_SECONDS - 1)) * 32) * 10) / 10;
 }
 
 Page({
@@ -52,7 +85,11 @@ Page({
 
   countdownTimer: null as ReturnType<typeof setInterval> | null,
   recorder: null as WechatMiniprogram.RecorderManager | null,
-  recordCancel: false,
+  recordingId: 0,
+  activeRecordingId: null as number | null,
+  recordStopRequested: false,
+  recordShouldCancel: false,
+  recordResultConsumed: false,
   audioCtx: null as WechatMiniprogram.InnerAudioContext | null,
 
   async onLoad(options: { matchId?: string; peerAnonId?: string }) {
@@ -178,6 +215,11 @@ Page({
               mine: false,
               type: m.msgType === 'image' ? 'image' : m.msgType === 'voice' ? 'voice' : 'text',
               duration: m.msgType === 'voice' ? m.duration : undefined,
+              voiceWidth: m.msgType === 'voice' ? getVoiceWidth(m.duration) : undefined,
+              displayTime:
+                typeof m.ts === 'number' && Number.isFinite(m.ts)
+                  ? formatMessageTime(m.ts)
+                  : '',
               id: typeof m.id === 'string' ? m.id : undefined,
             },
           ],
@@ -229,8 +271,9 @@ Page({
   onUnload() {
     this.clearCountdown();
     // P1-18 停止录音/播放，释放资源
-    if (this.data.recording) {
-      this.recordCancel = true;
+    if (this.activeRecordingId !== null) {
+      this.recordShouldCancel = true;
+      this.recordStopRequested = true;
       this.recorder?.stop();
     }
     if (this.audioCtx) {
@@ -280,6 +323,8 @@ Page({
         mine: m.fromId === me,
         type: m.type === 'image' ? 'image' : m.type === 'voice' ? 'voice' : 'text',
         duration: m.type === 'voice' ? (m.duration ?? undefined) : undefined,
+        voiceWidth: m.type === 'voice' ? getVoiceWidth(m.duration ?? undefined) : undefined,
+        displayTime: formatMessageTime(m.createdAt),
         deleted: m.deleted,
       }));
       this.setData({ messages: [...history, ...this.data.messages] });
@@ -302,7 +347,14 @@ Page({
       this.setData({
         messages: [
           ...this.data.messages,
-          { fromId: getAnonId(), content: c, mine: true, type: 'text', id: m.id },
+          {
+            fromId: getAnonId(),
+            content: c,
+            mine: true,
+            type: 'text',
+            id: m.id,
+            displayTime: formatMessageTime(m.createdAt),
+          },
         ],
         input: '',
       });
@@ -331,7 +383,17 @@ Page({
           const url = await uploadImage(f.tempFilePath, 'anon');
           const m = await sendAnonMessage(peerAnonId, url, 'image');
           this.setData({
-            messages: [...this.data.messages, { fromId: getAnonId(), content: url, mine: true, type: 'image', id: m.id }],
+            messages: [
+              ...this.data.messages,
+              {
+                fromId: getAnonId(),
+                content: url,
+                mine: true,
+                type: 'image',
+                id: m.id,
+                displayTime: formatMessageTime(m.createdAt),
+              },
+            ],
           });
         } catch {
           wx.showToast({ title: '发送失败', icon: 'none' });
@@ -350,24 +412,32 @@ Page({
 
   // ===== P1-18 语音消息 =====
 
-  // 初始化录音管理器（单例；onStop 在 touchend stop 后回调）
+  // 初始化录音管理器（单例；手动松开或满 60 秒都统一由 onStop 消费一次）
   initRecorder() {
     if (this.recorder) return;
     const recorder = wx.getRecorderManager();
     recorder.onStop((res) => {
+      if (this.activeRecordingId === null || this.recordResultConsumed) return;
+      this.recordResultConsumed = true;
+      const shouldCancel = this.recordShouldCancel;
+      this.activeRecordingId = null;
+      this.recordStopRequested = false;
+      this.recordShouldCancel = false;
       this.setData({ recording: false });
-      if (this.recordCancel) {
-        this.recordCancel = false;
-        return;
-      }
-      const secs = Math.round(res.duration / 1000);
-      if (!res.tempFilePath || secs < 1) {
+      if (shouldCancel) return;
+      const rawSeconds = Math.round(res.duration / 1000);
+      if (!res.tempFilePath || rawSeconds < 1) {
         wx.showToast({ title: '说话时间太短', icon: 'none' });
         return;
       }
+      const secs = normalizeVoiceDuration(rawSeconds);
       void this.sendVoice(res.tempFilePath, secs);
     });
     recorder.onError(() => {
+      this.activeRecordingId = null;
+      this.recordStopRequested = false;
+      this.recordShouldCancel = false;
+      this.recordResultConsumed = true;
       this.setData({ recording: false });
       wx.showToast({ title: '录音失败，请检查麦克风权限', icon: 'none' });
     });
@@ -381,42 +451,76 @@ Page({
 
   // 按住开始录音（最长 60s，mp3）
   startRecord() {
-    if (this.data.expired || this.data.sending) return;
-    this.recordCancel = false;
-    this.recorder?.start({
-      duration: 60000,
+    if (
+      this.data.expired ||
+      this.data.sending ||
+      this.data.recording ||
+      this.activeRecordingId !== null
+    ) {
+      return;
+    }
+    if (!this.recorder) this.initRecorder();
+    const recorder = this.recorder;
+    if (!recorder) {
+      wx.showToast({ title: '录音初始化失败', icon: 'none' });
+      return;
+    }
+    this.recordingId += 1;
+    this.activeRecordingId = this.recordingId;
+    this.recordStopRequested = false;
+    this.recordShouldCancel = false;
+    this.recordResultConsumed = false;
+    this.setData({ recording: true });
+    recorder.start({
+      duration: MAX_VOICE_SECONDS * 1000,
       format: 'mp3',
       sampleRate: 16000,
       numberOfChannels: 1,
       encodeBitRate: 48000,
     });
-    this.setData({ recording: true });
   },
 
   // 松开发送
   stopRecord() {
-    if (!this.data.recording) return;
+    if (this.activeRecordingId === null || this.recordStopRequested) return;
+    this.recordStopRequested = true;
     this.recorder?.stop();
   },
 
   // 上滑取消（松手在按钮外）
   cancelRecord() {
-    if (!this.data.recording) return;
-    this.recordCancel = true;
-    this.recorder?.stop();
+    if (this.activeRecordingId === null) return;
+    this.recordShouldCancel = true;
+    if (!this.recordStopRequested) {
+      this.recordStopRequested = true;
+      this.recorder?.stop();
+    }
   },
 
   // 上传语音 -> 存消息 -> WS 转发
   async sendVoice(tempFilePath: string, secs: number) {
     const peerAnonId = this.data.peerAnonId;
     if (!peerAnonId || this.data.sending) return;
+    const duration = normalizeVoiceDuration(secs);
     this.setData({ sending: true });
     wx.showLoading({ title: '发送中...', mask: true });
     try {
       const url = await uploadVoice(tempFilePath);
-      const m = await sendAnonMessage(peerAnonId, url, 'voice', secs);
+      const m = await sendAnonMessage(peerAnonId, url, 'voice', duration);
       this.setData({
-        messages: [...this.data.messages, { fromId: getAnonId(), content: url, mine: true, type: 'voice', duration: secs, id: m.id }],
+        messages: [
+          ...this.data.messages,
+          {
+            fromId: getAnonId(),
+            content: url,
+            mine: true,
+            type: 'voice',
+            duration,
+            voiceWidth: getVoiceWidth(duration),
+            id: m.id,
+            displayTime: formatMessageTime(m.createdAt),
+          },
+        ],
       });
     } catch {
       wx.showToast({ title: '发送失败', icon: 'none' });

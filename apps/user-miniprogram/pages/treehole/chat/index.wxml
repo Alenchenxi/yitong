@@ -39,29 +39,36 @@
       <view class="block-btn" bindtap="blockPeer">屏蔽</view>
     </view>
     <view class="msgs">
-      <view class="msg {{item.mine ? 'mine' : 'peer'}} {{item.deleted ? 'deleted' : ''}}" wx:for="{{messages}}" wx:key="index" bindlongpress="onMsgLongPress" data-idx="{{index}}">
-        <image
-          wx:if="{{item.type === 'image' && !item.deleted}}"
-          class="msg-img"
-          src="{{item.content}}"
-          mode="widthFix"
-          data-url="{{item.content}}"
-          bindtap="previewImage"
-        ></image>
-        <!-- P1-18 语音气泡：按时长撑宽，点击播放 -->
+      <view class="message-row {{item.mine ? 'mine' : 'peer'}}" wx:for="{{messages}}" wx:key="index">
         <view
-          wx:elif="{{item.type === 'voice' && !item.deleted}}"
-          class="msg-voice {{item.mine ? 'mine' : 'peer'}} {{playingIdx === index ? 'playing' : ''}}"
-          style="width: {{120 + (item.duration || 1) * 6 > 380 ? 380 : 120 + (item.duration || 1) * 6}}rpx"
-          data-url="{{item.content}}"
+          class="message-bubble {{item.type === 'voice' && !item.deleted ? 'voice-bubble' : ''}} {{item.deleted ? 'deleted' : ''}}"
+          style="{{item.type === 'voice' && !item.deleted ? 'width:' + item.voiceWidth + 'vw;' : ''}}"
+          bindlongpress="onMsgLongPress"
           data-idx="{{index}}"
-          bindtap="playVoice"
         >
-          <text class="voice-icon">{{item.mine ? '◀' : '▶'}}</text>
-          <text class="voice-len">{{item.duration || 1}}″</text>
+          <image
+            wx:if="{{item.type === 'image' && !item.deleted}}"
+            class="msg-img"
+            src="{{item.content}}"
+            mode="widthFix"
+            data-url="{{item.content}}"
+            bindtap="previewImage"
+          ></image>
+          <!-- P2-36 语音气泡：1-60 秒按时长增长，最大不超过页面一半 -->
+          <view
+            wx:elif="{{item.type === 'voice' && !item.deleted}}"
+            class="msg-voice {{playingIdx === index ? 'playing' : ''}}"
+            data-url="{{item.content}}"
+            data-idx="{{index}}"
+            bindtap="playVoice"
+          >
+            <text class="voice-icon">{{item.mine ? '◀' : '▶'}}</text>
+            <text class="voice-len">{{item.duration || 1}}″</text>
+          </view>
+          <text class="msg-text" wx:elif="{{item.deleted}}">[已撤回]</text>
+          <text class="msg-text" wx:else>{{item.content}}</text>
         </view>
-        <text wx:elif="{{item.deleted}}">[已撤回]</text>
-        <text wx:else>{{item.content}}</text>
+        <text class="message-time" wx:if="{{item.displayTime}}">{{item.displayTime}}</text>
       </view>
       <view class="empty-tip" wx:if="{{messages.length === 0}}">对方已连接，打个招呼吧</view>
     </view>

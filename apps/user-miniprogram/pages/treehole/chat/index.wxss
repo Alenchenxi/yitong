@@ -21,12 +21,38 @@
 .match-btn { background: #F9C801 !important; color: #1D2129 !important; border-radius: 48rpx !important; font-size: 30rpx !important; font-weight: 600; }
 .match-btn[disabled] { background: #FFF7D1 !important; color: #C9CDD4 !important; }
 .msgs { flex: 1; padding: 24rpx; overflow-y: auto; }
-.msg { max-width: 70%; padding: 16rpx 24rpx; border-radius: 20rpx; margin-bottom: 16rpx; font-size: 28rpx; line-height: 1.5; word-break: break-word; }
-.msg.mine { background: #F9C801; color: #1D2129; margin-left: auto; }
-.msg.peer { background: #fff; color: #333; }
-.msg-img { width: 320rpx; border-radius: 12rpx; display: block; }
-/* P1-18 语音消息 */
-.msg-voice { display: flex; align-items: center; justify-content: space-between; min-width: 120rpx; }
+.message-row { display: flex; flex-direction: column; align-items: flex-start; width: 100%; margin-bottom: 20rpx; }
+.message-row.mine { align-items: flex-end; }
+.message-bubble {
+  box-sizing: border-box;
+  display: inline-flex;
+  max-width: 50vw;
+  padding: 16rpx 22rpx;
+  background: #FFFEFA;
+  border: 2rpx solid #C9CDD4;
+  border-radius: 26rpx 26rpx 26rpx 6rpx;
+  color: #333;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+.message-row.mine .message-bubble {
+  background: #FFFEFA;
+  border-color: #F59E0B;
+  border-radius: 26rpx 26rpx 6rpx 26rpx;
+  color: #1D2129;
+}
+.message-bubble.voice-bubble { min-width: 18vw; }
+.msg-text {
+  min-width: 0;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.message-time { margin-top: 8rpx; padding: 0 6rpx; color: #86909C; font-size: 20rpx; line-height: 1.3; }
+.msg-img { width: 42vw; max-width: 100%; border-radius: 12rpx; display: block; }
+/* P2-36 语音消息 */
+.msg-voice { display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; }
 .voice-icon { font-size: 26rpx; }
 .voice-len { font-size: 26rpx; color: inherit; opacity: 0.75; }
 .msg-voice.playing .voice-icon { color: #B45309; font-weight: 700; }
