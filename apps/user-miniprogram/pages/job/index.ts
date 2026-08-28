@@ -1,7 +1,16 @@
 import type { AppInstance } from '../../app';
-import { listJobPosts, recommendJobs, recordJobImpressions, type JobPostVo } from '../../services/job';
+import {
+  listJobPosts,
+  recommendJobs,
+  recordJobImpressions,
+  SETTLEMENT_LABELS,
+  type JobPostVo,
+  type Settlement,
+} from '../../services/job';
+import { getLocationContext } from '../../services/place-suggest';
 
 type Tab = 'recommend' | 'latest' | 'urgent' | 'nearest';
+type FilterSection = 'district' | 'settlement';
 
 Page({
   data: {
@@ -14,6 +23,21 @@ Page({
     userLng: 0,
     userLat: 0,
     hasLocation: false,
+    filterVisible: false,
+    filterSection: 'district' as FilterSection,
+    currentCity: '',
+    districtOptions: [] as Array<{ label: string; value: string }>,
+    settlementOptions: (Object.keys(SETTLEMENT_LABELS) as Settlement[]).map((value) => ({
+      value,
+      label: SETTLEMENT_LABELS[value],
+    })),
+    appliedDistrict: '',
+    appliedSettlement: '' as Settlement | '',
+    draftDistrict: '',
+    draftSettlement: '' as Settlement | '',
+    filterCount: 0,
+    locationLoading: false,
+    locationError: '',
   },
 
   async onShow() {
@@ -62,11 +86,15 @@ Page({
     if (this.data.loading) return;
     this.setData({ loading: true });
     try {
-      const list = await recommendJobs();
+      const list = await recommendJobs({
+        location: this.data.appliedDistrict || undefined,
+        city: this.data.appliedDistrict ? this.data.currentCity || undefined : undefined,
+        settlement: this.data.appliedSettlement || undefined,
+      });
       this.setData({ posts: list, hasMore: false, nextCursor: null });
       this.reportImpressions(list);
     } catch {
-      /* toast */
+      /* request 层统一提示 */
     } finally {
       this.setData({ loading: false });
       wx.stopPullDownRefresh();
@@ -85,6 +113,9 @@ Page({
         sort: isNearest ? 'nearest' : undefined,
         userLng: isNearest ? this.data.userLng : undefined,
         userLat: isNearest ? this.data.userLat : undefined,
+        location: this.data.appliedDistrict || undefined,
+        city: this.data.appliedDistrict ? this.data.currentCity || undefined : undefined,
+        settlement: this.data.appliedSettlement || undefined,
       });
       this.setData({
         posts: [...this.data.posts, ...resp.list],
@@ -93,11 +124,89 @@ Page({
       });
       this.reportImpressions(resp.list);
     } catch {
-      /* toast */
+      /* request 层统一提示 */
     } finally {
       this.setData({ loading: false });
       wx.stopPullDownRefresh();
     }
+  },
+
+  openFilter() {
+    this.setData({
+      filterVisible: true,
+      draftDistrict: this.data.appliedDistrict,
+      draftSettlement: this.data.appliedSettlement,
+      locationError: '',
+    });
+    if (this.data.districtOptions.length === 0 && !this.data.locationLoading) {
+      this.loadLocationContext();
+    }
+  },
+
+  closeFilter() {
+    this.setData({
+      filterVisible: false,
+      draftDistrict: this.data.appliedDistrict,
+      draftSettlement: this.data.appliedSettlement,
+    });
+  },
+
+  noop() {},
+
+  switchFilterSection(e: WechatMiniprogram.TouchEvent) {
+    const section = e.currentTarget.dataset.section as FilterSection;
+    if (section === 'district' || section === 'settlement') {
+      this.setData({ filterSection: section });
+    }
+  },
+
+  selectDistrict(e: WechatMiniprogram.TouchEvent) {
+    this.setData({ draftDistrict: (e.currentTarget.dataset.value as string) ?? '' });
+  },
+
+  selectSettlement(e: WechatMiniprogram.TouchEvent) {
+    this.setData({ draftSettlement: (e.currentTarget.dataset.value as Settlement | '') ?? '' });
+  },
+
+  resetFilter() {
+    this.setData({ draftDistrict: '', draftSettlement: '' });
+  },
+
+  applyFilter() {
+    const appliedDistrict = this.data.draftDistrict;
+    const appliedSettlement = this.data.draftSettlement;
+    const filterCount = Number(Boolean(appliedDistrict)) + Number(Boolean(appliedSettlement));
+    this.setData({
+      appliedDistrict,
+      appliedSettlement,
+      filterCount,
+      filterVisible: false,
+    });
+    this.reload();
+  },
+
+  loadLocationContext() {
+    this.setData({ locationLoading: true, locationError: '' });
+    wx.getFuzzyLocation({
+      type: 'gcj02',
+      success: async (res) => {
+        this.setData({ userLng: res.longitude, userLat: res.latitude, hasLocation: true });
+        try {
+          const context = await getLocationContext(res.longitude, res.latitude);
+          this.setData({
+            currentCity: context.city,
+            districtOptions: context.districts.map((district) => ({ label: district, value: district })),
+          });
+        } catch {
+          this.setData({ locationError: '区域加载失败，请稍后重试' });
+        } finally {
+          this.setData({ locationLoading: false });
+        }
+      },
+      fail: () => {
+        this.setData({ locationLoading: false, locationError: '开启位置权限后可选择工作区域' });
+      },
+    });
   },
 
   onPullDownRefresh() {
@@ -111,25 +220,26 @@ Page({
   goSearch() {
     wx.navigateTo({ url: '/pages/job/search/index' });
   },
+
   goDetail(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
     wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
   },
+
   goPost() {
-    // 2026-08-11:统一走新发布入口页(类别网格 + 搜索选点 同页)
     wx.navigateTo({ url: '/pages/job/publish/index' });
   },
 
-  // M3-08 曝光上报：数据加载完成后批量上报可见岗位 ID
   reportImpressions(posts: JobPostVo[]) {
     const ids = posts.map((p) => p.id).filter(Boolean);
     if (!ids.length) return;
-    // 容错：失败静默
     recordJobImpressions(ids).catch(() => {});
   },
+
   goManage() {
     wx.navigateTo({ url: '/pages/merchant/index?tab=jobs' });
   },
+
   goMyApps() {
     wx.navigateTo({ url: '/pages/job/my-applications/index' });
   },

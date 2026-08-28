@@ -44,6 +44,8 @@ export class ReverseGeocodeQueryDto {
   coordType?: 'gcj02' | 'bd09';
 }
 
+export class LocationContextQueryDto extends ReverseGeocodeQueryDto {}
+
 export class PoiInfoVo {
   poiId!: string;
   address!: string;

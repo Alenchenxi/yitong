@@ -4,6 +4,9 @@
 
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import areas = require('@province-city-china/area');
+import cities = require('@province-city-china/city');
+import provinces = require('@province-city-china/province');
 import { BizException } from '../../common/exceptions/biz.exception';
 
 export interface PoiInfo {
@@ -12,6 +15,8 @@ export interface PoiInfo {
   lng: number;
   lat: number;
   city: string;
+  district?: string;
+  adcode?: string;
 }
 
 interface BaiduGeocodeItem {
@@ -32,7 +37,7 @@ interface BaiduGeocodeResponse {
     comprehension?: number;
     level?: string;
     formatted_address?: string;
-    addressComponent?: { city?: string };
+    addressComponent?: { city?: string; district?: string; adcode?: string | number };
   } | BaiduGeocodeItem;
 }
 
@@ -272,6 +277,39 @@ export class LocationService {
     }
   }
 
+  normalizeAdministrativeName(name: string): string {
+    return name.trim().replace(/(特别行政区|自治州|自治县|地区|市|盟)$/u, '');
+  }
+
+  private listDistricts(cityName: string, adcode?: string): string[] {
+    const normalizedCity = this.normalizeAdministrativeName(cityName);
+    const normalizedAdcode = adcode ? String(adcode) : '';
+    let provinceCode = normalizedAdcode.slice(0, 2);
+    let cityCode = normalizedAdcode.slice(2, 4);
+
+    const city = cities.find((item) => this.normalizeAdministrativeName(item.name) === normalizedCity);
+    if (city) {
+      provinceCode = city.province;
+      cityCode = city.city;
+    } else {
+      const municipality = provinces.find(
+        (item) => this.normalizeAdministrativeName(item.name) === normalizedCity,
+      );
+      if (municipality) {
+        return areas
+          .filter((item) => item.province === municipality.province)
+          .map((item) => item.name)
+          .filter((name, index, list) => list.indexOf(name) === index);
+      }
+    }
+
+    if (!provinceCode || !cityCode) return [];
+    return areas
+      .filter((item) => item.province === provinceCode && item.city === cityCode)
+      .map((item) => item.name)
+      .filter((name, index, list) => list.indexOf(name) === index);
+  }
+
   // dev mock reverse:基于 lng/lat 哈希生成稳定 poiId,坐标原样回传(不偏移,避免前端坐标跳变)
   // 量化到 4 位小数(≈11m 精度)兼顾幂等性与边界区分
   private mockReverseGeocode(lng: number, lat: number): PoiInfo {
@@ -284,12 +322,23 @@ export class LocationService {
     else if (lat > 31 && lat < 32 && lng > 121 && lng < 122) city = '上海';
     else if (lat > 22 && lat < 24 && lng > 113 && lng < 114) city = '广州';
     else if (lat > 22 && lat < 23 && lng > 113 && lng < 115) city = '深圳';
+    else if (lat > 28 && lat < 32 && lng > 105 && lng < 110) city = '重庆';
+    const mockDistricts: Record<string, { district: string; adcode: string }> = {
+      北京: { district: '朝阳区', adcode: '110105' },
+      上海: { district: '浦东新区', adcode: '310115' },
+      广州: { district: '天河区', adcode: '440106' },
+      深圳: { district: '南山区', adcode: '440305' },
+      重庆: { district: '渝中区', adcode: '500103' },
+    };
+    const region = mockDistricts[city] ?? mockDistricts.北京!;
     return {
       poiId: `mock_rev_${Math.abs(h).toString(36)}`,
       address: `模拟地址(${lat.toFixed(4)}, ${lng.toFixed(4)})`,
       lng,
       lat,
       city,
+      district: region.district,
+      adcode: region.adcode,
     };
   }
 
@@ -330,7 +379,7 @@ export class LocationService {
         result?: {
           location?: { lng: number; lat: number };
           formatted_address?: string;
-          addressComponent?: { city?: string };
+          addressComponent?: { city?: string; district?: string; adcode?: string | number };
           // 百度 reverse 返回的 POI uid(部分场景有)
           uid?: string;
         };
@@ -338,7 +387,10 @@ export class LocationService {
       // 把 narrowing 绑到本地 const(避免 r.formatted_address 重新访问丢失 narrow 类型)
       const formatted = data.result?.formatted_address;
       if (data.status !== 0 || !data.result || !formatted) {
-        this.logger.warn(`baidu reverse geocode failed: ${data.message ?? 'unknown'}, falling back to mock`);
+        this.logger.warn(`baidu reverse geocode failed: ${data.message ?? 'unknown'}`);
+        if (process.env.NODE_ENV === 'production') {
+          throw new BizException(90003, '定位服务暂不可用', HttpStatus.SERVICE_UNAVAILABLE);
+        }
         return this.mockReverseGeocode(lng, lat);
       }
       const r = data.result;
@@ -349,10 +401,30 @@ export class LocationService {
         lng: r.location?.lng ?? bd.lng,
         lat: r.location?.lat ?? bd.lat,
         city: r.addressComponent?.city ?? '',
+        district: r.addressComponent?.district ?? '',
+        adcode: r.addressComponent?.adcode ? String(r.addressComponent.adcode) : '',
       };
     } catch (e) {
-      this.logger.warn(`baidu reverse geocode error: ${(e as Error).message}, falling back to mock`);
+      if (e instanceof BizException) throw e;
+      this.logger.warn(`baidu reverse geocode error: ${(e as Error).message}`);
+      if (process.env.NODE_ENV === 'production') {
+        throw new BizException(90003, '定位服务暂不可用', HttpStatus.SERVICE_UNAVAILABLE);
+      }
       return this.mockReverseGeocode(lng, lat);
     }
+  }
+
+  async getLocationContext(
+    lng: number,
+    lat: number,
+    coordType: 'gcj02' | 'bd09' = 'gcj02',
+  ): Promise<{ city: string; district: string; districts: string[] }> {
+    const location = await this.reverseGeocode(lng, lat, coordType);
+    const districts = this.listDistricts(location.city, location.adcode);
+    return {
+      city: location.city,
+      district: location.district ?? '',
+      districts,
+    };
   }
 }

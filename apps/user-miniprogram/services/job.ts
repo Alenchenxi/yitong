@@ -226,6 +226,7 @@ export interface JobListFilter {
   category?: JobCategory; // P0-18 分类
   settlement?: Settlement; // P0-18 结算方式
   location?: string; // P0-18 工作地点
+  city?: string; // 用户端区域筛选所属城市
   salaryMin?: number; // P0-18 薪资下限
   salaryMax?: number; // P0-18 薪资上限
   online?: boolean; // P0-18 仅看线上
@@ -238,6 +239,15 @@ export interface JobListFilter {
   communityId?: string;
 }
 
+function appendDiscoveryFilterParams(
+  params: string[],
+  filter: Pick<JobListFilter, 'settlement' | 'location' | 'city'>,
+) {
+  if (filter.settlement) params.push(`settlement=${filter.settlement}`);
+  if (filter.location) params.push(`location=${encodeURIComponent(filter.location)}`);
+  if (filter.city) params.push(`city=${encodeURIComponent(filter.city)}`);
+}
+
 export function listJobPosts(filter: JobListFilter = {}) {
   const params: string[] = [];
   if (filter.mine) params.push('mine=1');
@@ -245,8 +255,7 @@ export function listJobPosts(filter: JobListFilter = {}) {
   if (filter.online) params.push('online=1');
   if (filter.keyword) params.push(`keyword=${encodeURIComponent(filter.keyword)}`);
   if (filter.category) params.push(`category=${filter.category}`);
-  if (filter.settlement) params.push(`settlement=${filter.settlement}`);
-  if (filter.location) params.push(`location=${encodeURIComponent(filter.location)}`);
+  appendDiscoveryFilterParams(params, filter);
   if (filter.salaryMin !== undefined) params.push(`salaryMin=${filter.salaryMin}`);
   if (filter.salaryMax !== undefined) params.push(`salaryMax=${filter.salaryMax}`);
   if (filter.status) params.push(`status=${filter.status}`);
@@ -259,8 +268,17 @@ export function listJobPosts(filter: JobListFilter = {}) {
   return request<JobListResult>({ url: `/job-posts?${params.join('&')}` });
 }
 
-export function recommendJobs() {
-  return request<JobPostVo[]>({ url: '/job-posts/recommend' });
+export interface JobRecommendFilter {
+  settlement?: Settlement;
+  location?: string;
+  city?: string;
+}
+
+export function recommendJobs(filter: JobRecommendFilter = {}) {
+  const params: string[] = [];
+  appendDiscoveryFilterParams(params, filter);
+  const query = params.length ? `?${params.join('&')}` : '';
+  return request<JobPostVo[]>({ url: `/job-posts/recommend${query}` });
 }
 
 export function getJobPost(id: string) {

@@ -17,7 +17,7 @@ import { CommunityService } from '../community/community.service';
 import { LocationService } from './location.service';
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
 import type { JobPostVo } from './types';
-import type { CreateJobPostDto, JobListQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto, UpdateJobPostDto } from './dto/job.dto';
+import type { CreateJobPostDto, JobListQueryDto, JobRecommendQueryDto, CreateReviewDto, ApplyDto, UpsertResumeDto, UpdateJobPostDto } from './dto/job.dto';
 
 const MERCHANT_CONTACT_SELECT = {
   userId: true,
@@ -379,10 +379,7 @@ export class JobService {
       ];
     }
     if (q.category) where.category = q.category as JobCategory;
-    if (q.settlement) where.settlement = q.settlement as Settlement;
-    if (q.location?.trim()) {
-      where.location = { contains: q.location.trim(), mode: 'insensitive' };
-    }
+    this.applyDiscoveryFilters(where, q);
     if (q.online === 1) where.online = true;
     if (q.salaryMin !== undefined || q.salaryMax !== undefined) {
       const f: { gte?: number; lte?: number } = {};
@@ -873,8 +870,24 @@ export class JobService {
     return reviews.map((r) => this.toReviewVo(r, r.application.userId));
   }
 
+  private applyDiscoveryFilters(
+    where: Prisma.JobPostWhereInput,
+    filter: Pick<JobListQueryDto, 'settlement' | 'location' | 'city'>,
+  ) {
+    if (filter.settlement) where.settlement = filter.settlement as Settlement;
+    if (filter.location?.trim()) {
+      where.location = { contains: filter.location.trim(), mode: 'insensitive' };
+    }
+    if (filter.city?.trim()) {
+      where.locationCity = {
+        contains: this.location.normalizeAdministrativeName(filter.city),
+        mode: 'insensitive',
+      };
+    }
+  }
+
   // 推荐：基于用户最近报名的 location + 多样性打分；无历史退回按时间倒序 top 20
-  async recommend(uid: string) {
+  async recommend(uid: string, q: JobRecommendQueryDto) {
     const RECENT_LIMIT = 5;
     const RESULT_LIMIT = 20;
 
@@ -886,13 +899,15 @@ export class JobService {
       include: { jobPost: { select: { location: true, merchantId: true } } },
     });
 
-    // 2) 候选池：PUBLISHED 且未过期，按时间倒序，限 100 条（避免全表扫）
+    // 2) 候选池：PUBLISHED 且未过期，筛选后按时间倒序，限 100 条（避免全表扫）
+    const where: Prisma.JobPostWhereInput = {
+      status: JobPostStatus.PUBLISHED,
+      expireAt: { gt: new Date() },
+      deletedAt: null, // M3-07 软删过滤
+    };
+    this.applyDiscoveryFilters(where, q);
     const candidates = await this.prisma.jobPost.findMany({
-      where: {
-        status: JobPostStatus.PUBLISHED,
-        expireAt: { gt: new Date() },
-        deletedAt: null, // M3-07 软删过滤
-      },
+      where,
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },

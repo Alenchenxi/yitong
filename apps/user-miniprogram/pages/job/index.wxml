@@ -1,9 +1,16 @@
 <view class="page">
-  <!-- 顶部搜索 + 商家入口 -->
   <view class="topbar">
     <view class="search-box" bindtap="goSearch">
       <text class="search-icon">🔍</text>
       <text class="search-ph">搜索兼职岗位</text>
+    </view>
+    <view
+      class="filter-trigger {{filterCount > 0 ? 'active' : ''}}"
+      wx:if="{{!isMerchant}}"
+      bindtap="openFilter"
+    >
+      <text>筛选</text>
+      <text class="filter-count" wx:if="{{filterCount > 0}}">{{filterCount}}</text>
     </view>
     <view class="action" bindtap="goMyApps">我的报名</view>
     <block wx:if="{{isMerchant}}">
@@ -12,7 +19,6 @@
     </block>
   </view>
 
-  <!-- tab：推荐/最新/急招/最近 -->
   <view class="main-tabs" wx:if="{{!isMerchant}}">
     <view class="main-tab {{tab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchTab">推荐</view>
     <view class="main-tab {{tab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchTab">最新</view>
@@ -20,7 +26,6 @@
     <view class="main-tab {{tab === 'nearest' ? 'active' : ''}}" data-tab="nearest" bindtap="switchTab">最近</view>
   </view>
 
-  <!-- 岗位列表 -->
   <view class="list" wx:if="{{posts.length > 0}}">
     <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view class="card-head">
@@ -44,6 +49,74 @@
 
   <view class="yt-empty" wx:elif="{{!loading}}">
     <view class="yt-empty-emoji">💼</view>
-    <view class="yt-empty-text">{{tab === 'recommend' ? '暂无推荐，先去报名几个岗位吧' : '暂无兼职岗位'}}</view>
+    <view class="yt-empty-text">{{filterCount > 0 ? '暂无符合筛选条件的岗位' : (tab === 'recommend' ? '暂无推荐，先去报名几个岗位吧' : '暂无兼职岗位')}}</view>
+  </view>
+</view>
+
+<view class="filter-mask" wx:if="{{filterVisible}}" bindtap="closeFilter">
+  <view class="filter-sheet" catchtap="noop">
+    <view class="filter-header">
+      <view>
+        <view class="filter-title">筛选</view>
+        <view class="filter-city" wx:if="{{currentCity}}">当前城市：{{currentCity}}</view>
+      </view>
+      <view class="filter-close" bindtap="closeFilter" aria-label="关闭">×</view>
+    </view>
+
+    <view class="filter-body">
+      <view class="filter-nav">
+        <view
+          class="filter-nav-item {{filterSection === 'district' ? 'active' : ''}}"
+          data-section="district"
+          bindtap="switchFilterSection"
+        >工作区域</view>
+        <view
+          class="filter-nav-item {{filterSection === 'settlement' ? 'active' : ''}}"
+          data-section="settlement"
+          bindtap="switchFilterSection"
+        >结算方式</view>
+      </view>
+
+      <scroll-view class="filter-options" scroll-y>
+        <view wx:if="{{filterSection === 'district'}}">
+          <view class="filter-option-grid">
+            <view
+              class="filter-option {{draftDistrict === '' ? 'active' : ''}}"
+              data-value=""
+              bindtap="selectDistrict"
+            >不限</view>
+            <view
+              class="filter-option {{draftDistrict === item.value ? 'active' : ''}}"
+              wx:for="{{districtOptions}}"
+              wx:key="value"
+              data-value="{{item.value}}"
+              bindtap="selectDistrict"
+            >{{item.label}}</view>
+          </view>
+          <view class="filter-state" wx:if="{{locationLoading}}">正在获取当前城市区域...</view>
+          <view class="filter-state error" wx:elif="{{locationError}}">{{locationError}}</view>
+        </view>
+
+        <view wx:elif="{{filterSection === 'settlement'}}" class="filter-option-grid">
+          <view
+            class="filter-option {{draftSettlement === '' ? 'active' : ''}}"
+            data-value=""
+            bindtap="selectSettlement"
+          >不限</view>
+          <view
+            class="filter-option {{draftSettlement === item.value ? 'active' : ''}}"
+            wx:for="{{settlementOptions}}"
+            wx:key="value"
+            data-value="{{item.value}}"
+            bindtap="selectSettlement"
+          >{{item.label}}</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="filter-footer">
+      <button class="filter-reset" bindtap="resetFilter">重置</button>
+      <button class="filter-confirm" bindtap="applyFilter">确定</button>
+    </view>
   </view>
 </view>

@@ -59,6 +59,15 @@ importers:
       '@prisma/client':
         specifier: ^5.18.0
         version: 5.22.0(prisma@5.22.0)
+      '@province-city-china/area':
+        specifier: 8.5.8
+        version: 8.5.8
+      '@province-city-china/city':
+        specifier: 8.5.8
+        version: 8.5.8
+      '@province-city-china/province':
+        specifier: 8.5.8
+        version: 8.5.8
       '@yitong/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -793,6 +802,18 @@ packages:
 
   '@prisma/get-platform@5.22.0':
     resolution: {integrity: sha512-pHhpQdr1UPFpt+zFfnPazhulaZYCUqeIcPpJViYoq9R+D/yw4fjE+CtnsnKzPYm0ddUbeXUzjGVGIRVgPDCk4Q==}
+
+  '@province-city-china/area@8.5.8':
+    resolution: {integrity: sha512-bdjiu+FwMXaRDzRdGE8fz5LCE6Uj9Hl1RaBdsYpCzpRH+P0jfpaiBpU9MSdhFEiL2xVSljuEl9L6M7bVIXI33Q==}
+
+  '@province-city-china/city@8.5.8':
+    resolution: {integrity: sha512-JTRzVY7X+O1SsqwLolbarTiaS8ms8I2HEHZ6QylzNZIyZhFZ9aP0Bd5lOpNkw2uO8utQLFoaM5B+FySmOE/yeQ==}
+
+  '@province-city-china/province@8.5.8':
+    resolution: {integrity: sha512-zIcXS0qYP+0e4qCZurqzRIfvm+rVmiZIBWQTzNBKetshuzaJws81J0OIz4tXTO71nCD9/9Qc+R79Ck6e1M9c6g==}
+
+  '@province-city-china/types@8.5.8':
+    resolution: {integrity: sha512-KZ3NyM8HsaBVcn5BRhWaOeZRhqEvm18PfB6HfRDuZfwwWhJLoTxB81mTENrBlONr2g8fy/fSbjsh44gvOj+/Lw==}
 
   '@sinclair/typebox@0.27.12':
     resolution: {integrity: sha512-hhyNJ+nbR6ZR7pToHvllEFun9TL0sbL+tk/ON75lo+Xas054uez98qRbsuNt7MBCyZKK4+8Yli/OAGZhmfBZ/g==}
@@ -4208,6 +4229,20 @@ snapshots:
   '@prisma/get-platform@5.22.0':
     dependencies:
       '@prisma/debug': 5.22.0
+
+  '@province-city-china/area@8.5.8':
+    dependencies:
+      '@province-city-china/types': 8.5.8
+
+  '@province-city-china/city@8.5.8':
+    dependencies:
+      '@province-city-china/types': 8.5.8
+
+  '@province-city-china/province@8.5.8':
+    dependencies:
+      '@province-city-china/types': 8.5.8
+
+  '@province-city-china/types@8.5.8': {}
 
   '@sinclair/typebox@0.27.12': {}
 

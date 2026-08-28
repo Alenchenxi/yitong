@@ -280,6 +280,12 @@ export class JobListQueryDto {
   @IsString()
   location?: string;
 
+  /** 用户端区域筛选所属城市，与 location 区县条件组合使用 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  city?: string;
+
   /** P0-18 薪资下限（按 salaryAmount 过滤） */
   @IsOptional()
   @Type(() => Number)
@@ -332,6 +338,21 @@ export class JobListQueryDto {
   userLat?: number;
 }
 
+export class JobRecommendQueryDto {
+  @IsOptional()
+  @IsIn([...SETTLEMENT_VALUES])
+  settlement?: (typeof SETTLEMENT_VALUES)[number];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  location?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  city?: string;
+}
 // M3-07 单岗位 stats 端点 query：range=day|week|month|all（非法值回退 all，由 service 兜底而非 @IsIn）
 export class JobPostStatsQueryDto {
   @IsOptional()

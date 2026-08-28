@@ -7,9 +7,9 @@ import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
 import { JobTemplateService } from './job-template.service';
 import { LocationService } from './location.service';
-import { CreateJobPostDto, JobListQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto, RecordImpressionsDto } from './dto/job.dto';
+import { CreateJobPostDto, JobListQueryDto, JobRecommendQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto, RecordImpressionsDto } from './dto/job.dto';
 import { JobTemplateQueryDto } from './dto/job-template.dto';
-import { GeocodeQueryDto, PoiDetailQueryDto, PlaceSuggestionQueryDto, ReverseGeocodeQueryDto } from './dto/location.dto';
+import { GeocodeQueryDto, LocationContextQueryDto, PoiDetailQueryDto, PlaceSuggestionQueryDto, ReverseGeocodeQueryDto } from './dto/location.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -66,6 +66,12 @@ export class JobController {
     return ok(await this.location.reverseGeocode(q.lng, q.lat, q.coordType));
   }
 
+  // 用户端兼职筛选：定位当前城市，并返回该市完整区县列表
+  @Get('job-posts/location-context')
+  async locationContext(@Query() q: LocationContextQueryDto, @Req() req: Request) {
+    (req as AuthenticatedRequest).user;
+    return ok(await this.location.getLocationContext(q.lng, q.lat, q.coordType));
+  }
   @Post('job-posts')
   async createPost(@Body() dto: CreateJobPostDto, @Req() req: Request) {
     const u = (req as AuthenticatedRequest).user!;
@@ -80,9 +86,9 @@ export class JobController {
 
   // 推荐（须在 /:id 之前声明，避免被参数路由吞掉）
   @Get('job-posts/recommend')
-  async recommend(@Req() req: Request) {
+  async recommend(@Query() q: JobRecommendQueryDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.job.recommend(uid));
+    return ok(await this.job.recommend(uid, q));
   }
 
   // P2-15 精品岗位列表（前台）
