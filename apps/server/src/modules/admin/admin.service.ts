@@ -6,11 +6,13 @@ import { ConfessionService } from '../confession/confession.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { TutorJobPolicyService } from '../tutor-sync/tutor-job-policy.service';
 import {
-  TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
-  TUTOR_SYNC_HARD_MAX_DEMANDS,
-  TUTOR_SYNC_MAX_DEMANDS_KEY,
-  TUTOR_SYNC_MIN_MAX_DEMANDS,
-  parseTutorSyncMaxDemands,
+  TUTOR_SYNC_DEFAULT_ENABLED,
+  TUTOR_SYNC_DEFAULT_BATCH_SIZE,
+  TUTOR_SYNC_ENABLED_KEY,
+  TUTOR_SYNC_BATCH_SIZE_KEY,
+  TUTOR_SYNC_MAX_BATCH_SIZE,
+  TUTOR_SYNC_MIN_BATCH_SIZE,
+  parseTutorSyncBatchSize,
 } from '../tutor-sync/tutor-sync.settings';
 import type { UpdateBoostPlanPriceDto } from './dto/update-boost-plan-price.dto';
 import type { UpdatePricingDto } from './dto/update-pricing.dto';
@@ -1251,7 +1253,8 @@ export class AdminService {
   // ===== P2-26 全局配置 KV（白名单 AppConfig）=====
   private static readonly APP_CONFIG_KEYS = [
     'community.need_review',
-    TUTOR_SYNC_MAX_DEMANDS_KEY,
+    TUTOR_SYNC_ENABLED_KEY,
+    TUTOR_SYNC_BATCH_SIZE_KEY,
   ] as const;
 
   async getSettings() {
@@ -1259,11 +1262,13 @@ export class AdminService {
     const rowByKey = new Map(rows.map((r) => [r.key, r]));
     return AdminService.APP_CONFIG_KEYS.map((key) => {
       const row = rowByKey.get(key);
-      const defaultValue = key === TUTOR_SYNC_MAX_DEMANDS_KEY
-        ? TUTOR_SYNC_DEFAULT_MAX_DEMANDS
-        : false;
-      const value = key === TUTOR_SYNC_MAX_DEMANDS_KEY
-        ? (parseTutorSyncMaxDemands(row?.value) ?? defaultValue)
+      const defaultValue = key === TUTOR_SYNC_BATCH_SIZE_KEY
+        ? TUTOR_SYNC_DEFAULT_BATCH_SIZE
+        : key === TUTOR_SYNC_ENABLED_KEY
+          ? TUTOR_SYNC_DEFAULT_ENABLED
+          : false;
+      const value = key === TUTOR_SYNC_BATCH_SIZE_KEY
+        ? (parseTutorSyncBatchSize(row?.value) ?? defaultValue)
         : row?.value === true;
       return {
         key,
@@ -1279,21 +1284,22 @@ export class AdminService {
       throw new BizException(40004, `不支持的配置项: ${key}`, HttpStatus.BAD_REQUEST);
     }
     let normalizedValue: boolean | number;
-    if (key === 'community.need_review') {
+    if (key === 'community.need_review' || key === TUTOR_SYNC_ENABLED_KEY) {
       if (typeof value !== 'boolean') {
-        throw new BizException(40003, '建圈审核配置必须为布尔值', HttpStatus.BAD_REQUEST);
+        const label = key === TUTOR_SYNC_ENABLED_KEY ? '家教自动同步' : '建圈审核';
+        throw new BizException(40003, `${label}配置必须为布尔值`, HttpStatus.BAD_REQUEST);
       }
       normalizedValue = value;
     } else {
-      const maxDemands = parseTutorSyncMaxDemands(value);
-      if (maxDemands === null) {
+      const batchSize = parseTutorSyncBatchSize(value);
+      if (batchSize === null) {
         throw new BizException(
           40003,
-          `单次快照上限必须为 ${TUTOR_SYNC_MIN_MAX_DEMANDS}-${TUTOR_SYNC_HARD_MAX_DEMANDS} 的整数`,
+          `每批同步数量必须为 ${TUTOR_SYNC_MIN_BATCH_SIZE}-${TUTOR_SYNC_MAX_BATCH_SIZE} 的整数`,
           HttpStatus.BAD_REQUEST,
         );
       }
-      normalizedValue = maxDemands;
+      normalizedValue = batchSize;
     }
     return this.prisma.appConfig.upsert({
       where: { key },

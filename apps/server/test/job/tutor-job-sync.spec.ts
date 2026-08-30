@@ -3,6 +3,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
+import * as ts from 'typescript';
 import {
   CommunityStatus,
   JobApplyMode,
@@ -19,9 +21,11 @@ import { TutorDemandAdapter } from '../../src/modules/tutor-sync/tutor-demand.ad
 import { TutorJobPolicyService } from '../../src/modules/tutor-sync/tutor-job-policy.service';
 import { TutorSnapshotClient } from '../../src/modules/tutor-sync/tutor-snapshot.client';
 import {
-  TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
-  TUTOR_SYNC_HARD_MAX_DEMANDS,
-  TUTOR_SYNC_MAX_DEMANDS_KEY,
+  TUTOR_SYNC_DEFAULT_ENABLED,
+  TUTOR_SYNC_DEFAULT_BATCH_SIZE,
+  TUTOR_SYNC_ENABLED_KEY,
+  TUTOR_SYNC_MAX_BATCH_SIZE,
+  TUTOR_SYNC_BATCH_SIZE_KEY,
   TutorSyncSettingsService,
 } from '../../src/modules/tutor-sync/tutor-sync.settings';
 import { TutorSyncService } from '../../src/modules/tutor-sync/tutor-sync.service';
@@ -76,6 +80,21 @@ function buildSnapshot(
   };
 }
 
+function buildRawSourceItem(overrides: Record<string, unknown> = {}) {
+  return {
+    demand_id: '101',
+    status: 1,
+    is_hide: 0,
+    is_refund: 0,
+    province: '浙江省',
+    city: '杭州市',
+    subject_name: '数学',
+    grade_name: '初中',
+    create_time: '2026-08-20T08:00:00.000Z',
+    ...overrides,
+  };
+}
+
 interface BindingFixture {
   id?: string;
   externalId: string;
@@ -85,12 +104,16 @@ interface BindingFixture {
   status?: JobPostStatus;
 }
 
-function buildSyncService(options: {
-  bindings?: BindingFixture[];
-  state?: { lastGeneratedAt: Date | null } | null;
-  maxDemands?: number;
-  settingsError?: Error;
-} = {}) {
+function buildSyncService(
+  options: {
+    bindings?: BindingFixture[];
+    state?: { lastGeneratedAt: Date | null } | null;
+    enabled?: boolean;
+    deploymentEnabled?: boolean;
+    batchSize?: number;
+    settingsError?: Error;
+  } = {},
+) {
   const bindings = (options.bindings ?? []).map((binding, index) => ({
     id: binding.id ?? `binding_${index + 1}`,
     externalId: binding.externalId,
@@ -99,9 +122,37 @@ function buildSyncService(options: {
     sourceActive: binding.sourceActive ?? true,
     jobPost: { status: binding.status ?? JobPostStatus.PUBLISHED },
   }));
-  const queryRaw = jest.fn()
-    .mockResolvedValueOnce([])
-    .mockResolvedValueOnce(bindings);
+  const batchSize = options.batchSize ?? TUTOR_SYNC_DEFAULT_BATCH_SIZE;
+  const queryRaw = jest.fn(
+    async (query: { strings?: readonly string[]; values?: readonly unknown[] }) => {
+      const sql = query.strings?.join('?') ?? '';
+      const values = query.values ?? [];
+      if (sql.includes('pg_advisory_xact_lock')) return [];
+      if (sql.includes('binding."source_active" = TRUE')) {
+        const hasCursor = sql.includes('binding."id" > ?');
+        const afterId = hasCursor ? values.at(-2) : null;
+        const requestedBatchSize = values.at(-1);
+        const activeBindings = bindings
+          .filter(
+            (binding) =>
+              binding.sourceActive &&
+              (typeof afterId !== 'string' || binding.id.localeCompare(afterId) > 0),
+          )
+          .sort((left, right) => left.id.localeCompare(right.id));
+        return activeBindings.slice(
+          0,
+          typeof requestedBatchSize === 'number' ? requestedBatchSize : batchSize,
+        );
+      }
+      if (sql.includes('binding."external_id" IN')) {
+        const requested = new Set(
+          values.filter((value): value is string => typeof value === 'string'),
+        );
+        return bindings.filter((binding) => requested.has(binding.externalId));
+      }
+      return [];
+    },
+  );
   const tx = {
     $queryRaw: queryRaw,
     $executeRaw: jest.fn().mockResolvedValue(0),
@@ -114,24 +165,28 @@ function buildSyncService(options: {
     },
   };
   const prisma = {
-    $transaction: jest.fn((
-      callback: (client: typeof tx) => unknown,
-      _options?: { maxWait: number; timeout: number },
-    ) => callback(tx)),
+    $transaction: jest.fn(
+      (callback: (client: typeof tx) => unknown, _options?: { maxWait: number; timeout: number }) =>
+        callback(tx),
+    ),
   };
   const settings = {
     getSettings: options.settingsError
       ? jest.fn().mockRejectedValue(options.settingsError)
       : jest.fn().mockResolvedValue({
-        maxDemands: options.maxDemands ?? TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
-      }),
+          enabled: options.enabled ?? true,
+          batchSize,
+        }),
   };
   const config = {
-    get: jest.fn((key: string) => ({
-      TUTOR_SYNC_ENABLED: 'true',
-      TUTOR_SYNC_URL: 'https://tutor.example/internal/sync/tutor-demands',
-      TUTOR_SYNC_TOKEN: 'test-token',
-    }[key])),
+    get: jest.fn(
+      (key: string) =>
+        ({
+          TUTOR_SYNC_ENABLED: String(options.deploymentEnabled ?? true),
+          TUTOR_SYNC_URL: 'https://tutor.example/internal/sync/tutor-demands',
+          TUTOR_SYNC_TOKEN: 'test-token',
+        })[key],
+    ),
   };
   const snapshotClient = new TutorSnapshotClient(config as never);
   const service = new TutorSyncService(
@@ -155,7 +210,79 @@ function sqlJsonRows(call: unknown[] | undefined): Array<Record<string, unknown>
   const json = query?.values?.find(
     (value): value is string => typeof value === 'string' && value.startsWith('['),
   );
-  return json ? JSON.parse(json) as Array<Record<string, unknown>> : [];
+  return json ? (JSON.parse(json) as Array<Record<string, unknown>>) : [];
+}
+
+function buildOpsSettingsComponent() {
+  const source = readFileSync(
+    resolve(__dirname, '../../../user-miniprogram/components/admin-panels/ops/index.ts'),
+    'utf8',
+  );
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const getAppSettings = jest.fn();
+  const updateAppSetting = jest.fn();
+  const adminModule = new Proxy(
+    { getAppSettings, updateAppSetting },
+    {
+      get(target, property) {
+        if (property in target) return target[property as keyof typeof target];
+        return jest.fn();
+      },
+    },
+  );
+  type OpsDefinition = {
+    data: Record<string, unknown>;
+    methods: Record<string, (...args: never[]) => unknown>;
+  };
+  const holder: { current: OpsDefinition | null } = { current: null };
+  runInNewContext(compiled, {
+    module: { exports: {} },
+    exports: {},
+    require(specifier: string) {
+      if (specifier === '../../../services/admin') return adminModule;
+      if (specifier === '../../../services/upload') return { uploadImage: jest.fn() };
+      if (specifier === '../../../services/announcement')
+        return new Proxy(
+          {},
+          {
+            get: () => jest.fn(),
+          },
+        );
+      throw new Error(`unexpected module: ${specifier}`);
+    },
+    Component(definition: OpsDefinition) {
+      holder.current = definition;
+    },
+    getApp: () => ({ requireAuth: () => true }),
+    wx: {
+      showToast: jest.fn(),
+      stopPullDownRefresh: jest.fn(),
+    },
+    console,
+  });
+  if (!holder.current) throw new Error('ops component was not registered');
+  const definition = holder.current;
+  const data = structuredClone(definition.data);
+  const component = {
+    data,
+    setData(updates: Record<string, unknown>) {
+      Object.assign(data, updates);
+    },
+    ...definition.methods,
+  } as unknown as {
+    data: Record<string, unknown>;
+    setData(updates: Record<string, unknown>): void;
+    load(): Promise<void>;
+    toggleTutorSync(event: { detail: { value: boolean } }): Promise<void>;
+    saveTutorSyncSettings(): Promise<void>;
+  };
+  component.data.sub = 'settings';
+  return { component, getAppSettings, updateAppSetting };
 }
 
 describe('TutorDemandAdapter', () => {
@@ -170,11 +297,7 @@ describe('TutorDemandAdapter', () => {
         '授课方式：上门授课',
         '学校：附近中学',
       ].join('\n'),
-      requirements: [
-        '性别要求：不限',
-        '身份要求：在校大学生',
-        '其他要求：有耐心',
-      ].join('\n'),
+      requirements: ['性别要求：不限', '身份要求：在校大学生', '其他要求：有耐心'].join('\n'),
       salary: '200元/次',
       salaryAmount: 200,
       location: '浙江省 杭州市 西湖区 文三路',
@@ -187,16 +310,20 @@ describe('TutorDemandAdapter', () => {
 
   it('空字段兜底且关闭、隐藏、退款均标记为非启用', () => {
     const adapter = new TutorDemandAdapter();
-    expect(adapter.adapt(buildSourceItem({
-      subjectName: '',
-      gradeName: '',
-      overview: '',
-      expense: '',
-      address: '',
-      longitude: 999,
-      latitude: -999,
-      isHide: 1,
-    }))).toMatchObject({
+    expect(
+      adapter.adapt(
+        buildSourceItem({
+          subjectName: '',
+          gradeName: '',
+          overview: '',
+          expense: '',
+          address: '',
+          longitude: 999,
+          latitude: -999,
+          isHide: 1,
+        }),
+      ),
+    ).toMatchObject({
       active: false,
       title: '家教兼职',
       salary: '薪资面议',
@@ -209,49 +336,125 @@ describe('TutorDemandAdapter', () => {
 });
 
 describe('TutorSyncSettingsService', () => {
-  it('读取 AppConfig 中的单次快照上限', async () => {
+  it('读取 AppConfig 中的运行开关和每批同步数量', async () => {
     const prisma = {
       appConfig: {
-        findUnique: jest.fn().mockResolvedValue({ value: 150 }),
+        findMany: jest.fn().mockResolvedValue([
+          { key: TUTOR_SYNC_ENABLED_KEY, value: true },
+          { key: TUTOR_SYNC_BATCH_SIZE_KEY, value: 150 },
+        ]),
       },
     };
-    await expect(new TutorSyncSettingsService(prisma as never).getSettings())
-      .resolves.toEqual({ maxDemands: 150 });
+    await expect(new TutorSyncSettingsService(prisma as never).getSettings()).resolves.toEqual({
+      enabled: true,
+      batchSize: 150,
+    });
+  });
+
+  it.each([undefined, null, 1, 'true'])('运行开关缺失或非法时默认关闭: %p', async (value) => {
+    const prisma = {
+      appConfig: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            ...(value === undefined ? [] : [{ key: TUTOR_SYNC_ENABLED_KEY, value }]),
+            { key: TUTOR_SYNC_BATCH_SIZE_KEY, value: 120 },
+          ]),
+      },
+    };
+    await expect(new TutorSyncSettingsService(prisma as never).getSettings()).resolves.toEqual({
+      enabled: TUTOR_SYNC_DEFAULT_ENABLED,
+      batchSize: 120,
+    });
   });
 
   it.each([undefined, 0, 201, 1.5, '100'])(
-    '配置缺失或非法时使用代码默认值: %p',
+    '批次配置缺失或非法时仍使用默认100: %p',
     async (value) => {
       const prisma = {
         appConfig: {
-          findUnique: jest.fn().mockResolvedValue(
-            value === undefined ? null : { value },
-          ),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([
+              { key: TUTOR_SYNC_ENABLED_KEY, value: true },
+              ...(value === undefined ? [] : [{ key: TUTOR_SYNC_BATCH_SIZE_KEY, value }]),
+            ]),
         },
       };
-      await expect(new TutorSyncSettingsService(prisma as never).getSettings())
-        .resolves.toEqual({ maxDemands: 100 });
+      await expect(new TutorSyncSettingsService(prisma as never).getSettings()).resolves.toEqual({
+        enabled: true,
+        batchSize: 100,
+      });
     },
   );
 
   it('读取失败时安全降级为代码默认值', async () => {
     const prisma = {
       appConfig: {
-        findUnique: jest.fn().mockRejectedValue(new Error('db unavailable')),
+        findMany: jest.fn().mockRejectedValue(new Error('db unavailable')),
       },
     };
-    await expect(new TutorSyncSettingsService(prisma as never).getSettings())
-      .resolves.toEqual({ maxDemands: 100 });
+    await expect(new TutorSyncSettingsService(prisma as never).getSettings()).resolves.toEqual({
+      enabled: false,
+      batchSize: 100,
+    });
+  });
+});
+
+describe('TutorSyncService 双重开关', () => {
+  it('部署总开关关闭时不读取管理配置且不请求源接口', async () => {
+    const { service, settings, snapshotClient, prisma } = buildSyncService({
+      deploymentEnabled: false,
+    });
+    const fetchSnapshot = jest.spyOn(snapshotClient, 'fetchSnapshot');
+
+    await expect(service.synchronize()).resolves.toMatchObject({ skipped: true });
+    expect(settings.getSettings).not.toHaveBeenCalled();
+    expect(fetchSnapshot).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('管理端运行开关关闭时不请求源接口', async () => {
+    const { service, settings, snapshotClient, prisma } = buildSyncService({
+      deploymentEnabled: true,
+      enabled: false,
+    });
+    const fetchSnapshot = jest.spyOn(snapshotClient, 'fetchSnapshot');
+
+    await expect(service.synchronize()).resolves.toMatchObject({ skipped: true });
+    expect(settings.getSettings).toHaveBeenCalledTimes(1);
+    expect(fetchSnapshot).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('部署总开关与管理端运行开关同时开启时执行同步', async () => {
+    const { service, snapshotClient, prisma, tx } = buildSyncService({
+      deploymentEnabled: true,
+      enabled: true,
+    });
+    const fetchSnapshot = jest
+      .spyOn(snapshotClient, 'fetchSnapshot')
+      .mockResolvedValue(buildSnapshot([]));
+
+    await expect(service.synchronize()).resolves.toMatchObject({
+      received: 0,
+      skipped: false,
+    });
+    expect(fetchSnapshot).toHaveBeenCalledWith();
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.tutorSyncState.upsert).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('AdminService 系统同步配置', () => {
-  function buildAdmin(rows: Array<{
-    key: string;
-    value: unknown;
-    updatedAt: Date;
-    updatedBy: string | null;
-  }> = []) {
+  function buildAdmin(
+    rows: Array<{
+      key: string;
+      value: unknown;
+      updatedAt: Date;
+      updatedBy: string | null;
+    }> = [],
+  ) {
     const prisma = {
       appConfig: {
         findMany: jest.fn().mockResolvedValue(rows),
@@ -259,80 +462,98 @@ describe('AdminService 系统同步配置', () => {
       },
     };
     return {
-      service: new AdminService(
-        prisma as never,
-        {} as never,
-        {} as never,
-        {} as never,
-      ),
+      service: new AdminService(prisma as never, {} as never, {} as never, {} as never),
       prisma,
     };
   }
 
-  it('读取接口补齐默认100且不返回任何部署秘密', async () => {
+  it('读取接口补齐默认关闭和默认100且不返回任何部署秘密', async () => {
     const { service } = buildAdmin();
     const settings = await service.getSettings();
-    expect(settings).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        key: TUTOR_SYNC_MAX_DEMANDS_KEY,
-        value: TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
-      }),
-    ]));
-    expect(settings.map((item) => item.key)).not.toEqual(expect.arrayContaining([
-      'TUTOR_SYNC_TOKEN',
-      'TUTOR_SYNC_URL',
-    ]));
+    expect(settings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: TUTOR_SYNC_BATCH_SIZE_KEY,
+          value: TUTOR_SYNC_DEFAULT_BATCH_SIZE,
+        }),
+        expect.objectContaining({
+          key: TUTOR_SYNC_ENABLED_KEY,
+          value: TUTOR_SYNC_DEFAULT_ENABLED,
+        }),
+      ]),
+    );
+    expect(settings.map((item) => item.key)).not.toEqual(
+      expect.arrayContaining(['TUTOR_SYNC_TOKEN', 'TUTOR_SYNC_URL']),
+    );
   });
 
-  it('读取接口将数据库中的非法容量降级为默认100', async () => {
-    const { service } = buildAdmin([{
-      key: TUTOR_SYNC_MAX_DEMANDS_KEY,
-      value: 5000,
-      updatedAt: new Date('2026-08-29T08:00:00.000Z'),
-      updatedBy: 'legacy-admin',
-    }]);
-    await expect(service.getSettings()).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        key: TUTOR_SYNC_MAX_DEMANDS_KEY,
-        value: TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
-      }),
-    ]));
+  it('读取接口将数据库中的非法批次大小降级为默认100', async () => {
+    const { service } = buildAdmin([
+      {
+        key: TUTOR_SYNC_BATCH_SIZE_KEY,
+        value: 5000,
+        updatedAt: new Date('2026-08-29T08:00:00.000Z'),
+        updatedBy: 'legacy-admin',
+      },
+    ]);
+    await expect(service.getSettings()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: TUTOR_SYNC_BATCH_SIZE_KEY,
+          value: TUTOR_SYNC_DEFAULT_BATCH_SIZE,
+        }),
+      ]),
+    );
   });
 
-  it.each([1, 100, TUTOR_SYNC_HARD_MAX_DEMANDS])(
-    '允许管理员写入范围内整数 %i',
-    async (value) => {
-      const { service, prisma } = buildAdmin();
-      await service.updateSetting(TUTOR_SYNC_MAX_DEMANDS_KEY, value, 'admin-openid');
-      expect(prisma.appConfig.upsert).toHaveBeenCalledWith(expect.objectContaining({
+  it.each([1, 100, TUTOR_SYNC_MAX_BATCH_SIZE])('允许管理员写入范围内整数 %i', async (value) => {
+    const { service, prisma } = buildAdmin();
+    await service.updateSetting(TUTOR_SYNC_BATCH_SIZE_KEY, value, 'admin-openid');
+    expect(prisma.appConfig.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
         create: expect.objectContaining({ value, updatedBy: 'admin-openid' }),
-      }));
-    },
-  );
+      }),
+    );
+  });
 
-  it.each([0, 201, 1.5, '100', null])(
-    '拒绝非法快照上限 %p',
-    async (value) => {
-      const { service, prisma } = buildAdmin();
-      await expect(
-        service.updateSetting(TUTOR_SYNC_MAX_DEMANDS_KEY, value, 'admin-openid'),
-      ).rejects.toMatchObject({ bizCode: 40003, status: 400 });
-      expect(prisma.appConfig.upsert).not.toHaveBeenCalled();
-    },
-  );
+  it.each([true, false])('允许管理员将运行开关写为 %p', async (value) => {
+    const { service, prisma } = buildAdmin();
+    await service.updateSetting(TUTOR_SYNC_ENABLED_KEY, value, 'admin-openid');
+    expect(prisma.appConfig.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ value, updatedBy: 'admin-openid' }),
+      }),
+    );
+  });
+
+  it.each(['true', 1, null, undefined])('拒绝非法运行开关 %p', async (value) => {
+    const { service, prisma } = buildAdmin();
+    await expect(
+      service.updateSetting(TUTOR_SYNC_ENABLED_KEY, value, 'admin-openid'),
+    ).rejects.toMatchObject({ bizCode: 40003, status: 400 });
+    expect(prisma.appConfig.upsert).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 201, 1.5, '100', null])('拒绝非法批次大小 %p', async (value) => {
+    const { service, prisma } = buildAdmin();
+    await expect(
+      service.updateSetting(TUTOR_SYNC_BATCH_SIZE_KEY, value, 'admin-openid'),
+    ).rejects.toMatchObject({ bizCode: 40003, status: 400 });
+    expect(prisma.appConfig.upsert).not.toHaveBeenCalled();
+  });
 });
 
 describe('AdminService 家教岗位举报处置', () => {
-  function buildReportAdmin(options: {
-    tutorBinding?: boolean;
-    reporterId?: string | null;
-  } = {}) {
+  function buildReportAdmin(
+    options: {
+      tutorBinding?: boolean;
+      reporterId?: string | null;
+    } = {},
+  ) {
     const tx = {
       $queryRaw: jest.fn().mockResolvedValue([{ acquired: true }]),
       tutorJobSyncBinding: {
-        findUnique: jest.fn().mockResolvedValue(
-          options.tutorBinding ? { id: 'binding_a' } : null,
-        ),
+        findUnique: jest.fn().mockResolvedValue(options.tutorBinding ? { id: 'binding_a' } : null),
         updateMany: jest.fn().mockResolvedValue({ count: options.tutorBinding ? 1 : 0 }),
       },
       jobPost: {
@@ -364,12 +585,7 @@ describe('AdminService 家教岗位举报处置', () => {
     const notification = { create: jest.fn().mockResolvedValue({}) };
     const policy = new TutorJobPolicyService();
     const policySpy = jest.spyOn(policy, 'takeDownJobPostWithGuard');
-    const service = new AdminService(
-      prisma as never,
-      {} as never,
-      notification as never,
-      policy,
-    );
+    const service = new AdminService(prisma as never, {} as never, notification as never, policy);
     return { service, prisma, tx, notification, policySpy };
   }
 
@@ -378,10 +594,12 @@ describe('AdminService 家教岗位举报处置', () => {
       tutorBinding: true,
     });
 
-    await expect(service.resolveReport('report_a', 'admin_a', {
-      action: 'approve',
-      takedown: false,
-    })).resolves.toMatchObject({ id: 'report_a', status: 'APPROVED' });
+    await expect(
+      service.resolveReport('report_a', 'admin_a', {
+        action: 'approve',
+        takedown: false,
+      }),
+    ).resolves.toMatchObject({ id: 'report_a', status: 'APPROVED' });
 
     expect(prisma.moderationRecord.updateMany).toHaveBeenCalledTimes(1);
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -401,12 +619,10 @@ describe('AdminService 家教岗位举报处置', () => {
     });
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(policySpy).toHaveBeenCalledWith(
-      tx,
-      'post_a',
-      expect.any(Date),
-      { requireTutorBinding: false, publishedOnly: true },
-    );
+    expect(policySpy).toHaveBeenCalledWith(tx, 'post_a', expect.any(Date), {
+      requireTutorBinding: false,
+      publishedOnly: true,
+    });
     expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
     expect(tx.jobPost.updateMany).toHaveBeenCalledTimes(1);
     expect(tx.tutorJobSyncBinding.updateMany).toHaveBeenCalledWith({
@@ -434,12 +650,10 @@ describe('AdminService 家教岗位举报处置', () => {
     await service.takedownJobPost('post_a', 'admin_a', '人工下架');
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(policySpy).toHaveBeenCalledWith(
-      tx,
-      'post_a',
-      expect.any(Date),
-      { requireTutorBinding: false, publishedOnly: false },
-    );
+    expect(policySpy).toHaveBeenCalledWith(tx, 'post_a', expect.any(Date), {
+      requireTutorBinding: false,
+      publishedOnly: false,
+    });
     expect(tx.tutorJobSyncBinding.updateMany).toHaveBeenCalledWith({
       where: { jobPostId: 'post_a' },
       data: { platformBlockedAt: expect.any(Date) },
@@ -448,46 +662,108 @@ describe('AdminService 家教岗位举报处置', () => {
   });
 });
 
-describe('TutorSnapshotClient 容量边界', () => {
+describe('TutorSnapshotClient 全量快照完整性', () => {
   const client = new TutorSnapshotClient({ get: jest.fn() } as never);
 
-  it('默认允许100条并拒绝101条', () => {
-    expect(() => client.assertCapacity({
-      itemCount: 100,
-      items: Array.from({ length: 100 }) as never,
-    })).not.toThrow();
-    expect(() => client.assertCapacity({
-      itemCount: 101,
-      items: Array.from({ length: 101 }) as never,
-    })).toThrow('configured limit of 100');
-  });
+  afterEach(() => jest.restoreAllMocks());
 
-  it('管理配置最高允许200条且不能绕过硬上限', () => {
-    expect(() => client.assertCapacity({
-      itemCount: 200,
-      items: Array.from({ length: 200 }) as never,
-    }, 200)).not.toThrow();
-    expect(() => client.assertCapacity({
-      itemCount: 201,
-      items: Array.from({ length: 201 }) as never,
-    }, 999)).toThrow('configured limit of 100');
+  it('全量快照超过原100/200条上限时仍允许进入分批处理', () => {
+    expect(() =>
+      client.assertIntegrity({
+        itemCount: 1_000,
+        items: Array.from({ length: 1_000 }) as never,
+      }),
+    ).not.toThrow();
   });
 
   it('itemCount与items长度不一致时失败关闭', () => {
-    expect(() => client.assertCapacity({
-      itemCount: 2,
-      items: [{}] as never,
-    }, 200)).toThrow('invalid tutor snapshot itemCount');
+    expect(() =>
+      client.assertIntegrity({
+        itemCount: 2,
+        items: [{}] as never,
+      }),
+    ).toThrow('invalid tutor snapshot itemCount');
+  });
+
+  it('fetchSnapshot复用源items数组并原位替换为规范化对象', async () => {
+    const rawItems = [buildRawSourceItem()];
+    const originalItem = rawItems[0];
+    const fetchClient = new TutorSnapshotClient({
+      get: jest.fn(
+        (key: string) =>
+          ({
+            TUTOR_SYNC_URL: 'https://tutor.example/internal/sync/tutor-demands',
+            TUTOR_SYNC_TOKEN: 'test-token',
+          })[key],
+      ),
+    } as never);
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        status: 200,
+        data: {
+          version: 1,
+          mode: 'full',
+          complete: true,
+          itemCount: rawItems.length,
+          generatedAt: '2026-08-29T10:00:00.000Z',
+          items: rawItems,
+        },
+      }),
+    } as never);
+
+    const snapshot = await fetchClient.fetchSnapshot();
+
+    expect(snapshot.items).toBe(rawItems);
+    expect(snapshot.items[0]).not.toBe(originalItem);
+    expect(snapshot.items[0]).toEqual(
+      expect.objectContaining({
+        demandId: '101',
+        status: 1,
+        isHide: 0,
+        isRefund: 0,
+      }),
+    );
+  });
+
+  it('fetchSnapshot原位解析时仍拒绝重复demand_id', async () => {
+    const rawItems = [buildRawSourceItem(), buildRawSourceItem({ city: '宁波市' })];
+    const fetchClient = new TutorSnapshotClient({
+      get: jest.fn(
+        (key: string) =>
+          ({
+            TUTOR_SYNC_URL: 'https://tutor.example/internal/sync/tutor-demands',
+            TUTOR_SYNC_TOKEN: 'test-token',
+          })[key],
+      ),
+    } as never);
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        status: 200,
+        data: {
+          version: 1,
+          mode: 'full',
+          complete: true,
+          itemCount: rawItems.length,
+          generatedAt: '2026-08-29T10:00:00.000Z',
+          items: rawItems,
+        },
+      }),
+    } as never);
+
+    await expect(fetchClient.fetchSnapshot()).rejects.toThrow(
+      'duplicate demand_id in tutor snapshot',
+    );
   });
 });
 
-describe('TutorSyncService 单事务批量对账', () => {
+describe('TutorSyncService 全量快照分批对账', () => {
   it('首次同步批量创建全圈、长期有效、仅联系岗位', async () => {
     const { service, prisma, tx } = buildSyncService();
-    await expect(service.reconcile(
-      buildSnapshot([buildSourceItem()]),
-      'merchant_a',
-    )).resolves.toEqual({
+    await expect(
+      service.reconcile(buildSnapshot([buildSourceItem()]), 'merchant_a'),
+    ).resolves.toEqual({
       received: 1,
       created: 1,
       updated: 0,
@@ -498,22 +774,24 @@ describe('TutorSyncService 单事务批量对账', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(prisma.$transaction.mock.calls[0]?.[1]).toEqual({
       maxWait: 10_000,
-      timeout: 15_000,
+      timeout: 120_000,
     });
     expect(tx.jobPost.createMany).toHaveBeenCalledWith({
-      data: [expect.objectContaining({
-        merchantId: 'merchant_a',
-        contactPhoneSnapshot: TUTOR_SYNC_CONTACT,
-        contactWechatSnapshot: TUTOR_SYNC_CONTACT,
-        category: JobCategory.TUTORING,
-        settlement: Settlement.COMPLETION,
-        duration: JobDuration.D90,
-        expireAt: null,
-        visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
-        applyMode: JobApplyMode.CONTACT_ONLY,
-        publisherName: TUTOR_SYNC_PUBLISHER,
-        status: JobPostStatus.PUBLISHED,
-      })],
+      data: [
+        expect.objectContaining({
+          merchantId: 'merchant_a',
+          contactPhoneSnapshot: TUTOR_SYNC_CONTACT,
+          contactWechatSnapshot: TUTOR_SYNC_CONTACT,
+          category: JobCategory.TUTORING,
+          settlement: Settlement.COMPLETION,
+          duration: JobDuration.D90,
+          expireAt: null,
+          visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
+          applyMode: JobApplyMode.CONTACT_ONLY,
+          publisherName: TUTOR_SYNC_PUBLISHER,
+          status: JobPostStatus.PUBLISHED,
+        }),
+      ],
     });
     expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain(
       'INSERT INTO "tutor_job_sync_bindings"',
@@ -524,10 +802,12 @@ describe('TutorSyncService 单事务批量对账', () => {
     const { service, tx } = buildSyncService({
       bindings: [{ externalId: '101', jobPostId: 'post_existing' }],
     });
-    await expect(service.reconcile(
-      buildSnapshot([buildSourceItem({ overview: '源平台已修改' })]),
-      'merchant_a',
-    )).resolves.toMatchObject({ created: 0, updated: 1, withdrawn: 0 });
+    await expect(
+      service.reconcile(
+        buildSnapshot([buildSourceItem({ overview: '源平台已修改' })]),
+        'merchant_a',
+      ),
+    ).resolves.toMatchObject({ created: 0, updated: 1, withdrawn: 0 });
 
     expect(tx.jobPost.createMany).not.toHaveBeenCalled();
     expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain('jsonb_to_recordset');
@@ -549,17 +829,19 @@ describe('TutorSyncService 单事务批量对账', () => {
         { externalId: '102', jobPostId: 'post_deleted' },
       ],
     });
-    await expect(service.reconcile(
-      buildSnapshot([buildSourceItem({ status: 2 })]),
-      'merchant_a',
-    )).resolves.toMatchObject({ withdrawn: 2 });
+    await expect(
+      service.reconcile(buildSnapshot([buildSourceItem({ status: 2 })]), 'merchant_a'),
+    ).resolves.toMatchObject({ withdrawn: 2 });
 
     expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain('CURRENT_TIMESTAMP');
-    expect(sqlText(tx.$executeRaw.mock.calls[1])).toContain('UPDATE "job_posts"');
-    const activityCall = tx.$executeRaw.mock.calls.find(
-      (call) => sqlText(call).includes('UPDATE "tutor_job_sync_bindings"'),
+    const withdrawCall = tx.$executeRaw.mock.calls.find((call) =>
+      sqlText(call).includes('post."status" <>'),
     );
-    expect(sqlJsonRows(activityCall)).toEqual([
+    expect(sqlText(withdrawCall)).toContain('UPDATE "job_posts"');
+    const activityRows = tx.$executeRaw.mock.calls
+      .filter((call) => sqlText(call).includes('UPDATE "tutor_job_sync_bindings"'))
+      .flatMap(sqlJsonRows);
+    expect(activityRows).toEqual([
       expect.objectContaining({ id: 'binding_1', sourceActive: false }),
       expect.objectContaining({ id: 'binding_2', sourceActive: false }),
     ]);
@@ -567,12 +849,14 @@ describe('TutorSyncService 单事务批量对账', () => {
 
   it('平台永久下架的需求只更新源字段且保持下架', async () => {
     const { service, tx } = buildSyncService({
-      bindings: [{
-        externalId: '101',
-        jobPostId: 'post_blocked',
-        platformBlockedAt: new Date('2026-08-28T03:00:00.000Z'),
-        status: JobPostStatus.TAKEN_DOWN,
-      }],
+      bindings: [
+        {
+          externalId: '101',
+          jobPostId: 'post_blocked',
+          platformBlockedAt: new Date('2026-08-28T03:00:00.000Z'),
+          status: JobPostStatus.TAKEN_DOWN,
+        },
+      ],
     });
     await service.reconcile(buildSnapshot([buildSourceItem()]), 'merchant_a');
     expect(sqlJsonRows(tx.$executeRaw.mock.calls[0])).toEqual([
@@ -588,10 +872,9 @@ describe('TutorSyncService 单事务批量对账', () => {
     const { service, tx } = buildSyncService({
       state: { lastGeneratedAt: generatedAt },
     });
-    await expect(service.reconcile(
-      buildSnapshot([buildSourceItem()], generatedAt),
-      'merchant_a',
-    )).resolves.toMatchObject({ skipped: true });
+    await expect(
+      service.reconcile(buildSnapshot([buildSourceItem()], generatedAt), 'merchant_a'),
+    ).resolves.toMatchObject({ skipped: true });
     expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
     expect(tx.$executeRaw).not.toHaveBeenCalled();
     expect(tx.tutorSyncState.upsert).not.toHaveBeenCalled();
@@ -602,50 +885,123 @@ describe('TutorSyncService 单事务批量对账', () => {
       bindings: [{ externalId: '101', jobPostId: 'post_existing' }],
     });
     tx.$executeRaw.mockRejectedValueOnce(new Error('write failed'));
-    await expect(service.reconcile(buildSnapshot([buildSourceItem()]), 'merchant_a'))
-      .rejects.toThrow('write failed');
+    await expect(
+      service.reconcile(buildSnapshot([buildSourceItem()]), 'merchant_a'),
+    ).rejects.toThrow('write failed');
     expect(tx.tutorSyncState.upsert).not.toHaveBeenCalled();
   });
 
-  it('查询只覆盖上次活跃binding与当前最多200个ID', async () => {
+  it('后续创建批次失败时尚未执行缺失下架且不推进快照状态', async () => {
+    const { service, tx } = buildSyncService({
+      bindings: [{ externalId: '999', jobPostId: 'post_missing' }],
+      batchSize: 1,
+    });
+    tx.jobPost.createMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockRejectedValueOnce(new Error('create batch failed'));
+
+    await expect(
+      service.reconcile(
+        buildSnapshot([buildSourceItem({ demandId: '101' }), buildSourceItem({ demandId: '102' })]),
+        'merchant_a',
+      ),
+    ).rejects.toThrow('create batch failed');
+    expect(tx.jobPost.createMany).toHaveBeenCalledTimes(2);
+    expect(
+      tx.$executeRaw.mock.calls.some((call) =>
+        sqlText(call).includes('UPDATE "job_posts" AS post'),
+      ),
+    ).toBe(false);
+    expect(
+      tx.$queryRaw.mock.calls.some((call) =>
+        sqlText(call).includes('binding."source_active" = TRUE'),
+      ),
+    ).toBe(false);
+    expect(tx.tutorSyncState.upsert).not.toHaveBeenCalled();
+  });
+  it('当前ID分批查询不截断，历史活跃binding使用有序LIMIT分页', async () => {
     const { service, tx } = buildSyncService();
     await service.reconcile(buildSnapshot([buildSourceItem()]), 'merchant_a');
-    const query = tx.$queryRaw.mock.calls[1];
-    expect(sqlText(query)).toContain('binding."source_active" = TRUE');
-    expect(sqlText(query)).toContain('binding."external_id" IN');
-    expect(sqlText(query)).toContain('LIMIT');
+    const currentBatchQuery = tx.$queryRaw.mock.calls.find((call) =>
+      sqlText(call).includes('binding."external_id" IN'),
+    );
+    const activeQuery = tx.$queryRaw.mock.calls.find((call) =>
+      sqlText(call).includes('binding."source_active" = TRUE'),
+    );
+    expect(sqlText(activeQuery)).toContain('binding."source_active" = TRUE');
+    expect(sqlText(currentBatchQuery)).toContain('binding."external_id" IN');
+    expect(sqlText(currentBatchQuery)).not.toContain('LIMIT');
+    expect(sqlText(activeQuery)).toContain('ORDER BY binding."id" ASC LIMIT');
   });
 
-  it('200条既有需求最坏写操作数不随条目数线性增长', async () => {
-    const items = Array.from({ length: 200 }, (_, index) => buildSourceItem({
-      demandId: String(index + 1),
+  it('历史活跃binding超过单批数量时按稳定游标分批下架', async () => {
+    const bindings = Array.from({ length: 5 }, (_, index) => ({
+      id: `binding_${index + 1}`,
+      externalId: String(index + 1),
+      jobPostId: `post_${index + 1}`,
     }));
+    const { service, tx } = buildSyncService({ bindings, batchSize: 2 });
+
+    await expect(service.reconcile(buildSnapshot([]), 'merchant_a')).resolves.toMatchObject({
+      withdrawn: 5,
+    });
+
+    const activeQueries = tx.$queryRaw.mock.calls.filter((call) =>
+      sqlText(call).includes('binding."source_active" = TRUE'),
+    );
+    expect(activeQueries).toHaveLength(3);
+    expect(activeQueries.map(sqlText)).toEqual([
+      expect.stringContaining('ORDER BY binding."id" ASC LIMIT'),
+      expect.stringContaining('AND binding."id" > ?'),
+      expect.stringContaining('AND binding."id" > ?'),
+    ]);
+    const activityRows = tx.$executeRaw.mock.calls
+      .filter((call) => sqlText(call).includes('UPDATE "tutor_job_sync_bindings"'))
+      .flatMap(sqlJsonRows);
+    expect(activityRows).toHaveLength(5);
+  });
+
+  it('200条既有需求按每批50条执行更新和活跃标记', async () => {
+    const items = Array.from({ length: 200 }, (_, index) =>
+      buildSourceItem({
+        demandId: String(index + 1),
+      }),
+    );
     const bindings = items.map((item, index) => ({
       externalId: item.demandId,
       jobPostId: `post_${index + 1}`,
     }));
-    const { service, tx } = buildSyncService({ bindings, maxDemands: 200 });
-    await expect(service.reconcile(buildSnapshot(items), 'merchant_a'))
-      .resolves.toMatchObject({ updated: 200 });
-    expect(tx.$executeRaw.mock.calls.length).toBeLessThanOrEqual(2);
+    const { service, tx } = buildSyncService({ bindings, batchSize: 50 });
+    await expect(service.reconcile(buildSnapshot(items), 'merchant_a')).resolves.toMatchObject({
+      updated: 200,
+    });
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(8);
     expect(tx.jobPost.createMany).not.toHaveBeenCalled();
   });
 
-  it('超过管理端容量时在进入事务前明确拒绝', async () => {
-    const items = Array.from({ length: 101 }, (_, index) => buildSourceItem({
-      demandId: String(index + 1),
-    }));
-    const { service, prisma } = buildSyncService({ maxDemands: 100 });
-    await expect(service.reconcile(buildSnapshot(items), 'merchant_a'))
-      .rejects.toThrow('configured limit of 100');
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+  it('201条首次同步按100、100、1三批创建且总量不截断', async () => {
+    const items = Array.from({ length: 201 }, (_, index) =>
+      buildSourceItem({
+        demandId: String(index + 1),
+      }),
+    );
+    const { service, prisma, tx } = buildSyncService({ batchSize: 100 });
+    await expect(service.reconcile(buildSnapshot(items), 'merchant_a')).resolves.toMatchObject({
+      received: 201,
+      created: 201,
+    });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.jobPost.createMany).toHaveBeenCalledTimes(3);
+    expect(tx.jobPost.createMany.mock.calls.map((call) => call[0].data.length)).toEqual([
+      100, 100, 1,
+    ]);
   });
 
   it('不调用内容审核且源字段直接进入批量SQL', async () => {
-    const source = readFileSync(resolve(
-      __dirname,
-      '../../src/modules/tutor-sync/tutor-sync.service.ts',
-    ), 'utf8');
+    const source = readFileSync(
+      resolve(__dirname, '../../src/modules/tutor-sync/tutor-sync.service.ts'),
+      'utf8',
+    );
     expect(source).not.toContain('ModerationService');
     expect(source).not.toContain('checkText');
     expect(source).not.toContain('contentReviewHash');
@@ -698,9 +1054,7 @@ describe('JobService nearest索引预筛选', () => {
     const query = prisma.$queryRaw.mock.calls[0];
     expect(sqlText(query)).toContain('"location_lat" BETWEEN');
     expect(sqlText(query)).toContain('"location_lng" BETWEEN');
-    expect(sqlText(query)).toContain(
-      `"jp"."status" = 'PUBLISHED'::"JobPostStatus"`,
-    );
+    expect(sqlText(query)).toContain(`"jp"."status" = 'PUBLISHED'::"JobPostStatus"`);
   });
 
   it('候选不足时逐级扩张且最终全球范围不截断远端岗位', async () => {
@@ -733,12 +1087,8 @@ describe('JobService nearest索引预筛选', () => {
       limit: 20,
     } as never);
     const query = prisma.$queryRaw.mock.calls[0];
-    expect(sqlText(query)).toContain(
-      '"location_lng" BETWEEN ? AND 180',
-    );
-    expect(sqlText(query)).toContain(
-      'OR "jp"."location_lng" BETWEEN -180 AND ?',
-    );
+    expect(sqlText(query)).toContain('"location_lng" BETWEEN ? AND 180');
+    expect(sqlText(query)).toContain('OR "jp"."location_lng" BETWEEN -180 AND ?');
   });
 
   it('接近极点时不使用会漏岗的经度限制', async () => {
@@ -755,8 +1105,7 @@ describe('JobService nearest索引预筛选', () => {
       userLat: 89.99,
       limit: 20,
     } as never);
-    expect(sqlText(prisma.$queryRaw.mock.calls[0]))
-      .not.toContain('"location_lng" BETWEEN');
+    expect(sqlText(prisma.$queryRaw.mock.calls[0])).not.toContain('"location_lng" BETWEEN');
   });
 
   it('同距离分页继续使用distance与id稳定keyset', async () => {
@@ -783,12 +1132,8 @@ describe('JobService nearest索引预筛选', () => {
       limit: 2,
       cursor: first.nextCursor,
     } as never);
-    expect(sqlText(prisma.$queryRaw.mock.calls[0])).toContain(
-      '"distance" > ?',
-    );
-    expect(sqlText(prisma.$queryRaw.mock.calls[0])).toContain(
-      '"distance" = ? AND "id" > ?',
-    );
+    expect(sqlText(prisma.$queryRaw.mock.calls[0])).toContain('"distance" > ?');
+    expect(sqlText(prisma.$queryRaw.mock.calls[0])).toContain('"distance" = ? AND "id" > ?');
   });
 });
 
@@ -797,16 +1142,26 @@ describe('数据库与部署静态契约', () => {
     __dirname,
     '../../prisma/migrations/20260828103000_tutor_job_sync/migration.sql',
   );
+  const activeCursorMigrationPath = resolve(
+    __dirname,
+    '../../prisma/migrations/20260830023000_tutor_sync_active_cursor_index/migration.sql',
+  );
 
   it('binding迁移包含活跃状态与有界查询索引', () => {
     const migration = readFileSync(migrationPath, 'utf8');
     expect(migration).toContain('"source_active" BOOLEAN NOT NULL DEFAULT true');
-    expect(migration).toContain(
-      'tutor_job_sync_bindings_source_source_active_idx',
-    );
+    expect(migration).toContain('tutor_job_sync_bindings_source_source_active_idx');
     expect(migration).toContain(
       'CREATE UNIQUE INDEX "tutor_job_sync_bindings_source_external_id_key"',
     );
+  });
+
+  it('历史活跃binding游标迁移包含source、source_active和id复合索引', () => {
+    const migration = readFileSync(activeCursorMigrationPath, 'utf8');
+    const schema = readFileSync(resolve(__dirname, '../../prisma/schema.prisma'), 'utf8');
+    expect(migration).toContain('tutor_job_sync_bindings_source_source_active_id_idx');
+    expect(migration).toContain('ON "tutor_job_sync_bindings"("source", "source_active", "id")');
+    expect(schema).toContain('@@index([source, sourceActive, id])');
   });
 
   it('nearest迁移包含两个可部署的部分B-tree索引', () => {
@@ -817,10 +1172,7 @@ describe('数据库与部署静态契约', () => {
   });
 
   it('schema与迁移不再包含审核哈希和claim租约字段', () => {
-    const schema = readFileSync(resolve(
-      __dirname,
-      '../../prisma/schema.prisma',
-    ), 'utf8');
+    const schema = readFileSync(resolve(__dirname, '../../prisma/schema.prisma'), 'utf8');
     expect(schema).not.toMatch(
       /contentReviewHash|processingSnapshotTime|processingToken|leaseExpiresAt/,
     );
@@ -844,10 +1196,10 @@ describe('数据库与部署静态契约', () => {
   });
 
   it('管理配置API受AdminGuard保护', () => {
-    const controller = readFileSync(resolve(
-      __dirname,
-      '../../src/modules/admin/admin.controller.ts',
-    ), 'utf8');
+    const controller = readFileSync(
+      resolve(__dirname, '../../src/modules/admin/admin.controller.ts'),
+      'utf8',
+    );
     expect(controller).toContain('@UseGuards(AdminGuard)');
     expect(controller).toContain("@Get('settings')");
     expect(controller).toContain("@Put('settings/:key')");
@@ -855,46 +1207,197 @@ describe('数据库与部署静态契约', () => {
 });
 
 describe('小程序同步岗位静态契约', () => {
-  it('管理端设置页展示5分钟周期、容量范围且不展示部署秘密', () => {
-    const template = readFileSync(resolve(
-      __dirname,
-      '../../../user-miniprogram/components/admin-panels/ops/index.wxml',
-    ), 'utf8');
-    const logic = readFileSync(resolve(
-      __dirname,
-      '../../../user-miniprogram/components/admin-panels/ops/index.ts',
-    ), 'utf8');
+  it('管理端设置页渲染运行开关，批次配置保持独立', () => {
+    const template = readFileSync(
+      resolve(__dirname, '../../../user-miniprogram/components/admin-panels/ops/index.wxml'),
+      'utf8',
+    );
+    const logic = readFileSync(
+      resolve(__dirname, '../../../user-miniprogram/components/admin-panels/ops/index.ts'),
+      'utf8',
+    );
     expect(template).toContain('系统同步配置');
-    expect(template).toContain('每 5 分钟同步一次');
+    expect(template).toContain('家教自动同步');
+    expect(template).toContain('每 5 分钟执行');
     expect(template).toContain('1-200 条');
-    expect(logic).toContain("updateAppSetting('tutor_sync.max_demands', maxDemands)");
+    expect(template).toContain('全量总数不限');
+    expect(template).toContain('checked="{{tutorSyncEnabled}}"');
+    expect(template).toContain(
+      'disabled="{{loading || !appSettingsLoaded || togglingNeedReview || togglingTutorSync || savingTutorSync}}"',
+    );
+    expect(logic).toContain("item.key === 'tutor_sync.enabled'");
+    expect(logic).toContain("updateAppSetting('tutor_sync.enabled', next)");
+    expect(logic).toContain("updateAppSetting('tutor_sync.max_demands', batchSize)");
     expect(template).not.toMatch(/TUTOR_SYNC_TOKEN|TUTOR_SYNC_URL/);
   });
 
+  it('管理端运行开关加载、成功、失败回滚和重复操作保护均生效', async () => {
+    const { component, getAppSettings, updateAppSetting } = buildOpsSettingsComponent();
+    getAppSettings.mockResolvedValue([
+      { key: TUTOR_SYNC_ENABLED_KEY, value: false },
+      { key: TUTOR_SYNC_BATCH_SIZE_KEY, value: 150 },
+    ]);
+
+    await component.load();
+    expect(component.data).toMatchObject({
+      loading: false,
+      tutorSyncEnabled: false,
+      tutorSyncBatchSize: '150',
+      tutorSyncConfirmedBatchSize: '150',
+      appSettingsLoaded: true,
+    });
+
+    component.data.loading = true;
+    await component.toggleTutorSync({ detail: { value: true } });
+    expect(updateAppSetting).not.toHaveBeenCalled();
+    component.data.loading = false;
+
+    let resolveUpdate: ((value: unknown) => void) | undefined;
+    updateAppSetting.mockReturnValueOnce(
+      new Promise((resolvePromise) => {
+        resolveUpdate = resolvePromise;
+      }),
+    );
+    const enabling = component.toggleTutorSync({ detail: { value: true } });
+    expect(component.data).toMatchObject({
+      tutorSyncEnabled: true,
+      togglingTutorSync: true,
+    });
+    await component.toggleTutorSync({ detail: { value: false } });
+    expect(updateAppSetting).toHaveBeenCalledTimes(1);
+    await component.load();
+    expect(getAppSettings).toHaveBeenCalledTimes(1);
+    resolveUpdate?.({ key: TUTOR_SYNC_ENABLED_KEY, value: true });
+    await enabling;
+    expect(component.data).toMatchObject({
+      tutorSyncEnabled: true,
+      togglingTutorSync: false,
+    });
+
+    component.data.loading = true;
+    await component.saveTutorSyncSettings();
+    expect(updateAppSetting).toHaveBeenCalledTimes(1);
+    component.data.loading = false;
+
+    let resolveBatchSize: ((value: unknown) => void) | undefined;
+    updateAppSetting.mockReturnValueOnce(
+      new Promise((resolvePromise) => {
+        resolveBatchSize = resolvePromise;
+      }),
+    );
+    component.data.tutorSyncBatchSize = '180';
+    const savingBatchSize = component.saveTutorSyncSettings();
+    expect(component.data.savingTutorSync).toBe(true);
+    await component.load();
+    expect(getAppSettings).toHaveBeenCalledTimes(1);
+    resolveBatchSize?.({ key: TUTOR_SYNC_BATCH_SIZE_KEY, value: 180 });
+    await savingBatchSize;
+    expect(updateAppSetting).toHaveBeenCalledTimes(2);
+    expect(updateAppSetting).toHaveBeenLastCalledWith(TUTOR_SYNC_BATCH_SIZE_KEY, 180);
+    expect(component.data).toMatchObject({
+      tutorSyncBatchSize: '180',
+      tutorSyncConfirmedBatchSize: '180',
+      savingTutorSync: false,
+    });
+
+    updateAppSetting.mockRejectedValueOnce(new Error('network down'));
+    component.data.tutorSyncBatchSize = '190';
+    await component.saveTutorSyncSettings();
+    expect(updateAppSetting).toHaveBeenCalledTimes(3);
+    expect(component.data).toMatchObject({
+      tutorSyncBatchSize: '180',
+      tutorSyncConfirmedBatchSize: '180',
+      savingTutorSync: false,
+    });
+
+    updateAppSetting.mockRejectedValueOnce(new Error('network down'));
+    await component.toggleTutorSync({ detail: { value: false } });
+    expect(updateAppSetting).toHaveBeenCalledTimes(4);
+    expect(component.data).toMatchObject({
+      tutorSyncEnabled: true,
+      togglingTutorSync: false,
+    });
+  });
+
+  it('管理端首次设置加载失败时禁止保存占位配置', async () => {
+    const { component, getAppSettings, updateAppSetting } = buildOpsSettingsComponent();
+    getAppSettings.mockRejectedValueOnce(new Error('network down'));
+
+    await component.load();
+    expect(component.data).toMatchObject({
+      loading: false,
+      appSettingsLoaded: false,
+      tutorSyncEnabled: false,
+      tutorSyncBatchSize: '100',
+    });
+    await component.toggleTutorSync({ detail: { value: true } });
+    await component.saveTutorSyncSettings();
+    expect(updateAppSetting).not.toHaveBeenCalled();
+  });
+
+  it('管理端重叠加载只允许最新请求更新开关和 loading', async () => {
+    const { component, getAppSettings } = buildOpsSettingsComponent();
+    let resolveFirst: ((value: unknown) => void) | undefined;
+    getAppSettings
+      .mockReturnValueOnce(
+        new Promise((resolvePromise) => {
+          resolveFirst = resolvePromise;
+        }),
+      )
+      .mockResolvedValueOnce([
+        { key: TUTOR_SYNC_ENABLED_KEY, value: true },
+        { key: TUTOR_SYNC_BATCH_SIZE_KEY, value: 180 },
+      ]);
+
+    const firstLoad = component.load();
+    const secondLoad = component.load();
+    await secondLoad;
+    expect(component.data).toMatchObject({
+      loading: false,
+      tutorSyncEnabled: true,
+      tutorSyncBatchSize: '180',
+      tutorSyncConfirmedBatchSize: '180',
+      appSettingsLoaded: true,
+      loadRequestId: 2,
+    });
+
+    resolveFirst?.([
+      { key: TUTOR_SYNC_ENABLED_KEY, value: false },
+      { key: TUTOR_SYNC_BATCH_SIZE_KEY, value: 100 },
+    ]);
+    await firstLoad;
+    expect(component.data).toMatchObject({
+      loading: false,
+      tutorSyncEnabled: true,
+      tutorSyncBatchSize: '180',
+      tutorSyncConfirmedBatchSize: '180',
+      appSettingsLoaded: true,
+      loadRequestId: 2,
+    });
+  });
+
   it('详情禁用报名并展示固定红色联系提示', () => {
-    const template = readFileSync(resolve(
-      __dirname,
-      '../../../user-miniprogram/pages/job/detail/index.wxml',
-    ), 'utf8');
-    const style = readFileSync(resolve(
-      __dirname,
-      '../../../user-miniprogram/pages/job/detail/index.wxss',
-    ), 'utf8');
+    const template = readFileSync(
+      resolve(__dirname, '../../../user-miniprogram/pages/job/detail/index.wxml'),
+      'utf8',
+    );
+    const style = readFileSync(
+      resolve(__dirname, '../../../user-miniprogram/pages/job/detail/index.wxss'),
+      'utf8',
+    );
     expect(template).toContain('contactInstruction');
     expect(template).toContain(
       '<button class="apply-btn" disabled="{{true}}">请联系发布方报名</button>',
     );
     expect(style).toContain('color: #F53F3F');
-    expect(TUTOR_SYNC_CONTACT_INSTRUCTION).toBe(
-      '此岗位需联系13057867818（同微信）',
-    );
+    expect(TUTOR_SYNC_CONTACT_INSTRUCTION).toBe('此岗位需联系13057867818（同微信）');
   });
 
   it('服务端岗位VO仍固定展示森阳家教并禁止站内报名', () => {
-    const jobService = readFileSync(resolve(
-      __dirname,
-      '../../src/modules/job/job.service.ts',
-    ), 'utf8');
+    const jobService = readFileSync(
+      resolve(__dirname, '../../src/modules/job/job.service.ts'),
+      'utf8',
+    );
     expect(jobService).toContain('applyMode === JobApplyMode.CONTACT_ONLY');
     expect(jobService).toContain('tutorJobPolicy.contactInstruction(p)');
     expect(jobService).toContain('validityText: p.expireAt === null');
@@ -918,10 +1421,7 @@ describe('同步全圈可见策略', () => {
         ],
       },
       {
-        OR: [
-          { expireAt: null },
-          { expireAt: { gt: new Date('2026-08-29T08:00:00.000Z') } },
-        ],
+        OR: [{ expireAt: null }, { expireAt: { gt: new Date('2026-08-29T08:00:00.000Z') } }],
       },
     ]);
   });

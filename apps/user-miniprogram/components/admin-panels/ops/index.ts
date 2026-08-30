@@ -49,8 +49,29 @@ import {
   type AdminAnnouncementVo,
 } from '../../../services/announcement';
 
-type Sub = 'announce' | 'activity' | 'topic' | 'tags' | 'jobs' | 'pricing' | 'boost' | 'banner' | 'community' | 'settings';
-const SUBS: Sub[] = ['announce', 'activity', 'topic', 'tags', 'jobs', 'pricing', 'boost', 'banner', 'community', 'settings'];
+type Sub =
+  | 'announce'
+  | 'activity'
+  | 'topic'
+  | 'tags'
+  | 'jobs'
+  | 'pricing'
+  | 'boost'
+  | 'banner'
+  | 'community'
+  | 'settings';
+const SUBS: Sub[] = [
+  'announce',
+  'activity',
+  'topic',
+  'tags',
+  'jobs',
+  'pricing',
+  'boost',
+  'banner',
+  'community',
+  'settings',
+];
 
 Component({
   options: {
@@ -118,8 +139,13 @@ Component({
     // 全局设置
     needReviewEnabled: false,
     togglingNeedReview: false,
-    tutorSyncMaxDemands: '100',
+    tutorSyncEnabled: false,
+    togglingTutorSync: false,
+    tutorSyncBatchSize: '100',
+    tutorSyncConfirmedBatchSize: '100',
+    appSettingsLoaded: false,
     savingTutorSync: false,
+    loadRequestId: 0,
     loading: false,
   },
 
@@ -154,44 +180,61 @@ Component({
     },
 
     async load() {
-      this.setData({ loading: true });
+      const sub = this.data.sub;
+      if (sub === 'settings' && (this.data.togglingTutorSync || this.data.savingTutorSync)) {
+        return;
+      }
+      const requestId = this.data.loadRequestId + 1;
+      this.setData({ loading: true, loadRequestId: requestId });
+      const commit = (updates: Record<string, unknown>) => {
+        if (requestId !== this.data.loadRequestId) return;
+        this.setData(updates);
+      };
       try {
-        const sub = this.data.sub;
         if (sub === 'announce') {
-          this.setData({ announcements: await listAllAnnouncements() });
+          commit({ announcements: await listAllAnnouncements() });
         } else if (sub === 'activity') {
-          this.setData({ activityTopics: await listActivityTopicsAdmin() });
+          commit({ activityTopics: await listActivityTopicsAdmin() });
         } else if (sub === 'topic') {
-          this.setData({ topics: await listTopicsAdmin() });
+          commit({ topics: await listTopicsAdmin() });
         } else if (sub === 'tags') {
-          this.setData({ anonTags: await listAnonTagsAdmin(this.data.tagFilterCat || undefined) });
+          commit({ anonTags: await listAnonTagsAdmin(this.data.tagFilterCat || undefined) });
         } else if (sub === 'jobs') {
-          this.setData({ jobPosts: await listJobPostsAdmin() });
+          commit({ jobPosts: await listJobPostsAdmin() });
         } else if (sub === 'pricing') {
-          this.setData({ pricing: await getPricing() });
+          commit({ pricing: await getPricing() });
         } else if (sub === 'boost') {
-          this.setData({ boostPlans: await getBoostPlans() });
+          commit({ boostPlans: await getBoostPlans() });
         } else if (sub === 'banner') {
-          this.setData({ banners: await listBannersAdmin() });
+          commit({ banners: await listBannersAdmin() });
         } else if (sub === 'community') {
-          const list = await listCommunitiesAdmin(this.data.cmStatus || undefined, this.data.cmKeyword || undefined);
+          const list = await listCommunitiesAdmin(
+            this.data.cmStatus || undefined,
+            this.data.cmKeyword || undefined,
+          );
           const pendingCount = (await listCommunitiesAdmin('PENDING')).length;
-          this.setData({ communities: list, cmPendingCount: pendingCount });
+          commit({ communities: list, cmPendingCount: pendingCount });
         } else if (sub === 'settings') {
           const cfgList = await getAppSettings();
           const needReview = cfgList.find((item) => item.key === 'community.need_review');
-          const maxDemands = cfgList.find((item) => item.key === 'tutor_sync.max_demands');
-          this.setData({
+          const tutorSyncEnabled = cfgList.find((item) => item.key === 'tutor_sync.enabled');
+          const batchSizeSetting = cfgList.find((item) => item.key === 'tutor_sync.max_demands');
+          const normalizedBatchSize =
+            typeof batchSizeSetting?.value === 'number' ? String(batchSizeSetting.value) : '100';
+          commit({
             needReviewEnabled: needReview?.value === true,
-            tutorSyncMaxDemands: typeof maxDemands?.value === 'number'
-              ? String(maxDemands.value)
-              : '100',
+            tutorSyncEnabled: tutorSyncEnabled?.value === true,
+            tutorSyncBatchSize: normalizedBatchSize,
+            tutorSyncConfirmedBatchSize: normalizedBatchSize,
+            appSettingsLoaded: true,
           });
         }
       } catch {
         /* toast */
       } finally {
-        this.setData({ loading: false });
+        if (requestId === this.data.loadRequestId) {
+          this.setData({ loading: false });
+        }
       }
     },
 
@@ -205,7 +248,10 @@ Component({
         wx.showToast({ title: '请填标题和内容', icon: 'none' });
         return;
       }
-      await createAnnouncement({ title: this.data.annTitle.trim(), content: this.data.annContent.trim() });
+      await createAnnouncement({
+        title: this.data.annTitle.trim(),
+        content: this.data.annContent.trim(),
+      });
       wx.showToast({ title: '已发布', icon: 'success' });
       this.setData({ annTitle: '', annContent: '' });
       this.load();
@@ -240,7 +286,11 @@ Component({
         wx.showToast({ title: '请填标题', icon: 'none' });
         return;
       }
-      await createActivityTopic({ title: this.data.actTitle.trim(), description: this.data.actDesc.trim() || undefined, status: 'PUBLISHED' });
+      await createActivityTopic({
+        title: this.data.actTitle.trim(),
+        description: this.data.actDesc.trim() || undefined,
+        status: 'PUBLISHED',
+      });
       wx.showToast({ title: '已创建', icon: 'success' });
       this.setData({ actTitle: '', actDesc: '' });
       this.load();
@@ -270,7 +320,11 @@ Component({
         wx.showToast({ title: '请填话题名', icon: 'none' });
         return;
       }
-      await createTopic({ name: this.data.topicName.trim(), description: this.data.topicDesc.trim() || undefined, status: 'PUBLISHED' });
+      await createTopic({
+        name: this.data.topicName.trim(),
+        description: this.data.topicDesc.trim() || undefined,
+        status: 'PUBLISHED',
+      });
       wx.showToast({ title: '已创建', icon: 'success' });
       this.setData({ topicName: '', topicDesc: '' });
       this.load();
@@ -303,7 +357,11 @@ Component({
         wx.showToast({ title: '请填标签名', icon: 'none' });
         return;
       }
-      await createAnonTag({ name: this.data.tagName.trim(), category: this.data.tagCategory, sortOrder: Number(this.data.tagSort) || 0 });
+      await createAnonTag({
+        name: this.data.tagName.trim(),
+        category: this.data.tagCategory,
+        sortOrder: Number(this.data.tagSort) || 0,
+      });
       wx.showToast({ title: '已创建', icon: 'success' });
       this.setData({ tagName: '', tagSort: '' });
       this.load();
@@ -333,7 +391,11 @@ Component({
       this.load();
     },
     startEditTag(e: WechatMiniprogram.TouchEvent) {
-      const { id, name, sort } = e.currentTarget.dataset as { id: string; name: string; sort: number };
+      const { id, name, sort } = e.currentTarget.dataset as {
+        id: string;
+        name: string;
+        sort: number;
+      };
       this.setData({ editingTagId: id, editingTagName: name, editingTagSort: String(sort) });
     },
     onEditTagInput(e: WechatMiniprogram.Input) {
@@ -345,7 +407,10 @@ Component({
         wx.showToast({ title: '请填标签名', icon: 'none' });
         return;
       }
-      await updateAnonTag(this.data.editingTagId, { name: this.data.editingTagName.trim(), sortOrder: Number(this.data.editingTagSort) || 0 });
+      await updateAnonTag(this.data.editingTagId, {
+        name: this.data.editingTagName.trim(),
+        sortOrder: Number(this.data.editingTagSort) || 0,
+      });
       wx.showToast({ title: '已保存', icon: 'success' });
       this.setData({ editingTagId: '', editingTagName: '', editingTagSort: '' });
       this.load();
@@ -455,8 +520,16 @@ Component({
       this.load();
     },
     startEditBanner(e: WechatMiniprogram.TouchEvent) {
-      const { id, sort, link } = e.currentTarget.dataset as { id: string; sort: number; link?: string | null };
-      this.setData({ editingBannerId: id, editingBannerSort: String(sort), editingBannerLink: link ?? '' });
+      const { id, sort, link } = e.currentTarget.dataset as {
+        id: string;
+        sort: number;
+        link?: string | null;
+      };
+      this.setData({
+        editingBannerId: id,
+        editingBannerSort: String(sort),
+        editingBannerLink: link ?? '',
+      });
     },
     onEditBannerInput(e: WechatMiniprogram.Input) {
       const field = e.currentTarget.dataset.field as 'editingBannerSort' | 'editingBannerLink';
@@ -540,7 +613,14 @@ Component({
     // P2-26 全局设置 - 建圈审核开关
     async toggleNeedReview(e: WechatMiniprogram.SwitchChange) {
       const next = e.detail.value;
-      if (this.data.togglingNeedReview) return;
+      if (
+        this.data.loading ||
+        !this.data.appSettingsLoaded ||
+        this.data.togglingNeedReview ||
+        this.data.togglingTutorSync ||
+        this.data.savingTutorSync
+      )
+        return;
       this.setData({ togglingNeedReview: true });
       try {
         await updateAppSetting('community.need_review', next);
@@ -552,23 +632,55 @@ Component({
         this.setData({ togglingNeedReview: false });
       }
     },
-    onTutorSyncMaxInput(e: WechatMiniprogram.Input) {
-      this.setData({ tutorSyncMaxDemands: e.detail.value });
+    onTutorSyncBatchSizeInput(e: WechatMiniprogram.Input) {
+      this.setData({ tutorSyncBatchSize: e.detail.value });
+    },
+    async toggleTutorSync(e: WechatMiniprogram.SwitchChange) {
+      if (
+        this.data.loading ||
+        !this.data.appSettingsLoaded ||
+        this.data.togglingNeedReview ||
+        this.data.togglingTutorSync ||
+        this.data.savingTutorSync
+      )
+        return;
+      const previous = this.data.tutorSyncEnabled;
+      const next = e.detail.value;
+      this.setData({ tutorSyncEnabled: next, togglingTutorSync: true });
+      try {
+        await updateAppSetting('tutor_sync.enabled', next);
+        wx.showToast({ title: next ? '自动同步已开启' : '自动同步已关闭', icon: 'success' });
+      } catch {
+        this.setData({ tutorSyncEnabled: previous });
+      } finally {
+        this.setData({ togglingTutorSync: false });
+      }
     },
     async saveTutorSyncSettings() {
-      if (this.data.savingTutorSync) return;
-      const maxDemands = Number(this.data.tutorSyncMaxDemands);
-      if (!Number.isInteger(maxDemands) || maxDemands < 1 || maxDemands > 200) {
+      if (
+        this.data.loading ||
+        !this.data.appSettingsLoaded ||
+        this.data.togglingNeedReview ||
+        this.data.togglingTutorSync ||
+        this.data.savingTutorSync
+      )
+        return;
+      const batchSize = Number(this.data.tutorSyncBatchSize);
+      if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 200) {
         wx.showToast({ title: '请输入 1-200 的整数', icon: 'none' });
         return;
       }
+      const previousBatchSize = this.data.tutorSyncConfirmedBatchSize;
       this.setData({ savingTutorSync: true });
       try {
-        await updateAppSetting('tutor_sync.max_demands', maxDemands);
-        wx.showToast({ title: '同步配置已保存', icon: 'success' });
-        this.setData({ tutorSyncMaxDemands: String(maxDemands) });
+        await updateAppSetting('tutor_sync.max_demands', batchSize);
+        wx.showToast({ title: '批次大小已保存', icon: 'success' });
+        this.setData({
+          tutorSyncBatchSize: String(batchSize),
+          tutorSyncConfirmedBatchSize: String(batchSize),
+        });
       } catch {
-        /* toast */
+        this.setData({ tutorSyncBatchSize: previousBatchSize });
       } finally {
         this.setData({ savingTutorSync: false });
       }

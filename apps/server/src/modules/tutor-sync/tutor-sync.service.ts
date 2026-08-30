@@ -15,10 +15,7 @@ import { TutorDemandAdapter } from './tutor-demand.adapter';
 import { TutorPublisherService } from './tutor-publisher.service';
 import { TutorSnapshotClient } from './tutor-snapshot.client';
 import { acquireTutorSyncLock } from './tutor-sync.lock';
-import {
-  TUTOR_SYNC_HARD_MAX_DEMANDS,
-  TutorSyncSettingsService,
-} from './tutor-sync.settings';
+import { TutorSyncSettingsService } from './tutor-sync.settings';
 import {
   TUTOR_SYNC_CONTACT,
   TUTOR_SYNC_PUBLISHER,
@@ -28,10 +25,9 @@ import {
   type TutorSyncResult,
 } from './tutor-sync.types';
 
-const RECONCILE_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 15_000 } as const;
-const MAX_RELEVANT_BINDINGS = TUTOR_SYNC_HARD_MAX_DEMANDS * 2;
+const RECONCILE_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 120_000 } as const;
 
-interface BoundedBinding {
+interface TutorBinding {
   id: string;
   externalId: string;
   jobPostId: string;
@@ -43,7 +39,7 @@ interface BoundedBinding {
 }
 
 interface ExistingJobInput {
-  binding: BoundedBinding;
+  binding: TutorBinding;
   item: AdaptedTutorJob;
   sourceData: ReturnType<TutorSyncService['buildSourceData']>;
 }
@@ -61,43 +57,40 @@ export class TutorSyncService {
     private readonly settings: TutorSyncSettingsService,
   ) {}
 
-  isEnabled(): boolean {
-    return this.snapshotClient.isEnabled();
+  isDeploymentEnabled(): boolean {
+    return this.snapshotClient.isDeploymentEnabled();
   }
 
   async synchronize(): Promise<TutorSyncResult> {
+    if (!this.isDeploymentEnabled()) return this.emptyResult(0, true);
     const settings = await this.settings.getSettings();
-    const snapshot = await this.snapshotClient.fetchSnapshot(settings.maxDemands);
+    if (!settings.enabled) return this.emptyResult(0, true);
+    const snapshot = await this.snapshotClient.fetchSnapshot();
     const merchantId = await this.publisher.ensurePublisher();
-    const result = await this.reconcileWithLimit(
-      snapshot,
-      merchantId,
-      settings.maxDemands,
-    );
+    const result = await this.reconcileInBatches(snapshot, merchantId, settings.batchSize);
     this.logger.log(
-      `tutor sync: received=${result.received} created=${result.created} updated=${result.updated} withdrawn=${result.withdrawn} skipped=${result.skipped}`,
+      `tutor sync: received=${result.received} batches=${Math.ceil(result.received / settings.batchSize)} created=${result.created} updated=${result.updated} withdrawn=${result.withdrawn} skipped=${result.skipped}`,
     );
     return result;
   }
 
-  async reconcile(
-    snapshot: TutorDemandSnapshot,
-    merchantId: string,
-  ): Promise<TutorSyncResult> {
+  async reconcile(snapshot: TutorDemandSnapshot, merchantId: string): Promise<TutorSyncResult> {
     const settings = await this.settings.getSettings();
-    return this.reconcileWithLimit(snapshot, merchantId, settings.maxDemands);
+    return this.reconcileInBatches(snapshot, merchantId, settings.batchSize);
   }
 
-  private async reconcileWithLimit(
+  private async reconcileInBatches(
     snapshot: TutorDemandSnapshot,
     merchantId: string,
-    maxDemands: number,
+    batchSize: number,
   ): Promise<TutorSyncResult> {
-    this.snapshotClient.assertCapacity(snapshot, maxDemands);
-    const adapted = snapshot.items.map((item) => this.adapter.adapt(item));
-    const externalIds = adapted.map((item) => item.externalId);
-    if (new Set(externalIds).size !== externalIds.length) {
-      throw new Error('duplicate demand_id in tutor snapshot');
+    this.snapshotClient.assertIntegrity(snapshot);
+    const currentExternalIds = new Set<string>();
+    for (const item of snapshot.items) {
+      if (currentExternalIds.has(item.demandId)) {
+        throw new Error('duplicate demand_id in tutor snapshot');
+      }
+      currentExternalIds.add(item.demandId);
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -107,78 +100,56 @@ export class TutorSyncService {
         select: { lastGeneratedAt: true },
       });
       if (
-        state?.lastGeneratedAt
-        && snapshot.generatedAt.getTime() <= state.lastGeneratedAt.getTime()
+        state?.lastGeneratedAt &&
+        snapshot.generatedAt.getTime() <= state.lastGeneratedAt.getTime()
       ) {
-        return this.emptyResult(adapted.length, true);
+        return this.emptyResult(snapshot.items.length, true);
       }
 
-      const snapshotBindingCondition = externalIds.length > 0
-        ? Prisma.sql`OR binding."external_id" IN (${Prisma.join(externalIds)})`
-        : Prisma.empty;
-      const bindings = await tx.$queryRaw<BoundedBinding[]>(Prisma.sql`
-        SELECT
-          binding."id" AS "id",
-          binding."external_id" AS "externalId",
-          binding."job_post_id" AS "jobPostId",
-          binding."platform_blocked_at" AS "platformBlockedAt",
-          binding."source_active" AS "sourceActive",
-          jsonb_build_object('status', post."status") AS "jobPost"
-        FROM "tutor_job_sync_bindings" AS binding
-        INNER JOIN "job_posts" AS post ON post."id" = binding."job_post_id"
-        WHERE binding."source" = ${TUTOR_SYNC_SOURCE}
-          AND (
-            binding."source_active" = TRUE
-            ${snapshotBindingCondition}
-          )
-        LIMIT ${MAX_RELEVANT_BINDINGS + 1}
-      `);
-      if (bindings.length > MAX_RELEVANT_BINDINGS) {
-        throw new Error(
-          `tutor sync relevant bindings exceed hard limit of ${MAX_RELEVANT_BINDINGS}`,
+      const counters = this.emptyResult(snapshot.items.length, false);
+      for (let start = 0; start < snapshot.items.length; start += batchSize) {
+        const adaptedBatch = snapshot.items
+          .slice(start, start + batchSize)
+          .map((item) => this.adapter.adapt(item));
+        const itemByExternalId = new Map(adaptedBatch.map((item) => [item.externalId, item]));
+        const bindings = await this.queryCurrentBindings(tx, Array.from(itemByExternalId.keys()));
+        const bindingByExternalId = new Map(
+          bindings.map((binding) => [binding.externalId, binding]),
         );
-      }
+        const existingInputs: ExistingJobInput[] = [];
+        const newActiveItems: AdaptedTutorJob[] = [];
 
-      const bindingByExternalId = new Map(
-        bindings.map((binding) => [binding.externalId, binding]),
-      );
-      const itemByExternalId = new Map(
-        adapted.map((item) => [item.externalId, item]),
-      );
-      const existingInputs: ExistingJobInput[] = [];
-      const newActiveItems: AdaptedTutorJob[] = [];
-
-      for (const item of adapted) {
-        const binding = bindingByExternalId.get(item.externalId);
-        if (binding) {
-          existingInputs.push({
-            binding,
-            item,
-            sourceData: this.buildSourceData(item, merchantId),
-          });
-        } else if (item.active) {
-          newActiveItems.push(item);
+        for (const item of adaptedBatch) {
+          const binding = bindingByExternalId.get(item.externalId);
+          if (binding) {
+            existingInputs.push({
+              binding,
+              item,
+              sourceData: this.buildSourceData(item, merchantId),
+            });
+          } else if (item.active) {
+            newActiveItems.push(item);
+          }
         }
+
+        counters.created += newActiveItems.length;
+        counters.updated += existingInputs.filter(({ item }) => item.active).length;
+        counters.withdrawn += existingInputs.filter(
+          ({ item, binding }) =>
+            !item.active && binding.jobPost.status !== JobPostStatus.TAKEN_DOWN,
+        ).length;
+
+        await this.updateExistingJobPosts(tx, existingInputs);
+        await this.updateBindingActivity(
+          tx,
+          bindings.map((binding) => ({
+            id: binding.id,
+            sourceActive: itemByExternalId.get(binding.externalId)?.active ?? false,
+          })),
+        );
+        await this.createNewJobPosts(tx, merchantId, newActiveItems);
       }
-      const missingBindings = bindings.filter(
-        (binding) => !itemByExternalId.has(binding.externalId),
-      );
-
-      const counters = this.emptyResult(adapted.length, false);
-      counters.created = newActiveItems.length;
-      counters.updated = existingInputs.filter(({ item }) => item.active).length;
-      counters.withdrawn = existingInputs.filter(
-        ({ item, binding }) =>
-          !item.active && binding.jobPost.status !== JobPostStatus.TAKEN_DOWN,
-      ).length + missingBindings.filter(
-        (binding) => binding.jobPost.status !== JobPostStatus.TAKEN_DOWN,
-      ).length;
-
-      await this.updateExistingJobPosts(tx, existingInputs);
-      await this.withdrawMissingJobPosts(tx, missingBindings);
-      await this.updateBindingActivity(tx, bindings, itemByExternalId);
-      await this.createNewJobPosts(tx, merchantId, newActiveItems);
-
+      counters.withdrawn += await this.finalizeMissingBindings(tx, currentExternalIds, batchSize);
       await tx.tutorSyncState.upsert({
         where: { source: TUTOR_SYNC_SOURCE },
         update: { lastGeneratedAt: snapshot.generatedAt },
@@ -189,6 +160,81 @@ export class TutorSyncService {
       });
       return counters;
     }, RECONCILE_TRANSACTION_OPTIONS);
+  }
+
+  private queryCurrentBindings(
+    tx: Prisma.TransactionClient,
+    externalIds: string[],
+  ): Promise<TutorBinding[]> {
+    return this.queryBindings(
+      tx,
+      Prisma.sql`binding."external_id" IN (${Prisma.join(externalIds)})`,
+    );
+  }
+
+  private async finalizeMissingBindings(
+    tx: Prisma.TransactionClient,
+    currentExternalIds: ReadonlySet<string>,
+    batchSize: number,
+  ): Promise<number> {
+    let afterId: string | null = null;
+    let withdrawn = 0;
+
+    while (true) {
+      const activeBindings = await this.queryActiveBindingBatch(tx, afterId, batchSize);
+      if (activeBindings.length === 0) break;
+      afterId = activeBindings[activeBindings.length - 1]!.id;
+
+      const missingBindings = activeBindings.filter(
+        (binding) => !currentExternalIds.has(binding.externalId),
+      );
+      withdrawn += missingBindings.filter(
+        (binding) => binding.jobPost.status !== JobPostStatus.TAKEN_DOWN,
+      ).length;
+      await this.withdrawMissingJobPosts(tx, missingBindings);
+      await this.updateBindingActivity(
+        tx,
+        missingBindings.map((binding) => ({ id: binding.id, sourceActive: false })),
+      );
+
+      if (activeBindings.length < batchSize) break;
+    }
+    return withdrawn;
+  }
+
+  private queryActiveBindingBatch(
+    tx: Prisma.TransactionClient,
+    afterId: string | null,
+    batchSize: number,
+  ): Promise<TutorBinding[]> {
+    const cursorCondition =
+      afterId === null ? Prisma.empty : Prisma.sql`AND binding."id" > ${afterId}`;
+    return this.queryBindings(
+      tx,
+      Prisma.sql`binding."source_active" = TRUE ${cursorCondition}`,
+      Prisma.sql`ORDER BY binding."id" ASC LIMIT ${batchSize}`,
+    );
+  }
+
+  private queryBindings(
+    tx: Prisma.TransactionClient,
+    condition: Prisma.Sql,
+    suffix: Prisma.Sql = Prisma.empty,
+  ): Promise<TutorBinding[]> {
+    return tx.$queryRaw<TutorBinding[]>(Prisma.sql`
+      SELECT
+        binding."id" AS "id",
+        binding."external_id" AS "externalId",
+        binding."job_post_id" AS "jobPostId",
+        binding."platform_blocked_at" AS "platformBlockedAt",
+        binding."source_active" AS "sourceActive",
+        jsonb_build_object('status', post."status") AS "jobPost"
+      FROM "tutor_job_sync_bindings" AS binding
+      INNER JOIN "job_posts" AS post ON post."id" = binding."job_post_id"
+      WHERE binding."source" = ${TUTOR_SYNC_SOURCE}
+        AND ${condition}
+      ${suffix}
+    `);
   }
 
   private async updateExistingJobPosts(
@@ -292,7 +338,7 @@ export class TutorSyncService {
 
   private async withdrawMissingJobPosts(
     tx: Prisma.TransactionClient,
-    bindings: BoundedBinding[],
+    bindings: TutorBinding[],
   ): Promise<void> {
     if (bindings.length === 0) return;
     const rows = bindings.map((binding) => ({ jobPostId: binding.jobPostId }));
@@ -314,14 +360,9 @@ export class TutorSyncService {
 
   private async updateBindingActivity(
     tx: Prisma.TransactionClient,
-    bindings: BoundedBinding[],
-    itemByExternalId: Map<string, AdaptedTutorJob>,
+    rows: Array<{ id: string; sourceActive: boolean }>,
   ): Promise<void> {
-    if (bindings.length === 0) return;
-    const rows = bindings.map((binding) => ({
-      id: binding.id,
-      sourceActive: itemByExternalId.get(binding.externalId)?.active ?? false,
-    }));
+    if (rows.length === 0) return;
     await tx.$executeRaw(Prisma.sql`
       WITH input AS (
         SELECT *
@@ -360,12 +401,12 @@ export class TutorSyncService {
       })),
     });
     const bindingRows = rows.map(({ id: jobPostId, externalId }) => ({
-        id: randomUUID(),
-        source: TUTOR_SYNC_SOURCE,
-        externalId,
-        jobPostId,
-        sourceActive: true,
-      }));
+      id: randomUUID(),
+      source: TUTOR_SYNC_SOURCE,
+      externalId,
+      jobPostId,
+      sourceActive: true,
+    }));
     await tx.$executeRaw(Prisma.sql`
       INSERT INTO "tutor_job_sync_bindings" (
         "id",

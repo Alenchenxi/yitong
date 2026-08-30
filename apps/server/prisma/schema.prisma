@@ -706,7 +706,7 @@ model TutorJobSyncBinding {
 
   @@unique([source, externalId])
   @@index([source, updatedAt])
-  @@index([source, sourceActive])
+  @@index([source, sourceActive, id])
   @@map("tutor_job_sync_bindings")
 }
 

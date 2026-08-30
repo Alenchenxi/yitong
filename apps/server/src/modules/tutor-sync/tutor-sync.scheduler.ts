@@ -11,7 +11,7 @@ export class TutorSyncScheduler {
 
   @Cron('*/5 * * * *')
   async synchronizeTutorDemands() {
-    if (!this.tutorSync.isEnabled() || this.running) return;
+    if (!this.tutorSync.isDeploymentEnabled() || this.running) return;
     this.running = true;
     try {
       return await this.tutorSync.synchronize();

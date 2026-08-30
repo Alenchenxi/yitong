@@ -1,14 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type {
-  TutorDemandSnapshot,
-  TutorDemandSnapshotItem,
-} from './tutor-sync.types';
-import {
-  TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
-  TUTOR_SYNC_HARD_MAX_DEMANDS,
-  parseTutorSyncMaxDemands,
-} from './tutor-sync.settings';
+import type { TutorDemandSnapshot, TutorDemandSnapshotItem } from './tutor-sync.types';
 
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_FUTURE_SKEW_MS = 10 * 60_000;
@@ -18,13 +10,11 @@ const VALID_DEMAND_STATUSES = new Set([0, 1, 2, 3]);
 export class TutorSnapshotClient {
   constructor(private readonly config: ConfigService) {}
 
-  isEnabled(): boolean {
+  isDeploymentEnabled(): boolean {
     return this.config.get<string>('TUTOR_SYNC_ENABLED')?.toLowerCase() === 'true';
   }
 
-  async fetchSnapshot(
-    maxDemands = TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
-  ): Promise<TutorDemandSnapshot> {
+  async fetchSnapshot(): Promise<TutorDemandSnapshot> {
     const url = this.config.get<string>('TUTOR_SYNC_URL')?.trim();
     const token = this.config.get<string>('TUTOR_SYNC_TOKEN')?.trim();
     if (!url || !token) {
@@ -39,38 +29,40 @@ export class TutorSnapshotClient {
         signal: controller.signal,
       });
       if (!response.ok) throw new Error(`source returned HTTP ${response.status}`);
-      return this.parseSnapshot(await response.json(), maxDemands);
+      return this.parseSnapshot(await response.json());
     } finally {
       clearTimeout(timeout);
     }
   }
 
-  assertCapacity(
-    snapshot: Pick<TutorDemandSnapshot, 'itemCount' | 'items'>,
-    maxDemands = TUTOR_SYNC_DEFAULT_MAX_DEMANDS,
-  ): void {
+  assertIntegrity(snapshot: Pick<TutorDemandSnapshot, 'itemCount' | 'items'>): void {
     if (snapshot.itemCount !== snapshot.items.length) {
       throw new Error('invalid tutor snapshot itemCount');
     }
-    this.assertItemCountWithinLimit(snapshot.itemCount, maxDemands);
   }
 
-  private parseSnapshot(payload: unknown, maxDemands: number): TutorDemandSnapshot {
+  private parseSnapshot(payload: unknown): TutorDemandSnapshot {
     if (!this.isRecord(payload) || payload.status !== 200 || !this.isRecord(payload.data)) {
       throw new Error('invalid tutor snapshot envelope');
     }
     const data = payload.data;
-    if (data.version !== 1 || data.mode !== 'full' || typeof data.generatedAt !== 'string' || !Array.isArray(data.items)) {
+    if (
+      data.version !== 1 ||
+      data.mode !== 'full' ||
+      typeof data.generatedAt !== 'string' ||
+      !Array.isArray(data.items)
+    ) {
       throw new Error('invalid tutor snapshot metadata');
     }
     if (data.complete !== true) throw new Error('invalid tutor snapshot completeness');
-    if (typeof data.itemCount !== 'number'
-      || !Number.isInteger(data.itemCount)
-      || data.itemCount < 0
-      || data.itemCount !== data.items.length) {
+    if (
+      typeof data.itemCount !== 'number' ||
+      !Number.isInteger(data.itemCount) ||
+      data.itemCount < 0 ||
+      data.itemCount !== data.items.length
+    ) {
       throw new Error('invalid tutor snapshot itemCount');
     }
-    this.assertItemCountWithinLimit(data.itemCount, maxDemands);
 
     const generatedAt = new Date(data.generatedAt);
     if (!data.generatedAt.trim() || Number.isNaN(generatedAt.getTime())) {
@@ -80,9 +72,16 @@ export class TutorSnapshotClient {
       throw new Error('tutor snapshot generatedAt is too far in the future');
     }
 
-    const items = data.items.map((item, index) => this.parseItem(item, index));
-    const uniqueIds = new Set(items.map((item) => item.demandId));
-    if (uniqueIds.size !== items.length) throw new Error('duplicate demand_id in tutor snapshot');
+    const uniqueIds = new Set<string>();
+    for (let index = 0; index < data.items.length; index += 1) {
+      const item = this.parseItem(data.items[index], index);
+      if (uniqueIds.has(item.demandId)) {
+        throw new Error('duplicate demand_id in tutor snapshot');
+      }
+      uniqueIds.add(item.demandId);
+      data.items[index] = item;
+    }
+    const items = data.items as TutorDemandSnapshotItem[];
 
     return {
       version: 1,
@@ -136,16 +135,6 @@ export class TutorSnapshotClient {
     };
   }
 
-  private assertItemCountWithinLimit(itemCount: number, requestedLimit: number): void {
-    const limit = parseTutorSyncMaxDemands(requestedLimit)
-      ?? TUTOR_SYNC_DEFAULT_MAX_DEMANDS;
-    if (itemCount > limit) {
-      throw new Error(
-        `tutor snapshot exceeds configured limit of ${limit} demands (hard max ${TUTOR_SYNC_HARD_MAX_DEMANDS})`,
-      );
-    }
-  }
-
   private isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
@@ -163,8 +152,10 @@ export class TutorSnapshotClient {
   }
 
   private asRequiredInteger(value: unknown, field: string, index: number): number {
-    if ((typeof value !== 'string' && typeof value !== 'number')
-      || (typeof value === 'string' && value.trim() === '')) {
+    if (
+      (typeof value !== 'string' && typeof value !== 'number') ||
+      (typeof value === 'string' && value.trim() === '')
+    ) {
       throw new Error(`missing ${field} at index ${index}`);
     }
     const parsed = Number(value);
