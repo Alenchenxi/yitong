@@ -20,6 +20,8 @@ import { JobService } from '../../src/modules/job/job.service';
 import { TutorDemandAdapter } from '../../src/modules/tutor-sync/tutor-demand.adapter';
 import { TutorJobPolicyService } from '../../src/modules/tutor-sync/tutor-job-policy.service';
 import { TutorSnapshotClient } from '../../src/modules/tutor-sync/tutor-snapshot.client';
+import { acquireTutorSyncLock } from '../../src/modules/tutor-sync/tutor-sync.lock';
+import { TutorSyncScheduler } from '../../src/modules/tutor-sync/tutor-sync.scheduler';
 import {
   TUTOR_SYNC_DEFAULT_ENABLED,
   TUTOR_SYNC_DEFAULT_BATCH_SIZE,
@@ -127,7 +129,6 @@ function buildSyncService(
     async (query: { strings?: readonly string[]; values?: readonly unknown[] }) => {
       const sql = query.strings?.join('?') ?? '';
       const values = query.values ?? [];
-      if (sql.includes('pg_advisory_xact_lock')) return [];
       if (sql.includes('binding."source_active" = TRUE')) {
         const hasCursor = sql.includes('binding."id" > ?');
         const afterId = hasCursor ? values.at(-2) : null;
@@ -201,17 +202,85 @@ function buildSyncService(
 }
 
 function sqlText(call: unknown[] | undefined): string {
-  const query = call?.[0] as { strings?: readonly string[] } | undefined;
-  return query?.strings?.join('?') ?? '';
+  const query = call?.[0] as readonly string[] | { strings?: readonly string[] } | undefined;
+  if (Array.isArray(query)) return query.join('?');
+  return (query as { strings?: readonly string[] } | undefined)?.strings?.join('?') ?? '';
 }
 
 function sqlJsonRows(call: unknown[] | undefined): Array<Record<string, unknown>> {
-  const query = call?.[0] as { values?: unknown[] } | undefined;
-  const json = query?.values?.find(
+  const query = call?.[0] as { values?: unknown[] } | readonly string[] | undefined;
+  const values =
+    !query || Array.isArray(query) ? [] : ((query as { values?: unknown[] }).values ?? []);
+  const json = values.find(
     (value): value is string => typeof value === 'string' && value.startsWith('['),
   );
   return json ? (JSON.parse(json) as Array<Record<string, unknown>>) : [];
 }
+
+describe('TutorSync PostgreSQL advisory lock', () => {
+  it('阻塞事务锁使用executeRaw避免Prisma反序列化void列', async () => {
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(0),
+      $queryRaw: jest
+        .fn()
+        .mockRejectedValue(new Error("Failed to deserialize column of type 'void'")),
+    };
+
+    await expect(acquireTutorSyncLock(tx as never)).resolves.toBeUndefined();
+
+    expect(tx.$queryRaw).not.toHaveBeenCalled();
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain('pg_advisory_xact_lock');
+  });
+});
+
+describe('TutorSyncScheduler failure logging', () => {
+  it('Error日志首行包含类型和trim后的message并保留stack', async () => {
+    const error = new Error('\nInvalid prisma query');
+    error.stack = 'STACK';
+    const tutorSync = {
+      isDeploymentEnabled: jest.fn().mockReturnValue(true),
+      synchronize: jest.fn().mockRejectedValue(error),
+    };
+    const scheduler = new TutorSyncScheduler(tutorSync as never);
+    const logger = (
+      scheduler as unknown as {
+        logger: { error: (message: string, stack?: string) => void };
+      }
+    ).logger;
+    const errorSpy = jest.spyOn(logger, 'error').mockImplementation();
+
+    await expect(scheduler.synchronizeTutorDemands()).resolves.toBeUndefined();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'tutor sync failed: Error: Invalid prisma query',
+      'STACK',
+    );
+    await scheduler.synchronizeTutorDemands();
+    expect(tutorSync.synchronize).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [new Error('   '), 'tutor sync failed: Error: unknown error', expect.any(String)],
+    ['plain failure', 'tutor sync failed: plain failure', undefined],
+  ])('兼容空Error消息和非Error异常', async (reason, message, stack) => {
+    const tutorSync = {
+      isDeploymentEnabled: jest.fn().mockReturnValue(true),
+      synchronize: jest.fn().mockRejectedValue(reason),
+    };
+    const scheduler = new TutorSyncScheduler(tutorSync as never);
+    const logger = (
+      scheduler as unknown as {
+        logger: { error: (message: string, stack?: string) => void };
+      }
+    ).logger;
+    const errorSpy = jest.spyOn(logger, 'error').mockImplementation();
+
+    await scheduler.synchronizeTutorDemands();
+
+    expect(errorSpy).toHaveBeenCalledWith(message, stack);
+  });
+});
 
 function buildOpsSettingsComponent() {
   const source = readFileSync(
@@ -793,9 +862,10 @@ describe('TutorSyncService 全量快照分批对账', () => {
         }),
       ],
     });
-    expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain(
-      'INSERT INTO "tutor_job_sync_bindings"',
+    const bindingInsertCall = tx.$executeRaw.mock.calls.find((call) =>
+      sqlText(call).includes('INSERT INTO "tutor_job_sync_bindings"'),
     );
+    expect(sqlText(bindingInsertCall)).toContain('INSERT INTO "tutor_job_sync_bindings"');
   });
 
   it('已存在需求使用一条参数化SQL批量覆盖源字段', async () => {
@@ -810,9 +880,11 @@ describe('TutorSyncService 全量快照分批对账', () => {
     ).resolves.toMatchObject({ created: 0, updated: 1, withdrawn: 0 });
 
     expect(tx.jobPost.createMany).not.toHaveBeenCalled();
-    expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain('jsonb_to_recordset');
-    expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain('UPDATE "job_posts"');
-    expect(sqlJsonRows(tx.$executeRaw.mock.calls[0])).toEqual([
+    const updateCall = tx.$executeRaw.mock.calls.find((call) =>
+      sqlText(call).includes('UPDATE "job_posts"'),
+    );
+    expect(sqlText(updateCall)).toContain('jsonb_to_recordset');
+    expect(sqlJsonRows(updateCall)).toEqual([
       expect.objectContaining({
         jobPostId: 'post_existing',
         description: expect.stringContaining('源平台已修改'),
@@ -833,11 +905,11 @@ describe('TutorSyncService 全量快照分批对账', () => {
       service.reconcile(buildSnapshot([buildSourceItem({ status: 2 })]), 'merchant_a'),
     ).resolves.toMatchObject({ withdrawn: 2 });
 
-    expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain('CURRENT_TIMESTAMP');
     const withdrawCall = tx.$executeRaw.mock.calls.find((call) =>
       sqlText(call).includes('post."status" <>'),
     );
     expect(sqlText(withdrawCall)).toContain('UPDATE "job_posts"');
+    expect(sqlText(withdrawCall)).toContain('CURRENT_TIMESTAMP');
     const activityRows = tx.$executeRaw.mock.calls
       .filter((call) => sqlText(call).includes('UPDATE "tutor_job_sync_bindings"'))
       .flatMap(sqlJsonRows);
@@ -859,12 +931,13 @@ describe('TutorSyncService 全量快照分批对账', () => {
       ],
     });
     await service.reconcile(buildSnapshot([buildSourceItem()]), 'merchant_a');
-    expect(sqlJsonRows(tx.$executeRaw.mock.calls[0])).toEqual([
+    const updateCall = tx.$executeRaw.mock.calls.find((call) =>
+      sqlText(call).includes('UPDATE "job_posts"'),
+    );
+    expect(sqlJsonRows(updateCall)).toEqual([
       expect.objectContaining({ blocked: true, active: true }),
     ]);
-    expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain(
-      'WHEN input."active" AND NOT input."blocked"',
-    );
+    expect(sqlText(updateCall)).toContain('WHEN input."active" AND NOT input."blocked"');
   });
 
   it('旧快照在锁内跳过且不读取binding或写岗位', async () => {
@@ -875,8 +948,9 @@ describe('TutorSyncService 全量快照分批对账', () => {
     await expect(
       service.reconcile(buildSnapshot([buildSourceItem()], generatedAt), 'merchant_a'),
     ).resolves.toMatchObject({ skipped: true });
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
-    expect(tx.$executeRaw).not.toHaveBeenCalled();
+    expect(tx.$queryRaw).not.toHaveBeenCalled();
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(sqlText(tx.$executeRaw.mock.calls[0])).toContain('pg_advisory_xact_lock');
     expect(tx.tutorSyncState.upsert).not.toHaveBeenCalled();
   });
 
@@ -884,7 +958,7 @@ describe('TutorSyncService 全量快照分批对账', () => {
     const { service, tx } = buildSyncService({
       bindings: [{ externalId: '101', jobPostId: 'post_existing' }],
     });
-    tx.$executeRaw.mockRejectedValueOnce(new Error('write failed'));
+    tx.$executeRaw.mockResolvedValueOnce(0).mockRejectedValueOnce(new Error('write failed'));
     await expect(
       service.reconcile(buildSnapshot([buildSourceItem()]), 'merchant_a'),
     ).rejects.toThrow('write failed');
@@ -975,7 +1049,10 @@ describe('TutorSyncService 全量快照分批对账', () => {
     await expect(service.reconcile(buildSnapshot(items), 'merchant_a')).resolves.toMatchObject({
       updated: 200,
     });
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(8);
+    const writeCalls = tx.$executeRaw.mock.calls.filter(
+      (call) => !sqlText(call).includes('pg_advisory_xact_lock'),
+    );
+    expect(writeCalls).toHaveLength(8);
     expect(tx.jobPost.createMany).not.toHaveBeenCalled();
   });
 

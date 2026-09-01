@@ -16,8 +16,12 @@ export class TutorSyncScheduler {
     try {
       return await this.tutorSync.synchronize();
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`tutor sync failed: ${message}`);
+      const message =
+        error instanceof Error
+          ? `${error.name}: ${error.message.trim() || 'unknown error'}`
+          : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`tutor sync failed: ${message}`, stack);
       return undefined;
     } finally {
       this.running = false;
