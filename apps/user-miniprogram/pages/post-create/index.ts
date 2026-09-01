@@ -21,6 +21,7 @@ interface PageData {
   tags: TagItem[]; // P0-09 标签（预设 + 选中态，WXML 不支持 indexOf 故预计算）
   tagCount: number; // 已选标签数
   isAnonymous: boolean; // P0-09 匿名/实名
+  showAnonymousPublish: boolean; // 隐藏匿名发布入口
   showEmoji: boolean; // P0-09 表情面板
   emojis: string[];
   video: { localPath: string; coverLocalPath: string; duration: number } | null; // P0-09 视频（与图片互斥）
@@ -56,6 +57,7 @@ Page({
     tags: PRESET_TAGS.map((name) => ({ name, selected: false })),
     tagCount: 0,
     isAnonymous: false,
+    showAnonymousPublish: false,
     showEmoji: false,
     emojis: EMOJIS,
     video: null,
@@ -103,7 +105,9 @@ Page({
         initial.hasContent = draft.content.trim().length > 0;
         initial.images = draft.images ?? [];
         initial.originalImages = draft.images ?? [];
-        initial.isAnonymous = !!draft.isAnonymous;
+        if (this.data.showAnonymousPublish) {
+          initial.isAnonymous = !!draft.isAnonymous;
+        }
         initial.visibility = draft.visibility ?? 'PUBLIC';
         // 标记标签选中态
         const tags = PRESET_TAGS.map((name) => ({ name, selected: (draft.tags ?? []).includes(name) }));

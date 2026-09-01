@@ -12,7 +12,7 @@
   <view class="textarea-wrap">
     <textarea
       class="textarea"
-      placeholder="{{isAnonymous ? '匿名写下你想分享的内容…' : '写下你想分享的内容…'}}"
+      placeholder="{{showAnonymousPublish && isAnonymous ? '匿名写下你想分享的内容…' : '写下你想分享的内容…'}}"
       value="{{content}}"
       bindinput="onContentInput"
       maxlength="{{2000}}"
@@ -70,7 +70,7 @@
   </view>
 
   <!-- 匿名 -->
-  <view class="row">
+  <view class="row" wx:if="{{showAnonymousPublish}}">
     <view class="anon-label">
       <text class="label">匿名发布</text>
       <text class="anon-tip">{{isAnonymous ? '将隐藏真实身份' : '默认显示昵称'}}</text>
@@ -111,7 +111,7 @@
     class="submit"
     bindtap="submit"
     disabled="{{submitting || !hasContent || !selectedCircleId}}"
-  >{{submitting ? '发布中...' : (visibility === 'DRAFT' ? '保存草稿' : visibility === 'PRIVATE' ? '保存私密' : (isAnonymous ? '匿名发布' : '发布'))}}</button>
+  >{{submitting ? '发布中...' : (visibility === 'DRAFT' ? '保存草稿' : visibility === 'PRIVATE' ? '保存私密' : (showAnonymousPublish && isAnonymous ? '匿名发布' : '发布'))}}</button>
 </view>
 
 <!-- 分类选择弹窗 -->
