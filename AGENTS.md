@@ -51,6 +51,17 @@
 - 主代理**不得自行声明「测试通过」**，以子代理报告为准。
 - 失败 → 修复 → 重新开空上下文测试（循环，不得跳过）。
 
+### 4.1 前端验收红线（强制）
+- 任何用户端 / 管理端前端改动，在验收前必须先清理对应构建产物（以仓库实际输出为准，通常是 `apps/**/` 下生成的 `.js` / `.js.map`），再重新编译。
+- `tsc --noEmit` 只代表类型检查通过，不能替代“删除旧产物 → 重新编译 → 复检产物”这一步。
+- 源码脚本文件（例如 `scripts/*.js`）属于源码，不是构建产物，不能混同删除。
+- 若项目存在多个前端输出目录，必须逐个目录按同样流程验收，不得只验收源码未覆盖的目录。
+
+### 4.2 后端 Prisma 红线（强制）
+- 任何后端 `prisma schema` / model / migration 变更，在验收前必须先重新生成 Prisma Client（例如 `npx prisma generate` 或仓库等价脚本），并确认生成结果与当前 schema 一致。
+- `npx prisma migrate ...`、`nest build`、`tsc --noEmit` 都不等于重新生成 Prisma Client，不能拿来代替 `prisma generate`。
+- 如果本次改动依赖生成后的 Prisma Client，必须在改动记录里写明已重新生成并复检；不能用旧 client 继续验收。
+
 ---
 
 ## 5. 提交与合并（trunk-based）
@@ -92,9 +103,11 @@ squash merge 到 main 并 push 成功后，必须依次执行以下步骤，**�
 ## 8. 常见坑速查
 - **mock 策略**：缺 WX / COS / TIM / 支付凭证时 dev 走 mock、prod 抛 `90003`（沿用 auth/common）。
 - **Prisma enum**：值必须每行一个；schema 改动跑 `npx prisma migrate dev --name <x>`，必要时 `npx prisma db seed`。
+- **Prisma schema / client**：只要 `schema.prisma`、model、migration、enum 有变更，验收前必须先重新生成 Prisma Client（例如 `npx prisma generate`），再继续 typecheck / smoke / 构建复检；不能把旧 client 当作新结果。
 - **pnpm**：从项目根 `pnpm -C "G:/副业/仿校园小程序开发/project" --filter @yitong/server ...`（filter 从错误 cwd 会报 No projects matched）。
 - **server tsconfig**：`types:["node"]` + `noUncheckedIndexedAccess` → 用 `import type { File } from 'multer'` 而非全局 `Express.Multer.File`；数组/对象下标防 undefined。
 - **小程序 tsconfig**：`types:["miniprogram-api-typings"]`，`Page`/`Component` 用 catchtap 阻止冒泡。
+- **前端构建产物**：前端验收必须检查构建输出中的 `.js` / `.js.map` 是否已按改动重新生成；只跑 `tsc --noEmit` 不算完成。
 - **响应/异常**：路由前缀 `/api/v1`；成功 `ok(data)`；业务异常 `BizException(code,msg,status)`；错误码段见飞书《API设计规范》§3。
 - **GitHub 推送**：本机常超时，多重试；不要因为 push 失败就改历史。
 
