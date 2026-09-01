@@ -139,6 +139,7 @@ describe('CommunityService 圈子广场动态数', () => {
       community: { findUnique: jest.fn().mockResolvedValue(community) },
       communityMember: {
         findUnique: jest.fn().mockResolvedValue({ role: CommunityMemberRole.MEMBER }),
+        count: jest.fn().mockResolvedValue(community.memberCount),
       },
       post: { count: jest.fn().mockResolvedValue(2) },
       anonymousPost: { count: jest.fn().mockResolvedValue(3) },

@@ -21,7 +21,7 @@ Page({
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    if (this.data.circles.length === 0) this.load();
+    await this.load();
   },
 
   async load() {

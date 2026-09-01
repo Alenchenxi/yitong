@@ -4,6 +4,7 @@ import {
   CommunityMemberRole,
   CommunityStatus,
   JobPostStatus,
+  JobVisibilityScope,
   PostStatus,
   PostVisibility,
 } from '@prisma/client';
@@ -38,6 +39,11 @@ const ERR_ALREADY_MEMBER = 80012;
 const ERR_NOT_MEMBER = 80013;
 const ERR_NOT_JOINED = 80014; // 未加入任何圈子（写路径引导加入）
 const ERR_COMMUNITY_FORBIDDEN = 80015;
+
+interface CommunityStats {
+  memberCount: number;
+  postCount: number;
+}
 
 @Injectable()
 export class CommunityService {
@@ -127,7 +133,8 @@ export class CommunityService {
       }),
     ]);
     const memberMap = new Map(memberships.map((m) => [m.communityId, m.role]));
-    return communities.map((c) => this.toVo(c, memberMap.get(c.id) ?? null));
+    const stats = await this.countCommunityStats(communities);
+    return communities.map((c) => this.toVo(c, memberMap.get(c.id) ?? null, stats.get(c.id)));
   }
 
   /** 圈子搜索：name 模糊匹配（ACTIVE，最多 20 条） */
@@ -162,9 +169,10 @@ export class CommunityService {
         orderBy: { joinedAt: 'desc' },
       }),
     ]);
+    const stats = await this.countCommunityStats(memberships.map((membership) => membership.community));
     return {
       activeId: user?.activeCommunityId ?? null,
-      list: memberships.map((m) => this.toVo(m.community, m.role)),
+      list: memberships.map((m) => this.toVo(m.community, m.role, stats.get(m.communityId))),
     };
   }
 
@@ -178,14 +186,18 @@ export class CommunityService {
     if (!activeId) return null;
     const community = await this.prisma.community.findUnique({ where: { id: activeId } });
     if (!community || community.status !== CommunityStatus.ACTIVE) return null;
-    const [member, postCount] = await Promise.all([
+    const [member, memberCount, postCount] = await Promise.all([
       this.prisma.communityMember.findUnique({
         where: { communityId_userId: { communityId: activeId, userId: uid } },
         select: { role: true },
       }),
+      this.prisma.communityMember.count({ where: { communityId: activeId } }),
       this.countVisibleDynamics(activeId),
     ]);
-    return this.toVo(community, member?.role ?? null, postCount);
+    return this.toVo(community, member?.role ?? null, {
+      memberCount,
+      postCount,
+    });
   }
 
   /** 圈子详情（DISABLED 视为不存在） */
@@ -194,14 +206,18 @@ export class CommunityService {
     if (!community || community.status !== CommunityStatus.ACTIVE) {
       throw new BizException(ERR_COMMUNITY_NOT_FOUND, '圈子不存在', HttpStatus.NOT_FOUND);
     }
-    const [member, postCount] = await Promise.all([
+    const [member, memberCount, postCount] = await Promise.all([
       this.prisma.communityMember.findUnique({
         where: { communityId_userId: { communityId: id, userId: uid } },
         select: { role: true },
       }),
+      this.prisma.communityMember.count({ where: { communityId: id } }),
       this.countVisibleDynamics(id),
     ]);
-    return this.toVo(community, member?.role ?? null, postCount);
+    return this.toVo(community, member?.role ?? null, {
+      memberCount,
+      postCount,
+    });
   }
 
   /** 创建圈子：creator → OWNER + 成员 + 置 active
@@ -268,9 +284,10 @@ export class CommunityService {
     const pending: CommunityVo[] = [];
     const rejected: CommunityVo[] = [];
     const joined: CommunityVo[] = [];
+    const stats = await this.countCommunityStats(communities);
     for (const c of communities) {
       // creator 视角下，pending/rejected 都把自己视作 OWNER
-      const vo = this.toVo(c, CommunityMemberRole.OWNER);
+      const vo = this.toVo(c, CommunityMemberRole.OWNER, stats.get(c.id));
       if (c.status === CommunityStatus.PENDING) pending.push(vo);
       else if (c.status === CommunityStatus.DISABLED && c.rejectReason) rejected.push(vo);
       else if (c.status === CommunityStatus.ACTIVE) joined.push(vo);
@@ -475,7 +492,87 @@ export class CommunityService {
     return postCount + anonymousPostCount + jobPostCount;
   }
 
-  private toVo(c: Community, role: CommunityMemberRole | null, postCount = c.postCount): CommunityVo {
+  /** 列表页批量按真实关系与当前可见内容聚合，避免展示冗余字段的历史漂移。 */
+  private async countCommunityStats(communities: Community[]): Promise<Map<string, CommunityStats>> {
+    const communityIds = communities.map((community) => community.id);
+    if (communityIds.length === 0) return new Map();
+
+    const activeCommunityIds = communities
+      .filter((community) => community.status === CommunityStatus.ACTIVE)
+      .map((community) => community.id);
+    const now = new Date();
+
+    const [memberRows, postRows, anonymousPostRows, communityJobRows, globalJobCount] = await Promise.all([
+      this.prisma.communityMember.groupBy({
+        by: ['communityId'],
+        where: { communityId: { in: communityIds } },
+        _count: { _all: true },
+      }),
+      this.prisma.post.groupBy({
+        by: ['communityId'],
+        where: {
+          communityId: { in: activeCommunityIds },
+          status: PostStatus.APPROVED,
+          visibility: PostVisibility.PUBLIC,
+          deletedAt: null,
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.anonymousPost.groupBy({
+        by: ['communityId'],
+        where: {
+          communityId: { in: activeCommunityIds },
+          status: PostStatus.APPROVED,
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.jobPost.groupBy({
+        by: ['communityId'],
+        where: {
+          communityId: { in: activeCommunityIds },
+          community: { is: { status: CommunityStatus.ACTIVE } },
+          visibilityScope: JobVisibilityScope.COMMUNITY,
+          status: JobPostStatus.PUBLISHED,
+          deletedAt: null,
+          OR: [{ expireAt: null }, { expireAt: { gt: now } }],
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.jobPost.count({
+        where: {
+          visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
+          status: JobPostStatus.PUBLISHED,
+          deletedAt: null,
+          OR: [{ expireAt: null }, { expireAt: { gt: now } }],
+        },
+      }),
+    ]);
+
+    const stats = new Map<string, CommunityStats>(
+      communities.map((community) => [
+        community.id,
+        {
+          memberCount: 0,
+          postCount: community.status === CommunityStatus.ACTIVE ? globalJobCount : 0,
+        },
+      ]),
+    );
+
+    for (const row of memberRows) {
+      const current = stats.get(row.communityId);
+      if (current) current.memberCount = row._count._all;
+    }
+    for (const rows of [postRows, anonymousPostRows, communityJobRows]) {
+      for (const row of rows) {
+        const current = stats.get(row.communityId);
+        if (current) current.postCount += row._count._all;
+      }
+    }
+
+    return stats;
+  }
+
+  private toVo(c: Community, role: CommunityMemberRole | null, stats?: CommunityStats): CommunityVo {
     return {
       id: c.id,
       name: c.name,
@@ -485,8 +582,8 @@ export class CommunityService {
       category: c.category,
       region: c.region,
       location: c.location,
-      memberCount: c.memberCount,
-      postCount,
+      memberCount: stats?.memberCount ?? c.memberCount,
+      postCount: stats?.postCount ?? c.postCount,
       status: c.status as CommunityStatusVo,
       rejectReason: c.rejectReason ?? null,
       isMember: role !== null,
