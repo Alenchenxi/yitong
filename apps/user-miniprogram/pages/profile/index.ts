@@ -82,10 +82,6 @@ Page({
     wx.navigateTo({ url: '/pages/follow-list/index?mode=followers' });
   },
 
-  goMyTreehole() {
-    wx.navigateTo({ url: '/pages/my-anon-posts/index' });
-  },
-
   goMyJobs() {
     wx.navigateTo({ url: '/pages/job/my-applications/index' });
   },

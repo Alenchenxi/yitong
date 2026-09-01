@@ -37,7 +37,7 @@
   <view class="cancel-notice">
     <view class="notice-title">注销账号须知</view>
     <view class="notice-body">注销后您的账号将无法登录，且：
-1. 您发布的表白墙/树洞帖子将保留（匿名展示）；
+1. 您发布的内容将按原有可见范围保留；
 2. 您的收藏、邀请记录将被保留；
 3. 账号信息将被标记注销，无法恢复。
 

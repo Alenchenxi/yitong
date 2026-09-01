@@ -5,7 +5,6 @@ import {
   clearAuth,
   type UserInfo,
 } from './utils/auth';
-import { getAnonymousToken } from './services/treehole';
 
 // 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
 // FORCE_PRODUCTION 开关：true=开发者工具(develop)也强制连生产 yitongjiajiao.cn（本地不跑 server 调试真数据用）；
@@ -139,11 +138,7 @@ App({
   async loginWithRole(role: 'user' | 'merchant' | 'admin', referralCode?: string) {
     await loginWithRoleUtil(role, this, referralCode);
     this.globalData.loginReady = true;
-    // CR-001: 登录后尝试签发 anonToken（user 角色进广场需要；失败不影响登录流程）
-    if (role === 'user') {
-      getAnonymousToken().catch(() => {}); // 静默失败：首次未访问树洞无匿名身份，进入树洞时重试
-      // 当前圈子统一由广场 onShow 拉取；避免登录预加载与邀请切换并发时旧响应回写。
-    }
+    // 当前圈子统一由广场 onShow 拉取；避免登录预加载与邀请切换并发时旧响应回写。
   },
 
   async switchRole(role: 'user' | 'merchant' | 'admin') {

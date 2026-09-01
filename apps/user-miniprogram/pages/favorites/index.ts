@@ -1,13 +1,32 @@
 import type { AppInstance } from '../../app';
 import {
   listFavorites,
-  toggleFavorite,
   deleteFavorite,
   type FavoriteTargetType,
   type FavoriteVo,
 } from '../../services/favorite';
 
 type TabKey = FavoriteTargetType | 'all';
+
+async function listAllFavorites(targetType?: FavoriteTargetType): Promise<FavoriteVo[]> {
+  const favorites: FavoriteVo[] = [];
+  let page = 1;
+
+  while (true) {
+    const response = await listFavorites(targetType, page, 50);
+    favorites.push(...response.list);
+    if (
+      response.list.length === 0
+      || favorites.length >= response.total
+      || response.list.length < response.pageSize
+    ) {
+      break;
+    }
+    page += 1;
+  }
+
+  return favorites;
+}
 
 Page({
   data: {
@@ -34,8 +53,9 @@ Page({
     this.setData({ loading: true });
     try {
       const targetType = this.data.tab === 'all' ? undefined : (this.data.tab as FavoriteTargetType);
-      const resp = await listFavorites(targetType, 1, 50);
-      this.setData({ items: resp.list, total: resp.total });
+      const favorites = await listAllFavorites(targetType);
+      const visibleItems = favorites.filter((item) => item.targetType !== 'anon_post');
+      this.setData({ items: visibleItems, total: visibleItems.length });
     } catch {
       /* toast */
     } finally {
@@ -61,15 +81,12 @@ Page({
       wx.navigateTo({ url: `/pages/post-detail/index?id=${id}` });
     } else if (type === 'job_post') {
       wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
-    } else if (type === 'anon_post') {
-      wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
     }
   },
 
   // 暴露供 wxml 使用的辅助函数
   typeLabel(t: FavoriteTargetType): string {
     if (t === 'post') return '表白墙';
-    if (t === 'anon_post') return '树洞';
     return '兼职';
   },
 });

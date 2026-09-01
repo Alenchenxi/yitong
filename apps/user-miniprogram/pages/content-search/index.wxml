@@ -1,6 +1,6 @@
 <view class="page">
   <view class="search-bar">
-    <input class="input" placeholder="搜索表白墙 / 树洞 / 兼职" value="{{q}}" bindinput="onInput" bindconfirm="onConfirm" confirm-type="search" focus="{{true}}" />
+    <input class="input" placeholder="搜索表白墙 / 兼职" value="{{q}}" bindinput="onInput" bindconfirm="onConfirm" confirm-type="search" focus="{{true}}" />
     <text class="search-btn" bindtap="runSearch">搜索</text>
   </view>
   <view class="tabs">
@@ -27,16 +27,6 @@
       <view class="post-meta">{{item.authorNickname}} · {{item.timeText}} · ♥ {{item.likeCount}} · 💬 {{item.commentCount}}</view>
     </view>
     <view class="empty" wx:if="{{!loading && postResults.length === 0}}">无结果</view>
-  </block>
-
-  <!-- 树洞结果 -->
-  <block wx:elif="{{tab === 'treehole'}}">
-    <view class="post" wx:for="{{treeholeResults}}" wx:key="id" data-id="{{item.id}}" catchtap="openTreehole">
-      <view class="post-badge">匿名</view>
-      <view class="post-content">{{item.content}}</view>
-      <view class="post-meta">{{item.timeText}} · ♥ {{item.likeCount}} · 💬 {{item.commentCount}}</view>
-    </view>
-    <view class="empty" wx:if="{{!loading && treeholeResults.length === 0}}">无结果</view>
   </block>
 
   <!-- 兼职结果 -->

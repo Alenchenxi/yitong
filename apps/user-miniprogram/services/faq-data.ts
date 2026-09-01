@@ -172,12 +172,6 @@ export const USER_FAQ_LIST: FaqItem[] = [
     a: '在「消息中心」可授权微信订阅消息；未授权也能收到站内消息，仅在微信内提醒。',
   },
   {
-    id: 'u-cm-3',
-    category: 'common',
-    q: '树洞是匿名的吗？',
-    a: '是。树洞走匿名身份发帖，前台不展示真实信息，可放心倾诉。',
-  },
-  {
     id: 'u-cm-4',
     category: 'common',
     q: '表白墙怎么发帖？',

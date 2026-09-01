@@ -3,7 +3,6 @@ import {
   listNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-  getUnreadCounts,
   type NotificationVo,
   type NotificationCategory,
   type UnreadCounts,
@@ -18,6 +17,33 @@ const CATEGORIES: Array<{ value: '' | NotificationCategory; label: string }> = [
   { value: 'system', label: '系统' },
   { value: 'order', label: '订单' },
 ];
+
+function isVisibleNotification(notification: NotificationVo): boolean {
+  return notification.targetType !== 'anon_post' && notification.targetType !== 'anon-post';
+}
+
+async function listVisibleNotifications(
+  unreadOnly: boolean,
+  category?: NotificationCategory,
+): Promise<NotificationVo[]> {
+  const notifications: NotificationVo[] = [];
+  let page = 1;
+
+  while (true) {
+    const response = await listNotifications(unreadOnly, page, category);
+    notifications.push(...response.list);
+    if (
+      response.list.length === 0
+      || notifications.length >= response.total
+      || response.list.length < response.pageSize
+    ) {
+      break;
+    }
+    page += 1;
+  }
+
+  return notifications.filter(isVisibleNotification);
+}
 
 // 消息列表共用视图：用户端独立页（pages/notifications 薄壳）+ 商家 shell notifications panel 共用
 // 不用 pageLifetimes.show（商家 shell 内会刷隐藏 panel）；由宿主 onShow/onReady / onPanelShow 调 refresh()
@@ -54,10 +80,13 @@ Component({
     async load() {
       this.setData({ loading: true });
       try {
-        const resp = await listNotifications(false, 1, this.data.activeCategory || undefined);
+        const visibleNotifications = await listVisibleNotifications(
+          false,
+          this.data.activeCategory || undefined,
+        );
         this.setData({
-          notifications: resp.list.map((n) => ({ ...n, timeText: formatTime(n.createdAt) })),
-          unreadCount: resp.unreadCount,
+          notifications: visibleNotifications.map((notification) => ({ ...notification, timeText: formatTime(notification.createdAt) })),
+          unreadCount: visibleNotifications.filter((notification) => !notification.read).length,
         });
       } catch {
         /* toast */
@@ -68,7 +97,21 @@ Component({
 
     async loadUnreadCounts() {
       try {
-        const counts = await getUnreadCounts();
+        const categoryValues = CATEGORIES
+          .map((category) => category.value)
+          .filter((category): category is NotificationCategory => category !== '');
+        const entries = await Promise.all(
+          categoryValues.map(async (category) => [
+            category,
+            (await listVisibleNotifications(true, category)).length,
+          ] as const),
+        );
+        const counts = {
+          apply: 0,
+          system: 0,
+          order: 0,
+          ...Object.fromEntries(entries),
+        } as UnreadCounts;
         this.setData({ unreadCounts: counts });
       } catch {
         /* 忽略 */
@@ -109,6 +152,9 @@ Component({
       if (['job_apply', 'job_accept', 'job_complete', 'job_reject', 'job_review_from_merchant', 'job_apply_reminder'].includes(type)) {
         return 'apply';
       }
+      if (type === 'payment_paid') {
+        return 'order';
+      }
       return 'system';
     },
 
@@ -118,8 +164,6 @@ Component({
         wx.navigateTo({ url: `/pages/post-detail/index?id=${targetId}${anchor}` });
       } else if (targetType === 'user') {
         wx.navigateTo({ url: '/pages/account-security/index' });
-      } else if (targetType === 'anon_post' || targetType === 'anon-post') {
-        wx.navigateTo({ url: `/pages/treehole/detail/index?id=${targetId}` });
       } else if (targetType === 'job_post') {
         wx.navigateTo({ url: `/pages/job/detail/index?id=${targetId}` });
       } else if (targetType === 'application') {

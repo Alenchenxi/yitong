@@ -27,7 +27,7 @@ export interface RoleOption {
 }
 
 export const ALL_ROLES: RoleOption[] = [
-  { key: 'USER', label: '用户端', emoji: '👤', desc: '表白墙 · 树洞 · 兼职' },
+  { key: 'USER', label: '用户端', emoji: '👤', desc: '表白墙 · 兼职' },
   { key: 'MERCHANT', label: '商家端', emoji: '🏪', desc: '入驻 · 发岗 · 报名管理' },
   { key: 'ADMIN', label: '管理端', emoji: '⚙', desc: '审核 · 运营 · 封禁' },
 ];

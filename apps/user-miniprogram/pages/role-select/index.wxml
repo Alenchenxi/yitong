@@ -20,7 +20,7 @@
       <view class="role-mark">用</view>
       <view class="role-main">
         <view class="role-name">用户端</view>
-        <view class="role-desc">表白墙 · 树洞 · 兼职</view>
+        <view class="role-desc">表白墙 · 兼职</view>
       </view>
       <view class="role-arrow">›</view>
     </view>

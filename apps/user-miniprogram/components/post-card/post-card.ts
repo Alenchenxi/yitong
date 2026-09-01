@@ -22,7 +22,7 @@ Component({
     // CR-001 disabled 时点击 toast 文案
     disabledReason: {
       type: String,
-      value: '请前往树洞签发匿名身份后互动',
+      value: '该内容暂不支持互动',
     },
     // 转发给微信好友：宿主页传 true 时卡片显示转发按钮（open-type=share 触发宿主页 onShareAppMessage）
     // 默认 false —— 广场（square）不传则无转发按钮，避免宿主无 onShareAppMessage 时分享失效
