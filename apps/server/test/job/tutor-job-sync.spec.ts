@@ -377,6 +377,88 @@ describe('TutorDemandAdapter', () => {
     });
   });
 
+  it('将源平台数值字段转换为岗位详情中文释义', () => {
+    const adapter = new TutorDemandAdapter();
+    expect(
+      adapter.adapt(
+        buildSourceItem({
+          teachTime: '0',
+          teachingWay: '1',
+          teacherGender: '0',
+          teacherIdentity: '1',
+        }),
+      ),
+    ).toMatchObject({
+      description: [
+        '需求概况：每周辅导两次',
+        '授课时间：待协商',
+        '授课方式：上门授课',
+        '学校：附近中学',
+      ].join('\n'),
+      requirements: ['性别要求：不限', '身份要求：大学生教员', '其他要求：有耐心'].join(
+        '\n',
+      ),
+    });
+    expect(
+      adapter.adapt(
+        buildSourceItem({
+          teachingWay: '2',
+          teacherGender: '2',
+          teacherIdentity: '2',
+        }),
+      ),
+    ).toMatchObject({
+      description: expect.stringContaining('授课方式：在线授课'),
+      requirements: expect.stringContaining('性别要求：女\n身份要求：专职教员'),
+    });
+    expect(
+      adapter.adapt(
+        buildSourceItem({
+          teachingWay: '3',
+          teacherGender: '3',
+          teacherIdentity: '3',
+        }),
+      ),
+    ).toMatchObject({
+      description: expect.stringContaining('授课方式：均可'),
+      requirements: expect.stringContaining('性别要求：不限\n身份要求：不限'),
+    });
+    expect(
+      adapter.adapt(
+        buildSourceItem({
+          teachingWay: '0',
+          teacherGender: '1',
+          teacherIdentity: '0',
+        }),
+      ),
+    ).toMatchObject({
+      description: expect.stringContaining('授课方式：均可'),
+      requirements: expect.stringContaining('性别要求：男\n身份要求：不限'),
+    });
+    expect(
+      adapter.adapt(
+        buildSourceItem({
+          teachTime: ' 周末晚上 ',
+          teachingWay: ' 线下或线上 ',
+          teacherGender: ' 另行沟通 ',
+          teacherIdentity: ' 有经验者 ',
+        }),
+      ),
+    ).toMatchObject({
+      description: expect.stringContaining('授课时间：周末晚上\n授课方式：线下或线上'),
+      requirements: expect.stringContaining('性别要求：另行沟通\n身份要求：有经验者'),
+    });
+    expect(
+      adapter.adapt(
+        buildSourceItem({
+          teachTime: '1788244200',
+        }),
+      ),
+    ).toMatchObject({
+      description: expect.stringContaining('授课时间：2026-09-01 14:30:00'),
+    });
+  });
+
   it('空字段兜底且关闭、隐藏、退款均标记为非启用', () => {
     const adapter = new TutorDemandAdapter();
     expect(
