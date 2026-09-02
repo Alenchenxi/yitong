@@ -82,7 +82,6 @@ Component({
     switchTab(e: WechatMiniprogram.TouchEvent) {
       const path = e.currentTarget.dataset.path as string;
       if (!path || path === this.data.selectedPath) return;
-      this.setData({ selectedPath: path });
       wx.switchTab({ url: path });
     },
   },
