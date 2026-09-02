@@ -68,6 +68,22 @@
 - 若前端 `tsconfig` 默认配置了 `noEmit: true`，最终重编译必须显式覆盖为可输出模式（例如 `tsc -p <tsconfig> --noEmit false`）或使用仓库等价构建命令；仅执行 `tsc` / `tsc --noEmit` 不得记为已重新构建。
 - 只有 `main` 上的清理重编译、产物完整性检查和必要 smoke 均通过，才可报告功能交付完成；随后再按授权执行推送，并按第 5.1 节清理 worktree。
 
+### 4.4 后端部署 bundle 上传红线（强制）
+- 如果本次功能修改需要重新部署后端，必须先按第 4.3 节和第 5 节完成独立验收、squash 合并及 `main` 提交，并在主工作区完成最终验收；不得从功能 worktree 或未合并分支生成部署包。
+- 合并后的 `main` 必须重新生成完整历史 bundle，禁止复用旧 `yitong-main.bundle`：
+  ```bash
+  git bundle create yitong-main.bundle main
+  git bundle verify yitong-main.bundle
+  git bundle list-heads yitong-main.bundle
+  ```
+- `git bundle verify` 必须通过，且 `git bundle list-heads yitong-main.bundle` 中的 `refs/heads/main` 必须与当前 `git rev-parse main` 完全一致。
+- 校验通过后，必须执行以下命令将 bundle 上传到服务器：
+  ```bash
+  scp yitong-main.bundle root@121.40.26.41:/home/yitongxiaoyuanyun/
+  ```
+- 只有 `scp` 退出码为 0 才可报告后端部署包交付完成。上传失败时必须保留本地 bundle、报告失败原因并重试或等待用户处理，不得把“已生成”写成“已上传”。
+- 不需要重新部署后端的纯前端或文档修改不触发本条。
+
 ---
 
 ## 5. 提交与合并（trunk-based）
