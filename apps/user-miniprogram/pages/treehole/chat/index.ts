@@ -15,6 +15,7 @@ import {
 } from '../../../services/treehole';
 import { connectIm, onMessage, type WsMessage } from '../../../services/im';
 import { uploadImage, uploadVoice } from '../../../services/upload';
+import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
 
 interface Msg {
   fromId: string;
@@ -99,6 +100,7 @@ Page({
 
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (!await requireAnonymousContentVisibility()) return;
     if (!hasAnonToken()) {
       try {
         await getAnonymousToken();

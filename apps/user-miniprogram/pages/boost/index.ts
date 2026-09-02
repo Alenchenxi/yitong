@@ -15,9 +15,13 @@ Page({
     message: '',
   },
 
-  onLoad(options: { type?: string; id?: string }) {
+  async onLoad(options: { type?: string; id?: string }) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (options.type === 'anon_post' && !await app.getAnonymousContentVisibility()) {
+      wx.switchTab({ url: '/pages/square/index' });
+      return;
+    }
     this.setData({
       targetType: options.type === 'anon_post' ? 'anon_post' : 'post',
       targetId: options.id ?? '',

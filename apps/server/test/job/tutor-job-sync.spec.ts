@@ -1382,7 +1382,7 @@ describe('小程序同步岗位静态契约', () => {
     expect(template).toContain('全量总数不限');
     expect(template).toContain('checked="{{tutorSyncEnabled}}"');
     expect(template).toContain(
-      'disabled="{{loading || !appSettingsLoaded || togglingNeedReview || togglingTutorSync || savingTutorSync}}"',
+      'disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingTutorSync || savingTutorSync}}"',
     );
     expect(logic).toContain("item.key === 'tutor_sync.enabled'");
     expect(logic).toContain("updateAppSetting('tutor_sync.enabled', next)");

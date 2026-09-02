@@ -8,7 +8,7 @@ import {
   listMyPrivate,
   type PostVo,
 } from '../../services/confession';
-import { listFavorites } from '../../services/favorite';
+import { listAllFavorites } from '../../services/favorite';
 import { formatTime } from '../../utils/auth';
 
 type Tab = 'posts' | 'liked' | 'favorites' | 'commented' | 'drafts' | 'private';
@@ -21,6 +21,7 @@ interface PageData {
   pageSize: number;
   total: number;
   hasMore: boolean;
+  anonymousContentEnabled: boolean;
 }
 
 function toViews(arr: PostVo[]) {
@@ -36,11 +37,15 @@ Page({
     pageSize: 20,
     total: 0,
     hasMore: true,
+    anonymousContentEnabled: false,
   } as PageData,
 
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    this.setData({
+      anonymousContentEnabled: await app.getAnonymousContentVisibility(),
+    });
     await this.reload();
   },
 
@@ -74,11 +79,14 @@ Page({
         list = r.list; total = r.total;
       } else {
         // favorites：返回的是 FavoriteItem[]，需拼装成 PostVo 形式（仅展示 id+收藏时间）
-        const r = await listFavorites('post', 1, this.data.pageSize);
+        const favorites = await listAllFavorites('post');
+        const visibleFavorites = this.data.anonymousContentEnabled
+          ? favorites
+          : favorites.filter((favorite) => !favorite.targetAnonymous);
         list = [];
-        total = r.total;
+        total = visibleFavorites.length;
         this.setData({
-          posts: r.list.map((fav) => ({
+          posts: visibleFavorites.map((fav) => ({
             id: fav.targetId,
             circleId: '',
             authorId: '',
@@ -87,7 +95,7 @@ Page({
             content: `(收藏于 ${formatTime(fav.createdAt)})`,
             images: [],
             tags: [],
-            isAnonymous: false,
+            isAnonymous: fav.targetAnonymous,
             videoUrl: null,
             videoCover: null,
             likeCount: 0,
@@ -105,13 +113,16 @@ Page({
             timeText: formatTime(fav.createdAt),
           })),
           loading: false,
-          hasMore: r.list.length < r.total,
-          total: r.total,
+          hasMore: false,
+          total: visibleFavorites.length,
         });
         return;
       }
+      const visibleList = this.data.anonymousContentEnabled
+        ? list
+        : list.filter((post) => !post.isAnonymous);
       this.setData({
-        posts: toViews(list),
+        posts: toViews(visibleList),
         total,
         hasMore: list.length < total,
         loading: false,
@@ -146,12 +157,15 @@ Page({
         const r = await listMyPrivate(nextPage, this.data.pageSize);
         list = r.list; total = r.total;
       }
-      const combined = [...this.data.posts, ...toViews(list)];
+      const visibleList = this.data.anonymousContentEnabled
+        ? list
+        : list.filter((post) => !post.isAnonymous);
+      const combined = [...this.data.posts, ...toViews(visibleList)];
       this.setData({
         posts: combined,
         page: nextPage,
         total,
-        hasMore: combined.length < total,
+        hasMore: list.length > 0 && nextPage * this.data.pageSize < total,
         loading: false,
       });
     } catch {

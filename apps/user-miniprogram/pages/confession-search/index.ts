@@ -25,6 +25,7 @@ interface PageData {
   userResults: UserSearchItem[];
   tagResults: TagSearchItem[];
   hasSearched: boolean;
+  anonymousContentEnabled: boolean;
 }
 
 function toPostViews(posts: PostVo[]) {
@@ -42,12 +43,20 @@ Page({
     userResults: [],
     tagResults: [],
     hasSearched: false,
+    anonymousContentEnabled: false,
   } as PageData,
 
-  onShow() {
+  async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    this.setData({ history: getHistory() });
+    const anonymousContentEnabled = await app.getAnonymousContentVisibility();
+    this.setData({
+      history: getHistory(),
+      anonymousContentEnabled,
+      postResults: anonymousContentEnabled
+        ? this.data.postResults
+        : this.data.postResults.filter((post) => !post.isAnonymous),
+    });
     this.loadHot();
   },
 
@@ -95,7 +104,10 @@ Page({
     try {
       if (this.data.tab === 'post') {
         const r = await searchPosts(q, 20);
-        this.setData({ postResults: toPostViews(r.list), hasSearched: true });
+        const visiblePosts = this.data.anonymousContentEnabled
+          ? r.list
+          : r.list.filter((post) => !post.isAnonymous);
+        this.setData({ postResults: toPostViews(visiblePosts), hasSearched: true });
       } else if (this.data.tab === 'user') {
         const r = await searchUsers(q, 20);
         this.setData({ userResults: r.list, hasSearched: true });

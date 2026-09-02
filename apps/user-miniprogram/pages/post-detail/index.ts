@@ -166,10 +166,14 @@ Page({
   async load() {
     this.setData({ loading: true });
     try {
-      const [post, commentsResp] = await Promise.all([
-        getPost(this.postId),
-        listComments(this.postId, 1, this.data.pageSize),
-      ]);
+      const post = await getPost(this.postId);
+      const anonymousContentEnabled = await getApp<AppInstance>().getAnonymousContentVisibility();
+      if (post.isAnonymous && !anonymousContentEnabled) {
+        wx.showToast({ title: '匿名内容暂未开放', icon: 'none' });
+        wx.switchTab({ url: '/pages/confession/index' });
+        return;
+      }
+      const commentsResp = await listComments(this.postId, 1, this.data.pageSize);
       const favorite = await checkFavorite('post', this.postId).catch(() => null);
       const meId = (getApp<AppInstance>().globalData.user?.id ?? '') as string;
       this.setData({
@@ -268,6 +272,11 @@ Page({
   async refreshPost() {
     try {
       const p = await getPost(this.postId);
+      const anonymousContentEnabled = await getApp<AppInstance>().getAnonymousContentVisibility();
+      if (p.isAnonymous && !anonymousContentEnabled) {
+        wx.switchTab({ url: '/pages/confession/index' });
+        return;
+      }
       const favorite = await checkFavorite('post', this.postId).catch(() => null);
       const meId = (getApp<AppInstance>().globalData.user?.id ?? '') as string;
       this.setData({

@@ -6,6 +6,7 @@ import {
   type QuizBank,
   type QuestionnaireType,
 } from '../../../services/treehole';
+import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
 
 const TYPES: Array<{ key: QuestionnaireType; title: string; desc: string; icon: string }> = [
   { key: 'personality', title: '性格测试', desc: '测测你的匿名性格画像', icon: '🧠' },
@@ -39,6 +40,7 @@ Page({
   async onLoad(options: { type?: string }) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (!await requireAnonymousContentVisibility()) return;
     // 支持 ?type=xxx 直接进入对应问卷
     if (options?.type) {
       await this.startQuiz(options.type as QuestionnaireType);

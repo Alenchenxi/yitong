@@ -1,6 +1,7 @@
 import type { AppInstance } from '../../../app';
 import { createAnonGroup, type AnonGroupVo } from '../../../services/treehole';
 import { uploadImage } from '../../../services/upload';
+import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
 
 const PRESET_TAGS = ['情感', '学习', '游戏', '音乐', '电影', '运动', '美食', '树洞', '闲聊'];
 const PRESET_EMOJIS = ['🌙', '⭐', '🌸', '🍀', '🌊', '☁️', '🔥', '🎵', '📚', '🎮'];
@@ -22,6 +23,7 @@ Page({
   async onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (!await requireAnonymousContentVisibility()) return;
   },
 
   onInput(e: WechatMiniprogram.Input) {

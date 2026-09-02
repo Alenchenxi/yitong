@@ -137,6 +137,8 @@ Component({
     cmStatus: '' as '' | 'PENDING' | 'ACTIVE' | 'DISABLED', // P2-26 圈子状态筛选
     cmPendingCount: 0,
     // 全局设置
+    anonymousContentEnabled: false,
+    togglingAnonymousContent: false,
     needReviewEnabled: false,
     togglingNeedReview: false,
     tutorSyncEnabled: false,
@@ -181,7 +183,14 @@ Component({
 
     async load() {
       const sub = this.data.sub;
-      if (sub === 'settings' && (this.data.togglingTutorSync || this.data.savingTutorSync)) {
+      if (
+        sub === 'settings'
+        && (
+          this.data.togglingAnonymousContent
+          || this.data.togglingTutorSync
+          || this.data.savingTutorSync
+        )
+      ) {
         return;
       }
       const requestId = this.data.loadRequestId + 1;
@@ -216,12 +225,14 @@ Component({
           commit({ communities: list, cmPendingCount: pendingCount });
         } else if (sub === 'settings') {
           const cfgList = await getAppSettings();
+          const anonymousContent = cfgList.find((item) => item.key === 'content.anonymous_enabled');
           const needReview = cfgList.find((item) => item.key === 'community.need_review');
           const tutorSyncEnabled = cfgList.find((item) => item.key === 'tutor_sync.enabled');
           const batchSizeSetting = cfgList.find((item) => item.key === 'tutor_sync.max_demands');
           const normalizedBatchSize =
             typeof batchSizeSetting?.value === 'number' ? String(batchSizeSetting.value) : '100';
           commit({
+            anonymousContentEnabled: anonymousContent?.value === true,
             needReviewEnabled: needReview?.value === true,
             tutorSyncEnabled: tutorSyncEnabled?.value === true,
             tutorSyncBatchSize: normalizedBatchSize,
@@ -610,12 +621,35 @@ Component({
         },
       });
     },
+    async toggleAnonymousContent(e: WechatMiniprogram.SwitchChange) {
+      if (
+        this.data.loading
+        || !this.data.appSettingsLoaded
+        || this.data.togglingAnonymousContent
+        || this.data.togglingNeedReview
+        || this.data.togglingTutorSync
+        || this.data.savingTutorSync
+      ) return;
+      const previous = this.data.anonymousContentEnabled;
+      const next = e.detail.value;
+      this.setData({ anonymousContentEnabled: next, togglingAnonymousContent: true });
+      try {
+        await updateAppSetting('content.anonymous_enabled', next);
+        getApp<AppInstance>().setAnonymousContentVisibility(next);
+        wx.showToast({ title: next ? '匿名内容已展示' : '匿名内容已隐藏', icon: 'success' });
+      } catch {
+        this.setData({ anonymousContentEnabled: previous });
+      } finally {
+        this.setData({ togglingAnonymousContent: false });
+      }
+    },
     // P2-26 全局设置 - 建圈审核开关
     async toggleNeedReview(e: WechatMiniprogram.SwitchChange) {
       const next = e.detail.value;
       if (
         this.data.loading ||
         !this.data.appSettingsLoaded ||
+        this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
@@ -639,6 +673,7 @@ Component({
       if (
         this.data.loading ||
         !this.data.appSettingsLoaded ||
+        this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
@@ -660,6 +695,7 @@ Component({
       if (
         this.data.loading ||
         !this.data.appSettingsLoaded ||
+        this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync

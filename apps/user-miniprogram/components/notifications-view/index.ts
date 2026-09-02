@@ -3,6 +3,7 @@ import {
   listNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  getUnreadCounts,
   type NotificationVo,
   type NotificationCategory,
   type UnreadCounts,
@@ -19,13 +20,17 @@ const CATEGORIES: Array<{ value: '' | NotificationCategory; label: string }> = [
 ];
 
 function isVisibleNotification(notification: NotificationVo): boolean {
-  return notification.targetType !== 'anon_post' && notification.targetType !== 'anon-post';
+  return !notification.targetAnonymous;
 }
 
 async function listVisibleNotifications(
   unreadOnly: boolean,
   category?: NotificationCategory,
+  anonymousContentEnabled = false,
 ): Promise<NotificationVo[]> {
+  if (anonymousContentEnabled) {
+    return (await listNotifications(unreadOnly, 1, category)).list;
+  }
   const notifications: NotificationVo[] = [];
   let page = 1;
 
@@ -61,6 +66,7 @@ Component({
     unreadCounts: { apply: 0, system: 0, order: 0 } as UnreadCounts,
     loading: false,
     isMerchant: false,
+    anonymousContentEnabled: false,
   },
 
   methods: {
@@ -68,8 +74,9 @@ Component({
     async refresh() {
       const app = getApp<AppInstance>();
       if (!app.requireAuth()) return;
+      const anonymousContentEnabled = await app.getAnonymousContentVisibility();
       const role = app.globalData.currentRole;
-      this.setData({ isMerchant: role === 'MERCHANT' });
+      this.setData({ isMerchant: role === 'MERCHANT', anonymousContentEnabled });
       // M4-02 报名处理提醒（懒检查）：商家进消息页先检查，超时未联系 PENDING 报名产生站内提醒
       if (role === 'MERCHANT') {
         try { await checkApplyReminder(); } catch { /* 不影响列表加载 */ }
@@ -80,9 +87,25 @@ Component({
     async load() {
       this.setData({ loading: true });
       try {
+        if (this.data.anonymousContentEnabled) {
+          const response = await listNotifications(
+            false,
+            1,
+            this.data.activeCategory || undefined,
+          );
+          this.setData({
+            notifications: response.list.map((notification) => ({
+              ...notification,
+              timeText: formatTime(notification.createdAt),
+            })),
+            unreadCount: response.unreadCount,
+          });
+          return;
+        }
         const visibleNotifications = await listVisibleNotifications(
           false,
           this.data.activeCategory || undefined,
+          false,
         );
         this.setData({
           notifications: visibleNotifications.map((notification) => ({ ...notification, timeText: formatTime(notification.createdAt) })),
@@ -97,13 +120,17 @@ Component({
 
     async loadUnreadCounts() {
       try {
+        if (this.data.anonymousContentEnabled) {
+          this.setData({ unreadCounts: await getUnreadCounts() });
+          return;
+        }
         const categoryValues = CATEGORIES
           .map((category) => category.value)
           .filter((category): category is NotificationCategory => category !== '');
         const entries = await Promise.all(
           categoryValues.map(async (category) => [
             category,
-            (await listVisibleNotifications(true, category)).length,
+            (await listVisibleNotifications(true, category, false)).length,
           ] as const),
         );
         const counts = {
@@ -164,6 +191,11 @@ Component({
         wx.navigateTo({ url: `/pages/post-detail/index?id=${targetId}${anchor}` });
       } else if (targetType === 'user') {
         wx.navigateTo({ url: '/pages/account-security/index' });
+      } else if (
+        (targetType === 'anon_post' || targetType === 'anon-post')
+        && this.data.anonymousContentEnabled
+      ) {
+        wx.navigateTo({ url: `/pages/treehole/detail/index?id=${targetId}` });
       } else if (targetType === 'job_post') {
         wx.navigateTo({ url: `/pages/job/detail/index?id=${targetId}` });
       } else if (targetType === 'application') {

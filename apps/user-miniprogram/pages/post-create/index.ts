@@ -72,6 +72,11 @@ Page({
   async onLoad(options: { circleId?: string; editId?: string }) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    const showAnonymousPublish = await app.getAnonymousContentVisibility();
+    this.setData({
+      showAnonymousPublish,
+      ...(!showAnonymousPublish ? { isAnonymous: false } : {}),
+    });
     const circles = await listCircles().catch(() => []);
     let selectedId = options.circleId ?? '';
     let selectedName = '选择分类';
@@ -105,7 +110,7 @@ Page({
         initial.hasContent = draft.content.trim().length > 0;
         initial.images = draft.images ?? [];
         initial.originalImages = draft.images ?? [];
-        if (this.data.showAnonymousPublish) {
+        if (showAnonymousPublish) {
           initial.isAnonymous = !!draft.isAnonymous;
         }
         initial.visibility = draft.visibility ?? 'PUBLIC';
@@ -333,7 +338,7 @@ Page({
           content,
           images: finalImageUrls,
           tags: selectedTagNames,
-          isAnonymous: this.data.isAnonymous,
+          isAnonymous: this.data.showAnonymousPublish && this.data.isAnonymous,
           videoUrl,
           videoCover,
           visibility: this.data.visibility,
@@ -345,7 +350,7 @@ Page({
           content,
           images: finalImageUrls,
           tags: selectedTagNames,
-          isAnonymous: this.data.isAnonymous,
+          isAnonymous: this.data.showAnonymousPublish && this.data.isAnonymous,
           videoUrl,
           videoCover,
           visibility: this.data.visibility,

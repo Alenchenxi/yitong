@@ -1,6 +1,6 @@
 import type { AppInstance } from '../../app';
 import {
-  listFavorites,
+  listAllFavorites,
   deleteFavorite,
   type FavoriteTargetType,
   type FavoriteVo,
@@ -8,37 +8,21 @@ import {
 
 type TabKey = FavoriteTargetType | 'all';
 
-async function listAllFavorites(targetType?: FavoriteTargetType): Promise<FavoriteVo[]> {
-  const favorites: FavoriteVo[] = [];
-  let page = 1;
-
-  while (true) {
-    const response = await listFavorites(targetType, page, 50);
-    favorites.push(...response.list);
-    if (
-      response.list.length === 0
-      || favorites.length >= response.total
-      || response.list.length < response.pageSize
-    ) {
-      break;
-    }
-    page += 1;
-  }
-
-  return favorites;
-}
-
 Page({
   data: {
     tab: 'all' as TabKey,
     items: [] as FavoriteVo[],
     total: 0,
     loading: false,
+    anonymousContentEnabled: false,
   },
 
-  onShow() {
+  async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    const anonymousContentEnabled = await app.getAnonymousContentVisibility();
+    const tab = !anonymousContentEnabled && this.data.tab === 'anon_post' ? 'all' : this.data.tab;
+    this.setData({ anonymousContentEnabled, tab });
     this.reload();
   },
 
@@ -54,7 +38,9 @@ Page({
     try {
       const targetType = this.data.tab === 'all' ? undefined : (this.data.tab as FavoriteTargetType);
       const favorites = await listAllFavorites(targetType);
-      const visibleItems = favorites.filter((item) => item.targetType !== 'anon_post');
+      const visibleItems = this.data.anonymousContentEnabled
+        ? favorites
+        : favorites.filter((item) => !item.targetAnonymous);
       this.setData({ items: visibleItems, total: visibleItems.length });
     } catch {
       /* toast */
@@ -81,12 +67,15 @@ Page({
       wx.navigateTo({ url: `/pages/post-detail/index?id=${id}` });
     } else if (type === 'job_post') {
       wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
+    } else if (type === 'anon_post' && this.data.anonymousContentEnabled) {
+      wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
     }
   },
 
   // 暴露供 wxml 使用的辅助函数
   typeLabel(t: FavoriteTargetType): string {
     if (t === 'post') return '表白墙';
+    if (t === 'anon_post') return '树洞';
     return '兼职';
   },
 });

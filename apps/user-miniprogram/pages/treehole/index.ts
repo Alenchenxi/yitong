@@ -26,6 +26,10 @@ Page({
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (!await app.getAnonymousContentVisibility()) {
+      wx.switchTab({ url: '/pages/square/index' });
+      return;
+    }
     if (!hasAnonToken()) {
       try {
         const r = await getAnonymousToken();

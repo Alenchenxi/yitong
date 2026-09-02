@@ -7,6 +7,7 @@ export interface FavoriteVo {
   userId: string;
   targetType: FavoriteTargetType;
   targetId: string;
+  targetAnonymous: boolean;
   createdAt: string;
 }
 
@@ -28,6 +29,24 @@ export function toggleFavorite(data: { targetType: FavoriteTargetType; targetId:
 export function listFavorites(targetType?: FavoriteTargetType, page = 1, pageSize = 20) {
   const qs = `?${targetType ? `targetType=${targetType}&` : ''}page=${page}&pageSize=${pageSize}`;
   return request<FavoriteListResult>({ url: `/favorites${qs}` });
+}
+
+export async function listAllFavorites(targetType?: FavoriteTargetType): Promise<FavoriteVo[]> {
+  const favorites: FavoriteVo[] = [];
+  let page = 1;
+
+  while (true) {
+    const response = await listFavorites(targetType, page, 50);
+    favorites.push(...response.list);
+    if (
+      response.list.length === 0
+      || favorites.length >= response.total
+      || response.list.length < response.pageSize
+    ) {
+      return favorites;
+    }
+    page += 1;
+  }
 }
 
 export function checkFavorite(targetType: FavoriteTargetType, targetId: string) {

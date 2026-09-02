@@ -60,7 +60,27 @@ export class FavoriteService {
       }),
       this.prisma.favorite.count({ where }),
     ]);
-    return { list: items, total, page: opts.page, pageSize: opts.pageSize };
+    const postIds = items
+      .filter((item) => item.targetType === 'post')
+      .map((item) => item.targetId);
+    const anonymousPosts = postIds.length > 0
+      ? await this.prisma.post.findMany({
+          where: { id: { in: postIds }, isAnonymous: true },
+          select: { id: true },
+        })
+      : [];
+    const anonymousPostIds = new Set(anonymousPosts.map((post) => post.id));
+    return {
+      list: items.map((item) => ({
+        ...item,
+        targetAnonymous:
+          item.targetType === 'anon_post'
+          || (item.targetType === 'post' && anonymousPostIds.has(item.targetId)),
+      })),
+      total,
+      page: opts.page,
+      pageSize: opts.pageSize,
+    };
   }
 
   async check(uid: string, targetType: FavoriteTargetType, targetId: string) {

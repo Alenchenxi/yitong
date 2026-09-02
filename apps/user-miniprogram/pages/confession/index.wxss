@@ -1,4 +1,4 @@
-.page { padding: 0 0 120rpx; }
+.page { padding: 0 0 calc(120rpx + env(safe-area-inset-bottom)); }
 
 /* 顶部搜索 + 发布 */
 .topbar {

@@ -1,33 +1,52 @@
 import type { AppInstance } from '../../app';
 import { searchPosts, type PostVo } from '../../services/confession';
+import {
+  listPosts as listTreeholePosts,
+  getAnonymousToken,
+  hasAnonToken,
+  type AnonPostVo,
+} from '../../services/treehole';
 import { listJobPosts, type JobPostVo } from '../../services/job';
 import { addHistory, getHistory, clearHistory } from '../../utils/search-history';
 import { formatTime } from '../../utils/auth';
 
 // 内容搜索页（广场搜索栏落地页）：表白墙 / 兼职，按当前圈子作用域
-type Tab = 'confession' | 'job';
+type Tab = 'confession' | 'treehole' | 'job';
 
-const TABS: Array<{ key: Tab; label: string }> = [
+const ALL_TABS: Array<{ key: Tab; label: string; anonymousOnly?: boolean }> = [
   { key: 'confession', label: '表白墙' },
+  { key: 'treehole', label: '树洞', anonymousOnly: true },
   { key: 'job', label: '兼职' },
 ];
 
 Page({
   data: {
     q: '',
-    tabs: TABS,
+    tabs: ALL_TABS.filter((item) => !item.anonymousOnly),
+    anonymousContentEnabled: false,
     tab: 'confession' as Tab,
     loading: false,
     history: [] as string[],
     hasSearched: false,
     postResults: [] as Array<PostVo & { timeText: string }>,
+    treeholeResults: [] as Array<AnonPostVo & { timeText: string }>,
     jobResults: [] as JobPostVo[],
   },
 
-  onShow() {
+  async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    this.setData({ history: getHistory() });
+    const anonymousContentEnabled = await app.getAnonymousContentVisibility();
+    const tab = !anonymousContentEnabled && this.data.tab === 'treehole'
+      ? 'confession'
+      : this.data.tab;
+    this.setData({
+      history: getHistory(),
+      anonymousContentEnabled,
+      tab,
+      tabs: ALL_TABS.filter((item) => anonymousContentEnabled || !item.anonymousOnly),
+      ...(!anonymousContentEnabled ? { treeholeResults: [] } : {}),
+    });
   },
 
   onInput(e: WechatMiniprogram.Input) {
@@ -66,7 +85,16 @@ Page({
     try {
       if (this.data.tab === 'confession') {
         const r = await searchPosts(q, 20, communityId);
-        this.setData({ postResults: r.list.map((p) => ({ ...p, timeText: formatTime(p.createdAt) })) });
+        const visiblePosts = this.data.anonymousContentEnabled
+          ? r.list
+          : r.list.filter((post) => !post.isAnonymous);
+        this.setData({ postResults: visiblePosts.map((p) => ({ ...p, timeText: formatTime(p.createdAt) })) });
+      } else if (this.data.tab === 'treehole' && this.data.anonymousContentEnabled) {
+        if (!hasAnonToken()) await getAnonymousToken().catch(() => {});
+        const r = await listTreeholePosts(undefined, 'latest', undefined, communityId, q);
+        this.setData({
+          treeholeResults: r.list.map((post) => ({ ...post, timeText: formatTime(post.createdAt) })),
+        });
       } else {
         const r = await listJobPosts({ keyword: q, communityId });
         this.setData({ jobResults: r.list });
@@ -82,6 +110,13 @@ Page({
     const id = e.currentTarget.dataset.id as string;
     if (!id) return;
     wx.navigateTo({ url: `/pages/post-detail/index?id=${id}` });
+  },
+
+  openTreehole(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    if (id && this.data.anonymousContentEnabled) {
+      wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
+    }
   },
 
   openJob(e: WechatMiniprogram.TouchEvent) {

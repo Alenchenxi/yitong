@@ -1,6 +1,12 @@
 import type { AppInstance } from '../../app';
 import { squareFeed, squareTodayHit, type FeedItemVo, type TodayHitItem } from '../../services/square';
 import { feed, toggleLike } from '../../services/confession';
+import {
+  listPosts as listTreeholePosts,
+  toggleAnonPostLike,
+  hasAnonToken,
+  getAnonymousToken,
+} from '../../services/treehole';
 import { isJobListCursorExpired, listJobPosts } from '../../services/job';
 import {
   acceptCommunityInvite,
@@ -13,8 +19,8 @@ import {
 } from '../../services/community';
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
 
-// 广场（圈子首页）：圈子头卡 + 广告轮播 + 今日上头 + 3 tab（圈子动态/表白墙/兼职）
-type PlazaTab = 'dynamic' | 'confession' | 'job';
+// 广场（圈子首页）：树洞能力由全局匿名内容开关控制。
+type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
 
 function inviteErrorCode(error: unknown): number | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
@@ -33,6 +39,8 @@ interface PageData {
   cursorResetAttempted: boolean;
   activeTab: PlazaTab;
   announcements: AnnouncementVo[];
+  anonymousContentEnabled: boolean;
+  anonTokenReady: boolean;
   menuVisible: boolean;
   navTop: number;
   navHeight: number;
@@ -51,6 +59,8 @@ Page({
     cursorResetAttempted: false,
     activeTab: 'dynamic' as PlazaTab,
     announcements: [],
+    anonymousContentEnabled: false,
+    anonTokenReady: false,
     menuVisible: false,
     navTop: 0,
     navHeight: 44,
@@ -77,6 +87,19 @@ Page({
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    const anonymousContentEnabled = await app.getAnonymousContentVisibility();
+    const activeTab = !anonymousContentEnabled && this.data.activeTab === 'treehole'
+      ? 'dynamic'
+      : this.data.activeTab;
+    this.setData({ anonymousContentEnabled, activeTab });
+    if (anonymousContentEnabled) {
+      this.setData({ anonTokenReady: hasAnonToken() });
+      if (!hasAnonToken()) {
+        getAnonymousToken()
+          .then(() => this.setData({ anonTokenReady: true }))
+          .catch(() => {});
+      }
+    }
     await this.consumeCommunityInvite();
 
     const prevCommunityId = this.data.community?.id ?? '';
@@ -196,7 +219,12 @@ Page({
     if (!communityId) return;
     const [hit, banners] = await Promise.all([
       squareTodayHit(communityId, 10)
-        .then((result) => ({ list: result.list.filter((item) => item.kind !== 'anon_post') }))
+        .then((result) => ({
+          list: this.data.anonymousContentEnabled
+            ? result.list
+            : result.list.filter((item) =>
+              item.kind !== 'anon_post' && !(item.kind === 'post' && item.data.isAnonymous)),
+        }))
         .catch(() => ({ list: [] as TodayHitItem[] })),
       listBanners(communityId).catch(() => [] as BannerVo[]),
     ]);
@@ -223,11 +251,26 @@ Page({
       let resp: { list: FeedItemVo[]; nextCursor: string | null; hasMore: boolean };
       if (tab === 'dynamic') {
         resp = await squareFeed(this.data.nextCursor ?? undefined, 20, 'recommend', communityId);
-        resp = { ...resp, list: resp.list.filter((item) => item.kind !== 'anon_post') };
+        if (!this.data.anonymousContentEnabled) {
+          resp = {
+            ...resp,
+            list: resp.list.filter((item) =>
+              item.kind !== 'anon_post' && !(item.kind === 'post' && item.data.isAnonymous)),
+          };
+        }
       } else if (tab === 'confession') {
         const r = await feed(this.data.nextCursor ?? undefined, 20, 'latest', communityId);
         resp = {
-          list: r.list.map((p) => ({ kind: 'post' as const, data: p })),
+          list: r.list
+            .filter((post) => this.data.anonymousContentEnabled || !post.isAnonymous)
+            .map((p) => ({ kind: 'post' as const, data: p })),
+          nextCursor: r.nextCursor,
+          hasMore: r.hasMore,
+        };
+      } else if (tab === 'treehole' && this.data.anonymousContentEnabled) {
+        const r = await listTreeholePosts(this.data.nextCursor ?? undefined, 'latest', undefined, communityId);
+        resp = {
+          list: r.list.map((p) => ({ kind: 'anon_post' as const, data: p })),
           nextCursor: r.nextCursor,
           hasMore: r.hasMore,
         };
@@ -294,7 +337,7 @@ Page({
     wx.navigateTo({ url: '/pages/community/list/index' });
   },
 
-  // 广场搜索栏 → 内容搜索页（表白墙 / 兼职）
+  // 广场搜索栏 → 内容搜索页（树洞分类由全局开关控制）
   goSearch() {
     wx.navigateTo({ url: '/pages/content-search/index' });
   },
@@ -370,25 +413,54 @@ Page({
     };
   },
 
-  // FAB：直接进入表白墙发布页
+  // FAB：匿名内容开启时允许选择树洞发布，否则直接进入表白墙发布。
   goCreate() {
-    wx.navigateTo({ url: '/pages/post-create/index' });
+    if (!this.data.anonymousContentEnabled) {
+      wx.navigateTo({ url: '/pages/post-create/index' });
+      return;
+    }
+    wx.showActionSheet({
+      itemList: ['表白墙', '树洞'],
+      success: (result) => {
+        wx.navigateTo({
+          url: result.tapIndex === 1 ? '/pages/treehole/post/index' : '/pages/post-create/index',
+        });
+      },
+    });
   },
 
-  // 今日上头条目点击：统一跳表白墙详情
+  goPostDetail(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    if (id) wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
+  },
+
+  goAnonAuthor(e: WechatMiniprogram.CustomEvent) {
+    const anonId = (e.detail as { anonId?: string }).anonId;
+    if (anonId) {
+      wx.navigateTo({ url: `/pages/treehole/author/index?anonId=${encodeURIComponent(anonId)}` });
+    }
+  },
+
+  // 今日上头条目按内容来源跳转。
   goTodayHit(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
+    const kind = e.currentTarget.dataset.kind as string;
     if (!id) return;
-    wx.navigateTo({ url: `/pages/post-detail/index?id=${id}` });
+    wx.navigateTo({
+      url: kind === 'anon_post'
+        ? `/pages/treehole/detail/index?id=${id}`
+        : `/pages/post-detail/index?id=${id}`,
+    });
   },
 
-  // 点赞分发：post → 表白墙 toggleLike；job_post 无点赞
+  // 点赞分发：表白墙与树洞分别使用真实身份/匿名身份接口。
   async onLike(e: WechatMiniprogram.CustomEvent) {
     const { id } = e.detail as { id: string };
     const idx = this.data.items.findIndex((item) => item.data.id === id);
     if (idx < 0) return;
     const item = this.data.items[idx];
     if (item.kind === 'job_post') return;
+    if (item.kind === 'anon_post' && !hasAnonToken()) return;
 
     const p = item.data;
     const nextLiked = !p.liked;
@@ -398,7 +470,8 @@ Page({
       [`items[${idx}].data.likeCount`]: Math.max(0, nextCount),
     });
     try {
-      await toggleLike(id);
+      if (item.kind === 'anon_post') await toggleAnonPostLike(id);
+      else await toggleLike(id);
     } catch {
       // 回滚
       this.setData({

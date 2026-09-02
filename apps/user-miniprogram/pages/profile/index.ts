@@ -2,6 +2,27 @@ import type { AppInstance } from '../../app';
 import { listNotifications } from '../../services/notification';
 import { refreshRoles, ALL_ROLES, roleLabel } from '../../services/auth';
 
+async function countVisibleUnreadNotifications(anonymousContentEnabled: boolean): Promise<number> {
+  if (anonymousContentEnabled) {
+    return (await listNotifications(true, 1)).unreadCount;
+  }
+  let page = 1;
+  let fetched = 0;
+  let visible = 0;
+  while (true) {
+    const response = await listNotifications(true, page);
+    fetched += response.list.length;
+    visible += response.list.filter((notification) => !notification.targetAnonymous).length;
+    if (
+      response.list.length === 0
+      || fetched >= response.total
+      || response.list.length < response.pageSize
+    ) break;
+    page += 1;
+  }
+  return visible;
+}
+
 Page({
   data: {
     user: null as { nickname: string; avatarUrl: string | null; roles: string[] } | null,
@@ -12,6 +33,7 @@ Page({
     roleOptions: ALL_ROLES,         // 3 个角色入口常量
     myRoles: [] as string[],        // 用户实时拥有的角色（来自 /auth/me）
     switchingRole: '',              // 正在切换中的角色（loading 态）
+    anonymousContentEnabled: false,
   },
 
   async onShow() {
@@ -19,20 +41,26 @@ Page({
     if (!app.requireAuth()) return;
     const u = app.globalData.user;
     const currentRole = app.globalData.currentRole;
+    const anonymousContentEnabled = await app.getAnonymousContentVisibility();
     this.setData({
       user: u,
       avatarChar: u ? u.nickname.slice(0, 1) : '?',
       currentRole,
       roleText: roleLabel(currentRole),
       myRoles: u?.roles ?? [],
+      anonymousContentEnabled,
+      roleOptions: ALL_ROLES.map((option) => option.key === 'USER'
+        ? { ...option, desc: anonymousContentEnabled ? '表白墙 · 树洞 · 兼职' : '表白墙 · 兼职' }
+        : option),
     });
     // 后台刷新实时角色权限（静默，不阻塞 UI）
     refreshRoles().then((roles) => {
       if (roles) this.setData({ myRoles: roles });
     });
     try {
-      const resp = await listNotifications(false, 1);
-      this.setData({ unreadCount: resp.unreadCount });
+      this.setData({
+        unreadCount: await countVisibleUnreadNotifications(anonymousContentEnabled),
+      });
     } catch {
       this.setData({ unreadCount: 0 });
     }
@@ -80,6 +108,12 @@ Page({
 
   goFollowers() {
     wx.navigateTo({ url: '/pages/follow-list/index?mode=followers' });
+  },
+
+  goMyTreehole() {
+    if (this.data.anonymousContentEnabled) {
+      wx.navigateTo({ url: '/pages/my-anon-posts/index' });
+    }
   },
 
   goMyJobs() {

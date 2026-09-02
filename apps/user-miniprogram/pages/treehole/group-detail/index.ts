@@ -16,6 +16,7 @@ import {
 import { getAnonId } from '../../../services/treehole';
 import { uploadImage } from '../../../services/upload';
 import { connectIm, joinRoom, leaveRoom, onRoomMessage, type WsMessage } from '../../../services/im';
+import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
 
 const ROLE_TEXT: Record<string, string> = { OWNER: '群主', ADMIN: '管理员', MEMBER: '成员' };
 
@@ -108,6 +109,7 @@ Page({
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (!await requireAnonymousContentVisibility()) return;
     if (this.groupId) {
       this.setData({ myAnonId: getAnonId() });
       await this.load();

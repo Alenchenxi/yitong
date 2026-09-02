@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../../app';
 import { listMyAnonGroups, type AnonGroupVo } from '../../../services/treehole';
+import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
 
 Page({
   data: {
@@ -10,6 +11,7 @@ Page({
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (!await requireAnonymousContentVisibility()) return;
     await this.load();
   },
 

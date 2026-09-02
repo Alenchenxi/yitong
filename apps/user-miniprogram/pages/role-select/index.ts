@@ -6,9 +6,12 @@ Page({
     pendingRole: '',
     referralCode: '',
     referralTip: '',
+    anonymousContentEnabled: false,
   },
 
-  onLoad(options: { referralCode?: string }) {
+  async onLoad(options: { referralCode?: string }) {
+    const anonymousContentEnabled = await getApp<AppInstance>().getAnonymousContentVisibility();
+    this.setData({ anonymousContentEnabled });
     // 分享落地：携带 referralCode（仅对新用户首次注册生效）
     if (options?.referralCode) {
       this.setData({

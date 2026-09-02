@@ -1,0 +1,17 @@
+<cover-view class="tabbar">
+  <cover-view
+    class="tabbar-item"
+    wx:for="{{items}}"
+    wx:key="pagePath"
+    data-path="{{item.pagePath}}"
+    bindtap="switchTab"
+  >
+    <cover-image
+      class="tabbar-icon"
+      src="{{selectedPath === item.pagePath ? item.selectedIconPath : item.iconPath}}"
+    />
+    <cover-view class="tabbar-text {{selectedPath === item.pagePath ? 'selected' : ''}}">
+      {{item.text}}
+    </cover-view>
+  </cover-view>
+</cover-view>

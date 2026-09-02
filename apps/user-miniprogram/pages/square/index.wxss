@@ -1,4 +1,4 @@
-.page { padding: 0 0 120rpx; }
+.page { padding: 0 0 calc(120rpx + env(safe-area-inset-bottom)); }
 
 /* 圈子动态上方统一沉浸式大容器 */
 .community-header {

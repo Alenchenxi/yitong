@@ -10,6 +10,7 @@ Page({
     total: 0,
     hasMore: true,
     loading: false,
+    anonymousContentEnabled: false,
   },
   topicId: '',
 
@@ -24,6 +25,9 @@ Page({
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    this.setData({
+      anonymousContentEnabled: await app.getAnonymousContentVisibility(),
+    });
     if (this.topicId && this.data.posts.length === 0) await this.reload();
   },
 
@@ -37,12 +41,16 @@ Page({
     this.setData({ loading: true });
     try {
       const r = await getTopic(this.topicId, this.data.page, this.data.pageSize);
+      const visiblePosts = this.data.anonymousContentEnabled
+        ? r.posts.list
+        : r.posts.list.filter((post) => !post.isAnonymous);
+      const currentPage = this.data.page;
       this.setData({
         topic: r.topic,
-        posts: [...this.data.posts, ...r.posts.list],
+        posts: [...this.data.posts, ...visiblePosts],
         total: r.posts.total,
-        page: this.data.page + 1,
-        hasMore: this.data.posts.length + r.posts.list.length < r.posts.total,
+        page: currentPage + 1,
+        hasMore: r.posts.list.length > 0 && currentPage * this.data.pageSize < r.posts.total,
       });
     } catch {
       /* toast */

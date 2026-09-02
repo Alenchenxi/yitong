@@ -11,6 +11,7 @@ interface PageData {
   loading: boolean;
   activeMainTab: MainTab;
   announcements: AnnouncementVo[];
+  anonymousContentEnabled: boolean;
 }
 
 Page({
@@ -21,12 +22,21 @@ Page({
     loading: false,
     activeMainTab: 'recommend',
     announcements: [],
+    anonymousContentEnabled: false,
   } as PageData,
 
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    if (this.data.posts.length === 0) this.reloadFeed();
+    const anonymousContentEnabled = await app.getAnonymousContentVisibility();
+    const visibilityChanged = anonymousContentEnabled !== this.data.anonymousContentEnabled;
+    this.setData({
+      anonymousContentEnabled,
+      posts: anonymousContentEnabled
+        ? this.data.posts
+        : this.data.posts.filter((post) => !post.isAnonymous),
+    });
+    if (visibilityChanged || this.data.posts.length === 0) this.reloadFeed();
     listAnnouncements().then((a) => this.setData({ announcements: a })).catch(() => {});
   },
 
@@ -40,8 +50,11 @@ Page({
     this.setData({ loading: true });
     try {
       const resp = await feed(this.data.nextCursor ?? undefined, 20, this.data.activeMainTab);
+      const visiblePosts = this.data.anonymousContentEnabled
+        ? resp.list
+        : resp.list.filter((post) => !post.isAnonymous);
       this.setData({
-        posts: [...this.data.posts, ...resp.list],
+        posts: [...this.data.posts, ...visiblePosts],
         nextCursor: resp.nextCursor,
         hasMore: resp.hasMore,
       });

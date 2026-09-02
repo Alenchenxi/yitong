@@ -9,11 +9,15 @@ Page({
     total: 0,
     loading: false,
     hasMore: true,
+    anonymousContentEnabled: false,
   },
 
   async onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    this.setData({
+      anonymousContentEnabled: await app.getAnonymousContentVisibility(),
+    });
     await this.reload();
   },
 
@@ -27,11 +31,15 @@ Page({
     this.setData({ loading: true });
     try {
       const resp = await listTodayHit(this.data.page, this.data.pageSize);
+      const visiblePosts = this.data.anonymousContentEnabled
+        ? resp.list
+        : resp.list.filter((post) => !post.isAnonymous);
+      const currentPage = this.data.page;
       this.setData({
-        posts: [...this.data.posts, ...resp.list],
+        posts: [...this.data.posts, ...visiblePosts],
         total: resp.total,
-        page: this.data.page + 1,
-        hasMore: this.data.posts.length + resp.list.length < resp.total,
+        page: currentPage + 1,
+        hasMore: resp.list.length > 0 && currentPage * this.data.pageSize < resp.total,
       });
     } catch {
       /* toast */

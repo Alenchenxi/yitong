@@ -11,6 +11,7 @@ export interface NotificationVo {
   targetType: string | null;
   targetId: string | null;
   extraId: string | null; // P1-01 附属定位 id（评论通知的 commentId）
+  targetAnonymous: boolean;
   read: boolean;
   createdAt: string;
 }
@@ -176,9 +177,19 @@ export class NotificationService {
       this.prisma.notification.count({ where }),
       this.prisma.notification.count({ where: { userId, read: false } }),
     ]);
+    const postTargetIds = list
+      .filter((notification) => notification.targetType === 'post' && notification.targetId)
+      .map((notification) => notification.targetId as string);
+    const anonymousPosts = postTargetIds.length > 0
+      ? await this.prisma.post.findMany({
+          where: { id: { in: postTargetIds }, isAnonymous: true },
+          select: { id: true },
+        })
+      : [];
+    const anonymousPostIds = new Set(anonymousPosts.map((post) => post.id));
 
     return {
-      list: list.map((n) => this.toVo(n)),
+      list: list.map((n) => this.toVo(n, anonymousPostIds)),
       total,
       unreadCount,
       page,
@@ -230,7 +241,7 @@ export class NotificationService {
     extraId: string | null;
     read: boolean;
     createdAt: Date;
-  }): NotificationVo {
+  }, anonymousPostIds: ReadonlySet<string>): NotificationVo {
     return {
       id: n.id,
       type: n.type,
@@ -239,6 +250,10 @@ export class NotificationService {
       targetType: n.targetType,
       targetId: n.targetId,
       extraId: n.extraId,
+      targetAnonymous:
+        n.targetType === 'anon_post'
+        || n.targetType === 'anon-post'
+        || (n.targetType === 'post' && !!n.targetId && anonymousPostIds.has(n.targetId)),
       read: n.read,
       createdAt: n.createdAt.toISOString(),
     };

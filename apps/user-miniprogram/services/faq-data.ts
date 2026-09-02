@@ -7,6 +7,7 @@ export interface FaqItem {
   category: 'apply_rules' | 'common'; // 报名相关 / 常见问题
   q: string;
   a: string;
+  anonymousOnly?: boolean;
 }
 
 export interface HelpCategory {
@@ -170,6 +171,13 @@ export const USER_FAQ_LIST: FaqItem[] = [
     category: 'common',
     q: '怎么收到消息提醒？',
     a: '在「消息中心」可授权微信订阅消息；未授权也能收到站内消息，仅在微信内提醒。',
+  },
+  {
+    id: 'u-cm-3',
+    category: 'common',
+    q: '树洞是匿名的吗？',
+    a: '是。树洞走匿名身份发帖，前台不展示真实信息，可放心倾诉。',
+    anonymousOnly: true,
   },
   {
     id: 'u-cm-4',

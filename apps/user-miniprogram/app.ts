@@ -5,6 +5,12 @@ import {
   clearAuth,
   type UserInfo,
 } from './utils/auth';
+import { getAnonymousToken } from './services/treehole';
+import {
+  fetchAnonymousContentVisibility,
+  persistAnonymousContentVisibility,
+  readAnonymousContentVisibilityCache,
+} from './services/app-config';
 
 // 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
 // FORCE_PRODUCTION 开关：true=开发者工具(develop)也强制连生产 yitongjiajiao.cn（本地不跑 server 调试真数据用）；
@@ -17,6 +23,7 @@ const apiBase = FORCE_PRODUCTION
   : __envVersion === 'develop'
     ? 'http://localhost:3000/api/v1'
     : PROD_API_BASE;
+const cachedAnonymousContentEnabled = readAnonymousContentVisibilityCache();
 
 function responseErrorCode(error: unknown): number | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
@@ -32,6 +39,7 @@ App({
     currentRole: '',
     apiBase,
     loginReady: false,
+    anonymousContentEnabled: cachedAnonymousContentEnabled,
     anonToken: '', // CR-001 树洞匿名 token
     anonId: '',    // CR-001 当前 anonId
     activeCommunityId: '', // 圈子：当前圈子 id（广场头卡/作用域；切换后更新）
@@ -41,6 +49,7 @@ App({
   },
 
   onLaunch(options) {
+    void this.refreshAnonymousContentVisibility();
     const inviteCommunityId = options.query?.inviteCommunityId;
     if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
       this.globalData.pendingCommunityInviteId = inviteCommunityId;
@@ -138,11 +147,52 @@ App({
   async loginWithRole(role: 'user' | 'merchant' | 'admin', referralCode?: string) {
     await loginWithRoleUtil(role, this, referralCode);
     this.globalData.loginReady = true;
+    if (role === 'user' && await this.getAnonymousContentVisibility()) {
+      getAnonymousToken().catch(() => {});
+    }
     // 当前圈子统一由广场 onShow 拉取；避免登录预加载与邀请切换并发时旧响应回写。
   },
 
   async switchRole(role: 'user' | 'merchant' | 'admin') {
     await switchRoleUtil(role, this);
+    if (role === 'user' && await this.getAnonymousContentVisibility()) {
+      getAnonymousToken().catch(() => {});
+    }
+  },
+
+  setAnonymousContentVisibility(enabled: boolean) {
+    this.globalData.anonymousContentEnabled = enabled;
+    this._anonymousContentPromise = Promise.resolve(enabled);
+    persistAnonymousContentVisibility(enabled);
+    for (const listener of this._anonymousContentListeners) listener(enabled);
+  },
+
+  refreshAnonymousContentVisibility(): Promise<boolean> {
+    if (this._anonymousContentPromise) return this._anonymousContentPromise;
+    this._anonymousContentPromise = fetchAnonymousContentVisibility()
+      .then((enabled) => {
+        this.setAnonymousContentVisibility(enabled);
+        return enabled;
+      })
+      .catch(() => {
+        this.setAnonymousContentVisibility(false);
+        return false;
+      });
+    return this._anonymousContentPromise;
+  },
+
+  getAnonymousContentVisibility(): Promise<boolean> {
+    return this._anonymousContentPromise
+      ?? Promise.resolve(this.globalData.anonymousContentEnabled);
+  },
+
+  subscribeAnonymousContentVisibility(listener: (enabled: boolean) => void) {
+    this._anonymousContentListeners.push(listener);
+    listener(this.globalData.anonymousContentEnabled);
+    return () => {
+      this._anonymousContentListeners = this._anonymousContentListeners
+        .filter((candidate) => candidate !== listener);
+    };
   },
 
   logout() {
@@ -157,6 +207,9 @@ App({
     wx.reLaunch({ url: '/pages/role-select/index' });
     return false;
   },
+
+  _anonymousContentPromise: null as Promise<boolean> | null,
+  _anonymousContentListeners: [] as Array<(enabled: boolean) => void>,
 });
 
 export type AppInstance = WechatMiniprogram.App.Instance<{
@@ -173,6 +226,7 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
     pendingCommunityInviteId: string;
     communityInviteRouting: boolean;
     loginReady: boolean;
+    anonymousContentEnabled: boolean;
   };
   loginWithRole: (role: 'user' | 'merchant' | 'admin', referralCode?: string) => Promise<void>;
   switchRole: (role: 'user' | 'merchant' | 'admin') => Promise<void>;
@@ -180,4 +234,8 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
   requireAuth: () => boolean;
   routeToRoleHome: (role: string) => void;
   routeCommunityInviteToSquare: () => Promise<void>;
+  setAnonymousContentVisibility: (enabled: boolean) => void;
+  refreshAnonymousContentVisibility: () => Promise<boolean>;
+  getAnonymousContentVisibility: () => Promise<boolean>;
+  subscribeAnonymousContentVisibility: (listener: (enabled: boolean) => void) => () => void;
 }>;

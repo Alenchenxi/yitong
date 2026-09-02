@@ -1,4 +1,4 @@
-.page { padding: 24rpx; }
+.page { padding: 24rpx 24rpx calc(120rpx + env(safe-area-inset-bottom)); }
 
 /* 身份卡 */
 .profile-card {

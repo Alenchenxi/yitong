@@ -3,7 +3,7 @@
 .item { background: #fff; border-radius: 12rpx; padding: 24rpx; }
 .content { font-size: 28rpx; color: #333; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .meta { display: flex; justify-content: space-between; margin-top: 16rpx; font-size: 22rpx; color: #999; }
-.stats { color: #ff4d6d; }
+.stats { color: #C59A00; }
 .empty { text-align: center; padding-top: 200rpx; color: #999; }
 .empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
 .empty-text { font-size: 28rpx; }

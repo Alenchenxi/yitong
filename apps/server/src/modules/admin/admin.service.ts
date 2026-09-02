@@ -16,6 +16,7 @@ import {
 } from '../tutor-sync/tutor-sync.settings';
 import type { UpdateBoostPlanPriceDto } from './dto/update-boost-plan-price.dto';
 import type { UpdatePricingDto } from './dto/update-pricing.dto';
+import { ANONYMOUS_CONTENT_ENABLED_KEY } from '../app-config/app-config.service';
 
 @Injectable()
 export class AdminService {
@@ -1253,6 +1254,7 @@ export class AdminService {
   // ===== P2-26 全局配置 KV（白名单 AppConfig）=====
   private static readonly APP_CONFIG_KEYS = [
     'community.need_review',
+    ANONYMOUS_CONTENT_ENABLED_KEY,
     TUTOR_SYNC_ENABLED_KEY,
     TUTOR_SYNC_BATCH_SIZE_KEY,
   ] as const;
@@ -1284,9 +1286,17 @@ export class AdminService {
       throw new BizException(40004, `不支持的配置项: ${key}`, HttpStatus.BAD_REQUEST);
     }
     let normalizedValue: boolean | number;
-    if (key === 'community.need_review' || key === TUTOR_SYNC_ENABLED_KEY) {
+    if (
+      key === 'community.need_review'
+      || key === ANONYMOUS_CONTENT_ENABLED_KEY
+      || key === TUTOR_SYNC_ENABLED_KEY
+    ) {
       if (typeof value !== 'boolean') {
-        const label = key === TUTOR_SYNC_ENABLED_KEY ? '家教自动同步' : '建圈审核';
+        const label = key === TUTOR_SYNC_ENABLED_KEY
+          ? '家教自动同步'
+          : key === ANONYMOUS_CONTENT_ENABLED_KEY
+            ? '匿名内容展示'
+            : '建圈审核';
         throw new BizException(40003, `${label}配置必须为布尔值`, HttpStatus.BAD_REQUEST);
       }
       normalizedValue = value;

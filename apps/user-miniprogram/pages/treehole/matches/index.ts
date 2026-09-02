@@ -2,6 +2,7 @@
 import type { AppInstance } from '../../../app';
 import { hasAnonToken, getAnonymousToken, listAnonMatches, type MatchHistoryItem } from '../../../services/treehole';
 import { formatTime } from '../../../utils/auth';
+import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
 
 interface PageData {
   list: Array<MatchHistoryItem & { timeText: string }>;
@@ -25,6 +26,7 @@ Page({
   async onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (!await requireAnonymousContentVisibility()) return;
     if (!hasAnonToken()) {
       try { await getAnonymousToken(); } catch { return; }
     }

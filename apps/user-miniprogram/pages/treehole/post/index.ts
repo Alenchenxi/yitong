@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../../app';
 import { hasAnonToken, getAnonymousToken, createPost, getAnonTags } from '../../../services/treehole';
+import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
 
 // P1-13：mood 从标签库加载；库为空回退内置
 const FALLBACK_MOODS = ['开心', 'emo', '吐槽', '求安慰', '学习', '恋爱', '迷茫'];
@@ -15,6 +16,7 @@ Page({
   async onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    if (!await requireAnonymousContentVisibility()) return;
     if (!hasAnonToken()) {
       try { await getAnonymousToken(); } catch { return; }
     }

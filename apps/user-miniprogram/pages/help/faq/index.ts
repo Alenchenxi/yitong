@@ -6,10 +6,15 @@ Page({
     items: [] as FaqItem[],
   },
 
-  onLoad() {
+  async onLoad() {
     // 按角色加载常见问题（商家：岗位审核/发布/支付；用户：找兼职/投诉/账号）
-    const role = getApp<AppInstance>().globalData.currentRole;
+    const app = getApp<AppInstance>();
+    const role = app.globalData.currentRole;
+    const anonymousContentEnabled = await app.getAnonymousContentVisibility();
     const { list } = getFaqData(role);
-    this.setData({ items: list.filter((f) => f.category === 'common') });
+    this.setData({
+      items: list.filter((item) =>
+        item.category === 'common' && (anonymousContentEnabled || !item.anonymousOnly)),
+    });
   },
 });

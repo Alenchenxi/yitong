@@ -252,11 +252,20 @@
     <view class="adm-section-title">功能开关</view>
     <view class="adm-item">
       <view class="adm-item-main">
+        <text class="adm-item-title">匿名内容展示</text>
+        <text class="adm-item-sub">控制用户端树洞模块、树洞内容和表白墙匿名发布入口</text>
+      </view>
+      <view class="adm-item-actions">
+        <switch checked="{{anonymousContentEnabled}}" color="#F9C801" disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindchange="toggleAnonymousContent" />
+      </view>
+    </view>
+    <view class="adm-item">
+      <view class="adm-item-main">
         <text class="adm-item-title">建圈审核</text>
         <text class="adm-item-sub">开启后，用户创建的圈子需审核通过才可使用</text>
       </view>
       <view class="adm-item-actions">
-        <switch checked="{{needReviewEnabled}}" color="#F9C801" disabled="{{loading || !appSettingsLoaded || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindchange="toggleNeedReview" />
+        <switch checked="{{needReviewEnabled}}" color="#F9C801" disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindchange="toggleNeedReview" />
       </view>
     </view>
     <view class="adm-section-title">系统同步配置</view>
@@ -266,7 +275,7 @@
         <text class="adm-item-sub">每 5 分钟执行，需服务器总开关同时开启</text>
       </view>
       <view class="adm-item-actions">
-        <switch checked="{{tutorSyncEnabled}}" color="#F9C801" disabled="{{loading || !appSettingsLoaded || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindchange="toggleTutorSync" />
+        <switch checked="{{tutorSyncEnabled}}" color="#F9C801" disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindchange="toggleTutorSync" />
       </view>
     </view>
     <view class="adm-form">
@@ -275,9 +284,9 @@
           <text class="adm-item-title">每批同步数量</text>
           <text class="adm-item-sub">每批 1-200 条，默认 100 条；全量总数不限</text>
         </view>
-        <input class="adm-input adm-sync-limit" type="number" maxlength="3" value="{{tutorSyncBatchSize}}" disabled="{{loading || !appSettingsLoaded || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindinput="onTutorSyncBatchSizeInput" />
+        <input class="adm-input adm-sync-limit" type="number" maxlength="3" value="{{tutorSyncBatchSize}}" disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindinput="onTutorSyncBatchSizeInput" />
       </view>
-      <button class="yt-btn-primary" loading="{{savingTutorSync}}" disabled="{{loading || !appSettingsLoaded || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindtap="saveTutorSyncSettings">保存批次大小</button>
+      <button class="yt-btn-primary" loading="{{savingTutorSync}}" disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingTutorSync || savingTutorSync}}" bindtap="saveTutorSyncSettings">保存批次大小</button>
     </view>
   </block>
 </view>

@@ -6,6 +6,7 @@ Page({
     topic: null as { id: string; title: string; description: string | null; coverUrl: string | null } | null,
     posts: [] as PostVo[],
     loading: false,
+    anonymousContentEnabled: false,
   },
   topicId: '',
 
@@ -20,6 +21,9 @@ Page({
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    this.setData({
+      anonymousContentEnabled: await app.getAnonymousContentVisibility(),
+    });
     if (this.topicId) await this.load();
   },
 
@@ -27,7 +31,12 @@ Page({
     this.setData({ loading: true });
     try {
       const r = await getActivityTopic(this.topicId);
-      this.setData({ topic: r.topic, posts: r.posts });
+      this.setData({
+        topic: r.topic,
+        posts: this.data.anonymousContentEnabled
+          ? r.posts
+          : r.posts.filter((post) => !post.isAnonymous),
+      });
     } catch {
       /* toast */
     } finally {
