@@ -62,6 +62,12 @@
 - `npx prisma migrate ...`、`nest build`、`tsc --noEmit` 都不等于重新生成 Prisma Client，不能拿来代替 `prisma generate`。
 - 如果本次改动依赖生成后的 Prisma Client，必须在改动记录里写明已重新生成并复检；不能用旧 client 继续验收。
 
+### 4.3 功能完成后的 main 合并与最终重编译红线（强制）
+- 用户未明确要求“暂不合并 / 仅保留功能分支”时，功能完成且独立验收通过后，主代理必须直接按第 5 节流程 squash 合并并提交到 `main`，不得停在功能分支等待二次确认。
+- 合并到 `main` 后，必须在主工作区再次清理本次前端对应的旧 `.js` / `.js.map` 构建产物，再从 `main` 重新编译并复检；功能 worktree 中的编译结果不能替代 `main` 的最终重编译。
+- 若前端 `tsconfig` 默认配置了 `noEmit: true`，最终重编译必须显式覆盖为可输出模式（例如 `tsc -p <tsconfig> --noEmit false`）或使用仓库等价构建命令；仅执行 `tsc` / `tsc --noEmit` 不得记为已重新构建。
+- 只有 `main` 上的清理重编译、产物完整性检查和必要 smoke 均通过，才可报告功能交付完成；随后再按授权执行推送，并按第 5.1 节清理 worktree。
+
 ---
 
 ## 5. 提交与合并（trunk-based）
