@@ -79,7 +79,7 @@
 .fab {
   position: fixed;
   right: 32rpx;
-  bottom: 140rpx;
+  bottom: var(--yt-fab-bottom);
   width: 96rpx;
   height: 96rpx;
   background: var(--yt-primary);

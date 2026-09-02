@@ -5,7 +5,7 @@
   left: 0;
   z-index: 1000;
   display: flex;
-  height: 104rpx;
+  height: var(--yt-tabbar-height, 104rpx);
   padding-bottom: env(safe-area-inset-bottom);
   background: #ffffff;
   border-top: 1rpx solid #e5e6eb;
@@ -16,7 +16,7 @@
   display: flex;
   flex: 1;
   min-width: 0;
-  height: 104rpx;
+  height: var(--yt-tabbar-height, 104rpx);
   align-items: center;
   justify-content: center;
   flex-direction: column;

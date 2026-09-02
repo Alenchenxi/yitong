@@ -24,6 +24,10 @@ page {
   --yt-danger: #F53F3F;
   --yt-disabled-bg: #F2F3F5;
   --yt-disabled-text: #C9CDD4;
+  /* 底部导航布局 */
+  --yt-tabbar-height: 104rpx;
+  --yt-fab-tabbar-gap: 24rpx;
+  --yt-fab-bottom: calc(var(--yt-tabbar-height) + env(safe-area-inset-bottom) + var(--yt-fab-tabbar-gap));
 
   background: var(--yt-bg);
   font-size: 28rpx;
