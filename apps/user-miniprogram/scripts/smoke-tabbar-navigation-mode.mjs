@@ -14,8 +14,8 @@ const tabPages = [
   ['pages/profile/index', '我的'],
 ];
 
-assert.match(titleRule, /font-size:\s*36rpx;/u, '共享页头标题必须使用 36rpx 页面标题字号');
-assert.match(titleRule, /font-weight:\s*600;/u, '共享页头标题必须使用 600 页面标题字重');
+assert.match(titleRule, /font-size:\s*34rpx;/u, '共享页头标题必须使用 34rpx 标题字号');
+assert.match(titleRule, /font-weight:\s*400;/u, '共享页头标题必须使用 400 常规字重');
 
 for (const [pagePath, title] of tabPages) {
   const config = JSON.parse(readFileSync(resolve(root, `${pagePath}.json`), 'utf8'));
