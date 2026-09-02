@@ -18,6 +18,7 @@ import {
   type BannerVo,
 } from '../../services/community';
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
+import { syncCustomTabBar } from '../../utils/custom-tabbar';
 
 // 广场（圈子首页）：树洞能力由全局匿名内容开关控制。
 type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
@@ -85,6 +86,7 @@ Page({
   },
 
   async onShow() {
+    syncCustomTabBar(this, '/pages/square/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();

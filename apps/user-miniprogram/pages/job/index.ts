@@ -9,6 +9,7 @@ import {
   type Settlement,
 } from '../../services/job';
 import { getLocationContext } from '../../services/place-suggest';
+import { syncCustomTabBar } from '../../utils/custom-tabbar';
 
 type Tab = 'recommend' | 'latest' | 'urgent' | 'nearest';
 type FilterSection = 'district' | 'settlement';
@@ -43,6 +44,7 @@ Page({
   },
 
   async onShow() {
+    syncCustomTabBar(this, '/pages/job/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const isMerchant = app.globalData.currentRole === 'MERCHANT';

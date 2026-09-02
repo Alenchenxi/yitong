@@ -1,6 +1,7 @@
 import type { AppInstance } from '../../app';
 import { feed, toggleLike, type PostVo } from '../../services/confession';
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
+import { syncCustomTabBar } from '../../utils/custom-tabbar';
 
 type MainTab = 'recommend' | 'latest' | 'hot' | 'follow';
 
@@ -26,6 +27,7 @@ Page({
   } as PageData,
 
   async onShow() {
+    syncCustomTabBar(this, '/pages/confession/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();

@@ -8,6 +8,7 @@ import {
   type AnonPostVo,
 } from '../../services/treehole';
 import { formatTime } from '../../utils/auth';
+import { syncCustomTabBar } from '../../utils/custom-tabbar';
 
 type Tab = 'recommend' | 'latest' | 'mood';
 
@@ -24,6 +25,7 @@ Page({
   },
 
   async onShow() {
+    syncCustomTabBar(this, '/pages/treehole/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!await app.getAnonymousContentVisibility()) {

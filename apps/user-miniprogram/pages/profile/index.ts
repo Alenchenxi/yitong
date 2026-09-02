@@ -1,6 +1,7 @@
 import type { AppInstance } from '../../app';
 import { listNotifications } from '../../services/notification';
 import { refreshRoles, ALL_ROLES, roleLabel } from '../../services/auth';
+import { syncCustomTabBar } from '../../utils/custom-tabbar';
 
 async function countVisibleUnreadNotifications(anonymousContentEnabled: boolean): Promise<number> {
   if (anonymousContentEnabled) {
@@ -37,6 +38,7 @@ Page({
   },
 
   async onShow() {
+    syncCustomTabBar(this, '/pages/profile/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const u = app.globalData.user;
