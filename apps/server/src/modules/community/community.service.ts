@@ -134,7 +134,14 @@ export class CommunityService {
     ]);
     const memberMap = new Map(memberships.map((m) => [m.communityId, m.role]));
     const stats = await this.countCommunityStats(communities);
-    return communities.map((c) => this.toVo(c, memberMap.get(c.id) ?? null, stats.get(c.id)));
+    return communities
+      .map((c) => this.toVo(c, memberMap.get(c.id) ?? null, stats.get(c.id)))
+      .sort(
+        (a, b) =>
+          b.memberCount - a.memberCount ||
+          a.createdAt.localeCompare(b.createdAt) ||
+          a.id.localeCompare(b.id),
+      );
   }
 
   /** 圈子搜索：name 模糊匹配（ACTIVE，最多 20 条） */
