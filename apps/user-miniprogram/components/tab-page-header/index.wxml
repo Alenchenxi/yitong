@@ -1,0 +1,6 @@
+<view class="tab-page-header" style="padding-top: {{navTop}}px;">
+  <view class="tab-page-header__navigation" style="height: {{navHeight}}px; padding-left: {{navRight}}px; padding-right: {{navRight}}px;">
+    <text class="tab-page-header__title">{{title}}</text>
+  </view>
+  <slot name="actions"></slot>
+</view>

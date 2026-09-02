@@ -19,6 +19,7 @@ import {
 } from '../../services/community';
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
+import { getNavigationLayout } from '../../utils/navigation';
 
 // 广场（圈子首页）：树洞能力由全局匿名内容开关控制。
 type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
@@ -76,13 +77,7 @@ Page({
       app.globalData.pendingCommunityInviteId = inviteCommunityId;
     }
 
-    const system = wx.getSystemInfoSync();
-    const menu = wx.getMenuButtonBoundingClientRect();
-    const navTop = system.statusBarHeight ?? 0;
-    const menuValid = menu.left > 0 && menu.top >= navTop && menu.width > 0 && menu.height > 0;
-    const navHeight = menuValid ? Math.max(40, (menu.top - navTop) * 2 + menu.height) : 44;
-    const navRight = menuValid ? Math.max(12, system.screenWidth - menu.left + 8) : 12;
-    this.setData({ navTop, navHeight, navRight });
+    this.setData(getNavigationLayout());
   },
 
   async onShow() {

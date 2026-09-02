@@ -1,0 +1,34 @@
+:host {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.tab-page-header {
+  box-sizing: border-box;
+  background: var(--yt-card, #fff);
+  border-bottom: 1rpx solid var(--yt-border, #e5e6eb);
+}
+
+.tab-page-header__navigation {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-page-header__title {
+  position: absolute;
+  left: 50%;
+  max-width: 50%;
+  overflow: hidden;
+  transform: translateX(-50%);
+  color: var(--yt-text-main, #1d2129);
+  font-size: 36rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "我的"
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "tab-page-header": "/components/tab-page-header/index"
+  }
 }

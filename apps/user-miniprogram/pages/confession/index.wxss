@@ -7,10 +7,6 @@
   gap: 16rpx;
   padding: 16rpx 24rpx;
   background: var(--yt-card);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  border-bottom: 1rpx solid var(--yt-border);
 }
 .search-box {
   flex: 1;
@@ -48,9 +44,6 @@
   gap: 40rpx;
   padding: 16rpx 24rpx;
   background: var(--yt-card);
-  position: sticky;
-  top: 96rpx;
-  z-index: 9;
 }
 .main-tab {
   font-size: 28rpx;

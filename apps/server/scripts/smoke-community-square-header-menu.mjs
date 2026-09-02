@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 
 const base = new URL('../../user-miniprogram/pages/square/', import.meta.url);
-const [wxml, wxss, ts, pageConfigText, appConfigText] = await Promise.all([
+const [wxml, wxss, ts, navigation, pageConfigText, appConfigText] = await Promise.all([
   readFile(new URL('index.wxml', base), 'utf8'),
   readFile(new URL('index.wxss', base), 'utf8'),
   readFile(new URL('index.ts', base), 'utf8'),
+  readFile(new URL('../../user-miniprogram/utils/navigation.ts', import.meta.url), 'utf8'),
   readFile(new URL('index.json', base), 'utf8'),
   readFile(new URL('../../user-miniprogram/app.json', import.meta.url), 'utf8'),
 ]);
@@ -37,16 +38,17 @@ assert(
   ts.includes('navTop: number') &&
     ts.includes('navHeight: number') &&
     ts.includes('navRight: number') &&
-    ts.includes('wx.getSystemInfoSync()') &&
-    ts.includes('wx.getMenuButtonBoundingClientRect()'),
-  '页面维护状态栏、导航栏和胶囊避让数据',
+    ts.includes("import { getNavigationLayout } from '../../utils/navigation'") &&
+    ts.includes('this.setData(getNavigationLayout())'),
+  '页面维护导航布局数据并复用共享尺寸工具',
 );
 assert(
-  ts.includes('const navTop = system.statusBarHeight ?? 0') &&
-    ts.includes('(menu.top - navTop) * 2 + menu.height') &&
-    ts.includes('system.screenWidth - menu.left') &&
-    ts.includes('this.setData({ navTop, navHeight, navRight })'),
-  '导航尺寸按状态栏与微信胶囊位置计算',
+  navigation.includes('wx.getSystemInfoSync()') &&
+    navigation.includes('wx.getMenuButtonBoundingClientRect()') &&
+    navigation.includes('const navTop = system.statusBarHeight ?? 0') &&
+    navigation.includes('navHeight: menuValid ? Math.max(40, (menu.top - navTop) * 2 + menu.height) : 44') &&
+    navigation.includes('navRight: menuValid ? Math.max(12, system.screenWidth - menu.left + 8) : 12'),
+  '共享工具按状态栏与微信胶囊位置计算 navHeight 和 navRight',
 );
 
 const tabBarItems = appConfig.tabBar?.list ?? [];

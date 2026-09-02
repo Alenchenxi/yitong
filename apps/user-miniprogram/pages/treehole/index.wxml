@@ -1,3 +1,5 @@
+<tab-page-header title="树洞" />
+
 <view class="page">
   <!-- 匿名身份卡 -->
   <view class="anon-card yt-card" bindtap="goProfile">

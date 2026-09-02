@@ -1,4 +1,7 @@
 {
-  "navigationBarTitleText": "兼职",
-  "enablePullDownRefresh": true
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "tab-page-header": "/components/tab-page-header/index"
+  }
 }

@@ -1,12 +1,14 @@
-<view class="page">
-  <!-- 顶部搜索 + 发布 -->
-  <view class="topbar">
+<tab-page-header title="表白墙">
+  <view slot="actions" class="topbar">
     <view class="search-box" bindtap="goSearch">
       <text class="search-icon">🔍</text>
       <text class="search-ph">搜索帖子/用户</text>
     </view>
     <view class="publish-btn" bindtap="goCreate">发布</view>
   </view>
+</tab-page-header>
+
+<view class="page">
 
   <!-- 公告栏（运营位） -->
   <view class="announce-bar" wx:if="{{announcements.length > 0}}">
