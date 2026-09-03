@@ -140,6 +140,14 @@ Page({
     if (id) wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
   },
 
+  previewImage(e: WechatMiniprogram.TouchEvent) {
+    const { id, src } = e.currentTarget.dataset as { id: string; src: string };
+    const post = this.data.posts.find((item) => item.id === id);
+    if (src && post?.images.length) {
+      wx.previewImage({ current: src, urls: post.images });
+    }
+  },
+
   goAuthor(e: WechatMiniprogram.TouchEvent) {
     const anonId = e.currentTarget.dataset.anonId as string;
     if (anonId) {

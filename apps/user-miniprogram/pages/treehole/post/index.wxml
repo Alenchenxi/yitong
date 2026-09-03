@@ -1,10 +1,29 @@
 <view class="page">
-  <textarea class="textarea" placeholder="匿名说点什么…（不会暴露你的身份）" value="{{content}}" bindinput="onInput" maxlength="500" auto-height show-confirm-bar="{{false}}" />
+  <view class="composer">
+    <textarea class="textarea" placeholder="匿名说点什么…（不会暴露你的身份）" value="{{content}}" bindinput="onInput" maxlength="500" auto-height show-confirm-bar="{{false}}" />
+    <view class="image-grid">
+      <view class="image-item" wx:for="{{imagePaths}}" wx:key="*this">
+        <image class="selected-image" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewImage" />
+        <view class="remove-image" data-index="{{index}}" catchtap="removeImage" aria-role="button" aria-label="删除图片">×</view>
+      </view>
+      <view
+        wx:if="{{imagePaths.length < maxImageCount}}"
+        class="add-image"
+        bindtap="chooseImages"
+        aria-role="button"
+        aria-label="添加图片"
+        hover-class="add-image-pressed"
+      >
+        <text class="add-image-icon">＋</text>
+      </view>
+    </view>
+    <view class="composer-count">{{content.length}}/500</view>
+  </view>
   <view class="mood-section">
     <view class="mood-label">心情（可选）</view>
     <view class="mood-chips">
       <view class="mood-chip {{selectedMood === item ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this" data-mood="{{item}}" bindtap="pickMood">{{item}}</view>
     </view>
   </view>
-  <button class="submit" bindtap="submit" disabled="{{submitting}}">{{submitting ? '发布中…' : '匿名发布'}}</button>
+  <button class="submit" bindtap="submit" disabled="{{submitting}}" loading="{{submitting}}">{{submitting ? '发布中…' : '匿名发布'}}</button>
 </view>

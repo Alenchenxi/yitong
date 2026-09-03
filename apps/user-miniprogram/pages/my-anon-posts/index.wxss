@@ -2,6 +2,23 @@
 .list { display: flex; flex-direction: column; gap: 16rpx; }
 .item { background: #fff; border-radius: 12rpx; padding: 24rpx; }
 .content { font-size: 28rpx; color: #333; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.post-images {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8rpx;
+  margin-top: 16rpx;
+}
+.post-images-1 { grid-template-columns: 1fr; width: 66%; }
+.post-images-2 { grid-template-columns: repeat(2, 1fr); }
+.post-image {
+  display: block;
+  width: 100%;
+  height: 190rpx;
+  min-width: 0;
+  border-radius: 8rpx;
+  background: var(--yt-disabled-bg);
+}
+.post-images-1 .post-image { height: 300rpx; }
 .meta { display: flex; justify-content: space-between; margin-top: 16rpx; font-size: 22rpx; color: #999; }
 .stats { color: #C59A00; }
 .empty { text-align: center; padding-top: 200rpx; color: #999; }

@@ -28,4 +28,12 @@ Page({
   onUnload() {
     unbindAnonymousContentVisibility(this);
   },
+
+  previewImage(e: WechatMiniprogram.TouchEvent) {
+    const { id, src } = e.currentTarget.dataset as { id: string; src: string };
+    const post = this.data.posts.find((item) => item.id === id);
+    if (src && post?.images.length) {
+      wx.previewImage({ current: src, urls: post.images });
+    }
+  },
 });

@@ -52,6 +52,19 @@
     <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view class="anon" data-anon-id="{{item.anonId}}" catchtap="goAuthor">🌙 {{item.anonShort}}<text wx:if="{{item.mood}}" class="post-mood">{{item.mood}}</text><text wx:if="{{item.boosted}}" class="post-boost">推广</text></view>
       <view class="content">{{item.content}}</view>
+      <view class="post-images {{item.images.length === 1 ? 'post-images-1' : item.images.length === 2 ? 'post-images-2' : ''}}" wx:if="{{item.images.length > 0}}">
+        <image
+          wx:for="{{item.images}}"
+          wx:for-item="image"
+          wx:key="*this"
+          class="post-image"
+          src="{{image}}"
+          mode="aspectFill"
+          data-id="{{item.id}}"
+          data-src="{{image}}"
+          catchtap="previewImage"
+        />
+      </view>
       <view class="row">
         <text class="time">{{item.timeText}}</text>
         <view class="row-stats">

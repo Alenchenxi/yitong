@@ -206,6 +206,14 @@ Page({
     }
   },
 
+  previewImage(e: WechatMiniprogram.TouchEvent) {
+    const src = e.currentTarget.dataset.src as string;
+    const images = this.data.post?.images ?? [];
+    if (src && images.length > 0) {
+      wx.previewImage({ current: src, urls: images });
+    }
+  },
+
   goAuthor() {
     const anonId = this.data.post?.anonId;
     if (anonId) {

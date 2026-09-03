@@ -2,6 +2,19 @@
   <view class="list" wx:if="{{posts.length > 0}}">
     <view class="item" wx:for="{{posts}}" wx:key="id">
       <view class="content">{{item.content}}</view>
+      <view class="post-images {{item.images.length === 1 ? 'post-images-1' : item.images.length === 2 ? 'post-images-2' : ''}}" wx:if="{{item.images.length > 0}}">
+        <image
+          wx:for="{{item.images}}"
+          wx:for-item="image"
+          wx:key="*this"
+          class="post-image"
+          src="{{image}}"
+          mode="aspectFill"
+          data-id="{{item.id}}"
+          data-src="{{image}}"
+          catchtap="previewImage"
+        />
+      </view>
       <view class="meta">
         <text>{{item.timeText}}</text>
         <text class="stats">♥ {{item.likeCount}}</text>

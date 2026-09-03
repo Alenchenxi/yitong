@@ -87,6 +87,23 @@
 .list { margin-top: 8rpx; }
 .anon { font-size: 24rpx; color: var(--yt-primary-dark); font-weight: 600; }
 .content { font-size: 30rpx; line-height: 1.6; color: var(--yt-text-main); margin: 12rpx 0; white-space: pre-wrap; }
+.post-images {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8rpx;
+  margin: 16rpx 0;
+}
+.post-images-1 { grid-template-columns: 1fr; width: 66%; }
+.post-images-2 { grid-template-columns: repeat(2, 1fr); }
+.post-image {
+  display: block;
+  width: 100%;
+  height: 200rpx;
+  min-width: 0;
+  border-radius: 8rpx;
+  background: var(--yt-disabled-bg);
+}
+.post-images-1 .post-image { height: 320rpx; }
 .row { display: flex; justify-content: space-between; align-items: center; margin-top: 12rpx; }
 .time { font-size: 22rpx; color: var(--yt-text-sub); }
 .row-stats { display: flex; align-items: center; gap: 20rpx; }
