@@ -2,7 +2,11 @@
 import type { AppInstance } from '../../../app';
 import { hasAnonToken, getAnonymousToken, listAnonMatches, type MatchHistoryItem } from '../../../services/treehole';
 import { formatTime } from '../../../utils/auth';
-import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
+import {
+  bindAnonymousContentPageGuard,
+  requireAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 interface PageData {
   list: Array<MatchHistoryItem & { timeText: string }>;
@@ -27,10 +31,15 @@ Page({
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!await requireAnonymousContentVisibility()) return;
+    bindAnonymousContentPageGuard(this);
     if (!hasAnonToken()) {
       try { await getAnonymousToken(); } catch { return; }
     }
     await this.reload();
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
   },
 
   async reload() {

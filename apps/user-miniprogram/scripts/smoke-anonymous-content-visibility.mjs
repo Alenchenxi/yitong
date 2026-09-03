@@ -16,19 +16,34 @@ assert.ok(
 );
 
 const appSource = read('app.ts');
-assert.match(appSource, /onLaunch\(options\)\s*\{\s*void this\.refreshAnonymousContentVisibility\(\)/);
+assert.match(
+  appSource,
+  /onShow\(options\)\s*\{\s*void this\.refreshAnonymousContentVisibility\(\)/,
+  '小程序首次启动和重新进入前台时必须刷新匿名内容配置',
+);
 assert.equal(
   (appSource.match(/fetchAnonymousContentVisibility\(\)/g) ?? []).length,
   1,
-  '匿名内容接口只能由 App 启动刷新方法调用一次',
+  '匿名内容接口只能由统一重试方法调用',
 );
+assert.match(appSource, /ANONYMOUS_CONTENT_RETRY_DELAYS_MS = \[250, 750\]/);
+assert.match(appSource, /fetchAnonymousContentVisibilityWithRetry\(\)/);
 assert.match(appSource, /anonymousContentEnabled:/);
 assert.match(appSource, /persistAnonymousContentVisibility\(enabled\)/);
 assert.match(
   appSource,
-  /\.catch\(\(\) => \{\s*this\.setAnonymousContentVisibility\(false\);\s*return false;/,
+  /\.catch\(\(\) => this\.applyAnonymousContentRefresh\(refreshVersion, false\)\)/,
   '匿名内容配置请求失败时必须 fail closed',
 );
+assert.match(
+  appSource,
+  /\.finally\(\(\) => \{[\s\S]*this\._anonymousContentRefreshPromise = null;/,
+  '匿名内容请求完成后必须释放 Promise，允许下次进入重试',
+);
+
+const appConfigSource = read('services/app-config.ts');
+assert.match(appConfigSource, /data:\s*\{ cacheBust:\s*Date\.now\(\) \}/);
+assert.match(appConfigSource, /'Cache-Control':\s*'no-cache'/);
 
 const customTabBar = read('custom-tab-bar/index.ts');
 assert.match(customTabBar, /anonymousOnly:\s*true/);
@@ -36,8 +51,58 @@ assert.match(customTabBar, /subscribeAnonymousContentVisibility/);
 
 const postCreate = read('pages/post-create/index.ts');
 assert.match(postCreate, /showAnonymousPublish = await app\.getAnonymousContentVisibility\(\)/);
+assert.match(postCreate, /bindAnonymousContentVisibility\(this,/);
+assert.match(postCreate, /unbindAnonymousContentVisibility\(this\)/);
 assert.match(postCreate, /isAnonymous: this\.data\.showAnonymousPublish && this\.data\.isAnonymous/);
 assert.match(read('pages/post-create/index.wxml'), /wx:if="{{showAnonymousPublish}}"/);
+
+const retainedVisibilityConsumers = [
+  'pages/content-search/index.ts',
+  'pages/favorites/index.ts',
+  'pages/role-select/index.ts',
+  'pages/profile/index.ts',
+  'pages/square/index.ts',
+  'pages/confession/index.ts',
+  'pages/confession-search/index.ts',
+  'pages/confession/topic-detail/index.ts',
+  'pages/confession/today-hit/index.ts',
+  'pages/confession/activity-detail/index.ts',
+  'pages/my-posts/index.ts',
+  'pages/help/faq/index.ts',
+  'components/notifications-view/index.ts',
+];
+for (const relativePath of retainedVisibilityConsumers) {
+  const source = read(relativePath);
+  assert.match(source, /bindAnonymousContentVisibility\(this,/, `${relativePath} must subscribe`);
+  assert.match(source, /unbindAnonymousContentVisibility\(this\)/, `${relativePath} must unsubscribe`);
+}
+
+const anonymousOnlyRetainedPages = [
+  'pages/treehole/detail/index.ts',
+  'pages/treehole/chat/index.ts',
+  'pages/treehole/author/index.ts',
+  'pages/treehole/matches/index.ts',
+  'pages/treehole/party/index.ts',
+  'pages/treehole/quiz/index.ts',
+  'pages/treehole/post/index.ts',
+  'pages/treehole/group-create/index.ts',
+  'pages/treehole/profile/index.ts',
+  'pages/treehole/groups/index.ts',
+  'pages/treehole/group-detail/index.ts',
+  'pages/treehole/my-groups/index.ts',
+  'pages/my-anon-posts/index.ts',
+];
+for (const relativePath of anonymousOnlyRetainedPages) {
+  const source = read(relativePath);
+  assert.match(source, /bindAnonymousContentPageGuard\(this\)/, `${relativePath} must guard retained pages`);
+  assert.match(source, /unbindAnonymousContentVisibility\(this\)/, `${relativePath} must unsubscribe`);
+}
+
+assert.match(
+  read('pages/confession/today-hit/index.ts'),
+  /if \(changed && this\._anonymousContentVisibilityReady\) void this\.reload\(\)/,
+  'today-hit must reload when anonymous content is re-enabled from an empty filtered list',
+);
 assert.match(
   read('pages/boost/index.ts'),
   /options\.type === 'anon_post' && !await app\.getAnonymousContentVisibility\(\)/,

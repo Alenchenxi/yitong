@@ -13,7 +13,11 @@ import {
   type AnonCommentVo,
 } from '../../../services/treehole';
 import { formatTime } from '../../../utils/auth';
-import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
+import {
+  bindAnonymousContentPageGuard,
+  requireAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 type AnonCommentView = AnonCommentVo & { timeText: string; anonShort: string };
 
@@ -37,6 +41,7 @@ Page({
 
   async onLoad(query: Record<string, string | undefined>) {
     if (!await requireAnonymousContentVisibility()) return;
+    bindAnonymousContentPageGuard(this);
     const id = query.id ?? '';
     const focus = query.focus === '1';
     this.setData({ id, commentFocus: focus });
@@ -46,6 +51,10 @@ Page({
     } else {
       this.setData({ needAnon: true });
     }
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
   },
 
   // 显式初始化匿名身份：requireAuth 换 user token → 签发 anonToken → 加载正文与评论

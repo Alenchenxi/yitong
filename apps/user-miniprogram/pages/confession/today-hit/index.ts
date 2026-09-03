@@ -1,5 +1,9 @@
 import type { AppInstance } from '../../../app';
 import { listTodayHit, toggleLike, type PostVo } from '../../../services/confession';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 Page({
   data: {
@@ -15,10 +19,25 @@ Page({
   async onLoad() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    this.setData({
-      anonymousContentEnabled: await app.getAnonymousContentVisibility(),
+    bindAnonymousContentVisibility(this, (enabled) => {
+      const changed = enabled !== this.data.anonymousContentEnabled;
+      this.updateAnonymousContentVisibility(enabled);
+      if (changed && this._anonymousContentVisibilityReady) void this.reload();
     });
+    this.updateAnonymousContentVisibility(await app.getAnonymousContentVisibility());
     await this.reload();
+    this._anonymousContentVisibilityReady = true;
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    this.setData({
+      anonymousContentEnabled: enabled,
+      posts: enabled ? this.data.posts : this.data.posts.filter((post) => !post.isAnonymous),
+    });
   },
 
   async reload() {
@@ -86,4 +105,6 @@ Page({
       path: id ? `/pages/post-detail/index?id=${id}` : '/pages/confession/today-hit/index',
     };
   },
+
+  _anonymousContentVisibilityReady: false,
 });

@@ -5,6 +5,10 @@ import {
   type FavoriteTargetType,
   type FavoriteVo,
 } from '../../services/favorite';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 type TabKey = FavoriteTargetType | 'all';
 
@@ -17,12 +21,34 @@ Page({
     anonymousContentEnabled: false,
   },
 
+  onLoad() {
+    bindAnonymousContentVisibility(this, (enabled) => {
+      this.updateAnonymousContentVisibility(enabled);
+    });
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    const tab = !enabled && this.data.tab === 'anon_post' ? 'all' : this.data.tab;
+    const items = enabled
+      ? this.data.items
+      : this.data.items.filter((item) => !item.targetAnonymous);
+    this.setData({
+      anonymousContentEnabled: enabled,
+      tab,
+      items,
+      ...(!enabled ? { total: items.length } : {}),
+    });
+  },
+
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
-    const tab = !anonymousContentEnabled && this.data.tab === 'anon_post' ? 'all' : this.data.tab;
-    this.setData({ anonymousContentEnabled, tab });
+    this.updateAnonymousContentVisibility(anonymousContentEnabled);
     this.reload();
   },
 

@@ -2,6 +2,10 @@ import type { AppInstance } from '../../app';
 import { listNotifications } from '../../services/notification';
 import { refreshRoles, ALL_ROLES, roleLabel } from '../../services/auth';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 async function countVisibleUnreadNotifications(anonymousContentEnabled: boolean): Promise<number> {
   if (anonymousContentEnabled) {
@@ -37,6 +41,25 @@ Page({
     anonymousContentEnabled: false,
   },
 
+  onLoad() {
+    bindAnonymousContentVisibility(this, (enabled) => {
+      this.updateAnonymousContentVisibility(enabled);
+    });
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    this.setData({
+      anonymousContentEnabled: enabled,
+      roleOptions: ALL_ROLES.map((option) => option.key === 'USER'
+        ? { ...option, desc: enabled ? '表白墙 · 树洞 · 兼职' : '表白墙 · 兼职' }
+        : option),
+    });
+  },
+
   async onShow() {
     syncCustomTabBar(this, '/pages/profile/index');
     const app = getApp<AppInstance>();
@@ -44,16 +67,13 @@ Page({
     const u = app.globalData.user;
     const currentRole = app.globalData.currentRole;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
+    this.updateAnonymousContentVisibility(anonymousContentEnabled);
     this.setData({
       user: u,
       avatarChar: u ? u.nickname.slice(0, 1) : '?',
       currentRole,
       roleText: roleLabel(currentRole),
       myRoles: u?.roles ?? [],
-      anonymousContentEnabled,
-      roleOptions: ALL_ROLES.map((option) => option.key === 'USER'
-        ? { ...option, desc: anonymousContentEnabled ? '表白墙 · 树洞 · 兼职' : '表白墙 · 兼职' }
-        : option),
     });
     // 后台刷新实时角色权限（静默，不阻塞 UI）
     refreshRoles().then((roles) => {

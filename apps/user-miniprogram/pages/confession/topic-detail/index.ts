@@ -1,5 +1,9 @@
 import type { AppInstance } from '../../../app';
 import { getTopic, toggleLike, type PostVo } from '../../../services/confession';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 Page({
   data: {
@@ -15,6 +19,11 @@ Page({
   topicId: '',
 
   onLoad(options: { id?: string }) {
+    bindAnonymousContentVisibility(this, (enabled) => {
+      const changed = enabled !== this.data.anonymousContentEnabled;
+      this.updateAnonymousContentVisibility(enabled);
+      if (changed && this.topicId && this.data.posts.length > 0) void this.reload();
+    });
     if (!options?.id) {
       wx.showToast({ title: '参数错误', icon: 'none' });
       return;
@@ -22,12 +31,21 @@ Page({
     this.topicId = options.id;
   },
 
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    this.setData({
+      anonymousContentEnabled: enabled,
+      posts: enabled ? this.data.posts : this.data.posts.filter((post) => !post.isAnonymous),
+    });
+  },
+
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    this.setData({
-      anonymousContentEnabled: await app.getAnonymousContentVisibility(),
-    });
+    this.updateAnonymousContentVisibility(await app.getAnonymousContentVisibility());
     if (this.topicId && this.data.posts.length === 0) await this.reload();
   },
 

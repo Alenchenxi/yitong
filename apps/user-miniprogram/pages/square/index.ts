@@ -20,6 +20,10 @@ import {
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
 import { getNavigationLayout } from '../../utils/navigation';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 // 广场（圈子首页）：树洞能力由全局匿名内容开关控制。
 type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
@@ -71,6 +75,14 @@ Page({
 
   onLoad(options: Record<string, string | undefined>) {
     const app = getApp<AppInstance>();
+    bindAnonymousContentVisibility(this, (enabled) => {
+      const changed = enabled !== this.data.anonymousContentEnabled;
+      this.updateAnonymousContentVisibility(enabled);
+      if (changed && this.data.community) {
+        void this.refreshOps();
+        void this.reloadFeed();
+      }
+    });
     const inviteCommunityId = options.inviteCommunityId;
     if (inviteCommunityId) {
       this._inviteCommunityId = inviteCommunityId;
@@ -80,15 +92,35 @@ Page({
     this.setData(getNavigationLayout());
   },
 
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    const activeTab = !enabled && this.data.activeTab === 'treehole'
+      ? 'dynamic'
+      : this.data.activeTab;
+    this.setData({
+      anonymousContentEnabled: enabled,
+      activeTab,
+      ...(!enabled
+        ? {
+            anonTokenReady: false,
+            items: this.data.items.filter((item) =>
+              item.kind !== 'anon_post' && !(item.kind === 'post' && item.data.isAnonymous)),
+            todayHit: this.data.todayHit.filter((item) =>
+              item.kind !== 'anon_post' && !(item.kind === 'post' && item.data.isAnonymous)),
+          }
+        : {}),
+    });
+  },
+
   async onShow() {
     syncCustomTabBar(this, '/pages/square/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
-    const activeTab = !anonymousContentEnabled && this.data.activeTab === 'treehole'
-      ? 'dynamic'
-      : this.data.activeTab;
-    this.setData({ anonymousContentEnabled, activeTab });
+    this.updateAnonymousContentVisibility(anonymousContentEnabled);
     if (anonymousContentEnabled) {
       this.setData({ anonTokenReady: hasAnonToken() });
       if (!hasAnonToken()) {

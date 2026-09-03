@@ -1,4 +1,8 @@
 import type { AppInstance } from '../../app';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 Page({
   data: {
@@ -10,6 +14,9 @@ Page({
   },
 
   async onLoad(options: { referralCode?: string }) {
+    bindAnonymousContentVisibility(this, (enabled) => {
+      this.setData({ anonymousContentEnabled: enabled });
+    });
     const anonymousContentEnabled = await getApp<AppInstance>().getAnonymousContentVisibility();
     this.setData({ anonymousContentEnabled });
     // 分享落地：携带 referralCode（仅对新用户首次注册生效）
@@ -19,6 +26,10 @@ Page({
         referralTip: `你通过邀请码 ${options.referralCode} 进入`,
       });
     }
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
   },
 
   async chooseRole(e: WechatMiniprogram.TouchEvent) {

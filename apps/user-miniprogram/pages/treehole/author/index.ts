@@ -10,7 +10,11 @@ import {
   type AnonPostVo,
 } from '../../../services/treehole';
 import { formatTime } from '../../../utils/auth';
-import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
+import {
+  bindAnonymousContentPageGuard,
+  requireAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 type AuthorView = AnonAuthorVo & { displayTags: string[] };
 type AuthorPostView = AnonPostVo & { timeText: string };
@@ -43,6 +47,7 @@ Page({
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!await requireAnonymousContentVisibility()) return;
+    bindAnonymousContentPageGuard(this);
     if (!this.data.anonId) {
       this.setData({ loading: false, loadFailed: true });
       return;
@@ -64,6 +69,10 @@ Page({
       this.setData({ loading: false });
       wx.stopPullDownRefresh();
     }
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
   },
 
   async loadMore() {

@@ -15,7 +15,11 @@ import {
 } from '../../../services/treehole';
 import { connectIm, onMessage, type WsMessage } from '../../../services/im';
 import { uploadImage, uploadVoice } from '../../../services/upload';
-import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
+import {
+  bindAnonymousContentPageGuard,
+  requireAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 interface Msg {
   fromId: string;
@@ -101,6 +105,7 @@ Page({
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!await requireAnonymousContentVisibility()) return;
+    bindAnonymousContentPageGuard(this);
     if (!hasAnonToken()) {
       try {
         await getAnonymousToken();
@@ -271,6 +276,7 @@ Page({
   },
 
   onUnload() {
+    unbindAnonymousContentVisibility(this);
     this.clearCountdown();
     // P1-18 停止录音/播放，释放资源
     if (this.activeRecordingId !== null) {

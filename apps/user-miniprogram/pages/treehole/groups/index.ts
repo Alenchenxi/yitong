@@ -1,6 +1,10 @@
 import type { AppInstance } from '../../../app';
 import { listAnonGroups, listMyAnonGroups, type AnonGroupVo } from '../../../services/treehole';
-import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
+import {
+  bindAnonymousContentPageGuard,
+  requireAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 type SortTab = 'recommend' | 'latest' | 'hot';
 
@@ -16,8 +20,13 @@ Page({
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!await requireAnonymousContentVisibility()) return;
+    bindAnonymousContentPageGuard(this);
     if (this.data.groups.length === 0) await this.load();
     await this.loadMy();
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
   },
 
   async load() {

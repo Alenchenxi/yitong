@@ -12,6 +12,10 @@ import {
 } from '../../services/confession';
 import { addHistory, getHistory, clearHistory } from '../../utils/search-history';
 import { formatTime } from '../../utils/auth';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 type Tab = 'post' | 'user' | 'tag';
 
@@ -46,17 +50,33 @@ Page({
     anonymousContentEnabled: false,
   } as PageData,
 
+  onLoad() {
+    bindAnonymousContentVisibility(this, (enabled) => {
+      const changed = enabled !== this.data.anonymousContentEnabled;
+      this.updateAnonymousContentVisibility(enabled);
+      if (changed && this.data.hasSearched) void this.runSearch();
+    });
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    this.setData({
+      anonymousContentEnabled: enabled,
+      postResults: enabled
+        ? this.data.postResults
+        : this.data.postResults.filter((post) => !post.isAnonymous),
+    });
+  },
+
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
-    this.setData({
-      history: getHistory(),
-      anonymousContentEnabled,
-      postResults: anonymousContentEnabled
-        ? this.data.postResults
-        : this.data.postResults.filter((post) => !post.isAnonymous),
-    });
+    this.updateAnonymousContentVisibility(anonymousContentEnabled);
+    this.setData({ history: getHistory() });
     this.loadHot();
   },
 

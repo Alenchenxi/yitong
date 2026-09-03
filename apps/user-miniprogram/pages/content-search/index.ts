@@ -9,6 +9,10 @@ import {
 import { listJobPosts, type JobPostVo } from '../../services/job';
 import { addHistory, getHistory, clearHistory } from '../../utils/search-history';
 import { formatTime } from '../../utils/auth';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 // 内容搜索页（广场搜索栏落地页）：表白墙 / 兼职，按当前圈子作用域
 type Tab = 'confession' | 'treehole' | 'job';
@@ -33,19 +37,35 @@ Page({
     jobResults: [] as JobPostVo[],
   },
 
+  onLoad() {
+    bindAnonymousContentVisibility(this, (enabled) => {
+      const changed = enabled !== this.data.anonymousContentEnabled;
+      this.updateAnonymousContentVisibility(enabled);
+      if (changed && this.data.hasSearched) void this.runSearch();
+    });
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    const tab = !enabled && this.data.tab === 'treehole' ? 'confession' : this.data.tab;
+    this.setData({
+      anonymousContentEnabled: enabled,
+      tab,
+      tabs: ALL_TABS.filter((item) => enabled || !item.anonymousOnly),
+      ...(!enabled ? { treeholeResults: [] } : {}),
+    });
+  },
+
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
-    const tab = !anonymousContentEnabled && this.data.tab === 'treehole'
-      ? 'confession'
-      : this.data.tab;
+    this.updateAnonymousContentVisibility(anonymousContentEnabled);
     this.setData({
       history: getHistory(),
-      anonymousContentEnabled,
-      tab,
-      tabs: ALL_TABS.filter((item) => anonymousContentEnabled || !item.anonymousOnly),
-      ...(!anonymousContentEnabled ? { treeholeResults: [] } : {}),
     });
   },
 

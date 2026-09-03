@@ -11,6 +11,10 @@ import {
 import { requestJobApplySubscribe, requestJobStatusSubscribe } from '../../services/subscribe-message';
 import { checkApplyReminder } from '../../services/merchant';
 import { formatTime } from '../../utils/auth';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 const CATEGORIES: Array<{ value: '' | NotificationCategory; label: string }> = [
   { value: '', label: '全部' },
@@ -67,6 +71,28 @@ Component({
     loading: false,
     isMerchant: false,
     anonymousContentEnabled: false,
+  },
+
+  lifetimes: {
+    attached() {
+      bindAnonymousContentVisibility(this, (enabled) => {
+        const notifications = enabled
+          ? this.data.notifications
+          : this.data.notifications.filter(isVisibleNotification);
+        this.setData({
+          anonymousContentEnabled: enabled,
+          ...(!enabled
+            ? {
+                notifications,
+                unreadCount: notifications.filter((notification) => !notification.read).length,
+              }
+            : {}),
+        });
+      });
+    },
+    detached() {
+      unbindAnonymousContentVisibility(this);
+    },
   },
 
   methods: {

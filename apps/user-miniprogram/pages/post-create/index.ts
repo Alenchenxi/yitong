@@ -1,6 +1,10 @@
 import type { AppInstance } from '../../app';
 import { listCircles, createPost, editPost, type Circle, type PostVo } from '../../services/confession';
 import { uploadImages, uploadImage, uploadVideo } from '../../services/upload';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 interface TagItem {
   name: string;
@@ -72,11 +76,11 @@ Page({
   async onLoad(options: { circleId?: string; editId?: string }) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    const showAnonymousPublish = await app.getAnonymousContentVisibility();
-    this.setData({
-      showAnonymousPublish,
-      ...(!showAnonymousPublish ? { isAnonymous: false } : {}),
+    bindAnonymousContentVisibility(this, (enabled) => {
+      this.updateAnonymousContentVisibility(enabled);
     });
+    const showAnonymousPublish = await app.getAnonymousContentVisibility();
+    this.updateAnonymousContentVisibility(showAnonymousPublish);
     const circles = await listCircles().catch(() => []);
     let selectedId = options.circleId ?? '';
     let selectedName = '选择分类';
@@ -124,6 +128,17 @@ Page({
     }
 
     this.setData(initial as PageData);
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    this.setData({
+      showAnonymousPublish: enabled,
+      ...(!enabled ? { isAnonymous: false } : {}),
+    });
   },
 
   // P1-11 可见性切换（公开/私密/草稿）

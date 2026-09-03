@@ -7,7 +7,11 @@ import {
   unblockAnon,
   type AnonTagItem,
 } from '../../../services/treehole';
-import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
+import {
+  bindAnonymousContentPageGuard,
+  requireAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 interface TagItem {
   name: string;
@@ -63,7 +67,12 @@ Page({
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!await requireAnonymousContentVisibility()) return;
+    bindAnonymousContentPageGuard(this);
     await this.load();
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
   },
 
   async load() {

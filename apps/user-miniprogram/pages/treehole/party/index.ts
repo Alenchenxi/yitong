@@ -1,7 +1,11 @@
 import type { AppInstance } from '../../../app';
 import { hasAnonToken, getAnonymousToken, joinParty, getAnonId } from '../../../services/treehole';
 import { connectIm, joinRoom, sendRoomMessage, onRoomMessage, type WsMessage } from '../../../services/im';
-import { requireAnonymousContentVisibility } from '../../../utils/anonymous-content';
+import {
+  bindAnonymousContentPageGuard,
+  requireAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../../utils/anonymous-content';
 
 interface Msg { fromId: string; content: string; mine: boolean }
 
@@ -17,10 +21,15 @@ Page({
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!await requireAnonymousContentVisibility()) return;
+    bindAnonymousContentPageGuard(this);
     if (!hasAnonToken()) {
       try { await getAnonymousToken(); } catch { return; }
     }
     await this.enter();
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
   },
 
   async enter() {

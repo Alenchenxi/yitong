@@ -17,6 +17,8 @@ export function persistAnonymousContentVisibility(enabled: boolean): void {
 export function fetchAnonymousContentVisibility(): Promise<boolean> {
   return request<AnonymousContentVisibilityResponse>({
     url: '/app-config/anonymous-content',
+    data: { cacheBust: Date.now() },
+    header: { 'Cache-Control': 'no-cache' },
     silent: true,
   }).then((response) => response.anonymousContentEnabled === true);
 }

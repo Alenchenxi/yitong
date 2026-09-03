@@ -10,6 +10,10 @@ import {
 } from '../../services/confession';
 import { listAllFavorites } from '../../services/favorite';
 import { formatTime } from '../../utils/auth';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 type Tab = 'posts' | 'liked' | 'favorites' | 'commented' | 'drafts' | 'private';
 
@@ -40,12 +44,27 @@ Page({
     anonymousContentEnabled: false,
   } as PageData,
 
+  onLoad() {
+    bindAnonymousContentVisibility(this, (enabled) => {
+      this.updateAnonymousContentVisibility(enabled);
+    });
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    this.setData({
+      anonymousContentEnabled: enabled,
+      posts: enabled ? this.data.posts : this.data.posts.filter((post) => !post.isAnonymous),
+    });
+  },
+
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    this.setData({
-      anonymousContentEnabled: await app.getAnonymousContentVisibility(),
-    });
+    this.updateAnonymousContentVisibility(await app.getAnonymousContentVisibility());
     await this.reload();
   },
 

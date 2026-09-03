@@ -2,6 +2,10 @@ import type { AppInstance } from '../../app';
 import { feed, toggleLike, type PostVo } from '../../services/confession';
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
+import {
+  bindAnonymousContentVisibility,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 type MainTab = 'recommend' | 'latest' | 'hot' | 'follow';
 
@@ -26,18 +30,32 @@ Page({
     anonymousContentEnabled: false,
   } as PageData,
 
+  onLoad() {
+    bindAnonymousContentVisibility(this, (enabled) => {
+      const changed = enabled !== this.data.anonymousContentEnabled;
+      this.updateAnonymousContentVisibility(enabled);
+      if (changed && this.data.posts.length > 0) void this.reloadFeed();
+    });
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
+  },
+
+  updateAnonymousContentVisibility(enabled: boolean) {
+    this.setData({
+      anonymousContentEnabled: enabled,
+      posts: enabled ? this.data.posts : this.data.posts.filter((post) => !post.isAnonymous),
+    });
+  },
+
   async onShow() {
     syncCustomTabBar(this, '/pages/confession/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
     const visibilityChanged = anonymousContentEnabled !== this.data.anonymousContentEnabled;
-    this.setData({
-      anonymousContentEnabled,
-      posts: anonymousContentEnabled
-        ? this.data.posts
-        : this.data.posts.filter((post) => !post.isAnonymous),
-    });
+    this.updateAnonymousContentVisibility(anonymousContentEnabled);
     if (visibilityChanged || this.data.posts.length === 0) this.reloadFeed();
     listAnnouncements().then((a) => this.setData({ announcements: a })).catch(() => {});
   },

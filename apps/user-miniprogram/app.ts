@@ -24,6 +24,23 @@ const apiBase = FORCE_PRODUCTION
     ? 'http://localhost:3000/api/v1'
     : PROD_API_BASE;
 const cachedAnonymousContentEnabled = readAnonymousContentVisibilityCache();
+const ANONYMOUS_CONTENT_RETRY_DELAYS_MS = [250, 750] as const;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchAnonymousContentVisibilityWithRetry(): Promise<boolean> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await fetchAnonymousContentVisibility();
+    } catch (error) {
+      const retryDelay = ANONYMOUS_CONTENT_RETRY_DELAYS_MS[attempt];
+      if (retryDelay === undefined) throw error;
+      await delay(retryDelay);
+    }
+  }
+}
 
 function responseErrorCode(error: unknown): number | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
@@ -49,7 +66,6 @@ App({
   },
 
   onLaunch(options) {
-    void this.refreshAnonymousContentVisibility();
     const inviteCommunityId = options.query?.inviteCommunityId;
     if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
       this.globalData.pendingCommunityInviteId = inviteCommunityId;
@@ -77,6 +93,7 @@ App({
   },
 
   onShow(options) {
+    void this.refreshAnonymousContentVisibility();
     const inviteCommunityId = options.query?.inviteCommunityId;
     if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
       this.globalData.pendingCommunityInviteId = inviteCommunityId;
@@ -161,28 +178,45 @@ App({
   },
 
   setAnonymousContentVisibility(enabled: boolean) {
+    this._anonymousContentRefreshVersion += 1;
+    this.applyAnonymousContentVisibility(enabled);
+  },
+
+  applyAnonymousContentVisibility(enabled: boolean) {
     this.globalData.anonymousContentEnabled = enabled;
-    this._anonymousContentPromise = Promise.resolve(enabled);
     persistAnonymousContentVisibility(enabled);
     for (const listener of this._anonymousContentListeners) listener(enabled);
   },
 
+  applyAnonymousContentRefresh(refreshVersion: number, enabled: boolean) {
+    if (refreshVersion !== this._anonymousContentRefreshVersion) {
+      return this.globalData.anonymousContentEnabled;
+    }
+    this.applyAnonymousContentVisibility(enabled);
+    return enabled;
+  },
+
   refreshAnonymousContentVisibility(): Promise<boolean> {
-    if (this._anonymousContentPromise) return this._anonymousContentPromise;
-    this._anonymousContentPromise = fetchAnonymousContentVisibility()
-      .then((enabled) => {
-        this.setAnonymousContentVisibility(enabled);
-        return enabled;
-      })
-      .catch(() => {
-        this.setAnonymousContentVisibility(false);
-        return false;
+    if (this._anonymousContentRefreshPromise) {
+      return this._anonymousContentRefreshPromise;
+    }
+
+    const refreshVersion = this._anonymousContentRefreshVersion + 1;
+    this._anonymousContentRefreshVersion = refreshVersion;
+    const refreshPromise = fetchAnonymousContentVisibilityWithRetry()
+      .then((enabled) => this.applyAnonymousContentRefresh(refreshVersion, enabled))
+      .catch(() => this.applyAnonymousContentRefresh(refreshVersion, false))
+      .finally(() => {
+        if (this._anonymousContentRefreshPromise === refreshPromise) {
+          this._anonymousContentRefreshPromise = null;
+        }
       });
-    return this._anonymousContentPromise;
+    this._anonymousContentRefreshPromise = refreshPromise;
+    return refreshPromise;
   },
 
   getAnonymousContentVisibility(): Promise<boolean> {
-    return this._anonymousContentPromise
+    return this._anonymousContentRefreshPromise
       ?? Promise.resolve(this.globalData.anonymousContentEnabled);
   },
 
@@ -208,7 +242,8 @@ App({
     return false;
   },
 
-  _anonymousContentPromise: null as Promise<boolean> | null,
+  _anonymousContentRefreshPromise: null as Promise<boolean> | null,
+  _anonymousContentRefreshVersion: 0,
   _anonymousContentListeners: [] as Array<(enabled: boolean) => void>,
 });
 
