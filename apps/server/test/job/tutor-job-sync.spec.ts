@@ -613,7 +613,7 @@ describe('AdminService 系统同步配置', () => {
       },
     };
     return {
-      service: new AdminService(prisma as never, {} as never, {} as never, {} as never),
+      service: new AdminService(prisma as never, {} as never, {} as never, {} as never, {} as never),
       prisma,
     };
   }
@@ -736,7 +736,7 @@ describe('AdminService 家教岗位举报处置', () => {
     const notification = { create: jest.fn().mockResolvedValue({}) };
     const policy = new TutorJobPolicyService();
     const policySpy = jest.spyOn(policy, 'takeDownJobPostWithGuard');
-    const service = new AdminService(prisma as never, {} as never, notification as never, policy);
+    const service = new AdminService(prisma as never, {} as never, notification as never, policy, {} as never);
     return { service, prisma, tx, notification, policySpy };
   }
 

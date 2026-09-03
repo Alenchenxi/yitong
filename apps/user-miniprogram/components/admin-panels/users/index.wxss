@@ -68,3 +68,67 @@
   padding-top: 16rpx;
   border-top: 1rpx solid var(--yt-border);
 }
+
+.adm-scope-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.adm-field-label {
+  display: block;
+  color: var(--yt-text-main);
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.adm-picker {
+  min-height: 72rpx;
+  box-sizing: border-box;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  background: var(--yt-bg);
+  color: var(--yt-text-main);
+  font-size: 26rpx;
+}
+
+.adm-scope-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.adm-community-grid,
+.adm-permission-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  max-height: 320rpx;
+  overflow-y: auto;
+}
+
+.adm-community-option,
+.adm-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rpx;
+  min-width: 0;
+  padding: 14rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  background: var(--yt-bg);
+  font-size: 24rpx;
+}
+
+.adm-check-row {
+  grid-column: 1 / -1;
+}
+
+.adm-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12rpx;
+}

@@ -100,7 +100,7 @@ export function switchCommunity(id: string): Promise<{ id: string }> {
   return request<{ id: string }>({ url: '/community/switch', method: 'POST', data: { communityId: id } });
 }
 
-/** 广告位轮播（圈子 + 全局 Banner） */
+/** 广告位轮播（仅当前圈子 Banner） */
 export function listBanners(communityId: string): Promise<BannerVo[]> {
   return request<BannerVo[]>({ url: `/square/banners?communityId=${encodeURIComponent(communityId)}` });
 }

@@ -1,16 +1,9 @@
 <wxs src="../admin-status.wxs" module="st" />
 <view class="adm-page">
   <scroll-view scroll-x class="adm-subtabs" enhanced show-scrollbar="{{false}}">
-    <view class="adm-subtab {{sub === 'announce' ? 'on' : ''}}" data-sub="announce" bindtap="switchSub">公告</view>
-    <view class="adm-subtab {{sub === 'activity' ? 'on' : ''}}" data-sub="activity" bindtap="switchSub">活动专题</view>
-    <view class="adm-subtab {{sub === 'topic' ? 'on' : ''}}" data-sub="topic" bindtap="switchSub">话题</view>
-    <view class="adm-subtab {{sub === 'tags' ? 'on' : ''}}" data-sub="tags" bindtap="switchSub">树洞标签</view>
-    <view class="adm-subtab {{sub === 'jobs' ? 'on' : ''}}" data-sub="jobs" bindtap="switchSub">岗位精品</view>
-    <view class="adm-subtab {{sub === 'pricing' ? 'on' : ''}}" data-sub="pricing" bindtap="switchSub">单价</view>
-    <view class="adm-subtab {{sub === 'boost' ? 'on' : ''}}" data-sub="boost" bindtap="switchSub">推广价</view>
-    <view class="adm-subtab {{sub === 'banner' ? 'on' : ''}}" data-sub="banner" bindtap="switchSub">广告位</view>
-    <view class="adm-subtab {{sub === 'community' ? 'on' : ''}}" data-sub="community" bindtap="switchSub">圈子<text wx:if="{{cmPendingCount > 0}}" style="color:#F53F3F;font-size:20rpx;margin-left:6rpx;">·{{cmPendingCount}}</text></view>
-    <view class="adm-subtab {{sub === 'settings' ? 'on' : ''}}" data-sub="settings" bindtap="switchSub">设置</view>
+    <view wx:for="{{allowedSubs}}" wx:key="*this" class="adm-subtab {{sub === item ? 'on' : ''}}" data-sub="{{item}}" bindtap="switchSub">
+      {{subLabels[item]}}<text wx:if="{{item === 'community' && cmPendingCount > 0}}" style="color:#F53F3F;font-size:20rpx;margin-left:6rpx;">·{{cmPendingCount}}</text>
+    </view>
   </scroll-view>
 
   <!-- 公告 -->
@@ -179,6 +172,9 @@
   <block wx:if="{{sub === 'banner'}}">
     <view class="adm-section-title">新建广告位</view>
     <view class="adm-form">
+      <picker mode="selector" range="{{communities}}" range-key="name" value="{{bnCommunityIndex}}" bindchange="onBannerCommunityChange">
+        <view class="adm-input">所属圈子：{{communities[bnCommunityIndex].name || '请选择圈子'}}</view>
+      </picker>
       <input class="adm-input" placeholder="标题（如：欢迎来到综合大学圈）" value="{{bnTitle}}" data-field="bnTitle" bindinput="onBannerInput" maxlength="50" />
       <view class="adm-upload-row">
         <image wx:if="{{bnImageUrl}}" class="adm-banner-preview" src="{{bnImageUrl}}" mode="aspectFill" />
@@ -192,7 +188,7 @@
     <view class="adm-item" wx:for="{{banners}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title">{{item.title}}</text>
-        <text class="adm-item-sub">{{item.community ? item.community.name + ' · ' : '全局 · '}}<text class="adm-status {{item.status === 'ENABLED' ? 'adm-status--approved' : 'adm-status--neutral'}}">{{item.status === 'ENABLED' ? '启用' : '停用'}}</text> · 排序 {{item.sortOrder}}</text>
+        <text class="adm-item-sub">{{item.community.name}} · <text class="adm-status {{item.status === 'ENABLED' ? 'adm-status--approved' : 'adm-status--neutral'}}">{{item.status === 'ENABLED' ? '启用' : '停用'}}</text> · 排序 {{item.sortOrder}}</text>
         <image wx:if="{{item.imageUrl}}" class="adm-banner-thumb" src="{{item.imageUrl}}" mode="aspectFill" />
       </view>
       <view class="adm-item-actions">
@@ -237,11 +233,29 @@
       </view>
       <view class="adm-item-actions">
         <text wx:if="{{item.id === 'cm_default'}}" class="adm-default-tag">默认圈</text>
-        <block wx:elif="{{item.status === 'PENDING'}}">
+        <button wx:if="{{canCommunityEdit}}" size="mini" data-community="{{item}}" bindtap="startEditCommunity">资料</button>
+        <block wx:if="{{canCommunityReview && item.id !== 'cm_default' && item.status === 'PENDING'}}">
           <button size="mini" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="approveCommunity">通过</button>
           <button size="mini" type="warn" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="rejectCommunity">拒绝</button>
         </block>
-        <button wx:else size="mini" data-id="{{item.id}}" data-disabled="{{item.status === 'DISABLED'}}" bindtap="toggleCommunity">{{item.status === 'DISABLED' ? '启用' : '禁用'}}</button>
+        <button wx:if="{{canCommunityEdit && item.id !== 'cm_default' && item.status !== 'PENDING'}}" size="mini" data-id="{{item.id}}" data-disabled="{{item.status === 'DISABLED'}}" bindtap="toggleCommunity">{{item.status === 'DISABLED' ? '启用' : '禁用'}}</button>
+      </view>
+    </view>
+    <view class="adm-form" wx:if="{{canCommunityEdit && editingCommunityId}}">
+      <view class="adm-section-title">编辑圈子资料</view>
+      <input class="adm-input" placeholder="圈子名称" value="{{editingCommunityName}}" data-field="editingCommunityName" bindinput="onCommunityEditInput" />
+      <textarea class="adm-textarea" placeholder="圈子简介" value="{{editingCommunityDescription}}" data-field="editingCommunityDescription" bindinput="onCommunityEditInput" maxlength="200" auto-height />
+      <view class="adm-upload-row">
+        <image wx:if="{{editingCommunityLogo}}" class="adm-banner-thumb" src="{{editingCommunityLogo}}" mode="aspectFill" />
+        <button size="mini" data-field="editingCommunityLogo" bindtap="chooseCommunityImage">{{editingCommunityLogo ? '更换 LOGO' : '上传 LOGO'}}</button>
+      </view>
+      <view class="adm-upload-row">
+        <image wx:if="{{editingCommunityBackground}}" class="adm-banner-preview" src="{{editingCommunityBackground}}" mode="aspectFill" />
+        <button size="mini" data-field="editingCommunityBackground" bindtap="chooseCommunityImage">{{editingCommunityBackground ? '更换背景图' : '上传背景图'}}</button>
+      </view>
+      <view class="adm-edit-row">
+        <button size="mini" class="adm-btn--primary" bindtap="saveCommunityProfile">保存资料</button>
+        <button size="mini" bindtap="cancelEditCommunity">取消</button>
       </view>
     </view>
     <view class="adm-empty" wx:if="{{communities.length === 0}}">暂无圈子</view>

@@ -320,7 +320,7 @@ export class SquareService {
     return { list };
   }
 
-  // ===== 广告位 Banner（圈子 + 全局，sortOrder asc）=====
+  // ===== 广告位 Banner（当前圈子，sortOrder asc）=====
   async banners(uid: string, communityId?: string) {
     const cid = await this.community.resolveFeedCommunityId(uid, communityId);
     return this.community.listBanners(cid);

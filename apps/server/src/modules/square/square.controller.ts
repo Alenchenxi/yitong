@@ -43,7 +43,7 @@ export class SquareController {
     return ok(await this.square.todayHit(uid, anonId, q));
   }
 
-  // 广告位 Banner（圈子 + 全局轮播）
+  // 广告位 Banner（当前圈子）
   @Get('banners')
   async banners(@Req() req: AuthenticatedRequest, @Query('communityId') communityId?: string) {
     const uid = req.user!.uid;

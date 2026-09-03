@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { ReferralModule } from '../referral/referral.module';
+import { AdminAccessService } from '../admin/admin-access.service';
 import { AdminGuard } from './admin.guard';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -26,7 +27,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
     ReferralModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard, AdminGuard],
-  exports: [JwtModule, AuthService, AdminGuard],
+  providers: [AuthService, JwtAuthGuard, AdminAccessService, AdminGuard],
+  exports: [JwtModule, AuthService, AdminAccessService, AdminGuard],
 })
 export class AuthModule {}

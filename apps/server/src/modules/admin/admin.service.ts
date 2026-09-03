@@ -17,6 +17,18 @@ import {
 import type { UpdateBoostPlanPriceDto } from './dto/update-boost-plan-price.dto';
 import type { UpdatePricingDto } from './dto/update-pricing.dto';
 import { ANONYMOUS_CONTENT_ENABLED_KEY } from '../app-config/app-config.service';
+import { AdminAccessService, type AdminAccessContext } from './admin-access.service';
+import {
+  ADMIN_PERMISSION_CATALOG,
+  normalizeAdminPermissionCodes,
+} from './admin-permissions';
+import type {
+  CreateAdminTypeDto,
+  UpdateAdminAssignmentDto,
+  UpdateAdminTypeDto,
+} from './dto/admin-type.dto';
+import type { CreateAdminDto } from './dto/create-admin.dto';
+import type { UpdateCommunityDto } from './dto/update-community.dto';
 
 @Injectable()
 export class AdminService {
@@ -27,21 +39,15 @@ export class AdminService {
     private readonly confession: ConfessionService,
     private readonly notification: NotificationService,
     private readonly tutorJobPolicy: TutorJobPolicyService,
+    private readonly accessService: AdminAccessService,
   ) {}
 
-  // 审核队列：待审核商家 + 近期帖子（含已发布，管理员可下架）
+  // 商家审核队列。举报数据使用独立 report.manage 接口，避免跨权限泄露。
   async getQueue() {
-    const [merchants, reports] = await Promise.all([
-      this.prisma.merchant.findMany({
-        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-        take: 50,
-      }),
-      this.prisma.moderationRecord.findMany({
-        where: { status: 'PENDING' },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-      }),
-    ]);
+    const merchants = await this.prisma.merchant.findMany({
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      take: 50,
+    });
     // R5 Merchant 模型无 user relation（仅 userId 标量），单独查 User 昵称再映射
     const userIds = [...new Set(merchants.map((m) => m.userId))];
     const users = userIds.length > 0
@@ -59,21 +65,16 @@ export class AdminService {
         userNickname: nickMap.get(m.userId) ?? '',
         createdAt: m.createdAt.toISOString(),
       })),
-      reports: reports.map((r) => ({
-        id: r.id,
-        targetType: r.targetType,
-        targetId: r.targetId,
-        reason: r.reason,
-        createdAt: r.createdAt.toISOString(),
-      })),
     };
   }
 
   // ===== C 帖子分页管理（getQueue 精简掉 posts/anonPosts，改用独立分页接口）=====
 
   // 表白墙帖子分页（keyword 模糊搜 content）
-  async listPostsAdmin(page = 1, pageSize = 20, keyword?: string, status?: string) {
+  async listPostsAdmin(page = 1, pageSize = 20, keyword?: string, status?: string, access?: AdminAccessContext) {
     const where: Prisma.PostWhereInput = {};
+    const communityId = access ? this.accessService.communityIdWhere(access) : undefined;
+    if (communityId) where.communityId = communityId;
     if (keyword?.trim()) where.content = { contains: keyword.trim(), mode: 'insensitive' };
     if (status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED') where.status = status;
     const [list, total] = await Promise.all([
@@ -104,14 +105,17 @@ export class AdminService {
   }
 
   // 树洞匿名帖分页
-  async listAnonPostsAdmin(page = 1, pageSize = 20) {
+  async listAnonPostsAdmin(page = 1, pageSize = 20, access?: AdminAccessContext) {
+    const communityId = access ? this.accessService.communityIdWhere(access) : undefined;
+    const where: Prisma.AnonymousPostWhereInput = communityId ? { communityId } : {};
     const [list, total] = await Promise.all([
       this.prisma.anonymousPost.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      this.prisma.anonymousPost.count(),
+      this.prisma.anonymousPost.count({ where }),
     ]);
     return {
       list: list.map((p) => ({
@@ -139,8 +143,11 @@ export class AdminService {
     authorId?: string,
     authorNickname?: string,
     postTitleKw?: string,
+    access?: AdminAccessContext,
   ) {
     const where: Prisma.CommentWhereInput = {};
+    const communityId = access ? this.accessService.communityIdWhere(access) : undefined;
+    if (communityId) where.post = { communityId };
     if (postId) {
       where.postId = postId;
     } else if (postTitleKw?.trim()) {
@@ -191,9 +198,13 @@ export class AdminService {
   }
 
   // 人工置顶/取消置顶评论 + 留痕
-  async pinComment(id: string, reviewerId: string, pinned: boolean) {
-    const c = await this.prisma.comment.findUnique({ where: { id } });
+  async pinComment(id: string, reviewerId: string, pinned: boolean, access?: AdminAccessContext) {
+    const c = await this.prisma.comment.findUnique({
+      where: { id },
+      include: { post: { select: { communityId: true } } },
+    });
     if (!c) throw new BizException(40001, '评论不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.accessService.assertCommunity(access, c.post.communityId);
     await this.prisma.comment.update({ where: { id }, data: { pinned } });
     await this.prisma.moderationRecord.create({
       data: {
@@ -413,9 +424,10 @@ export class AdminService {
   }
 
   // 帖子下架（表白墙）+ 留痕
-  async takedownPost(id: string, reviewerId: string, reason?: string) {
+  async takedownPost(id: string, reviewerId: string, reason?: string, access?: AdminAccessContext) {
     const p = await this.prisma.post.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.accessService.assertCommunity(access, p.communityId);
     await this.prisma.post.update({ where: { id }, data: { status: PostStatus.REJECTED } });
     this.confession.invalidateFeedCache();
     await this.prisma.moderationRecord.create({
@@ -440,9 +452,10 @@ export class AdminService {
   }
 
   // 匿名帖下架（树洞）+ 留痕
-  async takedownAnonPost(id: string, reviewerId: string, reason?: string) {
+  async takedownAnonPost(id: string, reviewerId: string, reason?: string, access?: AdminAccessContext) {
     const p = await this.prisma.anonymousPost.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.accessService.assertCommunity(access, p.communityId);
     await this.prisma.anonymousPost.update({ where: { id }, data: { status: PostStatus.REJECTED } });
     await this.prisma.moderationRecord.create({
       data: { targetType: 'anon-post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
@@ -451,12 +464,13 @@ export class AdminService {
   }
 
   // R4 岗位下架（兼职）+ 留痕 + 通知商家。管理员主动处置闭环（不依赖举报）。
-  async takedownJobPost(id: string, reviewerId: string, reason?: string) {
+  async takedownJobPost(id: string, reviewerId: string, reason?: string, access?: AdminAccessContext) {
     const post = await this.prisma.jobPost.findUnique({
       where: { id },
       include: { merchant: { select: { userId: true } } },
     });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.accessService.assertCommunity(access, post.communityId);
     const blockedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
       await this.tutorJobPolicy.takeDownJobPostWithGuard(
@@ -487,9 +501,10 @@ export class AdminService {
   }
 
   // P2-05 帖子置顶/取消置顶 + 留痕
-  async pinPost(id: string, reviewerId: string, pinned: boolean, reason?: string) {
+  async pinPost(id: string, reviewerId: string, pinned: boolean, reason?: string, access?: AdminAccessContext) {
     const p = await this.prisma.post.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.accessService.assertCommunity(access, p.communityId);
     await this.prisma.post.update({ where: { id }, data: { pinned } });
     this.confession.invalidateFeedCache();
     await this.prisma.moderationRecord.create({
@@ -505,9 +520,10 @@ export class AdminService {
   }
 
   // P2-05 帖子加精/取消加精 + 留痕
-  async featurePost(id: string, reviewerId: string, featured: boolean, reason?: string) {
+  async featurePost(id: string, reviewerId: string, featured: boolean, reason?: string, access?: AdminAccessContext) {
     const p = await this.prisma.post.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.accessService.assertCommunity(access, p.communityId);
     await this.prisma.post.update({ where: { id }, data: { featured } });
     this.confession.invalidateFeedCache();
     await this.prisma.moderationRecord.create({
@@ -523,9 +539,10 @@ export class AdminService {
   }
 
   // P2-15 兼职精品 toggle（admin）
-  async featureJob(id: string, reviewerId: string, featured: boolean) {
+  async featureJob(id: string, reviewerId: string, featured: boolean, access?: AdminAccessContext) {
     const p = await this.prisma.jobPost.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.accessService.assertCommunity(access, p.communityId);
     // 仅已发布岗位可设/取消精品：未发布/已下架/已过期不在精品池（featured 列表查 status=PUBLISHED），设了也不展示
     if (p.status !== JobPostStatus.PUBLISHED) {
       throw new BizException(50002, '仅已发布岗位可设精品', HttpStatus.CONFLICT);
@@ -618,8 +635,10 @@ export class AdminService {
   }
 
   // ===== 兼职岗位列表（admin，含 featured，用于精品管理）=====
-  async listJobPostsAdmin(limit = 50) {
+  async listJobPostsAdmin(limit = 50, access?: AdminAccessContext) {
+    const communityId = access ? this.accessService.communityIdWhere(access) : undefined;
     const posts = await this.prisma.jobPost.findMany({
+      where: communityId ? { communityId } : {},
       orderBy: { createdAt: 'desc' },
       take: Math.min(100, Math.max(1, limit)),
       include: { merchant: { select: { shopName: true } } },
@@ -959,6 +978,21 @@ export class AdminService {
     const kw = keyword?.trim();
     const admins = await this.prisma.adminUser.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        adminType: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            active: true,
+            isPlatform: true,
+          },
+        },
+        communityScopes: {
+          include: { community: { select: { id: true, name: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
     // 风险3 相关：admin openid 可能为 null（未绑微信的占位 admin），反查时统一 filter
     const openids = admins.map((a) => a.openid).filter((v): v is string => !!v);
@@ -976,6 +1010,9 @@ export class AdminService {
         username: a.username,
         openid: a.openid,
         createdAt: a.createdAt.toISOString(),
+        adminType: a.adminType,
+        allCommunities: a.adminType.isPlatform || a.allCommunities,
+        communities: a.communityScopes.map((scope) => scope.community),
         linkedUser: u ? { id: u.id, nickname: u.nickname, avatarUrl: u.avatarUrl } : null,
         // 前端"自己"判断用：openid 字符串比对。后端权威，前端不再需单独查
         isSelf: !!currentOpenid && !!a.openid && a.openid === currentOpenid,
@@ -991,21 +1028,60 @@ export class AdminService {
     );
   }
 
-  // 添加管理员：userId -> 查 User -> 取 openid -> upsert AdminUser + UserRole.ADMIN
-  async createAdmin(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  // 添加管理员：类型和圈子范围均显式指定，禁止旧客户端默认创建平台管理员。
+  async createAdmin(dto: CreateAdminDto, access: AdminAccessContext) {
+    const user = await this.prisma.user.findUnique({ where: { id: dto.userId } });
     if (!user) throw new BizException(40001, '用户不存在', HttpStatus.NOT_FOUND);
     if (!user.openid) throw new BizException(40002, '该用户未绑定微信，无法设为管理员', HttpStatus.BAD_REQUEST);
-    const admin = await this.prisma.adminUser.upsert({
-      where: { openid: user.openid },
-      create: { openid: user.openid, username: user.nickname || `admin_${user.id.slice(-6)}` },
-      update: {}, // 已存在不覆盖 username（避免误改 seed 创建的 'admin'）
-    });
-    // 同步 UserRole.ADMIN（确保该用户选 admin 角色登录时不被 10003 拒）
-    await this.prisma.userRole.upsert({
-      where: { userId_role: { userId: user.id, role: Role.ADMIN } },
-      create: { userId: user.id, role: Role.ADMIN },
-      update: {},
+    const existing = await this.prisma.adminUser.findUnique({ where: { openid: user.openid } });
+    if (existing) {
+      throw new BizException(40013, '该用户已是管理员，请使用编辑功能调整权限', HttpStatus.CONFLICT);
+    }
+    const assignment = await this.validateAdminAssignment(
+      dto.adminTypeId,
+      dto.allCommunities,
+      dto.communityIds,
+    );
+    const admin = await this.prisma.$transaction(async (tx) => {
+        const row = await tx.adminUser.create({
+          data: {
+            openid: user.openid,
+            username: `admin_${user.id}`,
+            adminTypeId: assignment.adminType.id,
+            allCommunities: assignment.allCommunities,
+          },
+        });
+        if (!assignment.allCommunities && assignment.communityIds.length) {
+          await tx.adminCommunityScope.createMany({
+            data: assignment.communityIds.map((communityId) => ({
+              adminUserId: row.id,
+              communityId,
+            })),
+          });
+        }
+        await tx.userRole.upsert({
+          where: { userId_role: { userId: user.id, role: Role.ADMIN } },
+          create: { userId: user.id, role: Role.ADMIN },
+          update: {},
+        });
+        return row;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+      .catch((error: unknown) => {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          const targets = Array.isArray(error.meta?.target)
+            ? error.meta.target.map(String)
+            : [];
+          if (targets.includes('openid')) {
+            throw new BizException(40013, '该用户已是管理员，请使用编辑功能调整权限', HttpStatus.CONFLICT);
+          }
+          throw new BizException(40014, '管理员账号标识冲突，请重试', HttpStatus.CONFLICT);
+        }
+        throw error;
+      });
+    await this.accessService.audit(access, 'admin.create', 'admin_user', admin.id, {
+      adminTypeId: assignment.adminType.id,
+      allCommunities: assignment.allCommunities,
+      communityIds: assignment.communityIds,
     });
     this.logger.log(`createAdmin: user=${user.id} openid=${user.openid}`);
     return {
@@ -1013,31 +1089,279 @@ export class AdminService {
       username: admin.username,
       openid: admin.openid,
       createdAt: admin.createdAt.toISOString(),
+      adminType: assignment.adminType,
+      allCommunities: assignment.allCommunities,
+      communities: assignment.communities,
       linkedUser: { id: user.id, nickname: user.nickname, avatarUrl: user.avatarUrl },
     };
   }
 
+  async updateAdmin(id: string, dto: UpdateAdminAssignmentDto, access: AdminAccessContext) {
+    const existing = await this.prisma.adminUser.findUnique({
+      where: { id },
+      include: { adminType: { select: { isPlatform: true } } },
+    });
+    if (!existing) throw new BizException(40003, '管理员不存在', HttpStatus.NOT_FOUND);
+    const assignment = await this.validateAdminAssignment(
+      dto.adminTypeId,
+      dto.allCommunities,
+      dto.communityIds,
+    );
+    if (existing.adminType.isPlatform && !assignment.adminType.isPlatform && id === access.adminId) {
+      throw new BizException(40004, '不能降低自己的平台管理员权限', HttpStatus.FORBIDDEN);
+    }
+    await this.prisma.$transaction(async (tx) => {
+      if (existing.adminType.isPlatform && !assignment.adminType.isPlatform) {
+        const platformCount = await tx.adminUser.count({
+          where: { adminType: { isPlatform: true, active: true, deletedAt: null } },
+        });
+        if (platformCount <= 1) {
+          throw new BizException(40005, '至少保留 1 个平台管理员', HttpStatus.FORBIDDEN);
+        }
+      }
+      await tx.adminUser.update({
+        where: { id },
+        data: {
+          adminTypeId: assignment.adminType.id,
+          allCommunities: assignment.allCommunities,
+        },
+      });
+      await tx.adminCommunityScope.deleteMany({ where: { adminUserId: id } });
+      if (!assignment.allCommunities && assignment.communityIds.length) {
+        await tx.adminCommunityScope.createMany({
+          data: assignment.communityIds.map((communityId) => ({
+            adminUserId: id,
+            communityId,
+          })),
+        });
+      }
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    await this.accessService.audit(access, 'admin.update', 'admin_user', id, {
+      adminTypeId: assignment.adminType.id,
+      allCommunities: assignment.allCommunities,
+      communityIds: assignment.communityIds,
+    });
+    return { id, updated: true };
+  }
+
   // 删除管理员：currentOpenid 用 JWT payload.openid（user.id 不在 AdminUser 上）
-  async deleteAdmin(id: string, currentOpenid: string) {
-    const admin = await this.prisma.adminUser.findUnique({ where: { id } });
+  async deleteAdmin(id: string, currentOpenid: string, access: AdminAccessContext) {
+    const admin = await this.prisma.adminUser.findUnique({
+      where: { id },
+      include: { adminType: { select: { isPlatform: true } } },
+    });
     if (!admin) throw new BizException(40003, '管理员不存在', HttpStatus.NOT_FOUND);
     // 风险1：openid 字符串比对，避免多查一次 User
     if (admin.openid && admin.openid === currentOpenid) {
       throw new BizException(40004, '不能删除自己', HttpStatus.FORBIDDEN);
     }
-    // 风险2 配套：至少保留 1 个 admin，防全员失管
-    const total = await this.prisma.adminUser.count();
-    if (total <= 1) throw new BizException(40005, '至少保留 1 个管理员', HttpStatus.FORBIDDEN);
-    await this.prisma.adminUser.delete({ where: { id } });
-    // 同步撤销 UserRole.ADMIN（保持一致；该用户其它角色不受影响）
-    if (admin.openid) {
-      const u = await this.prisma.user.findUnique({ where: { openid: admin.openid }, select: { id: true } });
-      if (u) {
-        await this.prisma.userRole.deleteMany({ where: { userId: u.id, role: Role.ADMIN } });
+    await this.prisma.$transaction(async (tx) => {
+      if (admin.adminType.isPlatform) {
+        const platformCount = await tx.adminUser.count({
+          where: { adminType: { isPlatform: true, active: true, deletedAt: null } },
+        });
+        if (platformCount <= 1) {
+          throw new BizException(40005, '至少保留 1 个平台管理员', HttpStatus.FORBIDDEN);
+        }
       }
-    }
+      await tx.adminUser.delete({ where: { id } });
+      if (admin.openid) {
+        const u = await tx.user.findUnique({ where: { openid: admin.openid }, select: { id: true } });
+        if (u) await tx.userRole.deleteMany({ where: { userId: u.id, role: Role.ADMIN } });
+      }
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    await this.accessService.audit(access, 'admin.delete', 'admin_user', id);
     this.logger.log(`deleteAdmin: id=${id} by openid=${currentOpenid}`);
     return { id, deleted: true };
+  }
+
+  private async validateAdminAssignment(
+    adminTypeId: string,
+    allCommunities: boolean,
+    communityIds: string[],
+  ) {
+    const adminType = await this.prisma.adminType.findFirst({
+      where: { id: adminTypeId, active: true, deletedAt: null },
+      select: { id: true, name: true, code: true, active: true, isPlatform: true },
+    });
+    if (!adminType) {
+      throw new BizException(40007, '管理员类型不存在或已停用', HttpStatus.BAD_REQUEST);
+    }
+    const normalizedIds = [...new Set(communityIds.filter(Boolean))];
+    const effectiveAll = adminType.isPlatform || allCommunities;
+    const communities = effectiveAll || !normalizedIds.length
+      ? []
+      : await this.prisma.community.findMany({
+          where: { id: { in: normalizedIds } },
+          select: { id: true, name: true },
+        });
+    if (!effectiveAll && !normalizedIds.length) {
+      throw new BizException(40008, '请至少选择一个可管理圈子', HttpStatus.BAD_REQUEST);
+    }
+    if (!effectiveAll && communities.length !== normalizedIds.length) {
+      throw new BizException(40008, '包含不存在的圈子', HttpStatus.BAD_REQUEST);
+    }
+    return {
+      adminType,
+      allCommunities: effectiveAll,
+      communityIds: effectiveAll ? [] : normalizedIds,
+      communities,
+    };
+  }
+
+  listPermissions() {
+    return ADMIN_PERMISSION_CATALOG.filter((item) =>
+      item.code !== 'admin.manage' && item.code !== 'admin_type.manage');
+  }
+
+  async listAdminTypes() {
+    const list = await this.prisma.adminType.findMany({
+      where: { deletedAt: null },
+      orderBy: [{ systemProtected: 'desc' }, { createdAt: 'asc' }],
+      include: {
+        permissions: {
+          include: { permission: { select: { code: true } } },
+        },
+        _count: { select: { admins: true } },
+      },
+    });
+    return list.map((item) => ({
+      id: item.id,
+      name: item.name,
+      code: item.code,
+      description: item.description,
+      active: item.active,
+      isPlatform: item.isPlatform,
+      systemProtected: item.systemProtected,
+      permissionCodes: item.isPlatform
+        ? ADMIN_PERMISSION_CATALOG.map((permission) => permission.code)
+        : item.permissions.map((permission) => permission.permission.code),
+      adminCount: item._count.admins,
+      createdAt: item.createdAt.toISOString(),
+    }));
+  }
+
+  async createAdminType(dto: CreateAdminTypeDto, access: AdminAccessContext) {
+    const duplicate = await this.prisma.adminType.findFirst({
+      where: {
+        deletedAt: null,
+        OR: [{ name: dto.name.trim() }, { code: dto.code.trim() }],
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      throw new BizException(40014, '管理员类型名称或编码已存在', HttpStatus.CONFLICT);
+    }
+    const permissionCodes = normalizeAdminPermissionCodes(dto.permissionCodes);
+    const permissionIds = await this.resolvePermissionIds(permissionCodes);
+    const created = await this.prisma.adminType.create({
+      data: {
+        name: dto.name.trim(),
+        code: dto.code.trim(),
+        description: dto.description?.trim() || null,
+        permissions: {
+          create: permissionIds.map((permissionId) => ({ permissionId })),
+        },
+      },
+    });
+    await this.accessService.audit(access, 'admin_type.create', 'admin_type', created.id, {
+      permissionCodes,
+    });
+    return created;
+  }
+
+  async updateAdminType(id: string, dto: UpdateAdminTypeDto, access: AdminAccessContext) {
+    const existing = await this.prisma.adminType.findFirst({ where: { id, deletedAt: null } });
+    if (!existing) throw new BizException(40009, '管理员类型不存在', HttpStatus.NOT_FOUND);
+    if (existing.isPlatform && (dto.active === false || dto.permissionCodes !== undefined)) {
+      throw new BizException(40010, '平台管理员类型不能停用或修改权限', HttpStatus.FORBIDDEN);
+    }
+    if (dto.active === false && existing.systemProtected) {
+      throw new BizException(40010, '系统预设管理员类型不能停用', HttpStatus.FORBIDDEN);
+    }
+    if (dto.name !== undefined) {
+      const duplicate = await this.prisma.adminType.findFirst({
+        where: {
+          id: { not: id },
+          deletedAt: null,
+          name: dto.name.trim(),
+        },
+        select: { id: true },
+      });
+      if (duplicate) {
+        throw new BizException(40014, '管理员类型名称已存在', HttpStatus.CONFLICT);
+      }
+    }
+    const permissionCodes = dto.permissionCodes === undefined
+      ? null
+      : normalizeAdminPermissionCodes(dto.permissionCodes);
+    const permissionIds = permissionCodes === null
+      ? null
+      : await this.resolvePermissionIds(permissionCodes);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.adminType.update({
+        where: { id },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+          ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
+          ...(dto.active !== undefined ? { active: dto.active } : {}),
+        },
+      });
+      if (permissionIds) {
+        await tx.adminTypePermission.deleteMany({ where: { adminTypeId: id } });
+        if (permissionIds.length) {
+          await tx.adminTypePermission.createMany({
+            data: permissionIds.map((permissionId) => ({ adminTypeId: id, permissionId })),
+          });
+        }
+      }
+    });
+    await this.accessService.audit(access, 'admin_type.update', 'admin_type', id, {
+      ...dto,
+      ...(permissionCodes === null ? {} : { permissionCodes }),
+    });
+    return { id, updated: true };
+  }
+
+  async deleteAdminType(id: string, access: AdminAccessContext) {
+    const existing = await this.prisma.adminType.findFirst({
+      where: { id, deletedAt: null },
+      include: { _count: { select: { admins: true } } },
+    });
+    if (!existing) throw new BizException(40009, '管理员类型不存在', HttpStatus.NOT_FOUND);
+    if (existing.systemProtected || existing.isPlatform) {
+      throw new BizException(40010, '系统预设管理员类型不能删除', HttpStatus.FORBIDDEN);
+    }
+    if (existing._count.admins > 0) {
+      throw new BizException(40011, '该类型仍有关联管理员，不能删除', HttpStatus.CONFLICT);
+    }
+    await this.prisma.adminType.delete({ where: { id } });
+    await this.accessService.audit(access, 'admin_type.delete', 'admin_type', id);
+    return { id, deleted: true };
+  }
+
+  private async resolvePermissionIds(permissionCodes: string[]) {
+    const normalizedCodes = normalizeAdminPermissionCodes(permissionCodes);
+    if (normalizedCodes.includes('admin.manage') || normalizedCodes.includes('admin_type.manage')) {
+      throw new BizException(40012, '管理员账号与类型管理仅属于平台管理员', HttpStatus.BAD_REQUEST);
+    }
+    const permissions = await this.prisma.adminPermission.findMany({
+      where: { code: { in: normalizedCodes } },
+      select: { id: true, code: true },
+    });
+    if (permissions.length !== normalizedCodes.length) {
+      throw new BizException(40012, '包含不存在的权限项', HttpStatus.BAD_REQUEST);
+    }
+    return permissions.map((permission) => permission.id);
+  }
+
+  async listAuditLogs(access: AdminAccessContext, limit = 50) {
+    return this.prisma.adminAuditLog.findMany({
+      where: access.isPlatform ? {} : { actorAdminId: access.adminId },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(100, Math.max(1, limit)),
+      include: { actor: { select: { username: true } } },
+    });
   }
 
   // 搜索候选 User（用于添加弹窗）：keyword 必填（DTO MinLength(1) + service 双保险）
@@ -1065,10 +1389,12 @@ export class AdminService {
   }
 
   // ===== Banner 广告位管理 =====
-  async listBanners(communityId?: string, keyword?: string) {
+  async listBanners(communityId: string | undefined, keyword: string | undefined, access: AdminAccessContext) {
+    if (communityId) await this.accessService.assertCommunity(access, communityId);
+    const scopedCommunityId = this.accessService.communityIdWhere(access);
     return this.prisma.banner.findMany({
       where: {
-        ...(communityId ? { communityId } : {}),
+        ...(communityId ? { communityId } : scopedCommunityId ? { communityId: scopedCommunityId } : {}),
         ...(keyword ? { title: { contains: keyword, mode: 'insensitive' } } : {}),
       },
       orderBy: [{ communityId: 'asc' }, { sortOrder: 'asc' }],
@@ -1079,19 +1405,27 @@ export class AdminService {
     title: string;
     imageUrl: string;
     linkUrl?: string | null;
-    communityId?: string | null;
+    communityId: string;
     sortOrder?: number;
-  }) {
-    return this.prisma.banner.create({
+  }, access: AdminAccessContext) {
+    if (!dto.communityId) {
+      throw new BizException(40013, '广告位必须选择所属圈子', HttpStatus.BAD_REQUEST);
+    }
+    await this.accessService.assertCommunity(access, dto.communityId);
+    const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } });
+    if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    const created = await this.prisma.banner.create({
       data: {
         title: dto.title,
         imageUrl: dto.imageUrl,
         linkUrl: dto.linkUrl ?? null,
-        communityId: dto.communityId ?? null,
+        communityId: dto.communityId,
         sortOrder: dto.sortOrder ?? 0,
         status: BannerStatus.ENABLED,
       },
     });
+    await this.accessService.audit(access, 'banner.create', 'banner', created.id, { communityId: created.communityId });
+    return created;
   }
   async updateBanner(
     id: string,
@@ -1099,41 +1433,54 @@ export class AdminService {
       title: string;
       imageUrl: string;
       linkUrl: string | null;
-      communityId: string | null;
+      communityId: string;
       sortOrder: number;
       status: string;
     }>,
+    access: AdminAccessContext,
   ) {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
+    await this.accessService.assertCommunity(access, existing.communityId);
     const data: Prisma.BannerUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.imageUrl !== undefined) data.imageUrl = dto.imageUrl;
     if (dto.linkUrl !== undefined) data.linkUrl = dto.linkUrl;
     if (dto.communityId !== undefined) {
-      data.community = dto.communityId ? { connect: { id: dto.communityId } } : { disconnect: true };
+      if (!dto.communityId) {
+        throw new BizException(40013, '广告位必须选择所属圈子', HttpStatus.BAD_REQUEST);
+      }
+      await this.accessService.assertCommunity(access, dto.communityId);
+      data.community = { connect: { id: dto.communityId } };
     }
     if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
     if (dto.status !== undefined) data.status = dto.status === 'DISABLED' ? BannerStatus.DISABLED : BannerStatus.ENABLED;
-    return this.prisma.banner.update({ where: { id }, data });
+    const updated = await this.prisma.banner.update({ where: { id }, data });
+    await this.accessService.audit(access, 'banner.update', 'banner', id, { communityId: updated.communityId });
+    return updated;
   }
-  async deleteBanner(id: string) {
+  async deleteBanner(id: string, access: AdminAccessContext) {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
+    await this.accessService.assertCommunity(access, existing.communityId);
     await this.prisma.banner.delete({ where: { id } });
+    await this.accessService.audit(access, 'banner.delete', 'banner', id, { communityId: existing.communityId });
     return { id, deleted: true };
   }
-  async toggleBanner(id: string, enabled: boolean) {
+  async toggleBanner(id: string, enabled: boolean, access: AdminAccessContext) {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
-    return this.prisma.banner.update({
+    await this.accessService.assertCommunity(access, existing.communityId);
+    const updated = await this.prisma.banner.update({
       where: { id },
       data: { status: enabled ? BannerStatus.ENABLED : BannerStatus.DISABLED },
     });
+    await this.accessService.audit(access, 'banner.toggle', 'banner', id, { enabled, communityId: existing.communityId });
+    return updated;
   }
 
   // ===== 圈子（Community）管理 =====
-  async listCommunities(status?: string, keyword?: string) {
+  async listCommunities(status: string | undefined, keyword: string | undefined, access: AdminAccessContext) {
     // P2-26 扩 status 过滤支持 PENDING
     const statusEnum =
       status === 'PENDING'
@@ -1145,29 +1492,52 @@ export class AdminService {
         : null;
     return this.prisma.community.findMany({
       where: {
+        ...this.accessService.communityWhere(access),
         ...(statusEnum ? { status: statusEnum } : {}),
         ...(keyword ? { name: { contains: keyword, mode: 'insensitive' } } : {}),
       },
       orderBy: { createdAt: 'desc' },
     });
   }
-  async disableCommunity(id: string) {
+  async updateCommunity(id: string, dto: UpdateCommunityDto, access: AdminAccessContext) {
+    await this.accessService.assertCommunity(access, id);
+    const existing = await this.prisma.community.findUnique({ where: { id } });
+    if (!existing) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    const updated = await this.prisma.community.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.logo !== undefined ? { logo: dto.logo.trim() || null } : {}),
+        ...(dto.backgroundImage !== undefined ? { backgroundImage: dto.backgroundImage.trim() || null } : {}),
+        ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
+      },
+    });
+    await this.accessService.audit(access, 'community.update', 'community', id);
+    return updated;
+  }
+
+  async disableCommunity(id: string, access: AdminAccessContext) {
+    await this.accessService.assertCommunity(access, id);
     const existing = await this.prisma.community.findUnique({ where: { id } });
     if (!existing) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     const updated = await this.prisma.community.update({ where: { id }, data: { status: CommunityStatus.DISABLED } });
     this.confession.invalidateFeedCache(); // 圈子禁用 → 清表白墙 feed 缓存（communityId 作用域内容即时隐藏）
+    await this.accessService.audit(access, 'community.disable', 'community', id);
     return updated;
   }
-  async enableCommunity(id: string) {
+  async enableCommunity(id: string, access: AdminAccessContext) {
+    await this.accessService.assertCommunity(access, id);
     const existing = await this.prisma.community.findUnique({ where: { id } });
     if (!existing) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     const updated = await this.prisma.community.update({ where: { id }, data: { status: CommunityStatus.ACTIVE } });
     this.confession.invalidateFeedCache();
+    await this.accessService.audit(access, 'community.enable', 'community', id);
     return updated;
   }
 
   // ===== P2-26 圈子审核 approve / reject =====
-  async approveCommunity(id: string, reviewerId: string) {
+  async approveCommunity(id: string, reviewerId: string, access: AdminAccessContext) {
+    await this.accessService.assertCommunity(access, id);
     const c = await this.prisma.community.findUnique({ where: { id } });
     if (!c) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     if (c.status !== CommunityStatus.PENDING) {
@@ -1191,6 +1561,7 @@ export class AdminService {
         reviewerId,
       },
     });
+    await this.accessService.audit(access, 'community.approve', 'community', id);
     // 通知 creator（不通知自己）
     if (c.ownerId && c.ownerId !== reviewerId) {
       void this.notification
@@ -1209,7 +1580,8 @@ export class AdminService {
     return updated;
   }
 
-  async rejectCommunity(id: string, reviewerId: string, reason: string) {
+  async rejectCommunity(id: string, reviewerId: string, reason: string, access: AdminAccessContext) {
+    await this.accessService.assertCommunity(access, id);
     const c = await this.prisma.community.findUnique({ where: { id } });
     if (!c) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     if (c.status !== CommunityStatus.PENDING) {
@@ -1233,6 +1605,7 @@ export class AdminService {
         reviewerId,
       },
     });
+    await this.accessService.audit(access, 'community.reject', 'community', id, { reason });
     // 通知 creator（不通知自己）
     if (c.ownerId && c.ownerId !== reviewerId) {
       void this.notification

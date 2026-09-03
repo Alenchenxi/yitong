@@ -1,4 +1,8 @@
 import { JobDuration, PrismaClient } from '@prisma/client';
+import {
+  ADMIN_PERMISSION_CATALOG,
+  COMMUNITY_ADMIN_DEFAULT_PERMISSIONS,
+} from '../src/modules/admin/admin-permissions';
 
 // 默认圈子种子数据（幂等：按 name 查重，已存在则跳过）
 const DEFAULT_CIRCLES = [
@@ -29,7 +33,7 @@ const SEED_COMMUNITIES = [
 const DEFAULT_BANNERS = [
   { id: 'bn_seed_1', title: '欢迎来到综合大学圈', imageUrl: 'https://mock-minio.example.com/banners/seed-1.png', communityId: 'cm_default', sortOrder: 1 },
   { id: 'bn_seed_2', title: '新学期招新活动', imageUrl: 'https://mock-minio.example.com/banners/seed-2.png', communityId: 'cm_default', sortOrder: 2 },
-  { id: 'bn_seed_g1', title: '平台公告：文明发言', imageUrl: 'https://mock-minio.example.com/banners/seed-global-1.png', communityId: null, sortOrder: 1 },
+  { id: 'bn_seed_g1', title: '平台公告：文明发言', imageUrl: 'https://mock-minio.example.com/banners/seed-global-1.png', communityId: 'cm_default', sortOrder: 3 },
 ];
 
 const prisma = new PrismaClient();
@@ -74,12 +78,73 @@ async function main() {
   }
   if (createdBanners > 0) console.log(`seed: ${createdBanners}/${DEFAULT_BANNERS.length} banners created`);
 
+  for (const item of ADMIN_PERMISSION_CATALOG) {
+    await prisma.adminPermission.upsert({
+      where: { code: item.code },
+      create: item,
+      update: {
+        module: item.module,
+        name: item.name,
+        description: item.description,
+        sortOrder: item.sortOrder,
+      },
+    });
+  }
+  const platformType = await prisma.adminType.upsert({
+    where: { code: 'PLATFORM_ADMIN' },
+    create: {
+      id: 'at_platform',
+      name: '平台管理员',
+      code: 'PLATFORM_ADMIN',
+      description: '拥有平台全部权限',
+      active: true,
+      isPlatform: true,
+      systemProtected: true,
+    },
+    update: { active: true, isPlatform: true, systemProtected: true, deletedAt: null },
+  });
+  const communityType = await prisma.adminType.upsert({
+    where: { code: 'COMMUNITY_ADMIN' },
+    create: {
+      id: 'at_community',
+      name: '圈子管理员',
+      code: 'COMMUNITY_ADMIN',
+      description: '维护授权圈子的资料、广告位和内容',
+      active: true,
+      isPlatform: false,
+      systemProtected: true,
+    },
+    update: { active: true, isPlatform: false, systemProtected: true, deletedAt: null },
+  });
+  const communityPermissions = await prisma.adminPermission.findMany({
+    where: { code: { in: COMMUNITY_ADMIN_DEFAULT_PERMISSIONS } },
+    select: { id: true },
+  });
+  await prisma.adminTypePermission.deleteMany({ where: { adminTypeId: communityType.id } });
+  if (communityPermissions.length) {
+    await prisma.adminTypePermission.createMany({
+      data: communityPermissions.map((permission) => ({
+        adminTypeId: communityType.id,
+        permissionId: permission.id,
+      })),
+      skipDuplicates: true,
+    });
+  }
+  console.log(`seed: ${ADMIN_PERMISSION_CATALOG.length} admin permissions and 2 protected admin types ensured`);
+
   // 管理员预设 openid 绑定：开发期用 mock（mock code2session 对 code='admin' 返回 'mock_admin'）；
   // 上线前设环境变量 ADMIN_OPENID 为真实管理员 openid。
   const ADMIN_OPENID = process.env.ADMIN_OPENID || 'mock_admin';
   const existsAdmin = await prisma.adminUser.findFirst({ where: { username: 'admin' } });
   if (!existsAdmin) {
-    await prisma.adminUser.create({ data: { username: 'admin', openid: ADMIN_OPENID } });
+    await prisma.adminUser.create({
+      data: {
+        username: 'admin',
+        openid: ADMIN_OPENID,
+        adminTypeId: platformType.id,
+        allCommunities: true,
+      },
+    });
     // eslint-disable-next-line no-console
     console.log(`seed: admin bound openid=${ADMIN_OPENID}`);
   } else if (existsAdmin.openid !== ADMIN_OPENID) {
@@ -90,6 +155,10 @@ async function main() {
     // eslint-disable-next-line no-console
     console.log(`seed: admin openid updated to ${ADMIN_OPENID}`);
   }
+  await prisma.adminUser.updateMany({
+    where: { adminTypeId: platformType.id },
+    data: { allCommunities: true },
+  });
 
   // PricingConfig 默认单价（功能方案价目表：30 天 ¥90，90 天 ¥180；管理员可后台改）
   const DEFAULT_PRICING: Array<{ duration: JobDuration; price: number }> = [

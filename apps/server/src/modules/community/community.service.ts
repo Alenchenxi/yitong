@@ -461,10 +461,10 @@ export class CommunityService {
     }));
   }
 
-  /** 广告位：圈子 + 全局 Banner（ENABLED，sortOrder asc） */
+  /** 广告位：仅返回当前圈子的 Banner（ENABLED，sortOrder asc）。 */
   async listBanners(communityId: string): Promise<BannerVo[]> {
     const rows = await this.prisma.banner.findMany({
-      where: { status: 'ENABLED', OR: [{ communityId }, { communityId: null }] },
+      where: { status: 'ENABLED', communityId },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
     return rows.map((b) => ({ id: b.id, title: b.title, imageUrl: b.imageUrl, linkUrl: b.linkUrl }));

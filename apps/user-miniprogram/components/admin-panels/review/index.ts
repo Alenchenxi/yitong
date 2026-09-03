@@ -28,6 +28,14 @@ import {
 
 type Sub = 'merchant' | 'posts' | 'anon' | 'comments' | 'reports' | 'jobs';
 const SUBS: Sub[] = ['merchant', 'posts', 'anon', 'comments', 'reports', 'jobs'];
+const SUB_LABELS: Record<Sub, string> = {
+  merchant: '商家入驻',
+  posts: '表白墙帖',
+  anon: '树洞帖',
+  comments: '评论',
+  reports: '举报处理',
+  jobs: '岗位',
+};
 
 Component({
   options: { addGlobalClass: true },
@@ -44,6 +52,8 @@ Component({
 
   data: {
     sub: 'merchant' as Sub,
+    allowedSubs: [] as Sub[],
+    subLabels: SUB_LABELS,
     // 商家入驻
     queue: null as AdminQueueVo | null,
     merchantStatus: 'PENDING' as 'all' | 'PENDING' | 'APPROVED' | 'REJECTED',
@@ -88,6 +98,18 @@ Component({
     onPanelShow() {
       const app = getApp<AppInstance>();
       if (!app.requireAuth()) return;
+      const access = app.globalData.adminAccess;
+      if (!access) return;
+      const can = (permission: string) =>
+        access.isPlatform || access.permissions.includes(permission);
+      const allowedSubs = SUBS.filter((sub) => {
+        if (sub === 'merchant') return can('merchant.review');
+        if (sub === 'reports') return can('report.manage');
+        return can('content.moderate');
+      });
+      const sub = allowedSubs.includes(this.data.sub) ? this.data.sub : allowedSubs[0];
+      if (!sub) return;
+      this.setData({ allowedSubs, sub });
       void this.load();
     },
 

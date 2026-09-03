@@ -29,6 +29,7 @@ import {
   enableCommunityAdmin,
   approveCommunityAdmin,
   rejectCommunityAdmin,
+  updateCommunityAdmin,
   getAppSettings,
   updateAppSetting,
   type ActivityTopicVo,
@@ -72,6 +73,18 @@ const SUBS: Sub[] = [
   'community',
   'settings',
 ];
+const SUB_LABELS: Record<Sub, string> = {
+  announce: '公告',
+  activity: '活动专题',
+  topic: '话题',
+  tags: '树洞标签',
+  jobs: '岗位精品',
+  pricing: '岗位单价',
+  boost: '推广价',
+  banner: '广告位',
+  community: '圈子',
+  settings: '系统设置',
+};
 
 Component({
   options: {
@@ -90,6 +103,10 @@ Component({
 
   data: {
     sub: 'announce' as Sub,
+    allowedSubs: [] as Sub[],
+    subLabels: SUB_LABELS,
+    canCommunityEdit: false,
+    canCommunityReview: false,
     // 公告
     announcements: [] as AdminAnnouncementVo[],
     annTitle: '',
@@ -128,6 +145,8 @@ Component({
     bnLinkUrl: '',
     bnSortOrder: '',
     bnUploading: false,
+    bnCommunityId: '',
+    bnCommunityIndex: 0,
     editingBannerId: '',
     editingBannerSort: '',
     editingBannerLink: '',
@@ -136,6 +155,12 @@ Component({
     cmKeyword: '',
     cmStatus: '' as '' | 'PENDING' | 'ACTIVE' | 'DISABLED', // P2-26 圈子状态筛选
     cmPendingCount: 0,
+    editingCommunityId: '',
+    editingCommunityName: '',
+    editingCommunityDescription: '',
+    editingCommunityLogo: '',
+    editingCommunityBackground: '',
+    editingCommunityUploading: false,
     // 全局设置
     anonymousContentEnabled: false,
     togglingAnonymousContent: false,
@@ -161,6 +186,25 @@ Component({
     onPanelShow() {
       const app = getApp<AppInstance>();
       if (!app.requireAuth()) return;
+      const access = app.globalData.adminAccess;
+      if (!access) return;
+      const can = (permission: string) =>
+        access.isPlatform || access.permissions.includes(permission);
+      const allowedSubs = SUBS.filter((sub) => {
+        if (sub === 'banner') return can('community.banner.manage');
+        if (sub === 'community') {
+          return can('community.view') || can('community.edit') || can('community.review');
+        }
+        return can('operations.global');
+      });
+      const sub = allowedSubs.includes(this.data.sub) ? this.data.sub : allowedSubs[0];
+      if (!sub) return;
+      this.setData({
+        allowedSubs,
+        sub,
+        canCommunityEdit: can('community.edit'),
+        canCommunityReview: can('community.review'),
+      });
       void this.load();
     },
 
@@ -215,7 +259,20 @@ Component({
         } else if (sub === 'boost') {
           commit({ boostPlans: await getBoostPlans() });
         } else if (sub === 'banner') {
-          commit({ banners: await listBannersAdmin() });
+          const [banners, communities] = await Promise.all([
+            listBannersAdmin(),
+            listCommunitiesAdmin(),
+          ]);
+          const bnCommunityIndex = Math.max(
+            0,
+            communities.findIndex((item) => item.id === this.data.bnCommunityId),
+          );
+          commit({
+            banners,
+            communities,
+            bnCommunityIndex,
+            bnCommunityId: communities[bnCommunityIndex]?.id ?? '',
+          });
         } else if (sub === 'community') {
           const list = await listCommunitiesAdmin(
             this.data.cmStatus || undefined,
@@ -493,6 +550,13 @@ Component({
       const field = e.currentTarget.dataset.field as 'bnTitle' | 'bnLinkUrl' | 'bnSortOrder';
       this.setData({ [field]: e.detail.value } as Record<string, string>);
     },
+    onBannerCommunityChange(e: WechatMiniprogram.PickerChange) {
+      const bnCommunityIndex = Number(e.detail.value) || 0;
+      this.setData({
+        bnCommunityIndex,
+        bnCommunityId: this.data.communities[bnCommunityIndex]?.id ?? '',
+      });
+    },
     async chooseBannerImage() {
       if (this.data.bnUploading) return;
       wx.chooseMedia({
@@ -510,8 +574,8 @@ Component({
       });
     },
     async createBanner() {
-      if (!this.data.bnTitle.trim() || !this.data.bnImageUrl) {
-        wx.showToast({ title: '请填标题并上传图片', icon: 'none' });
+      if (!this.data.bnTitle.trim() || !this.data.bnImageUrl || !this.data.bnCommunityId) {
+        wx.showToast({ title: '请选圈子、填标题并上传图片', icon: 'none' });
         return;
       }
       await createBannerAdmin({
@@ -519,7 +583,7 @@ Component({
         imageUrl: this.data.bnImageUrl,
         linkUrl: this.data.bnLinkUrl.trim() || null,
         sortOrder: Number(this.data.bnSortOrder) || 0,
-        communityId: null, // 全局轮播（圈子维度广告后续按圈配置）
+        communityId: this.data.bnCommunityId,
       });
       wx.showToast({ title: '已创建', icon: 'success' });
       this.setData({ bnTitle: '', bnImageUrl: '', bnLinkUrl: '', bnSortOrder: '' });
@@ -584,6 +648,57 @@ Component({
       else await disableCommunityAdmin(id);
       wx.showToast({ title: disabled ? '已启用' : '已禁用', icon: 'success' });
       this.load();
+    },
+    startEditCommunity(e: WechatMiniprogram.TouchEvent) {
+      const item = e.currentTarget.dataset.community as AdminCommunityVo;
+      this.setData({
+        editingCommunityId: item.id,
+        editingCommunityName: item.name,
+        editingCommunityDescription: item.description ?? '',
+        editingCommunityLogo: item.logo ?? '',
+        editingCommunityBackground: item.backgroundImage ?? '',
+      });
+    },
+    onCommunityEditInput(e: WechatMiniprogram.Input) {
+      const field = e.currentTarget.dataset.field as 'editingCommunityName' | 'editingCommunityDescription';
+      this.setData({ [field]: e.detail.value } as Record<string, string>);
+    },
+    chooseCommunityImage(e: WechatMiniprogram.TouchEvent) {
+      if (this.data.editingCommunityUploading) return;
+      const field = e.currentTarget.dataset.field as 'editingCommunityLogo' | 'editingCommunityBackground';
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        success: (res) => {
+          const file = res.tempFiles[0];
+          if (!file) return;
+          this.setData({ editingCommunityUploading: true });
+          uploadImage(file.tempFilePath, 'community')
+            .then((url) => this.setData({ [field]: url } as Record<string, string>))
+            .finally(() => this.setData({ editingCommunityUploading: false }));
+        },
+      });
+    },
+    async saveCommunityProfile() {
+      if (!this.data.editingCommunityId || !this.data.editingCommunityName.trim()) return;
+      await updateCommunityAdmin(this.data.editingCommunityId, {
+        name: this.data.editingCommunityName.trim(),
+        description: this.data.editingCommunityDescription.trim(),
+        logo: this.data.editingCommunityLogo,
+        backgroundImage: this.data.editingCommunityBackground,
+      });
+      wx.showToast({ title: '圈子资料已保存', icon: 'success' });
+      this.cancelEditCommunity();
+      void this.load();
+    },
+    cancelEditCommunity() {
+      this.setData({
+        editingCommunityId: '',
+        editingCommunityName: '',
+        editingCommunityDescription: '',
+        editingCommunityLogo: '',
+        editingCommunityBackground: '',
+      });
     },
     // P2-26 待审圈子：通过
     async approveCommunity(e: WechatMiniprogram.TouchEvent) {

@@ -1,4 +1,5 @@
 import type { AppInstance } from '../../app';
+import type { AdminAccessVo } from '../../services/admin';
 
 // 管理 shell 5 tab：看板 / 审核 / 运营 / 用户 / 我的，默认落「看板」
 const ADMIN_TABS = [
@@ -8,9 +9,36 @@ const ADMIN_TABS = [
   { key: 'users', label: '用户', iconPath: '/assets/tabbar/a-users.png', selectedIconPath: '/assets/tabbar/a-users-active.png' },
   { key: 'profile', label: '我的', iconPath: '/assets/tabbar/a-profile.png', selectedIconPath: '/assets/tabbar/a-profile-active.png' },
 ] as const;
+type AdminTab = (typeof ADMIN_TABS)[number];
 
 const TAB_KEYS = ['dashboard', 'review', 'ops', 'users', 'profile'] as const;
 const DEFAULT_TAB = 'dashboard';
+
+function can(access: AdminAccessVo, ...permissions: string[]) {
+  return access.isPlatform || permissions.some((permission) => access.permissions.includes(permission));
+}
+
+function visibleTabs(access: AdminAccessVo) {
+  return ADMIN_TABS.filter((tab) => {
+    if (tab.key === 'profile') return true;
+    if (tab.key === 'dashboard') return can(access, 'dashboard.view');
+    if (tab.key === 'review') {
+      return can(access, 'merchant.review', 'content.moderate', 'report.manage');
+    }
+    if (tab.key === 'ops') {
+      return can(
+        access,
+        'operations.global',
+        'community.banner.manage',
+        'community.view',
+        'community.edit',
+        'community.review',
+      );
+    }
+    return can(access, 'user.manage', 'ticket.manage')
+      || (access.isPlatform && can(access, 'admin.manage', 'admin_type.manage'));
+  });
+}
 
 interface PanelParams {
   [key: string]: unknown;
@@ -26,25 +54,36 @@ interface PanelInstance {
 
 Page({
   data: {
-    tabs: ADMIN_TABS,
+    tabs: [] as AdminTab[],
     activeTab: DEFAULT_TAB,
     loaded: {} as Record<string, boolean>,
     tabParams: {} as Record<string, PanelParams>,
     refreshing: false, // scroll-view 下拉刷新受控态
+    accessReady: false,
   },
 
-  onLoad(options: { tab?: string } & Record<string, string>) {
+  async onLoad(options: { tab?: string } & Record<string, string>) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    const access = await app.refreshAdminAccess();
+    if (!access) {
+      wx.showToast({ title: '管理员权限已失效', icon: 'none' });
+      app.logout();
+      return;
+    }
+    const tabs = visibleTabs(access);
     // 解析 ?tab=（白名单校验，非法落默认）+ 其余 query 注入该 tab params（带 _ts nonce 保证同值重触发）
-    const tab =
+    const requested =
       options.tab && (TAB_KEYS as readonly string[]).includes(options.tab) ? options.tab : DEFAULT_TAB;
+    const tab = tabs.some((item) => item.key === requested) ? requested : (tabs[0]?.key ?? 'profile');
     const params: PanelParams = {};
     Object.keys(options).forEach((k) => {
       if (k !== 'tab') params[k] = options[k];
     });
     this.setData({
       activeTab: tab,
+      tabs,
+      accessReady: true,
       [`loaded.${tab}`]: true,
       [`tabParams.${tab}`]: { ...params, _ts: Date.now() },
     });
@@ -52,7 +91,19 @@ Page({
 
   onShow() {
     wx.hideHomeButton();
-    this.notifyPanel();
+    const app = getApp<AppInstance>();
+    void app.refreshAdminAccess().then((access) => {
+      if (!access) return;
+      const tabs = visibleTabs(access);
+      const activeTab = tabs.some((item) => item.key === this.data.activeTab)
+        ? this.data.activeTab
+        : (tabs[0]?.key ?? 'profile');
+      this.setData({
+        tabs,
+        activeTab,
+        ['loaded.' + activeTab]: true,
+      }, () => this.notifyPanel());
+    });
   },
 
   onReady() {
@@ -97,7 +148,10 @@ Page({
   },
 
   activateTab(key: string, params?: PanelParams) {
-    if (!(TAB_KEYS as readonly string[]).includes(key)) return;
+    if (
+      !(TAB_KEYS as readonly string[]).includes(key)
+      || !this.data.tabs.some((tab) => tab.key === key)
+    ) return;
     const updates: Record<string, unknown> = {
       activeTab: key,
       [`loaded.${key}`]: true,

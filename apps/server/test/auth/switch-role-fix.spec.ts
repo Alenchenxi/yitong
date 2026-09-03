@@ -188,7 +188,12 @@ describe('AuthService.switchRole 场景 A: USER+MERCHANT+ADMIN + AdminUser 绑�
     expect(firstCall.role).toBe(Role.ADMIN);
     // adminUser.findFirst 应被调用一次，where.openid=openid_x
     expect(prisma.adminUser.findFirst).toHaveBeenCalledTimes(1);
-    expect(prisma.adminUser.findFirst).toHaveBeenCalledWith({ where: { openid: 'openid_x' } });
+    expect(prisma.adminUser.findFirst).toHaveBeenCalledWith({
+      where: {
+        openid: 'openid_x',
+        adminType: { active: true, deletedAt: null },
+      },
+    });
   });
 });
 
@@ -226,7 +231,12 @@ describe('AuthService.switchRole 场景 B [核心]: UserRole.ADMIN 残留 + 无 
 
     // 2) adminUser.findFirst 必须被调用（核心修复点：switchRole 末尾的 ADMIN 二次校验）
     expect(prisma.adminUser.findFirst).toHaveBeenCalledTimes(1);
-    expect(prisma.adminUser.findFirst).toHaveBeenCalledWith({ where: { openid: 'openid_y' } });
+    expect(prisma.adminUser.findFirst).toHaveBeenCalledWith({
+      where: {
+        openid: 'openid_y',
+        adminType: { active: true, deletedAt: null },
+      },
+    });
 
     // 3) signAsync 不应被调用（未签 token）
     expect(jwtSignMock).not.toHaveBeenCalled();

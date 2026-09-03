@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import type { AdminAccessContext } from '../admin/admin-access.service';
 
 // JWT 载荷（与 API 设计规范 §4.1 对齐）
 export interface JwtPayload {
@@ -10,7 +11,10 @@ export interface JwtPayload {
 }
 
 // 携带已认证用户的请求类型
-export type AuthenticatedRequest = Request & { user?: JwtPayload };
+export type AuthenticatedRequest = Request & {
+  user?: JwtPayload;
+  adminAccess?: AdminAccessContext;
+};
 
 // 微信 code2session 返回
 export interface WxSessionResult {

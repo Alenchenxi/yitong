@@ -11,6 +11,7 @@ import {
   persistAnonymousContentVisibility,
   readAnonymousContentVisibilityCache,
 } from './services/app-config';
+import { getAdminAccess, type AdminAccessVo } from './services/admin';
 
 // 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
 // FORCE_PRODUCTION 开关：true=开发者工具(develop)也强制连生产 yitongjiajiao.cn（本地不跑 server 调试真数据用）；
@@ -25,6 +26,8 @@ const apiBase = FORCE_PRODUCTION
     : PROD_API_BASE;
 const cachedAnonymousContentEnabled = readAnonymousContentVisibilityCache();
 const ANONYMOUS_CONTENT_RETRY_DELAYS_MS = [250, 750] as const;
+const ADMIN_ACCESS_STORAGE_KEY = 'yitong_admin_access';
+const cachedAdminAccess = wx.getStorageSync(ADMIN_ACCESS_STORAGE_KEY) as AdminAccessVo | '';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -57,6 +60,7 @@ App({
     apiBase,
     loginReady: false,
     anonymousContentEnabled: cachedAnonymousContentEnabled,
+    adminAccess: cachedAdminAccess || null,
     anonToken: '', // CR-001 树洞匿名 token
     anonId: '',    // CR-001 当前 anonId
     activeCommunityId: '', // 圈子：当前圈子 id（广场头卡/作用域；切换后更新）
@@ -94,6 +98,9 @@ App({
 
   onShow(options) {
     void this.refreshAnonymousContentVisibility();
+    if (this.globalData.currentRole === 'admin' && this.globalData.token) {
+      void this.refreshAdminAccess();
+    }
     const inviteCommunityId = options.query?.inviteCommunityId;
     if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
       this.globalData.pendingCommunityInviteId = inviteCommunityId;
@@ -220,6 +227,28 @@ App({
       ?? Promise.resolve(this.globalData.anonymousContentEnabled);
   },
 
+  refreshAdminAccess(): Promise<AdminAccessVo | null> {
+    if (this._adminAccessRefreshPromise) return this._adminAccessRefreshPromise;
+    const promise = getAdminAccess()
+      .then((access) => {
+        this.globalData.adminAccess = access;
+        wx.setStorageSync(ADMIN_ACCESS_STORAGE_KEY, access);
+        return access;
+      })
+      .catch(() => {
+        this.globalData.adminAccess = null;
+        wx.removeStorageSync(ADMIN_ACCESS_STORAGE_KEY);
+        return null;
+      })
+      .finally(() => {
+        if (this._adminAccessRefreshPromise === promise) {
+          this._adminAccessRefreshPromise = null;
+        }
+      });
+    this._adminAccessRefreshPromise = promise;
+    return promise;
+  },
+
   subscribeAnonymousContentVisibility(listener: (enabled: boolean) => void) {
     this._anonymousContentListeners.push(listener);
     listener(this.globalData.anonymousContentEnabled);
@@ -231,6 +260,8 @@ App({
 
   logout() {
     clearAuth(this);
+    this.globalData.adminAccess = null;
+    wx.removeStorageSync(ADMIN_ACCESS_STORAGE_KEY);
     this.globalData.loginReady = false;
     wx.reLaunch({ url: '/pages/role-select/index' });
   },
@@ -245,6 +276,7 @@ App({
   _anonymousContentRefreshPromise: null as Promise<boolean> | null,
   _anonymousContentRefreshVersion: 0,
   _anonymousContentListeners: [] as Array<(enabled: boolean) => void>,
+  _adminAccessRefreshPromise: null as Promise<AdminAccessVo | null> | null,
 });
 
 export type AppInstance = WechatMiniprogram.App.Instance<{
@@ -262,6 +294,7 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
     communityInviteRouting: boolean;
     loginReady: boolean;
     anonymousContentEnabled: boolean;
+    adminAccess: AdminAccessVo | null;
   };
   loginWithRole: (role: 'user' | 'merchant' | 'admin', referralCode?: string) => Promise<void>;
   switchRole: (role: 'user' | 'merchant' | 'admin') => Promise<void>;
@@ -273,4 +306,5 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
   refreshAnonymousContentVisibility: () => Promise<boolean>;
   getAnonymousContentVisibility: () => Promise<boolean>;
   subscribeAnonymousContentVisibility: (listener: (enabled: boolean) => void) => () => void;
+  refreshAdminAccess: () => Promise<AdminAccessVo | null>;
 }>;

@@ -69,7 +69,7 @@ describe('匿名内容展示配置', () => {
         upsert: jest.fn().mockImplementation(async (args) => args.create),
       },
     };
-    const admin = new AdminService(prisma as never, {} as never, {} as never, {} as never);
+    const admin = new AdminService(prisma as never, {} as never, {} as never, {} as never, {} as never);
 
     await admin.updateSetting(ANONYMOUS_CONTENT_ENABLED_KEY, value, 'admin-openid');
 
@@ -91,7 +91,7 @@ describe('匿名内容展示配置', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
     };
-    const admin = new AdminService(prisma as never, {} as never, {} as never, {} as never);
+    const admin = new AdminService(prisma as never, {} as never, {} as never, {} as never, {} as never);
 
     await expect(admin.getSettings()).resolves.toEqual(
       expect.arrayContaining([
@@ -109,7 +109,7 @@ describe('匿名内容展示配置', () => {
         upsert: jest.fn(),
       },
     };
-    const admin = new AdminService(prisma as never, {} as never, {} as never, {} as never);
+    const admin = new AdminService(prisma as never, {} as never, {} as never, {} as never, {} as never);
 
     await expect(
       admin.updateSetting(ANONYMOUS_CONTENT_ENABLED_KEY, value, 'admin-openid'),

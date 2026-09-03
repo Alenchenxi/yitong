@@ -1,12 +1,7 @@
 <wxs src="../admin-status.wxs" module="st" />
 <view class="adm-page">
   <scroll-view scroll-x class="adm-subtabs" enhanced show-scrollbar="{{false}}">
-    <view class="adm-subtab {{sub === 'merchant' ? 'on' : ''}}" data-sub="merchant" bindtap="switchSub">商家入驻</view>
-    <view class="adm-subtab {{sub === 'posts' ? 'on' : ''}}" data-sub="posts" bindtap="switchSub">表白墙帖</view>
-    <view class="adm-subtab {{sub === 'anon' ? 'on' : ''}}" data-sub="anon" bindtap="switchSub">树洞帖</view>
-    <view class="adm-subtab {{sub === 'comments' ? 'on' : ''}}" data-sub="comments" bindtap="switchSub">评论</view>
-    <view class="adm-subtab {{sub === 'reports' ? 'on' : ''}}" data-sub="reports" bindtap="switchSub">举报处理</view>
-    <view class="adm-subtab {{sub === 'jobs' ? 'on' : ''}}" data-sub="jobs" bindtap="switchSub">岗位</view>
+    <view wx:for="{{allowedSubs}}" wx:key="*this" class="adm-subtab {{sub === item ? 'on' : ''}}" data-sub="{{item}}" bindtap="switchSub">{{subLabels[item]}}</view>
   </scroll-view>
 
   <!-- 商家入驻 -->

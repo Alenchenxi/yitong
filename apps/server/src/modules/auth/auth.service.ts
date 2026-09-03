@@ -97,7 +97,12 @@ export class AuthService {
     // 修复 dev 模式 wx-login ensureRole 跳过 admin 校验 + 历史 AdminUser 删除未同步
     // UserRole 行残留导致的"非管理员可切到管理端"鉴权漏洞。与 ensureRole prod 路径对齐。
     if (role === Role.ADMIN) {
-      const a = await this.prisma.adminUser.findFirst({ where: { openid: user.openid } });
+      const a = await this.prisma.adminUser.findFirst({
+        where: {
+          openid: user.openid,
+          adminType: { active: true, deletedAt: null },
+        },
+      });
       if (!a) {
         throw new BizException(
           10003,
@@ -122,7 +127,18 @@ export class AuthService {
     }
     const user = await this.prisma.user.findUnique({ where: { id: payload.uid } });
     if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
-    // 刷新时沿用原 role
+    if (payload.role === Role.ADMIN) {
+      const admin = await this.prisma.adminUser.findFirst({
+        where: {
+          openid: user.openid,
+          adminType: { active: true, deletedAt: null },
+        },
+      });
+      if (!admin) {
+        throw new BizException(10003, '管理员账号或管理员类型已停用', HttpStatus.FORBIDDEN);
+      }
+    }
+    // 刷新时沿用原 role，但管理员资格必须以数据库当前状态为准。
     return this.issueTokens(user, payload.role as Role);
   }
 
@@ -171,13 +187,16 @@ export class AuthService {
     const role = ROLE_MAP[roleKey];
     if (!role) throw new BizException(10004, '角色不合法');
 
-    // 运行模式：MODE !== 'prod' 视为 dev，跳过 admin 权限校验，方便本地直接点角色进入；
-    // prod 保留 admin 校验（openid 预绑定）。merchant 登录不校验入驻：未入驻也可进商家端，
+    // 管理员在所有环境都必须绑定有效 AdminUser/管理员类型。merchant 登录不校验入驻：
+    // 未入驻也可进商家端，
     // 由前端商家首页探测 getMerchantProfile 跳入驻页 + 各商家接口校验 Merchant 存在性（60002）兜底。
-    const isDev = this.config.get<string>('MODE') !== 'prod';
-
-    if (!isDev && role === Role.ADMIN) {
-      const admin = await this.prisma.adminUser.findFirst({ where: { openid } });
+    if (role === Role.ADMIN) {
+      const admin = await this.prisma.adminUser.findFirst({
+        where: {
+          openid,
+          adminType: { active: true, deletedAt: null },
+        },
+      });
       if (!admin) {
         throw new BizException(
           10003,

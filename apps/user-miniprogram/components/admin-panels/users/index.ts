@@ -12,16 +12,31 @@ import {
   listAdmins,
   searchCandidateUsers,
   createAdmin,
+  updateAdmin,
   deleteAdmin,
+  listAdminTypes,
+  listAdminPermissions,
+  createAdminType,
+  updateAdminType,
+  deleteAdminType,
+  listCommunitiesAdmin,
   type AdminUserVo,
   type AdminTicketVo,
   type ManagerVo,
   type CandidateUserVo,
+  type AdminTypeVo,
+  type AdminPermissionVo,
+  type AdminCommunityVo,
 } from '../../../services/admin';
 
-type Sub = 'users' | 'tickets' | 'admins';
-const SUBS: Sub[] = ['users', 'tickets', 'admins'];
-const SUB_LABELS: Record<Sub, string> = { users: '用户封禁', tickets: '工单处理', admins: '管理员' };
+type Sub = 'users' | 'tickets' | 'admins' | 'adminTypes';
+const SUBS: Sub[] = ['users', 'tickets', 'admins', 'adminTypes'];
+const SUB_LABELS: Record<Sub, string> = {
+  users: '用户封禁',
+  tickets: '工单处理',
+  admins: '管理员',
+  adminTypes: '管理员类型',
+};
 let nextAddingFlowToken = 0;
 
 Component({
@@ -42,7 +57,7 @@ Component({
   data: {
     sub: 'users' as Sub,
     subLabels: SUB_LABELS,
-    subs: SUBS,
+    subs: [] as Sub[],
     users: [] as AdminUserVo[],
     userKeyword: '',
     tickets: [] as AdminTicketVo[],
@@ -54,6 +69,21 @@ Component({
     showAddDialog: false,
     addingUserId: '',
     addingFlowToken: 0,
+    adminTypes: [] as AdminTypeVo[],
+    permissions: [] as AdminPermissionVo[],
+    permissionOptions: [] as Array<AdminPermissionVo & { checked: boolean }>,
+    scopeCommunities: [] as AdminCommunityVo[],
+    scopeCommunityOptions: [] as Array<AdminCommunityVo & { selected: boolean }>,
+    selectedAdminTypeId: '',
+    selectedAdminTypeIndex: 0,
+    allCommunities: false,
+    selectedCommunityIds: [] as string[],
+    editingManagerId: '',
+    typeFormId: '',
+    typeName: '',
+    typeCode: '',
+    typeDescription: '',
+    typePermissionCodes: [] as string[],
     loading: false,
   },
 
@@ -70,6 +100,19 @@ Component({
     onPanelShow() {
       const app = getApp<AppInstance>();
       if (!app.requireAuth()) return;
+      const access = app.globalData.adminAccess;
+      if (!access) return;
+      const can = (permission: string) =>
+        access.isPlatform || access.permissions.includes(permission);
+      const subs = SUBS.filter((sub) => (
+        (sub === 'users' && can('user.manage'))
+        || (sub === 'tickets' && can('ticket.manage'))
+        || (sub === 'admins' && access.isPlatform && can('admin.manage'))
+        || (sub === 'adminTypes' && access.isPlatform && can('admin_type.manage'))
+      ));
+      const sub = subs.includes(this.data.sub) ? this.data.sub : subs[0];
+      if (!sub) return;
+      this.setData({ subs, sub });
       void this.load();
     },
 
@@ -99,8 +142,21 @@ Component({
           this.setData({ users: await listUsers(this.data.userKeyword || undefined) });
         } else if (this.data.sub === 'tickets') {
           this.setData({ tickets: await listTickets(this.data.ticketStatus) });
-        } else {
+        } else if (this.data.sub === 'admins') {
           this.setData({ admins: await listAdmins(this.data.adminKeyword || undefined) });
+        } else {
+          const [adminTypes, permissions] = await Promise.all([
+            listAdminTypes(),
+            listAdminPermissions(),
+          ]);
+          this.setData({
+            adminTypes,
+            permissions,
+            permissionOptions: permissions.map((item) => ({
+              ...item,
+              checked: this.data.typePermissionCodes.includes(item.code),
+            })),
+          });
         }
       } catch {
         /* toast */
@@ -217,9 +273,30 @@ Component({
     searchAdmins() {
       this.load();
     },
-    openAddDialog() {
+    async openAddDialog() {
       if (this.data.addingUserId) return;
-      this.setData({ showAddDialog: true, candidateKeyword: '', candidates: [] });
+      try {
+        const [adminTypes, scopeCommunities] = await Promise.all([
+          listAdminTypes(),
+          listCommunitiesAdmin(),
+        ]);
+        const availableTypes = adminTypes.filter((item) => item.active);
+        this.setData({
+          showAddDialog: true,
+          candidateKeyword: '',
+          candidates: [],
+          adminTypes: availableTypes,
+          scopeCommunities,
+          scopeCommunityOptions: scopeCommunities.map((item) => ({ ...item, selected: false })),
+          selectedAdminTypeId: availableTypes[0]?.id ?? '',
+          selectedAdminTypeIndex: 0,
+          allCommunities: availableTypes[0]?.isPlatform === true,
+          selectedCommunityIds: [],
+          editingManagerId: '',
+        });
+      } catch {
+        /* toast */
+      }
     },
     closeAddDialog() {
       if (this.data.addingUserId) return;
@@ -227,6 +304,29 @@ Component({
     },
     onCandidateKeywordInput(e: WechatMiniprogram.Input) {
       this.setData({ candidateKeyword: e.detail.value });
+    },
+    onAdminTypeChange(e: WechatMiniprogram.PickerChange) {
+      const index = Number(e.detail.value) || 0;
+      const selected = this.data.adminTypes[index];
+      this.setData({
+        selectedAdminTypeIndex: index,
+        selectedAdminTypeId: selected?.id ?? '',
+        allCommunities: selected?.isPlatform === true ? true : this.data.allCommunities,
+      });
+    },
+    onAllCommunitiesChange(e: WechatMiniprogram.SwitchChange) {
+      const selected = this.data.adminTypes[this.data.selectedAdminTypeIndex];
+      this.setData({ allCommunities: selected?.isPlatform === true || e.detail.value });
+    },
+    onCommunityScopeChange(e: WechatMiniprogram.CheckboxGroupChange) {
+      const selectedCommunityIds = e.detail.value;
+      this.setData({
+        selectedCommunityIds,
+        scopeCommunityOptions: this.data.scopeCommunities.map((item) => ({
+          ...item,
+          selected: selectedCommunityIds.includes(item.id),
+        })),
+      });
     },
     async searchCandidates(silent = false) {
       const kw = this.data.candidateKeyword.trim();
@@ -263,7 +363,20 @@ Component({
       // 叠加在部分基础库下进入 fail 回调；addingFlowToken 锁保证幂等与异步竞态保护。
       void (async () => {
         try {
-          await createAdmin(userId);
+          if (!this.data.selectedAdminTypeId) {
+            wx.showToast({ title: '请选择管理员类型', icon: 'none' });
+            return;
+          }
+          if (!this.data.allCommunities && !this.data.selectedCommunityIds.length) {
+            wx.showToast({ title: '请至少选择一个圈子', icon: 'none' });
+            return;
+          }
+          await createAdmin(
+            userId,
+            this.data.selectedAdminTypeId,
+            this.data.allCommunities,
+            this.data.selectedCommunityIds,
+          );
           if (!isCurrentAddingFlow()) return;
           // 刷新候选列表（该用户已被设为 admin，应排除）+ 刷新管理员列表
           await this.searchCandidates(true);
@@ -276,6 +389,47 @@ Component({
           releaseAddingLock();
         }
       })();
+    },
+    async editAdminTap(e: WechatMiniprogram.TouchEvent) {
+      const manager = e.currentTarget.dataset.admin as ManagerVo;
+      const [adminTypes, scopeCommunities] = await Promise.all([
+        listAdminTypes(),
+        listCommunitiesAdmin(),
+      ]);
+      const availableTypes = adminTypes.filter((item) => item.active);
+      const index = Math.max(0, availableTypes.findIndex((item) => item.id === manager.adminType.id));
+      this.setData({
+        showAddDialog: true,
+        editingManagerId: manager.id,
+        adminTypes: availableTypes,
+        scopeCommunities,
+        scopeCommunityOptions: scopeCommunities.map((item) => ({
+          ...item,
+          selected: manager.communities.some((community) => community.id === item.id),
+        })),
+        selectedAdminTypeIndex: index,
+        selectedAdminTypeId: availableTypes[index]?.id ?? '',
+        allCommunities: manager.allCommunities,
+        selectedCommunityIds: manager.communities.map((item) => item.id),
+        candidates: [],
+        candidateKeyword: '',
+      });
+    },
+    async saveAdminAssignment() {
+      if (!this.data.editingManagerId || !this.data.selectedAdminTypeId) return;
+      if (!this.data.allCommunities && !this.data.selectedCommunityIds.length) {
+        wx.showToast({ title: '请至少选择一个圈子', icon: 'none' });
+        return;
+      }
+      await updateAdmin(
+        this.data.editingManagerId,
+        this.data.selectedAdminTypeId,
+        this.data.allCommunities,
+        this.data.selectedCommunityIds,
+      );
+      wx.showToast({ title: '权限已更新', icon: 'success' });
+      this.setData({ showAddDialog: false, editingManagerId: '' });
+      void this.load();
     },
     deleteAdminTap(e: WechatMiniprogram.TouchEvent) {
       const a = e.currentTarget.dataset.admin as ManagerVo;
@@ -294,6 +448,97 @@ Component({
               /* toast */
             }
           }
+        },
+      });
+    },
+    startCreateType() {
+      this.setData({
+        typeFormId: '',
+        typeName: '',
+        typeCode: '',
+        typeDescription: '',
+        typePermissionCodes: [],
+        permissionOptions: this.data.permissions.map((item) => ({ ...item, checked: false })),
+      });
+    },
+    startEditType(e: WechatMiniprogram.TouchEvent) {
+      const item = e.currentTarget.dataset.type as AdminTypeVo;
+      if (item.isPlatform) return;
+      this.setData({
+        typeFormId: item.id,
+        typeName: item.name,
+        typeCode: item.code,
+        typeDescription: item.description ?? '',
+        typePermissionCodes: item.permissionCodes,
+        permissionOptions: this.data.permissions.map((permission) => ({
+          ...permission,
+          checked: item.permissionCodes.includes(permission.code),
+        })),
+      });
+    },
+    onTypeInput(e: WechatMiniprogram.Input) {
+      const field = e.currentTarget.dataset.field as 'typeName' | 'typeCode' | 'typeDescription';
+      this.setData({ [field]: e.detail.value } as Record<string, string>);
+    },
+    onTypePermissionsChange(e: WechatMiniprogram.CheckboxGroupChange) {
+      const selected = new Set(e.detail.value);
+      if (
+        selected.has('community.banner.manage')
+        || selected.has('community.edit')
+        || selected.has('community.review')
+      ) {
+        selected.add('community.view');
+      }
+      const typePermissionCodes = [...selected];
+      this.setData({
+        typePermissionCodes,
+        permissionOptions: this.data.permissions.map((item) => ({
+          ...item,
+          checked: typePermissionCodes.includes(item.code),
+        })),
+      });
+    },
+    async saveAdminType() {
+      const name = this.data.typeName.trim();
+      const code = this.data.typeCode.trim().toUpperCase();
+      if (!name || (!this.data.typeFormId && !code)) {
+        wx.showToast({ title: '请填写类型名称和编码', icon: 'none' });
+        return;
+      }
+      if (this.data.typeFormId) {
+        await updateAdminType(this.data.typeFormId, {
+          name,
+          description: this.data.typeDescription.trim(),
+          permissionCodes: this.data.typePermissionCodes,
+        });
+      } else {
+        await createAdminType({
+          name,
+          code,
+          description: this.data.typeDescription.trim(),
+          permissionCodes: this.data.typePermissionCodes,
+        });
+      }
+      wx.showToast({ title: '已保存', icon: 'success' });
+      this.startCreateType();
+      void this.load();
+    },
+    async toggleAdminType(e: WechatMiniprogram.SwitchChange) {
+      const id = e.currentTarget.dataset.id as string;
+      await updateAdminType(id, { active: e.detail.value });
+      void this.load();
+    },
+    deleteAdminTypeTap(e: WechatMiniprogram.TouchEvent) {
+      const item = e.currentTarget.dataset.type as AdminTypeVo;
+      wx.showModal({
+        title: '删除管理员类型',
+        content: `确定删除「${item.name}」？`,
+        confirmColor: '#F53F3F',
+        success: async (result) => {
+          if (!result.confirm) return;
+          await deleteAdminType(item.id);
+          wx.showToast({ title: '已删除', icon: 'success' });
+          void this.load();
         },
       });
     },

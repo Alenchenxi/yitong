@@ -1,4 +1,4 @@
-<view class="shell">
+<view wx:if="{{accessReady}}" class="shell">
   <scroll-view scroll-y class="shell-content" refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindscrolltolower="onScrollLower" bindrefresherrefresh="onRefresh">
     <view hidden="{{activeTab !== 'dashboard'}}">
       <dashboard-panel

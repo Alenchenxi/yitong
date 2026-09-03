@@ -103,12 +103,86 @@ model AnonTag {
 }
 
 model AdminUser {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  passwordHash String?  @map("password_hash")
-  openid       String?  @unique @map("openid")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id              String                @id @default(cuid())
+  username        String                @unique
+  passwordHash    String?               @map("password_hash")
+  openid          String?               @unique @map("openid")
+  adminTypeId     String                @map("admin_type_id")
+  allCommunities  Boolean               @default(false) @map("all_communities")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+  adminType       AdminType             @relation(fields: [adminTypeId], references: [id], onDelete: Restrict)
+  communityScopes AdminCommunityScope[]
+  auditLogs       AdminAuditLog[]
+  @@index([adminTypeId])
   @@map("admin_users")
+}
+
+model AdminType {
+  id              String                @id @default(cuid())
+  name            String                @unique
+  code            String                @unique
+  description     String?
+  active          Boolean               @default(true)
+  isPlatform      Boolean               @default(false) @map("is_platform")
+  systemProtected Boolean               @default(false) @map("system_protected")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+  deletedAt       DateTime?             @map("deleted_at")
+  permissions     AdminTypePermission[]
+  admins          AdminUser[]
+  @@index([active, deletedAt])
+  @@map("admin_types")
+}
+
+model AdminPermission {
+  id          String                @id @default(cuid())
+  code        String                @unique
+  module      String
+  name        String
+  description String?
+  sortOrder   Int                   @default(0) @map("sort_order")
+  types       AdminTypePermission[]
+  @@index([module, sortOrder])
+  @@map("admin_permissions")
+}
+
+model AdminTypePermission {
+  id           String          @id @default(cuid())
+  adminTypeId  String          @map("admin_type_id")
+  permissionId String          @map("permission_id")
+  adminType    AdminType       @relation(fields: [adminTypeId], references: [id], onDelete: Cascade)
+  permission   AdminPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@unique([adminTypeId, permissionId])
+  @@index([permissionId])
+  @@map("admin_type_permissions")
+}
+
+model AdminCommunityScope {
+  id          String    @id @default(cuid())
+  adminUserId String    @map("admin_user_id")
+  communityId String    @map("community_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  @@unique([adminUserId, communityId])
+  @@index([communityId])
+  @@map("admin_community_scopes")
+}
+
+model AdminAuditLog {
+  id           String     @id @default(cuid())
+  actorAdminId String?    @map("actor_admin_id")
+  actorOpenid  String?    @map("actor_openid")
+  action       String
+  targetType   String     @map("target_type")
+  targetId     String?    @map("target_id")
+  details      Json?
+  createdAt    DateTime   @default(now()) @map("created_at")
+  actor        AdminUser? @relation(fields: [actorAdminId], references: [id], onDelete: SetNull)
+  @@index([actorAdminId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("admin_audit_logs")
 }
 
 // ===== 表白墙 =====
@@ -990,6 +1064,7 @@ model Community {
   anonPosts   AnonymousPost[]
   jobPosts    JobPost[]
   banners     Banner[]
+  adminScopes AdminCommunityScope[]
   @@index([status, createdAt])
   @@index([status, memberCount])
   @@index([ownerId, status])  // P2-26 creator 视角查"我的全部圈子"
@@ -1035,11 +1110,11 @@ model Banner {
   title       String
   imageUrl    String       @map("image_url")
   linkUrl     String?      @map("link_url")     // 可空：广告跳转链接
-  communityId String?      @map("community_id") // null = 全局轮播（所有圈子可见）
+  communityId String       @map("community_id") // 所有广告位必须归属具体圈子
   sortOrder   Int          @default(0) @map("sort_order")
   status      BannerStatus @default(ENABLED)
   createdAt   DateTime     @default(now()) @map("created_at")
-  community   Community?   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  community   Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
   @@index([communityId, status, sortOrder])
   @@map("banners")
 }

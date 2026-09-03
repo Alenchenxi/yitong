@@ -11,13 +11,6 @@ export interface AdminQueueVo {
     userNickname: string;
     createdAt: string;
   }>;
-  reports: Array<{
-    id: string;
-    targetType: string;
-    targetId: string;
-    reason: string | null;
-    createdAt: string;
-  }>;
 }
 
 export interface PricingVo {
@@ -302,6 +295,41 @@ export function muteUser(id: string, days: number) {
 }
 
 // ===== P2-30 管理员自助管理 =====
+export interface AdminAccessVo {
+  adminId: string;
+  openid: string;
+  adminTypeId: string;
+  adminTypeName: string;
+  isPlatform: boolean;
+  allCommunities: boolean;
+  communityIds: string[];
+  permissions: string[];
+}
+export function getAdminAccess() {
+  return request<AdminAccessVo>({ url: '/admin/access/me' });
+}
+
+export interface AdminTypeVo {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  active: boolean;
+  isPlatform: boolean;
+  systemProtected: boolean;
+  permissionCodes: string[];
+  adminCount: number;
+  createdAt: string;
+}
+
+export interface AdminPermissionVo {
+  code: string;
+  module: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+}
+
 // 列表里的"管理员账号" Vo；区别于上方的 AdminUserVo（那是用户封禁业务的 User）
 export interface ManagerVo {
   id: string;
@@ -310,6 +338,9 @@ export interface ManagerVo {
   createdAt: string;
   linkedUser: { id: string; nickname: string; avatarUrl: string | null } | null;
   isSelf: boolean;
+  adminType: { id: string; name: string; code: string; active: boolean; isPlatform: boolean };
+  allCommunities: boolean;
+  communities: Array<{ id: string; name: string }>;
 }
 // 搜索候选 User（添加弹窗用）：昵称模糊 + 排除已是 admin + 排除封禁
 export interface CandidateUserVo {
@@ -324,11 +355,62 @@ export function listAdmins(keyword?: string) {
 export function searchCandidateUsers(keyword: string) {
   return request<CandidateUserVo[]>({ url: `/admin/users/search?keyword=${encodeURIComponent(keyword)}` });
 }
-export function createAdmin(userId: string) {
-  return request<ManagerVo>({ url: '/admin/admins', method: 'POST', data: { userId } });
+export function createAdmin(
+  userId: string,
+  adminTypeId: string,
+  allCommunities: boolean,
+  communityIds: string[],
+) {
+  return request<ManagerVo>({
+    url: '/admin/admins',
+    method: 'POST',
+    data: { userId, adminTypeId, allCommunities, communityIds },
+  });
+}
+export function updateAdmin(
+  id: string,
+  adminTypeId: string,
+  allCommunities: boolean,
+  communityIds: string[],
+) {
+  return request<{ id: string; updated: boolean }>({
+    url: `/admin/admins/${id}`,
+    method: 'PUT',
+    data: { adminTypeId, allCommunities, communityIds },
+  });
 }
 export function deleteAdmin(id: string) {
   return request<{ id: string; deleted: boolean }>({ url: `/admin/admins/${id}`, method: 'DELETE' });
+}
+export function listAdminTypes() {
+  return request<AdminTypeVo[]>({ url: '/admin/admin-types' });
+}
+export function listAdminPermissions() {
+  return request<AdminPermissionVo[]>({ url: '/admin/permissions' });
+}
+export function createAdminType(data: {
+  name: string;
+  code: string;
+  description?: string;
+  permissionCodes: string[];
+}) {
+  return request<AdminTypeVo>({ url: '/admin/admin-types', method: 'POST', data });
+}
+export function updateAdminType(
+  id: string,
+  data: Partial<{ name: string; description: string; active: boolean; permissionCodes: string[] }>,
+) {
+  return request<{ id: string; updated: boolean }>({
+    url: `/admin/admin-types/${id}`,
+    method: 'PUT',
+    data,
+  });
+}
+export function deleteAdminType(id: string) {
+  return request<{ id: string; deleted: boolean }>({
+    url: `/admin/admin-types/${id}`,
+    method: 'DELETE',
+  });
 }
 
 // ===== 广告位 Banner 管理 =====
@@ -337,8 +419,8 @@ export interface AdminBannerVo {
   title: string;
   imageUrl: string;
   linkUrl: string | null;
-  communityId: string | null;
-  community?: { name: string } | null;
+  communityId: string;
+  community: { name: string };
   sortOrder: number;
   status: 'ENABLED' | 'DISABLED';
   createdAt: string;
@@ -353,14 +435,14 @@ export function createBannerAdmin(data: {
   title: string;
   imageUrl: string;
   linkUrl?: string | null;
-  communityId?: string | null;
+  communityId: string;
   sortOrder?: number;
 }) {
   return request<AdminBannerVo>({ url: '/admin/banners', method: 'POST', data });
 }
 export function updateBannerAdmin(
   id: string,
-  data: Partial<{ title: string; imageUrl: string; linkUrl: string | null; communityId: string | null; sortOrder: number; status: string }>,
+  data: Partial<{ title: string; imageUrl: string; linkUrl: string | null; communityId: string; sortOrder: number; status: string }>,
 ) {
   return request<AdminBannerVo>({ url: `/admin/banners/${id}`, method: 'PUT', data });
 }
@@ -376,6 +458,7 @@ export interface AdminCommunityVo {
   id: string;
   name: string;
   logo: string | null;
+  backgroundImage: string | null;
   description: string | null;
   ownerId: string | null;             // P2-26
   status: 'ACTIVE' | 'DISABLED' | 'PENDING'; // P2-26 加 PENDING
@@ -397,6 +480,16 @@ export function disableCommunityAdmin(id: string) {
 }
 export function enableCommunityAdmin(id: string) {
   return request<AdminCommunityVo>({ url: `/admin/communities/${id}/enable`, method: 'POST' });
+}
+export function updateCommunityAdmin(
+  id: string,
+  data: Partial<{ name: string; logo: string; backgroundImage: string; description: string }>,
+) {
+  return request<AdminCommunityVo>({
+    url: `/admin/communities/${id}`,
+    method: 'PUT',
+    data,
+  });
 }
 
 // ===== P2-26 圈子审核 =====
