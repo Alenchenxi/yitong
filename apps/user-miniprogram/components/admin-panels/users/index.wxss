@@ -1,5 +1,38 @@
 @import "../admin-common.wxss";
 
+.adm-user-scope {
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  background: var(--yt-card);
+}
+.adm-user-scope-options { display: flex; gap: 12rpx; margin-bottom: 16rpx; }
+.adm-user-scope-btn {
+  min-width: 120rpx;
+  padding: 12rpx 20rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  text-align: center;
+  color: var(--yt-text-sub);
+  font-size: 24rpx;
+}
+.adm-user-scope-btn.on {
+  border-color: var(--yt-primary);
+  background: var(--yt-primary-light);
+  color: var(--yt-text-main);
+  font-weight: 600;
+}
+.adm-user-community {
+  padding: 14rpx 18rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  background: var(--yt-bg);
+  color: var(--yt-text-main);
+  font-size: 24rpx;
+}
+.adm-user-scope-note { margin-top: 12rpx; color: var(--yt-text-sub); font-size: 22rpx; line-height: 1.6; }
+
 /* ===== P2-30 管理员 sub-tab 扩展样式 ===== */
 /* 主要补充 dialog/badge/btn 变体；列表项复用 adm-item-* */
 

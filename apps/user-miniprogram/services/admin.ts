@@ -1,5 +1,21 @@
 import { request } from './request';
 
+export type AdminModerationScope = 'PLATFORM' | 'COMMUNITY';
+
+export interface ModerationContextsVo {
+  scopes: Array<{ scope: AdminModerationScope; label: string }>;
+  communities: Array<{ id: string; name: string }>;
+}
+
+export interface ModerationQuery {
+  scope?: AdminModerationScope;
+  communityId?: string;
+}
+
+export function getModerationContexts() {
+  return request<ModerationContextsVo>({ url: '/admin/moderation-contexts' });
+}
+
 export interface AdminQueueVo {
   merchants: Array<{
     id: string;
@@ -98,8 +114,8 @@ export interface AdminReportVo {
   resolvedAt: string | null;
   createdAt: string;
 }
-export function listReports(status?: string, page = 1, pageSize = 20) {
-  const qs = `?page=${page}&pageSize=${pageSize}${status ? `&status=${status}` : ''}`;
+export function listReports(status?: string, page = 1, pageSize = 20, query: ModerationQuery = {}) {
+  const qs = `?page=${page}&pageSize=${pageSize}${status ? `&status=${status}` : ''}${query.scope ? `&scope=${query.scope}` : ''}${query.communityId ? `&communityId=${encodeURIComponent(query.communityId)}` : ''}`;
   return request<{ list: AdminReportVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/reports${qs}` });
 }
 export function resolveReport(id: string, action: 'approve' | 'reject', result?: string, takedown?: boolean) {
@@ -131,6 +147,10 @@ export interface AdminPostVo {
   pinned: boolean;
   featured: boolean;
   createdAt: string;
+  communityId: string;
+  publisherScope: AdminModerationScope;
+  moderationAuthority: AdminModerationScope | null;
+  moderationVersion: number;
 }
 export interface AdminAnonPostVo {
   id: string;
@@ -138,14 +158,24 @@ export interface AdminAnonPostVo {
   anonId: string;
   status: string;
   createdAt: string;
+  communityId: string;
+  publisherScope: AdminModerationScope;
+  moderationAuthority: AdminModerationScope | null;
+  moderationVersion: number;
 }
-export function listPostsAdmin(page = 1, pageSize = 20, keyword?: string, status?: string) {
-  const qs = `?page=${page}&pageSize=${pageSize}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}${status ? `&status=${status}` : ''}`;
+export function listPostsAdmin(page = 1, pageSize = 20, keyword?: string, status?: string, query: ModerationQuery = {}) {
+  const qs = `?page=${page}&pageSize=${pageSize}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}${status ? `&status=${status}` : ''}${query.scope ? `&scope=${query.scope}` : ''}${query.communityId ? `&communityId=${encodeURIComponent(query.communityId)}` : ''}`;
   return request<{ list: AdminPostVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/posts${qs}` });
 }
-export function listAnonPostsAdmin(page = 1, pageSize = 20) {
-  const qs = `?page=${page}&pageSize=${pageSize}`;
+export function listAnonPostsAdmin(page = 1, pageSize = 20, query: ModerationQuery = {}) {
+  const qs = `?page=${page}&pageSize=${pageSize}${query.scope ? `&scope=${query.scope}` : ''}${query.communityId ? `&communityId=${encodeURIComponent(query.communityId)}` : ''}`;
   return request<{ list: AdminAnonPostVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/anon-posts${qs}` });
+}
+export function restorePost(id: string, expectedVersion: number) {
+  return request({ url: `/admin/posts/${id}/restore`, method: 'POST', data: { expectedVersion } });
+}
+export function restoreAnonPost(id: string, expectedVersion: number) {
+  return request({ url: `/admin/anon-posts/${id}/restore`, method: 'POST', data: { expectedVersion } });
 }
 
 // ===== F 评论管理（人工置顶）=====
@@ -269,9 +299,17 @@ export interface AdminJobPostVo {
   featured: boolean;
   merchantShopName: string;
   createdAt: string;
+  communityId: string;
+  publisherScope: AdminModerationScope;
+  moderationAuthority: AdminModerationScope | null;
+  moderationVersion: number;
 }
-export function listJobPostsAdmin(limit = 50) {
-  return request<AdminJobPostVo[]>({ url: `/admin/job-posts?limit=${limit}` });
+export function listJobPostsAdmin(page = 1, pageSize = 20, query: ModerationQuery = {}) {
+  const qs = `?page=${page}&pageSize=${pageSize}${query.scope ? `&scope=${query.scope}` : ''}${query.communityId ? `&communityId=${encodeURIComponent(query.communityId)}` : ''}`;
+  return request<{ list: AdminJobPostVo[]; total: number; page: number; pageSize: number }>({ url: `/admin/job-posts${qs}` });
+}
+export function restoreJobPost(id: string, expectedVersion: number) {
+  return request({ url: `/admin/job-posts/${id}/restore`, method: 'POST', data: { expectedVersion } });
 }
 
 // ===== 用户管理 =====
@@ -280,15 +318,21 @@ export interface AdminUserVo {
   nickname: string;
   avatarUrl: string | null;
   banned: boolean;
+  banAuthority: AdminModerationScope | null;
+  scope: AdminModerationScope;
+  communityId: string | null;
   mutedUntil: string | null;
   createdAt: string;
 }
-export function listUsers(keyword?: string) {
-  const qs = keyword ? `?keyword=${encodeURIComponent(keyword)}` : '';
+export function listUsers(keyword?: string, query: ModerationQuery = {}) {
+  const qs = `?limit=100${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}${query.scope ? `&scope=${query.scope}` : ''}${query.communityId ? `&communityId=${encodeURIComponent(query.communityId)}` : ''}`;
   return request<AdminUserVo[]>({ url: `/admin/users${qs}` });
 }
-export function banUser(id: string) {
-  return request({ url: `/admin/users/${id}/ban`, method: 'POST' });
+export function banUser(id: string, data: { scope: AdminModerationScope; communityId?: string; reason?: string }) {
+  return request({ url: `/admin/users/${id}/ban`, method: 'POST', data });
+}
+export function unbanUser(id: string, data: { scope: AdminModerationScope; communityId?: string }) {
+  return request({ url: `/admin/users/${id}/unban`, method: 'POST', data });
 }
 export function muteUser(id: string, days: number) {
   return request({ url: `/admin/users/${id}/mute`, method: 'POST', data: { days } });

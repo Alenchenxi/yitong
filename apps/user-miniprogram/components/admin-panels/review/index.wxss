@@ -1,3 +1,46 @@
 @import "../admin-common.wxss";
 
-/* review 无额外页面级样式，全部复用 admin-common */
+.adm-context {
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  background: var(--yt-card);
+}
+.adm-context-scopes { display: flex; gap: 12rpx; margin-bottom: 16rpx; }
+.adm-context-scope {
+  min-width: 120rpx;
+  padding: 12rpx 20rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  text-align: center;
+  color: var(--yt-text-sub);
+  font-size: 24rpx;
+}
+.adm-context-scope.on {
+  border-color: var(--yt-primary);
+  background: var(--yt-primary-light);
+  color: var(--yt-text-main);
+  font-weight: 600;
+}
+.adm-context-picker {
+  padding: 14rpx 18rpx;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 8rpx;
+  background: var(--yt-bg);
+  color: var(--yt-text-main);
+  font-size: 24rpx;
+}
+.adm-context-note { color: var(--yt-text-sub); font-size: 22rpx; line-height: 1.6; }
+.adm-platform-badge {
+  display: inline-block;
+  margin-right: 8rpx;
+  padding: 2rpx 10rpx;
+  border: 1rpx solid #E3BD22;
+  border-radius: 8rpx;
+  background: #FFF7D1;
+  color: #735700;
+  font-size: 20rpx;
+  font-weight: 500;
+  vertical-align: middle;
+}

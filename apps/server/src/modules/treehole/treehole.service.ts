@@ -1,6 +1,13 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { CommunityStatus, MatchKind, MatchStatus, PostStatus, Prisma } from '@prisma/client';
+import {
+  ContentVisibilityScope,
+  MatchKind,
+  MatchStatus,
+  PostStatus,
+  Prisma,
+  PublicationScope,
+} from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,6 +15,7 @@ import { ModerationService } from '../moderation/moderation.service';
 import { ImService } from '../chat/im.service';
 import { ChatService } from '../chat/chat.service';
 import { CommunityService, DEFAULT_COMMUNITY_ID } from '../community/community.service';
+import { PublicationPolicyService } from '../publication/publication-policy.service';
 import type { CreateAnonPostDto } from './dto/create-anon-post.dto';
 import type { UpdateAnonProfileDto } from './dto/update-anon-profile.dto';
 import type { AnonCommentVo } from './types';
@@ -22,6 +30,23 @@ import {
 const MATCH_TTL_MS = parseInt(process.env.TREEHOLE_MATCH_TTL_MS || `${24 * 60 * 60 * 1000}`, 10);
 const NICK_A = ['星河', '南门', '月光', '晚风', '深海', '森林', '云端', '陌路', '拾光', '孤岛'];
 const NICK_B = ['边的猫', '第二棵树', '漫游者', '低语者', '失眠人', '观察者', '拾星人', '夜行人'];
+function encodeAnonPostCursor(createdAt: Date, id: string): string {
+  return Buffer.from(JSON.stringify({ t: createdAt.toISOString(), id }), 'utf8').toString('base64url');
+}
+
+function decodeAnonPostCursor(cursor: string): { createdAt: Date; id: string | null } | null {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as { t?: string; id?: string };
+    if (parsed.t && parsed.id) {
+      const createdAt = new Date(parsed.t);
+      if (!Number.isNaN(createdAt.getTime())) return { createdAt, id: parsed.id };
+    }
+  } catch {
+    // Backward compatibility for the legacy ISO timestamp cursor below.
+  }
+  const createdAt = new Date(cursor);
+  return Number.isNaN(createdAt.getTime()) ? null : { createdAt, id: null };
+}
 
 // P0-12 匿名身份资料 VO（不含 userId/anonId，避免向前台泄露可追溯字段）
 export interface AnonProfileVo {
@@ -45,6 +70,7 @@ export class TreeholeService {
     private readonly im: ImService,
     private readonly chat: ChatService,
     private readonly community: CommunityService,
+    private readonly publicationPolicy: PublicationPolicyService,
   ) {}
 
   // 换匿名 token：find/create AnonymousProfile（userId->anonId，后台可追溯），签 anonToken（含 anonId，不含 uid）
@@ -230,6 +256,22 @@ export class TreeholeService {
   }
 
   async createPost(anonId: string, dto: CreateAnonPostDto) {
+    // 真实用户映射只在服务端策略层使用，树洞响应始终只暴露 anonId。
+    const communityId = await this.resolveInteractionCommunity(anonId);
+    await this.publicationPolicy.assertAnonCommunityInteractionAllowed(
+      anonId,
+      communityId,
+    );
+    const publisherScope = await this.publicationPolicy.resolveForAnon(anonId);
+    const platformPublished = publisherScope === PublicationScope.PLATFORM;
+    const ownerProfile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { userId: true },
+    });
+    if (!ownerProfile) {
+      throw new BizException(30001, '匿名身份已失效', HttpStatus.UNAUTHORIZED);
+    }
+
     await this.moderation.checkText(dto.content);
     for (const url of dto.images ?? []) {
       await this.moderation.checkImage(url);
@@ -238,25 +280,32 @@ export class TreeholeService {
     if (dto.mood) {
       await this.assertTagsInLibrary('mood', [dto.mood]);
     }
-    // 圈子：树洞帖归属当前圈子（服务端取数：AnonymousProfile.anonId -> userId -> active community；红线：仅内部取数，响应只含 anonId）
-    let communityId = DEFAULT_COMMUNITY_ID;
-    const profile = await this.prisma.anonymousProfile.findUnique({
-      where: { anonId },
-      select: { userId: true },
-    });
-    if (profile) {
-      communityId = await this.community.getActiveCommunityId(profile.userId);
-    }
-    const post = await this.prisma.anonymousPost.create({
-      data: {
+    const post = await this.prisma.$transaction(async (tx) => {
+      await this.publicationPolicy.assertOwnerCanManageInTransaction(
+        tx,
+        ownerProfile.userId,
+        publisherScope,
+      );
+      await this.publicationPolicy.assertCommunityInteractionAllowedInTransaction(
+        tx,
+        ownerProfile.userId,
         communityId,
-        anonId,
-        content: dto.content,
-        images: dto.images ?? [],
-        mood: dto.mood ?? null,
-        status: PostStatus.APPROVED,
-      },
-      include: { _count: { select: { comments: true } } },
+      );
+      return tx.anonymousPost.create({
+        data: {
+          communityId,
+          anonId,
+          content: dto.content,
+          images: dto.images ?? [],
+          mood: dto.mood ?? null,
+          status: PostStatus.APPROVED,
+          publisherScope,
+          visibilityScope: platformPublished
+            ? ContentVisibilityScope.ALL_COMMUNITIES
+            : ContentVisibilityScope.COMMUNITY,
+        },
+        include: { _count: { select: { comments: true } } },
+      });
     });
     return this.toVo(post);
   }
@@ -270,12 +319,10 @@ export class TreeholeService {
     if (opts.mood) baseWhere.mood = opts.mood;
     if (opts.keyword?.trim()) baseWhere.content = { contains: opts.keyword.trim(), mode: 'insensitive' };
     // 读路径圈子兜底：缺省解析用户当前圈子，未加入兜底默认圈（不抛 80014）
-    const communityId = opts.communityId ?? (await this.resolveListCommunity(anonId));
-    if (communityId) {
-      baseWhere.communityId = communityId;
-      // 圈子禁用则树洞帖不可见（广场作用域）
-      baseWhere.community = { is: { status: CommunityStatus.ACTIVE } };
-    }
+    const communityId = await this.resolveListCommunity(anonId, opts.communityId);
+    baseWhere.AND = [
+      this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+    ];
     // P0-16 广场隔离：排除与当前用户互相屏蔽的对端帖子
     const blockedPeers = await this.getBlockedPeerSet(anonId);
     if (blockedPeers.size > 0) baseWhere.anonId = { notIn: [...blockedPeers] };
@@ -306,16 +353,27 @@ export class TreeholeService {
       return { list: list.map((p) => this.toVo(p)), nextCursor: null, hasMore: false };
     }
 
-    // 最新：按 createdAt 游标分页；首页（无 cursor）前置推广中帖子，翻页不重复
-    const where: Prisma.AnonymousPostWhereInput = { ...baseWhere, OR: [{ boostUntil: null }, { boostUntil: { lte: now } }] };
-    if (opts.cursor) {
-      const t = new Date(opts.cursor);
-      if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
-    }
+    // 最新：使用 (createdAt DESC, id DESC) 复合游标；首页前置推广中帖子，翻页不重复。
+    const cursor = opts.cursor ? decodeAnonPostCursor(opts.cursor) : null;
+    const cursorFilter: Prisma.AnonymousPostWhereInput | null = cursor
+      ? {
+          OR: [
+            { createdAt: { lt: cursor.createdAt } },
+            ...(cursor.id ? [{ createdAt: cursor.createdAt, id: { lt: cursor.id } }] : []),
+          ],
+        }
+      : null;
+    const where: Prisma.AnonymousPostWhereInput = {
+      AND: [
+        baseWhere,
+        { OR: [{ boostUntil: null }, { boostUntil: { lte: now } }] },
+        ...(cursorFilter ? [cursorFilter] : []),
+      ],
+    };
     const [posts, boostedPosts] = await Promise.all([
       this.prisma.anonymousPost.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit + 1,
         include,
       }),
@@ -331,19 +389,31 @@ export class TreeholeService {
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
     const last = slice[slice.length - 1];
-    const nextCursor = hasMore && last ? last.createdAt.toISOString() : null;
+    const nextCursor = hasMore && last ? encodeAnonPostCursor(last.createdAt, last.id) : null;
     const list = opts.cursor ? slice : [...boostedPosts, ...slice];
     return { list: list.map((p) => this.toVo(p)), nextCursor, hasMore };
   }
 
   /** 列表圈子缺省解析：anonId -> userId -> 当前圈子，未加入/无画像兜底默认圈（读路径不抛 80014） */
-  private async resolveListCommunity(anonId: string): Promise<string> {
+  private async resolveListCommunity(anonId: string, requested?: string): Promise<string> {
     const profile = await this.prisma.anonymousProfile.findUnique({
       where: { anonId },
       select: { userId: true },
     });
     if (!profile) return DEFAULT_COMMUNITY_ID;
-    return this.community.resolveFeedCommunityId(profile.userId);
+    return this.community.resolveFeedCommunityId(profile.userId, requested);
+  }
+
+  /** 写路径圈子解析：匿名身份只在服务端映射真实用户，不进入任何响应。 */
+  private async resolveInteractionCommunity(anonId: string): Promise<string> {
+    const profile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { userId: true },
+    });
+    if (!profile) {
+      throw new BizException(30001, '匿名身份已失效', HttpStatus.UNAUTHORIZED);
+    }
+    return this.community.getActiveCommunityId(profile.userId);
   }
 
   // 我的匿名帖：按 userId -> anonId 查（用 access token，非 anon）
@@ -360,8 +430,15 @@ export class TreeholeService {
   }
 
   async getPost(anonId: string, id: string) {
+    const communityId = await this.resolveListCommunity(anonId);
     const post = await this.prisma.anonymousPost.findFirst({
-      where: { id, status: PostStatus.APPROVED },
+      where: {
+        id,
+        status: PostStatus.APPROVED,
+        AND: [
+          this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+        ],
+      },
       include: {
         likes: { where: { anonId }, select: { id: true }, take: 1 },
         _count: { select: { comments: true } },
@@ -386,9 +463,10 @@ export class TreeholeService {
     const postCount = await this.prisma.anonymousPost.count({
       where: {
         anonId: targetAnonId,
-        communityId,
         status: PostStatus.APPROVED,
-        community: { is: { status: CommunityStatus.ACTIVE } },
+        AND: [
+          this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+        ],
       },
     });
     return {
@@ -407,19 +485,27 @@ export class TreeholeService {
   async listAuthorPosts(anonId: string, targetAnonId: string, cursor?: string, limit = 20) {
     await this.getVisibleAnonProfile(anonId, targetAnonId);
     const communityId = await this.resolveListCommunity(anonId);
+    const decodedCursor = cursor ? decodeAnonPostCursor(cursor) : null;
     const where: Prisma.AnonymousPostWhereInput = {
       anonId: targetAnonId,
-      communityId,
       status: PostStatus.APPROVED,
-      community: { is: { status: CommunityStatus.ACTIVE } },
+      AND: [
+        this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+        ...(decodedCursor
+          ? [{
+              OR: [
+                { createdAt: { lt: decodedCursor.createdAt } },
+                ...(decodedCursor.id
+                  ? [{ createdAt: decodedCursor.createdAt, id: { lt: decodedCursor.id } }]
+                  : []),
+              ],
+            }]
+          : []),
+      ],
     };
-    if (cursor) {
-      const t = new Date(cursor);
-      if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
-    }
     const posts = await this.prisma.anonymousPost.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       include: {
         likes: { where: { anonId }, select: { id: true }, take: 1 },
@@ -431,7 +517,7 @@ export class TreeholeService {
     const last = list[list.length - 1];
     return {
       list: list.map((post) => this.toVo(post)),
-      nextCursor: hasMore && last ? last.createdAt.toISOString() : null,
+      nextCursor: hasMore && last ? encodeAnonPostCursor(last.createdAt, last.id) : null,
       hasMore,
     };
   }
@@ -880,6 +966,7 @@ export class TreeholeService {
         targetId: groupId,
         reason: reason ?? '用户举报群聊',
         reporterId: anonId,
+        targetPublisherScope: PublicationScope.PLATFORM,
       },
     });
     return { reported: true };
@@ -966,8 +1053,21 @@ export class TreeholeService {
 
   // 匿名点赞 toggle（去重/取消）
   async toggleAnonPostLike(anonId: string, postId: string) {
-    const post = await this.prisma.anonymousPost.findUnique({ where: { id: postId } });
+    const communityId = await this.resolveInteractionCommunity(anonId);
+    const post = await this.prisma.anonymousPost.findFirst({
+      where: {
+        id: postId,
+        status: PostStatus.APPROVED,
+        AND: [
+          this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+        ],
+      },
+    });
     if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    await this.publicationPolicy.assertAnonCommunityInteractionAllowed(
+      anonId,
+      communityId,
+    );
     const existing = await this.prisma.anonPostLike.findUnique({
       where: { postId_anonId: { postId, anonId } },
     });
@@ -1007,11 +1107,22 @@ export class TreeholeService {
 
   // 创建评论：验帖 + 屏蔽 + 内容安全（命中抛 90002），写 anonId（0 真实 uid）
   async createComment(anonId: string, postId: string, content: string): Promise<AnonCommentVo> {
+    const communityId = await this.resolveInteractionCommunity(anonId);
     const post = await this.prisma.anonymousPost.findFirst({
-      where: { id: postId, status: PostStatus.APPROVED },
+      where: {
+        id: postId,
+        status: PostStatus.APPROVED,
+        AND: [
+          this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+        ],
+      },
       select: { id: true, anonId: true },
     });
     if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    await this.publicationPolicy.assertAnonCommunityInteractionAllowed(
+      anonId,
+      communityId,
+    );
     // P0-16 互相屏蔽：不可评论
     if (await this.isBlockedEither(anonId, post.anonId)) {
       throw new BizException(30005, '内容不可见', HttpStatus.FORBIDDEN);
@@ -1025,8 +1136,15 @@ export class TreeholeService {
 
   // 评论列表：page 分页，最新优先；每条带当前匿名态是否已赞 + 楼主标记
   async listComments(anonId: string, postId: string, page: number, pageSize: number) {
+    const communityId = await this.resolveListCommunity(anonId);
     const post = await this.prisma.anonymousPost.findFirst({
-      where: { id: postId, status: PostStatus.APPROVED },
+      where: {
+        id: postId,
+        status: PostStatus.APPROVED,
+        AND: [
+          this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+        ],
+      },
       select: { id: true, anonId: true },
     });
     if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
@@ -1053,8 +1171,23 @@ export class TreeholeService {
 
   // 评论点赞 toggle（去重/取消，镜像 confession toggleCommentLike）
   async toggleCommentLike(anonId: string, commentId: string) {
-    const comment = await this.prisma.anonComment.findUnique({ where: { id: commentId } });
+    const communityId = await this.resolveInteractionCommunity(anonId);
+    const comment = await this.prisma.anonComment.findFirst({
+      where: {
+        id: commentId,
+        post: {
+          status: PostStatus.APPROVED,
+          AND: [
+            this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+          ],
+        },
+      },
+    });
     if (!comment) throw new BizException(30010, '评论不存在', HttpStatus.NOT_FOUND);
+    await this.publicationPolicy.assertAnonCommunityInteractionAllowed(
+      anonId,
+      communityId,
+    );
     const existing = await this.prisma.anonCommentLike.findUnique({
       where: { commentId_anonId: { commentId, anonId } },
     });
@@ -1227,6 +1360,7 @@ export class TreeholeService {
     mood: string | null;
     status: PostStatus;
     likeCount: number;
+    publisherScope: PublicationScope;
     viewCount: number;
     boostUntil: Date | null;
     createdAt: Date;
@@ -1241,6 +1375,7 @@ export class TreeholeService {
       mood: p.mood,
       likeCount: p.likeCount,
       liked: (p.likes?.length ?? 0) > 0,
+      platformPublished: p.publisherScope === PublicationScope.PLATFORM,
       commentCount: p._count?.comments ?? 0,
       viewCount: p.viewCount,
       boosted: p.boostUntil ? p.boostUntil.getTime() > Date.now() : false, // 内容推广

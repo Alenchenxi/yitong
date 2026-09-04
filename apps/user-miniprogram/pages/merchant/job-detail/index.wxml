@@ -3,7 +3,7 @@
   <!-- Card 1 标题卡：状态徽标 + 权益不足徽标 + 标题 + 薪资 + chip -->
   <view class="yt-card hero">
     <view class="hero-top">
-      <view class="hero-status">✨ 竞招职位·{{post.status === 'PENDING' ? '待发布' : post.status === 'PUBLISHED' ? '已发布' : post.status === 'TAKEN_DOWN' ? '已下架' : '已过期'}}</view>
+      <view class="hero-status"><text wx:if="{{post.platformPublished}}" class="yt-platform-badge">平台发布</text>✨ 竞招职位·{{post.status === 'PENDING' ? '待发布' : post.status === 'PUBLISHED' ? '已发布' : post.status === 'TAKEN_DOWN' ? '已下架' : '已过期'}}</view>
       <view class="hero-badge" wx:if="{{post.status === 'PENDING'}}">权益不足</view>
     </view>
     <view class="hero-time">发布于 {{createdAtText}}</view>

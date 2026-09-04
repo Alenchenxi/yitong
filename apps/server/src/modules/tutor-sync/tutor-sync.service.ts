@@ -6,6 +6,7 @@ import {
   JobDuration,
   JobPostStatus,
   JobVisibilityScope,
+  PublicationScope,
   Prisma,
   Settlement,
 } from '@prisma/client';
@@ -464,6 +465,7 @@ export class TutorSyncService {
       duration: JobDuration.D90,
       expireAt: null,
       visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
+      publisherScope: PublicationScope.PLATFORM,
       applyMode: JobApplyMode.CONTACT_ONLY,
       publisherName: TUTOR_SYNC_PUBLISHER,
     };

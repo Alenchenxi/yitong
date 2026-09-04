@@ -22,6 +22,11 @@ import {
 } from './dto/admin-type.dto';
 import { UpdateCommunityDto } from './dto/update-community.dto';
 import {
+  ModerationContextDto,
+  ModerateUserDto,
+  RestoreModeratedContentDto,
+} from './dto/moderation-context.dto';
+import {
   AllowAnyAdmin,
   RequireAdminPermission,
 } from './admin-access.decorator';
@@ -42,6 +47,12 @@ export class AdminController {
     return ok((req as AuthenticatedRequest).adminAccess);
   }
 
+  @Get('moderation-contexts')
+  @AllowAnyAdmin()
+  async getModerationContexts(@Req() req: Request) {
+    return ok(await this.admin.getModerationContexts((req as AuthenticatedRequest).adminAccess!));
+  }
+
   @Get('queue')
   @RequireAdminPermission(ADMIN_PERMISSIONS.MERCHANT_REVIEW)
   async queue() {
@@ -51,9 +62,22 @@ export class AdminController {
   // P1-28 举报处理队列
   @Get('reports')
   @RequireAdminPermission(ADMIN_PERMISSIONS.REPORT_MANAGE)
-  async listReports(@Query('status') status?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  async listReports(
+    @Query('status') status: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('pageSize') pageSize: string | undefined,
+    @Query() context: ModerationContextDto,
+    @Req() req: Request,
+  ) {
     return ok(
-      await this.admin.listReports(status, Math.max(1, Number(page) || 1), Math.min(100, Math.max(1, Number(pageSize) || 20))),
+      await this.admin.listReports(
+        status,
+        Math.max(1, Number(page) || 1),
+        Math.min(100, Math.max(1, Number(pageSize) || 20)),
+        (req as AuthenticatedRequest).adminAccess!,
+        context.scope,
+        context.communityId,
+      ),
     );
   }
 
@@ -61,7 +85,7 @@ export class AdminController {
   @RequireAdminPermission(ADMIN_PERMISSIONS.REPORT_MANAGE)
   async resolveReport(@Param('id') id: string, @Body() dto: ResolveReportDto, @Req() req: Request) {
     const uid = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.admin.resolveReport(id, uid, dto));
+    return ok(await this.admin.resolveReport(id, uid, dto, (req as AuthenticatedRequest).adminAccess!));
   }
 
   @Get('stats')
@@ -118,6 +142,27 @@ export class AdminController {
     return ok(await this.admin.takedownJobPost(id, uid, reason, (req as AuthenticatedRequest).adminAccess!));
   }
 
+  @Post('posts/:id/restore')
+  @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
+  async restorePost(@Param('id') id: string, @Body() dto: RestoreModeratedContentDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.restorePost(id, dto.expectedVersion, uid, (req as AuthenticatedRequest).adminAccess!));
+  }
+
+  @Post('anon-posts/:id/restore')
+  @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
+  async restoreAnonPost(@Param('id') id: string, @Body() dto: RestoreModeratedContentDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.restoreAnonPost(id, dto.expectedVersion, uid, (req as AuthenticatedRequest).adminAccess!));
+  }
+
+  @Post('job-posts/:id/restore')
+  @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
+  async restoreJobPost(@Param('id') id: string, @Body() dto: RestoreModeratedContentDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.restoreJobPost(id, dto.expectedVersion, uid, (req as AuthenticatedRequest).adminAccess!));
+  }
+
   // P2-05 帖子置顶/取消置顶
   @Post('posts/:id/pin')
   @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
@@ -169,15 +214,33 @@ export class AdminController {
   // ===== 用户管理 =====
   @Get('users')
   @RequireAdminPermission(ADMIN_PERMISSIONS.USER_MANAGE)
-  async listUsers(@Query('keyword') keyword: string | undefined, @Query('limit') limit: string | undefined) {
-    return ok(await this.admin.listUsers(keyword, limit ? Number(limit) : 50));
+  async listUsers(
+    @Query('keyword') keyword: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Query('scope') scope: ModerationContextDto['scope'],
+    @Query('communityId') communityId: string | undefined,
+    @Req() req: Request,
+  ) {
+    return ok(await this.admin.listUsers(keyword, limit ? Number(limit) : 50, scope, communityId, (req as AuthenticatedRequest).adminAccess!));
   }
 
   // ===== 兼职岗位列表（admin，精品管理）=====
   @Get('job-posts')
   @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
-  async listJobPostsAdmin(@Req() req: Request, @Query('limit') limit: string | undefined) {
-    return ok(await this.admin.listJobPostsAdmin(limit ? Number(limit) : 50, (req as AuthenticatedRequest).adminAccess!));
+  async listJobPostsAdmin(
+    @Req() req: Request,
+    @Query('page') page: string | undefined,
+    @Query('pageSize') pageSize: string | undefined,
+    @Query('scope') scope: ModerationContextDto['scope'],
+    @Query('communityId') communityId: string | undefined,
+  ) {
+    return ok(await this.admin.listJobPostsAdmin(
+      Math.max(1, Number(page) || 1),
+      Math.min(100, Math.max(1, Number(pageSize) || 20)),
+      scope,
+      communityId,
+      (req as AuthenticatedRequest).adminAccess!,
+    ));
   }
 
   // C 帖子分页管理（getQueue 精简掉 posts/anonPosts 后的独立分页接口）
@@ -188,6 +251,8 @@ export class AdminController {
     @Query('pageSize') pageSize?: string,
     @Query('keyword') keyword?: string,
     @Query('status') status?: string,
+    @Query('scope') scope?: ModerationContextDto['scope'],
+    @Query('communityId') communityId?: string,
     @Req() req?: Request,
   ) {
     return ok(
@@ -196,6 +261,8 @@ export class AdminController {
         Math.min(100, Math.max(1, Number(pageSize) || 20)),
         keyword,
         status,
+        scope,
+        communityId,
         (req as AuthenticatedRequest).adminAccess!,
       ),
     );
@@ -203,11 +270,19 @@ export class AdminController {
 
   @Get('anon-posts')
   @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
-  async listAnonPostsAdmin(@Req() req: Request, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  async listAnonPostsAdmin(
+    @Req() req: Request,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('scope') scope?: ModerationContextDto['scope'],
+    @Query('communityId') communityId?: string,
+  ) {
     return ok(
       await this.admin.listAnonPostsAdmin(
         Math.max(1, Number(page) || 1),
         Math.min(100, Math.max(1, Number(pageSize) || 20)),
+        scope,
+        communityId,
         (req as AuthenticatedRequest).adminAccess!,
       ),
     );
@@ -274,8 +349,16 @@ export class AdminController {
 
   @Post('users/:id/ban')
   @RequireAdminPermission(ADMIN_PERMISSIONS.USER_MANAGE)
-  async banUser(@Param('id') id: string) {
-    return ok(await this.admin.banUser(id));
+  async banUser(@Param('id') id: string, @Body() dto: ModerateUserDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.banUser(id, dto.scope, dto.communityId, dto.reason, uid, (req as AuthenticatedRequest).adminAccess!));
+  }
+
+  @Post('users/:id/unban')
+  @RequireAdminPermission(ADMIN_PERMISSIONS.USER_MANAGE)
+  async unbanUser(@Param('id') id: string, @Body() dto: ModerationContextDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.admin.unbanUser(id, dto.scope, dto.communityId, uid, (req as AuthenticatedRequest).adminAccess!));
   }
 
   // P1-12 禁言（body { days?: number }；不传或 0 = 解除）

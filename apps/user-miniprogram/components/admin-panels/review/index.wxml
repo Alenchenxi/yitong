@@ -4,6 +4,29 @@
     <view wx:for="{{allowedSubs}}" wx:key="*this" class="adm-subtab {{sub === item ? 'on' : ''}}" data-sub="{{item}}" bindtap="switchSub">{{subLabels[item]}}</view>
   </scroll-view>
 
+  <view class="adm-context" wx:if="{{sub === 'posts' || sub === 'anon' || sub === 'reports' || sub === 'jobs'}}">
+    <view class="adm-context-scopes">
+      <view
+        wx:for="{{moderationScopes}}"
+        wx:key="scope"
+        class="adm-context-scope {{moderationScope === item.scope ? 'on' : ''}}"
+        data-scope="{{item.scope}}"
+        bindtap="switchModerationScope"
+      >{{item.label}}</view>
+    </view>
+    <picker
+      wx:if="{{moderationScope === 'COMMUNITY'}}"
+      mode="selector"
+      range="{{moderationCommunityOptions}}"
+      range-key="name"
+      value="{{moderationCommunityIndex}}"
+      bindchange="onModerationCommunityChange"
+    >
+      <view class="adm-context-picker">{{moderationCommunityOptions[moderationCommunityIndex].name || '选择圈子'}}</view>
+    </picker>
+    <view class="adm-context-note" wx:if="{{moderationScope === 'PLATFORM'}}">平台内容仅平台管理员可管理，处置结果对所有圈子生效</view>
+  </view>
+
   <!-- 商家入驻 -->
   <block wx:if="{{sub === 'merchant' && queue}}">
     <view class="adm-filter">
@@ -41,32 +64,34 @@
     </view>
     <view class="adm-item" wx:for="{{posts}}" wx:key="id">
       <view class="adm-item-main">
-        <text class="adm-item-title">{{item.content}}</text>
+        <text class="adm-item-title"><text wx:if="{{item.publisherScope === 'PLATFORM'}}" class="adm-platform-badge">平台发布</text>{{item.content}}</text>
         <text class="adm-item-sub">{{item.authorNickname}} · {{item.circleName}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text>{{item.pinned ? ' · 置顶' : ''}}{{item.featured ? ' · 精' : ''}}</text>
       </view>
       <view class="adm-item-actions">
         <button size="mini" data-id="{{item.id}}" data-pinned="{{item.pinned}}" bindtap="togglePin">{{item.pinned ? '取消置顶' : '置顶'}}</button>
         <button size="mini" data-id="{{item.id}}" data-featured="{{item.featured}}" bindtap="toggleFeature">{{item.featured ? '取消加精' : '加精'}}</button>
         <button wx:if="{{item.status === 'APPROVED'}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="takedown">下架</button>
+        <button wx:if="{{item.status === 'REJECTED' && item.moderationAuthority && (isPlatformAdmin || item.moderationAuthority === 'COMMUNITY')}}" size="mini" data-id="{{item.id}}" data-version="{{item.moderationVersion}}" bindtap="restorePostTap">恢复</button>
       </view>
     </view>
-    <view class="adm-loadmore" wx:if="{{postHasMore}}" bindtap="loadMorePosts">加载更多</view>
-    <view class="adm-empty" wx:if="{{posts.length === 0}}">暂无帖子</view>
+    <view class="adm-loadmore" wx:if="{{postHasMore}}" bindtap="loadMorePosts">{{loadingMore ? '加载中…' : '加载更多'}}</view>
+    <view class="adm-empty" wx:if="{{!loading && posts.length === 0}}">暂无帖子</view>
   </block>
 
   <!-- 树洞帖 -->
   <block wx:if="{{sub === 'anon'}}">
     <view class="adm-item" wx:for="{{anonPosts}}" wx:key="id">
       <view class="adm-item-main">
-        <text class="adm-item-title">{{item.content}}</text>
+        <text class="adm-item-title"><text wx:if="{{item.publisherScope === 'PLATFORM'}}" class="adm-platform-badge">平台发布</text>{{item.content}}</text>
         <text class="adm-item-sub">{{item.anonId}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text></text>
       </view>
       <view class="adm-item-actions">
         <button wx:if="{{item.status === 'APPROVED'}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="takedownAnon">下架</button>
+        <button wx:if="{{item.status === 'REJECTED' && item.moderationAuthority && (isPlatformAdmin || item.moderationAuthority === 'COMMUNITY')}}" size="mini" data-id="{{item.id}}" data-version="{{item.moderationVersion}}" bindtap="restoreAnonPostTap">恢复</button>
       </view>
     </view>
-    <view class="adm-loadmore" wx:if="{{anonPostHasMore}}" bindtap="loadMoreAnonPosts">加载更多</view>
-    <view class="adm-empty" wx:if="{{anonPosts.length === 0}}">暂无树洞帖</view>
+    <view class="adm-loadmore" wx:if="{{anonPostHasMore}}" bindtap="loadMoreAnonPosts">{{loadingMore ? '加载中…' : '加载更多'}}</view>
+    <view class="adm-empty" wx:if="{{!loading && anonPosts.length === 0}}">暂无树洞帖</view>
   </block>
 
   <!-- 评论 -->
@@ -90,8 +115,8 @@
         <button size="mini" data-id="{{item.id}}" data-pinned="{{item.pinned}}" bindtap="pinCommentTap">{{item.pinned ? '取消置顶' : '置顶'}}</button>
       </view>
     </view>
-    <view class="adm-loadmore" wx:if="{{commentHasMore}}" bindtap="loadMoreComments">加载更多</view>
-    <view class="adm-empty" wx:if="{{comments.length === 0}}">暂无评论</view>
+    <view class="adm-loadmore" wx:if="{{commentHasMore}}" bindtap="loadMoreComments">{{loadingMore ? '加载中…' : '加载更多'}}</view>
+    <view class="adm-empty" wx:if="{{!loading && comments.length === 0}}">暂无评论</view>
   </block>
 
   <!-- 举报处理 -->
@@ -112,20 +137,23 @@
         <button size="mini" data-id="{{item.id}}" data-action="reject" bindtap="resolveReportTap">驳回</button>
       </view>
     </view>
-    <view class="adm-empty" wx:if="{{reports.length === 0}}">暂无举报</view>
+    <view class="adm-loadmore" wx:if="{{reportHasMore}}" bindtap="loadMoreReports">{{loadingMore ? '加载中…' : '加载更多'}}</view>
+    <view class="adm-empty" wx:if="{{!loading && reports.length === 0}}">暂无举报</view>
   </block>
 
   <!-- 岗位（R4 管理员主动下架）-->
   <block wx:if="{{sub === 'jobs'}}">
     <view class="adm-item" wx:for="{{jobs}}" wx:key="id">
       <view class="adm-item-main">
-        <text class="adm-item-title">{{item.title}}</text>
+        <text class="adm-item-title"><text wx:if="{{item.publisherScope === 'PLATFORM'}}" class="adm-platform-badge">平台发布</text>{{item.title}}</text>
         <text class="adm-item-sub">{{item.merchantShopName}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text>{{item.urgent ? ' · 急招' : ''}}{{item.featured ? ' · 精' : ''}}</text>
       </view>
       <view class="adm-item-actions">
         <button wx:if="{{item.status === 'PUBLISHED'}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="takedownJob">下架</button>
+        <button wx:if="{{item.status === 'TAKEN_DOWN' && item.moderationAuthority && (isPlatformAdmin || item.moderationAuthority === 'COMMUNITY')}}" size="mini" data-id="{{item.id}}" data-version="{{item.moderationVersion}}" bindtap="restoreJobPostTap">恢复</button>
       </view>
     </view>
-    <view class="adm-empty" wx:if="{{jobs.length === 0}}">暂无岗位</view>
+    <view class="adm-loadmore" wx:if="{{jobHasMore}}" bindtap="loadMoreJobs">{{loadingMore ? '加载中…' : '加载更多'}}</view>
+    <view class="adm-empty" wx:if="{{!loading && jobs.length === 0}}">暂无岗位</view>
   </block>
 </view>

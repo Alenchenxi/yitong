@@ -1,6 +1,7 @@
 <view class="card {{disabled ? 'card-disabled' : ''}}" wx:if="{{post}}" bindtap="onTap">
   <!-- P2-05 置顶/加精角标（匿名卡不展示运营角标）+ 内容推广角标（匿名/树洞同样展示） -->
-  <view class="badges" wx:if="{{post.boosted || (!anonymous && (post.pinned || post.featured))}}">
+  <view class="badges" wx:if="{{post.platformPublished || post.boosted || (!anonymous && (post.pinned || post.featured))}}">
+    <text class="badge badge-platform" wx:if="{{post.platformPublished}}">平台发布</text>
     <text class="badge badge-pin" wx:if="{{post.pinned}}">置顶</text>
     <text class="badge badge-feature" wx:if="{{post.featured}}">精</text>
     <text class="badge badge-boost" wx:if="{{post.boosted}}">推广</text>

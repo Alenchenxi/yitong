@@ -3,7 +3,8 @@
     <text class="title">{{job.title}}</text>
     <text class="salary">{{job.salary}}</text>
   </view>
-  <view class="badges" wx:if="{{job.urgent || job.online}}">
+  <view class="badges" wx:if="{{job.platformPublished || job.urgent || job.online}}">
+    <text class="bd bd-platform" wx:if="{{job.platformPublished}}">平台发布</text>
     <text class="bd bd-urgent" wx:if="{{job.urgent}}">急招</text>
     <text class="bd bd-online" wx:if="{{job.online}}">可线上</text>
   </view>

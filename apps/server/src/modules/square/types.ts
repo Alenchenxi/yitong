@@ -15,8 +15,8 @@ export interface SquareFeedResult {
   hasMore: boolean;
 }
 
-// 今日上头：近24h 浏览量 TopN（kind post|anon_post，无游标；附 viewCount 供展示）
-export type TodayHitItem = FeedItemVo & { viewCount: number };
+// 今日上头：近24h 浏览量 TopN（仅表白墙和树洞，无游标；附 viewCount 供展示）
+export type TodayHitItem = Extract<FeedItemVo, { kind: 'post' | 'anon_post' }> & { viewCount: number };
 export interface SquareTodayHitResult {
   list: TodayHitItem[];
 }

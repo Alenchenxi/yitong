@@ -1,7 +1,7 @@
 /**
  * 招聘沟通回归测试：全部使用 Prisma mock，不连接数据库，不产生测试数据。
  */
-import { AppStatus, JobDuration, JobPostStatus, PayScene, PayStatus } from '@prisma/client';
+import { AppStatus, JobDuration, JobPostStatus, PayScene, PayStatus, PublicationScope } from '@prisma/client';
 import { validate } from 'class-validator';
 import { BizException } from '../../src/common/exceptions/biz.exception';
 import { CreateInterviewInvitationDto, SendJobExchangeDto } from '../../src/modules/job-communication/dto/job-communication.dto';
@@ -671,24 +671,43 @@ describe('PaymentService 岗位发布联系方式快照', () => {
       jobPostId: 'post_a',
       wxTransactionId: null,
     };
-    const paymentUpdate = Promise.resolve({ id: order.id });
-    const postUpdate = Promise.resolve({ id: order.jobPostId });
+    const tx = {
+      $queryRawUnsafe: jest.fn().mockResolvedValue([{
+        id: order.jobPostId,
+        publisherScope: PublicationScope.COMMUNITY,
+        communityId: 'community_a',
+      }]),
+      paymentOrder: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      jobPost: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
     const prisma = {
       paymentOrder: {
         findUnique: jest.fn().mockResolvedValue(order),
-        update: jest.fn().mockReturnValue(paymentUpdate),
       },
       merchant: {
         findUnique: jest.fn().mockResolvedValue({
+          userId: 'merchant_user',
           contactPhone: '13900000000',
           contactWechat: 'latest-wechat',
         }),
       },
       jobPost: {
-        update: jest.fn().mockReturnValue(postUpdate),
-        findUnique: jest.fn().mockResolvedValue(null),
+        findUnique: jest.fn()
+          .mockResolvedValueOnce({ publisherScope: PublicationScope.COMMUNITY })
+          .mockResolvedValueOnce(null),
       },
-      $transaction: jest.fn().mockResolvedValue([{ id: order.id }, { id: order.jobPostId }]),
+      $transaction: jest.fn(
+        (callback: (client: typeof tx) => unknown) => callback(tx),
+      ),
+    };
+    const publicationPolicy = {
+      assertOwnerCanManage: jest.fn().mockResolvedValue(undefined),
+      assertOwnerCanManageInTransaction: jest.fn().mockResolvedValue(undefined),
+      assertCommunityInteractionAllowedInTransaction: jest.fn().mockResolvedValue(undefined),
     };
     const service = new PaymentService(
       prisma as never,
@@ -697,16 +716,28 @@ describe('PaymentService 岗位发布联系方式快照', () => {
       { create: jest.fn() } as never,
       {} as never,
       {} as never,
+      publicationPolicy as never,
     );
 
     await service.fulfillOrder(order.id);
 
     expect(prisma.merchant.findUnique).toHaveBeenCalledWith({
       where: { id: order.merchantId },
-      select: { contactPhone: true, contactWechat: true },
+      select: { userId: true, contactPhone: true, contactWechat: true },
     });
-    expect(prisma.jobPost.update).toHaveBeenCalledWith({
-      where: { id: order.jobPostId },
+    expect(tx.$queryRawUnsafe).toHaveBeenCalledWith(
+      expect.stringContaining('FOR UPDATE'),
+      order.jobPostId,
+    );
+    expect(tx.paymentOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: order.id, status: PayStatus.PENDING },
+    }));
+    expect(tx.jobPost.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: order.jobPostId,
+        status: JobPostStatus.PENDING,
+        moderationAuthority: null,
+      },
       data: expect.objectContaining({
         status: JobPostStatus.PUBLISHED,
         contactPhoneSnapshot: '13900000000',

@@ -50,7 +50,7 @@
   <!-- 广场列表 -->
   <view class="list" wx:if="{{posts.length > 0}}">
     <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
-      <view class="anon" data-anon-id="{{item.anonId}}" catchtap="goAuthor">🌙 {{item.anonShort}}<text wx:if="{{item.mood}}" class="post-mood">{{item.mood}}</text><text wx:if="{{item.boosted}}" class="post-boost">推广</text></view>
+      <view class="anon" data-anon-id="{{item.anonId}}" catchtap="goAuthor">🌙 {{item.anonShort}}<text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text><text wx:if="{{item.mood}}" class="post-mood">{{item.mood}}</text><text wx:if="{{item.boosted}}" class="post-boost">推广</text></view>
       <view class="content">{{item.content}}</view>
       <view class="post-images {{item.images.length === 1 ? 'post-images-1' : item.images.length === 2 ? 'post-images-2' : ''}}" wx:if="{{item.images.length > 0}}">
         <image

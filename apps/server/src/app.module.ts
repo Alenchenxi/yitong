@@ -30,6 +30,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { JobCommunicationModule } from './modules/job-communication/job-communication.module';
 import { TutorSyncModule } from './modules/tutor-sync/tutor-sync.module';
 import { AppConfigModule } from './modules/app-config/app-config.module';
+import { PublicationModule } from './modules/publication/publication.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AppConfigModule } from './modules/app-config/app-config.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), // 全局：每 IP 100 req/min（API 规范 §8）
     PrismaModule,
     AppConfigModule,
+    PublicationModule,
     WxModule,
     AuthModule,
     ModerationModule,

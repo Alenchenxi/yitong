@@ -5,6 +5,7 @@ export type PostVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT';
 export interface PostVo {
   id: string;
   circleId: string;
+  platformPublished: boolean;
   authorId: string;
   authorNickname: string;
   authorAvatarUrl: string | null;

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   CommunityStatus,
   JobVisibilityScope,
+  PublicationScope,
   type Prisma,
 } from '@prisma/client';
 
@@ -14,8 +15,13 @@ export class JobVisibilityPolicyService {
     return [
       {
         OR: [
-          { visibilityScope: JobVisibilityScope.ALL_COMMUNITIES },
           {
+            publisherScope: PublicationScope.PLATFORM,
+            visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
+          },
+          {
+            publisherScope: PublicationScope.COMMUNITY,
+            visibilityScope: JobVisibilityScope.COMMUNITY,
             communityId,
             community: { is: { status: CommunityStatus.ACTIVE } },
           },

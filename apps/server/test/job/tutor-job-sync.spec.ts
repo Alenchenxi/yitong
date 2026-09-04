@@ -12,6 +12,7 @@ import {
   JobDuration,
   JobPostStatus,
   JobVisibilityScope,
+  PublicationScope,
   Settlement,
 } from '@prisma/client';
 import { AdminService } from '../../src/modules/admin/admin.service';
@@ -729,7 +730,12 @@ describe('AdminService 家教岗位举报处置', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       jobPost: {
-        findUnique: jest.fn().mockResolvedValue({ merchant: null }),
+        findUnique: jest.fn().mockResolvedValue({
+          merchant: null,
+          status: JobPostStatus.PUBLISHED,
+          moderationAuthority: null,
+          moderationVersion: 0,
+        }),
       },
       $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
     };
@@ -803,13 +809,35 @@ describe('AdminService 家教岗位举报处置', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(policySpy).toHaveBeenCalledWith(tx, 'post_a', expect.any(Date), {
       requireTutorBinding: false,
-      publishedOnly: false,
+      publishedOnly: true,
     });
     expect(tx.tutorJobSyncBinding.updateMany).toHaveBeenCalledWith({
       where: { jobPostId: 'post_a' },
       data: { platformBlockedAt: expect.any(Date) },
     });
     expect(tx.moderationRecord.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('岗位下架 CAS 失败时不得返回成功或写入同步封禁', async () => {
+    const tx = {
+      tutorJobSyncBinding: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        updateMany: jest.fn(),
+      },
+      jobPost: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const policy = new TutorJobPolicyService();
+
+    await expect(policy.takeDownJobPostWithGuard(
+      tx as never,
+      'post_a',
+      new Date(),
+      { requireTutorBinding: false, publishedOnly: true },
+    )).resolves.toBe(false);
+
+    expect(tx.tutorJobSyncBinding.updateMany).not.toHaveBeenCalled();
   });
 });
 
@@ -1572,8 +1600,13 @@ describe('同步全圈可见策略', () => {
     expect(filters).toEqual([
       {
         OR: [
-          { visibilityScope: JobVisibilityScope.ALL_COMMUNITIES },
           {
+            publisherScope: PublicationScope.PLATFORM,
+            visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
+          },
+          {
+            publisherScope: PublicationScope.COMMUNITY,
+            visibilityScope: JobVisibilityScope.COMMUNITY,
             communityId: 'community_a',
             community: { is: { status: CommunityStatus.ACTIVE } },
           },

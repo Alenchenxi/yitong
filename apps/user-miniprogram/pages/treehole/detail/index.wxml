@@ -9,7 +9,7 @@
 
   <block wx:else>
     <view wx:if="{{post}}" class="card">
-      <view class="anon" catchtap="goAuthor">树洞 {{post.anonShort}}<text class="boost-badge" wx:if="{{post.boosted}}">推广</text></view>
+      <view class="anon" catchtap="goAuthor">树洞 {{post.anonShort}}<text wx:if="{{post.platformPublished}}" class="yt-platform-badge">平台发布</text><text class="boost-badge" wx:if="{{post.boosted}}">推广</text></view>
       <view class="content">{{post.content}}</view>
       <view wx:if="{{post.images.length > 0}}" class="images">
         <image wx:for="{{post.images}}" wx:key="*this" class="image" src="{{item}}" mode="aspectFill" data-src="{{item}}" catchtap="previewImage" />

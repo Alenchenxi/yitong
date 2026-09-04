@@ -44,10 +44,11 @@ export class TutorJobPolicyService {
 
     const data = { status: JobPostStatus.TAKEN_DOWN, takenDownAt: blockedAt };
     if (options.publishedOnly) {
-      await tx.jobPost.updateMany({
+      const result = await tx.jobPost.updateMany({
         where: { id: jobPostId, status: JobPostStatus.PUBLISHED },
         data,
       });
+      if (result.count !== 1) return false;
     } else {
       await tx.jobPost.update({ where: { id: jobPostId }, data });
     }

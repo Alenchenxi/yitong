@@ -42,6 +42,7 @@ export interface JobPostVo {
   visibilityScope: JobVisibilityScope;
   applyMode: JobApplyMode;
   isExternalSource: boolean;
+  platformPublished: boolean;
   status: JobPostStatus;
   takenDownAt: string | null;
   deletedAt: string | null;

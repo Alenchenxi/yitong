@@ -14,6 +14,7 @@ import { PrismaService } from '../../src/prisma/prisma.service';
 import { ImService } from '../../src/modules/chat/im.service';
 import { ChatService } from '../../src/modules/chat/chat.service';
 import { CommunityService } from '../../src/modules/community/community.service';
+import { PublicationPolicyService } from '../../src/modules/publication/publication-policy.service';
 
 let passed = 0;
 let failed = 0;
@@ -53,6 +54,7 @@ function makeModeration(hit: boolean): ModerationService {
 }
 
 interface FakePrisma {
+  anonymousProfile: { findUnique: () => Promise<{ userId: string }> };
   anonymousPost: { findFirst: () => Promise<{ id: string; anonId: string } | null> };
   anonBlock: { findFirst: () => Promise<{ id: string } | null> };
   anonComment: { create: () => Promise<{ id: string; postId: string; anonId: string; content: string; likeCount: number; createdAt: Date }> };
@@ -61,6 +63,9 @@ interface FakePrisma {
 function makePrisma(opts: { post: boolean; blocked: boolean }): { fake: FakePrisma; created: () => number } {
   let created = 0;
   const fake: FakePrisma = {
+    anonymousProfile: {
+      findUnique: async () => ({ userId: 'user_1' }),
+    },
     anonymousPost: {
       findFirst: async () => (opts.post ? { id: 'post_1', anonId: 'anon_author' } : null),
     },
@@ -84,7 +89,13 @@ function newService(fake: FakePrisma, moderation: ModerationService): TreeholeSe
     moderation,
     {} as unknown as ImService,
     {} as unknown as ChatService,
-    {} as unknown as CommunityService,
+    {
+      getActiveCommunityId: async () => 'cm_default',
+    } as unknown as CommunityService,
+    {
+      anonymousPostVisibilityFilter: () => ({}),
+      assertAnonCommunityInteractionAllowed: async () => undefined,
+    } as unknown as PublicationPolicyService,
   );
 }
 

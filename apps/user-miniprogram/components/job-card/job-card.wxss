@@ -37,6 +37,11 @@
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
 }
+.bd-platform {
+  background: #FFF7D1;
+  color: #735700;
+  border: 1rpx solid #E3BD22;
+}
 .bd-urgent {
   background: var(--yt-primary-lighter);
   color: var(--yt-primary-dark);

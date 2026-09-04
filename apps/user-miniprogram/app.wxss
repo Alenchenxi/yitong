@@ -46,6 +46,20 @@ button::after { border: none; }
 .yt-title { font-size: 36rpx; font-weight: 600; color: var(--yt-text-main); }
 .yt-section-title { font-size: 32rpx; font-weight: 600; color: var(--yt-text-main); margin-bottom: 16rpx; }
 
+.yt-platform-badge {
+  display: inline-block;
+  margin-left: 8rpx;
+  padding: 2rpx 10rpx;
+  border: 1rpx solid #E3BD22;
+  border-radius: 8rpx;
+  background: #FFF7D1;
+  color: #735700;
+  font-size: 20rpx;
+  font-weight: 500;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
 /* 卡片：白底 16rpx 圆角 + 边框 */
 .yt-card {
   background: var(--yt-card);

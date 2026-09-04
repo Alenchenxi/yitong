@@ -23,7 +23,7 @@
   <!-- 表白墙结果 -->
   <block wx:elif="{{tab === 'confession'}}">
     <view class="post" wx:for="{{postResults}}" wx:key="id" data-id="{{item.id}}" catchtap="openPost">
-      <view class="post-content">{{item.content}}</view>
+      <view class="post-content"><text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text>{{item.content}}</view>
       <view class="post-meta">{{item.authorNickname}} · {{item.timeText}} · ♥ {{item.likeCount}} · 💬 {{item.commentCount}}</view>
     </view>
     <view class="empty" wx:if="{{!loading && postResults.length === 0}}">无结果</view>
@@ -31,7 +31,7 @@
 
   <block wx:elif="{{anonymousContentEnabled && tab === 'treehole'}}">
     <view class="post" wx:for="{{treeholeResults}}" wx:key="id" data-id="{{item.id}}" catchtap="openTreehole">
-      <view class="post-badge">匿名</view>
+      <view class="post-badge">匿名<text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text></view>
       <view class="post-content">{{item.content}}</view>
       <view class="post-meta">{{item.timeText}} · ♥ {{item.likeCount}} · 💬 {{item.commentCount}}</view>
     </view>
@@ -41,7 +41,7 @@
   <!-- 兼职结果 -->
   <block wx:else>
     <view class="job" wx:for="{{jobResults}}" wx:key="id" data-id="{{item.id}}" catchtap="openJob">
-      <view class="job-title">{{item.title}}</view>
+      <view class="job-title"><text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text>{{item.title}}</view>
       <view class="job-meta">{{item.merchantShopName}} · {{item.salary}} · {{item.location}}</view>
     </view>
     <view class="empty" wx:if="{{!loading && jobResults.length === 0}}">无结果</view>

@@ -19,7 +19,7 @@
         <view class="content">
           <text wx:if="{{activeTab === 'drafts'}}" class="badge badge-draft">草稿</text>
           <text wx:elif="{{activeTab === 'private'}}" class="badge badge-private">私密</text>
-          <text>{{item.content}}</text>
+          <text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text><text>{{item.content}}</text>
         </view>
         <view class="meta">
           <text>{{item.timeText}}</text>

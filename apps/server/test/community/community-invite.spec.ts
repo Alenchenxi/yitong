@@ -161,14 +161,37 @@ describe('CommunityService 圈子广场动态数', () => {
     await expect(service.getActive('user_a')).resolves.toMatchObject({ postCount: 9 });
     expect(prisma.post.count).toHaveBeenCalledWith({
       where: {
-        communityId: community.id,
         status: 'APPROVED',
         visibility: 'PUBLIC',
         deletedAt: null,
+        AND: [{
+          OR: [
+            { publisherScope: 'PLATFORM', visibilityScope: 'ALL_COMMUNITIES' },
+            {
+              publisherScope: 'COMMUNITY',
+              visibilityScope: 'COMMUNITY',
+              communityId: community.id,
+              community: { is: { status: 'ACTIVE' } },
+            },
+          ],
+        }],
       },
     });
     expect(prisma.anonymousPost.count).toHaveBeenCalledWith({
-      where: { communityId: community.id, status: 'APPROVED' },
+      where: {
+        status: 'APPROVED',
+        AND: [{
+          OR: [
+            { publisherScope: 'PLATFORM', visibilityScope: 'ALL_COMMUNITIES' },
+            {
+              publisherScope: 'COMMUNITY',
+              visibilityScope: 'COMMUNITY',
+              communityId: community.id,
+              community: { is: { status: 'ACTIVE' } },
+            },
+          ],
+        }],
+      },
     });
     expect(prisma.jobPost.count).toHaveBeenCalledWith({
       where: {
@@ -177,8 +200,10 @@ describe('CommunityService 圈子广场动态数', () => {
         AND: [
           {
             OR: [
-              { visibilityScope: 'ALL_COMMUNITIES' },
+              { publisherScope: 'PLATFORM', visibilityScope: 'ALL_COMMUNITIES' },
               {
+                publisherScope: 'COMMUNITY',
+                visibilityScope: 'COMMUNITY',
                 communityId: community.id,
                 community: { is: { status: 'ACTIVE' } },
               },
@@ -190,6 +215,7 @@ describe('CommunityService 圈子广场动态数', () => {
               { expireAt: { gt: expect.any(Date) } },
             ],
           },
+
         ],
       },
     });

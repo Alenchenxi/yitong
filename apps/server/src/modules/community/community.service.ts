@@ -1,17 +1,20 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Optional } from '@nestjs/common';
 import {
   Community,
   CommunityMemberRole,
   CommunityStatus,
+  ContentVisibilityScope,
   JobPostStatus,
   JobVisibilityScope,
   PostStatus,
   PostVisibility,
+  PublicationScope,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { JobVisibilityPolicyService } from '../job-visibility/job-visibility.service';
 import { BizException } from '../../common/exceptions/biz.exception';
+import { PublicationPolicyService } from '../publication/publication-policy.service';
 import type {
   BannerVo,
   CommunityMineAllResult,
@@ -53,7 +56,12 @@ export class CommunityService {
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
     private readonly jobVisibility: JobVisibilityPolicyService,
+    @Optional() private readonly publication?: PublicationPolicyService,
   ) {}
+
+  private get publicationPolicy(): PublicationPolicyService {
+    return this.publication ?? new PublicationPolicyService(this.prisma);
+  }
 
   /**
    * 用户当前圈子 id（写路径单真相源）：
@@ -84,7 +92,16 @@ export class CommunityService {
    * 写路径（发帖/发岗）仍走 getActiveCommunityId 严格抛 80014。
    */
   async resolveFeedCommunityId(uid: string, requested?: string | null): Promise<string> {
-    if (requested) return requested;
+    if (requested) {
+      const community = await this.prisma.community.findUnique({
+        where: { id: requested },
+        select: { status: true },
+      });
+      if (community?.status !== CommunityStatus.ACTIVE) {
+        throw new BizException(80010, '圈子不存在或不可用', HttpStatus.NOT_FOUND);
+      }
+      return requested;
+    }
     const user = await this.prisma.user.findUnique({
       where: { id: uid },
       select: { activeCommunityId: true },
@@ -428,34 +445,55 @@ export class CommunityService {
     return { id: communityId };
   }
 
-  /** 今日上头：近24h 浏览量 TopN（跨 表白墙帖 + 树洞帖，按圈子过滤 + 状态过滤） */
+  async assertUserCanParticipate(uid: string, communityId: string): Promise<void> {
+    const ban = await this.prisma.communityUserBan.findUnique({
+      where: { communityId_userId: { communityId, userId: uid } },
+      select: { active: true },
+    });
+    if (ban?.active) {
+      throw new BizException(ERR_COMMUNITY_FORBIDDEN, '你已被该圈子封禁', HttpStatus.FORBIDDEN);
+    }
+  }
+
+  /** 今日上头：近24h 表白墙/树洞浏览量 TopN（当前圈内容 + 全圈平台内容）。 */
   async getTodayHot(communityId: string, limit: number): Promise<TodayHotItem[]> {
     const since = new Date(Date.now() - 24 * 3600 * 1000);
     const rows = await this.prisma.$queryRaw<{ target_type: string; target_id: string; cnt: number }[]>`
-      SELECT cv.target_type, cv.target_id, COUNT(*)::integer AS cnt
-      FROM content_views cv
-      WHERE cv.created_at >= ${since}
-        AND cv.target_type IN ('post', 'anon_post')
-        AND (
-          (cv.target_type = 'post' AND EXISTS (
+      WITH recent_views AS (
+        SELECT cv.target_type, cv.target_id, cv.created_at
+        FROM content_views cv
+        WHERE cv.created_at >= ${since} AND cv.target_type IN ('post', 'anon_post')
+      )
+      SELECT rv.target_type, rv.target_id, COUNT(*)::integer AS cnt
+      FROM recent_views rv
+      WHERE (
+          (rv.target_type = 'post' AND EXISTS (
             SELECT 1 FROM posts p JOIN communities c ON c.id = p.community_id
-            WHERE p.id = cv.target_id AND p.community_id = ${communityId}
+            WHERE p.id = rv.target_id
               AND p.status = 'APPROVED' AND p.visibility = 'PUBLIC' AND p.deleted_at IS NULL
-              AND c.status = 'ACTIVE'
+              AND (
+                (p.publisher_scope = 'PLATFORM' AND p.visibility_scope = 'ALL_COMMUNITIES')
+                OR (p.publisher_scope = 'COMMUNITY' AND p.visibility_scope = 'COMMUNITY'
+                  AND p.community_id = ${communityId} AND c.status = 'ACTIVE')
+              )
           ))
           OR
-          (cv.target_type = 'anon_post' AND EXISTS (
+          (rv.target_type = 'anon_post' AND EXISTS (
             SELECT 1 FROM anonymous_posts a JOIN communities c ON c.id = a.community_id
-            WHERE a.id = cv.target_id AND a.community_id = ${communityId} AND a.status = 'APPROVED'
-              AND c.status = 'ACTIVE'
+            WHERE a.id = rv.target_id AND a.status = 'APPROVED'
+              AND (
+                (a.publisher_scope = 'PLATFORM' AND a.visibility_scope = 'ALL_COMMUNITIES')
+                OR (a.publisher_scope = 'COMMUNITY' AND a.visibility_scope = 'COMMUNITY'
+                  AND a.community_id = ${communityId} AND c.status = 'ACTIVE')
+              )
           ))
         )
-      GROUP BY cv.target_type, cv.target_id
-      ORDER BY cnt DESC, cv.target_id ASC
+      GROUP BY rv.target_type, rv.target_id
+      ORDER BY cnt DESC, rv.target_id ASC
       LIMIT ${limit}
     `;
     return rows.map((r) => ({
-      targetType: r.target_type as 'post' | 'anon_post',
+      targetType: r.target_type as TodayHotItem['targetType'],
       targetId: r.target_id,
       viewCount: r.cnt,
     }));
@@ -476,16 +514,16 @@ export class CommunityService {
     const [postCount, anonymousPostCount, jobPostCount] = await Promise.all([
       this.prisma.post.count({
         where: {
-          communityId,
           status: PostStatus.APPROVED,
           visibility: PostVisibility.PUBLIC,
           deletedAt: null,
+          AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
         },
       }),
       this.prisma.anonymousPost.count({
         where: {
-          communityId,
           status: PostStatus.APPROVED,
+          AND: [this.publicationPolicy.anonymousPostVisibilityFilter(communityId)],
         },
       }),
       this.prisma.jobPost.count({
@@ -516,20 +554,42 @@ export class CommunityService {
         _count: { _all: true },
       }),
       this.prisma.post.groupBy({
-        by: ['communityId'],
+        by: ['communityId', 'publisherScope', 'visibilityScope'],
         where: {
-          communityId: { in: activeCommunityIds },
           status: PostStatus.APPROVED,
           visibility: PostVisibility.PUBLIC,
           deletedAt: null,
+          OR: [
+            {
+              publisherScope: PublicationScope.COMMUNITY,
+              visibilityScope: ContentVisibilityScope.COMMUNITY,
+              communityId: { in: activeCommunityIds },
+              community: { is: { status: CommunityStatus.ACTIVE } },
+            },
+            {
+              publisherScope: PublicationScope.PLATFORM,
+              visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
+            },
+          ],
         },
         _count: { _all: true },
       }),
       this.prisma.anonymousPost.groupBy({
-        by: ['communityId'],
+        by: ['communityId', 'publisherScope', 'visibilityScope'],
         where: {
-          communityId: { in: activeCommunityIds },
           status: PostStatus.APPROVED,
+          OR: [
+            {
+              publisherScope: PublicationScope.COMMUNITY,
+              visibilityScope: ContentVisibilityScope.COMMUNITY,
+              communityId: { in: activeCommunityIds },
+              community: { is: { status: CommunityStatus.ACTIVE } },
+            },
+            {
+              publisherScope: PublicationScope.PLATFORM,
+              visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
+            },
+          ],
         },
         _count: { _all: true },
       }),
@@ -538,6 +598,7 @@ export class CommunityService {
         where: {
           communityId: { in: activeCommunityIds },
           community: { is: { status: CommunityStatus.ACTIVE } },
+          publisherScope: PublicationScope.COMMUNITY,
           visibilityScope: JobVisibilityScope.COMMUNITY,
           status: JobPostStatus.PUBLISHED,
           deletedAt: null,
@@ -547,6 +608,7 @@ export class CommunityService {
       }),
       this.prisma.jobPost.count({
         where: {
+          publisherScope: PublicationScope.PLATFORM,
           visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
           status: JobPostStatus.PUBLISHED,
           deletedAt: null,
@@ -555,12 +617,22 @@ export class CommunityService {
       }),
     ]);
 
+    const globalPostCount = postRows
+      .filter((row) => row.publisherScope === PublicationScope.PLATFORM
+        && row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES)
+      .reduce((sum, row) => sum + row._count._all, 0);
+    const globalAnonymousPostCount = anonymousPostRows
+      .filter((row) => row.publisherScope === PublicationScope.PLATFORM
+        && row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES)
+      .reduce((sum, row) => sum + row._count._all, 0);
+    const globalContentCount = globalPostCount + globalAnonymousPostCount + globalJobCount;
+
     const stats = new Map<string, CommunityStats>(
       communities.map((community) => [
         community.id,
         {
           memberCount: 0,
-          postCount: community.status === CommunityStatus.ACTIVE ? globalJobCount : 0,
+          postCount: community.status === CommunityStatus.ACTIVE ? globalContentCount : 0,
         },
       ]),
     );
@@ -571,6 +643,7 @@ export class CommunityService {
     }
     for (const rows of [postRows, anonymousPostRows, communityJobRows]) {
       for (const row of rows) {
+        if ('publisherScope' in row && row.publisherScope === PublicationScope.PLATFORM) continue;
         const current = stats.get(row.communityId);
         if (current) current.postCount += row._count._all;
       }

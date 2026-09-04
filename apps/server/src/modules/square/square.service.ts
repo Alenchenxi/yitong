@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { CommunityStatus, JobPostStatus, Prisma, PostStatus, PostVisibility } from '@prisma/client';
+import {
+  CommunityStatus,
+  JobPostStatus,
+  JobVisibilityScope,
+  Prisma,
+  PostStatus,
+  PostVisibility,
+  PublicationScope,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TreeholeService } from '../treehole/treehole.service';
 import { CommunityService } from '../community/community.service';
 import { JobService } from '../job/job.service';
-import { JobVisibilityPolicyService } from '../job-visibility/job-visibility.service';
+import { PublicationPolicyService } from '../publication/publication-policy.service';
 import type { PostVo } from '../confession/types';
 import type { AnonPostVo } from '../treehole/types';
 import type { FeedItemVo, SquareFeedResult, SquareTodayHitResult, TodayHitItem } from './types';
@@ -21,7 +29,7 @@ export class SquareService {
     private readonly treehole: TreeholeService,
     private readonly community: CommunityService,
     private readonly job: JobService,
-    private readonly jobVisibility: JobVisibilityPolicyService,
+    private readonly publication: PublicationPolicyService,
   ) {}
 
   /**
@@ -117,10 +125,9 @@ export class SquareService {
       status: PostStatus.APPROVED,
       visibility: PostVisibility.PUBLIC,
       deletedAt: null,
-      communityId,
-      community: { is: { status: CommunityStatus.ACTIVE } },
       AND: cur
         ? [
+            this.publication.postVisibilityFilter(communityId),
             boostInactive,
             {
               OR: [
@@ -129,7 +136,7 @@ export class SquareService {
               ],
             },
           ]
-        : [boostInactive],
+        : [this.publication.postVisibilityFilter(communityId), boostInactive],
     };
     const orderBy: Prisma.PostOrderByWithRelationInput[] =
       sort === 'recommend'
@@ -154,9 +161,8 @@ export class SquareService {
         status: PostStatus.APPROVED,
         visibility: PostVisibility.PUBLIC,
         deletedAt: null,
-        communityId,
-        community: { is: { status: CommunityStatus.ACTIVE } },
         boostUntil: { gt: new Date() },
+        AND: [this.publication.postVisibilityFilter(communityId)],
       },
       orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
       take,
@@ -175,7 +181,7 @@ export class SquareService {
     cursor?: string,
   ) {
     const cur = cursor ? this.decodeCursor(cursor) : null;
-    const andFilters = this.jobVisibility.buildFilters(communityId);
+    const andFilters = this.jobVisibilityFilters(communityId);
     if (cur) {
       andFilters.push({
         OR: [
@@ -213,8 +219,6 @@ export class SquareService {
     const cur = cursor ? this.decodeCursor(cursor) : null;
     const baseWhere: Prisma.AnonymousPostWhereInput = {
       status: PostStatus.APPROVED,
-      communityId,
-      community: { is: { status: CommunityStatus.ACTIVE } },
     };
     // P0-16 屏蔽隔离延续到广场 union 列表（仅当有 anonId 时计算）
     if (anonId) {
@@ -227,6 +231,7 @@ export class SquareService {
     };
     baseWhere.AND = cur
       ? [
+          this.publication.anonymousPostVisibilityFilter(communityId),
           boostInactive,
           {
             OR: [
@@ -235,7 +240,7 @@ export class SquareService {
             ],
           },
         ]
-      : [boostInactive];
+      : [this.publication.anonymousPostVisibilityFilter(communityId), boostInactive];
     const orderBy: Prisma.AnonymousPostOrderByWithRelationInput[] =
       sort === 'recommend'
         ? [{ likeCount: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
@@ -256,9 +261,8 @@ export class SquareService {
   private async fetchBoostedAnonPosts(anonId: string | null, take: number, communityId: string) {
     const where: Prisma.AnonymousPostWhereInput = {
       status: PostStatus.APPROVED,
-      communityId,
-      community: { is: { status: CommunityStatus.ACTIVE } },
       boostUntil: { gt: new Date() },
+      AND: [this.publication.anonymousPostVisibilityFilter(communityId)],
     };
     if (anonId) {
       const blockedPeers = await this.treehole.getBlockedPeerSet(anonId);
@@ -312,7 +316,7 @@ export class SquareService {
       if (r.targetType === 'post') {
         const p = postById.get(r.targetId);
         if (p) list.push({ kind: 'post', data: this.toPostVo(p), viewCount: r.viewCount });
-      } else {
+      } else if (r.targetType === 'anon_post') {
         const a = anonById.get(r.targetId);
         if (a) list.push({ kind: 'anon_post', data: this.toAnonPostVo(a, anonId), viewCount: r.viewCount });
       }
@@ -324,6 +328,26 @@ export class SquareService {
   async banners(uid: string, communityId?: string) {
     const cid = await this.community.resolveFeedCommunityId(uid, communityId);
     return this.community.listBanners(cid);
+  }
+
+  private jobVisibilityFilters(communityId: string, now = new Date()): Prisma.JobPostWhereInput[] {
+    return [
+      {
+        OR: [
+          {
+            publisherScope: PublicationScope.PLATFORM,
+            visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
+          },
+          {
+            publisherScope: PublicationScope.COMMUNITY,
+            visibilityScope: JobVisibilityScope.COMMUNITY,
+            communityId,
+            community: { is: { status: CommunityStatus.ACTIVE } },
+          },
+        ],
+      },
+      { OR: [{ expireAt: null }, { expireAt: { gt: now } }] },
+    ];
   }
 
   // ===== VO 映射 =====
@@ -341,6 +365,7 @@ export class SquareService {
     videoCover: string | null;
     likeCount: number;
     viewCount: number;
+    publisherScope: PublicationScope;
     visibility: PostVisibility;
     pinned: boolean;
     featured: boolean;
@@ -371,6 +396,7 @@ export class SquareService {
       liked: post.postLikes.length > 0,
       commentCount: post._count.comments,
       viewCount: post.viewCount,
+      platformPublished: post.publisherScope === PublicationScope.PLATFORM,
       visibility: post.visibility,
       pinned: post.pinned,
       featured: post.featured,
@@ -392,6 +418,7 @@ export class SquareService {
       mood: string | null;
       likeCount: number;
       viewCount: number;
+      publisherScope: PublicationScope;
       boostUntil: Date | null;
       createdAt: Date;
       likes?: { id: string }[];
@@ -408,6 +435,7 @@ export class SquareService {
       likeCount: p.likeCount,
       commentCount: p._count?.comments ?? 0,
       viewCount: p.viewCount,
+      platformPublished: p.publisherScope === PublicationScope.PLATFORM,
       // anonId 缺失时 liked 恒 false；有 anonId 时按 likes 关联判断
       liked: anonId ? (p.likes?.length ?? 0) > 0 : false,
       // 树洞推广在广场 union feed 生效（boostUntil 实时判断，懒过滤）

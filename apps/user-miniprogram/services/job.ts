@@ -64,6 +64,7 @@ export interface JobPostVo {
   isExternalSource: boolean;
   status: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
   createdAt: string;
+  platformPublished: boolean;
   // M3-06 仅 mine=1 列表返回：当前岗的 PENDING 报名数
   pendingApplicationCount?: number;
   // M3-05 主动下架时间（null=未下架）

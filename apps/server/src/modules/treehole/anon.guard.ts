@@ -42,10 +42,17 @@ export class AnonGuard implements CanActivate {
       }
       const profile = await this.prisma.anonymousProfile.findUnique({
         where: { anonId: payload.anonId },
-        select: { id: true },
+        select: { id: true, userId: true },
       });
       if (!profile) {
         throw new BizException(30001, '匿名态失效，请重新获取', HttpStatus.UNAUTHORIZED);
+      }
+      const user = await this.prisma.user.findUnique({
+        where: { id: profile.userId },
+        select: { deletedAt: true },
+      });
+      if (!user || user.deletedAt) {
+        throw new BizException(10005, '账号已被封禁', HttpStatus.FORBIDDEN);
       }
       // 把 anonId 放到 uid 字段供 treehole service 使用（不含真实 uid）
       req.user = { uid: payload.anonId, role: '', openid: '', type: 'anon' };

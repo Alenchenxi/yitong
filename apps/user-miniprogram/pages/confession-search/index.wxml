@@ -36,7 +36,7 @@
   <!-- 搜索结果 -->
   <block wx:elif="{{tab === 'post'}}">
     <view class="post" wx:for="{{postResults}}" wx:key="id" data-id="{{item.id}}" catchtap="openPost">
-      <view class="post-content">{{item.content}}</view>
+      <view class="post-content"><text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text>{{item.content}}</view>
       <view class="post-meta">{{item.authorNickname}} · {{item.timeText}} · ♥ {{item.likeCount}} · 💬 {{item.commentCount}}</view>
     </view>
     <view class="empty" wx:if="{{!loading && postResults.length === 0}}">无结果</view>

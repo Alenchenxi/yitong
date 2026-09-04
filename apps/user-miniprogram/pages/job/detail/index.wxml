@@ -2,7 +2,8 @@
   <view class="title">{{post.title}}</view>
 
   <!-- P0-17 结构化标签 -->
-  <view class="tags" wx:if="{{post.categoryLabel || post.urgent || post.online}}">
+  <view class="tags" wx:if="{{post.platformPublished || post.categoryLabel || post.urgent || post.online}}">
+    <text class="yt-platform-badge" wx:if="{{post.platformPublished}}">平台发布</text>
     <text class="tag tag-cat" wx:if="{{post.categoryLabel}}">{{post.categoryLabel}}</text>
     <text class="tag tag-urgent" wx:if="{{post.urgent}}">急招</text>
     <text class="tag tag-online" wx:if="{{post.online}}">可线上</text>

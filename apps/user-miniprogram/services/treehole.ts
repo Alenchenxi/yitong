@@ -17,6 +17,7 @@ export interface AnonPostVo {
   boosted: boolean; // 内容推广：付费置顶曝光中
   boostUntil: string | null; // 推广到期时间 ISO
   createdAt: string;
+  platformPublished: boolean;
 }
 
 // 树洞评论 VO（匿名，区分楼主；0 真实 uid）

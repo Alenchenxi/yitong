@@ -129,6 +129,7 @@ Page({
             publishAt: null,
             createdAt: fav.createdAt,
             editedAt: null,
+            platformPublished: false,
             timeText: formatTime(fav.createdAt),
           })),
           loading: false,

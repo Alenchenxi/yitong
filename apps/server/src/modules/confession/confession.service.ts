@@ -1,10 +1,16 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { CommunityStatus, Prisma, PostStatus } from '@prisma/client';
+import {
+  ContentVisibilityScope,
+  Prisma,
+  PublicationScope,
+  PostStatus,
+} from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { CommunityService } from '../community/community.service';
+import { PublicationPolicyService } from '../publication/publication-policy.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { FeedQueryDto } from './dto/feed-query.dto';
@@ -116,6 +122,7 @@ export class ConfessionService {
     private readonly moderation: ModerationService,
     private readonly notification: NotificationService,
     private readonly community: CommunityService,
+    private readonly publicationPolicy: PublicationPolicyService,
   ) {}
 
   listCircles() {
@@ -158,6 +165,11 @@ export class ConfessionService {
     }
     const isScheduled = !!publishAt;
     const isDraftOrPrivate = visibility !== 'PUBLIC';
+    // 圈子和发布身份均由服务端决定；封禁先于内容审核与写库拦截。
+    const communityId = await this.community.getActiveCommunityId(uid);
+    await this.publicationPolicy.assertCommunityInteractionAllowed(uid, communityId);
+    const publisherScope = await this.publicationPolicy.resolveForUser(uid);
+    const platformPublished = publisherScope === PublicationScope.PLATFORM;
 
     if (!isDraftOrPrivate) {
       await this.moderation.checkText(dto.content, openid);
@@ -175,8 +187,9 @@ export class ConfessionService {
     const isAnonymous = !!dto.isAnonymous && !isDraftOrPrivate; // 匿名仅用于公开发布
 
     // 圈子：发帖归属当前圈子（单真相源 = active community）+ 动态数 postCount++
-    const communityId = await this.community.getActiveCommunityId(uid);
     const post = await this.prisma.$transaction(async (tx) => {
+      await this.publicationPolicy.assertOwnerCanManageInTransaction(tx, uid, publisherScope);
+      await this.publicationPolicy.assertCommunityInteractionAllowedInTransaction(tx, uid, communityId);
       const created = await tx.post.create({
         data: {
           circleId,
@@ -190,6 +203,10 @@ export class ConfessionService {
           videoUrl: dto.videoUrl ?? null,
           videoCover: dto.videoCover ?? null,
           status: PostStatus.APPROVED,
+          publisherScope,
+          visibilityScope: platformPublished
+            ? ContentVisibilityScope.ALL_COMMUNITIES
+            : ContentVisibilityScope.COMMUNITY,
           visibility,
           publishAt,
         },
@@ -234,7 +251,8 @@ export class ConfessionService {
   ): Promise<FeedResult> {
     const circle = await this.prisma.circle.findUnique({ where: { id: circleId } });
     if (!circle) throw new BizException(20001, '圈子不存在');
-    return this.queryPosts(uid, query, circleId);
+    const communityId = await this.community.resolveFeedCommunityId(uid, query.communityId);
+    return this.queryPosts(uid, query, circleId, communityId);
   }
 
   // 我的表白墙：当前用户发的帖（含已软删，但不影响展示；用户可看到「我删了的帖」以便复盘）
@@ -319,14 +337,20 @@ export class ConfessionService {
   }
 
   async getPost(uid: string, id: string): Promise<PostVo> {
+    const communityId = await this.community.resolveFeedCommunityId(uid);
+    const visibilityScope = this.publicationPolicy.postVisibilityFilter(communityId);
     // P1-11：作者可读自己的 DRAFT/PRIVATE；他人只看 PUBLIC 且 status=APPROVED
     const post = await this.prisma.post.findFirst({
       where: {
         id,
         deletedAt: null,
         OR: [
-          { status: PostStatus.APPROVED, visibility: 'PUBLIC' },
           { authorId: uid }, // 作者自己可见所有状态
+          {
+            status: PostStatus.APPROVED,
+            visibility: 'PUBLIC',
+            AND: [visibilityScope],
+          },
         ],
       },
       include: postInclude(uid),
@@ -349,10 +373,19 @@ export class ConfessionService {
   async editPost(uid: string, postId: string, openid: string, dto: CreatePostDto): Promise<PostVo> {
     const post = await this.prisma.post.findFirst({
       where: { id: postId, deletedAt: null },
-      select: { id: true, authorId: true, isAnonymous: true, anonName: true },
+      select: {
+        id: true,
+        authorId: true,
+        isAnonymous: true,
+        anonName: true,
+        publisherScope: true,
+        communityId: true,
+      },
     });
     if (!post) throw new BizException(20003, '帖子不存在', HttpStatus.NOT_FOUND);
     if (post.authorId !== uid) throw new BizException(10003, '只有作者可编辑', HttpStatus.FORBIDDEN);
+    await this.publicationPolicy.assertOwnerCanManage(uid, post.publisherScope);
+    await this.publicationPolicy.assertCommunityInteractionAllowed(uid, post.communityId);
 
     // P1-10 编辑仍走内容安全 + 图片/视频审核
     await this.moderation.checkText(dto.content, openid);
@@ -382,10 +415,12 @@ export class ConfessionService {
   async deletePost(uid: string, postId: string) {
     const post = await this.prisma.post.findFirst({
       where: { id: postId, deletedAt: null },
-      select: { id: true, authorId: true, communityId: true },
+      select: { id: true, authorId: true, communityId: true, publisherScope: true },
     });
     if (!post) throw new BizException(20003, '帖子不存在', HttpStatus.NOT_FOUND);
     if (post.authorId !== uid) throw new BizException(10003, '只有作者可删除', HttpStatus.FORBIDDEN);
+    await this.publicationPolicy.assertOwnerCanManage(uid, post.publisherScope);
+    await this.publicationPolicy.assertCommunityInteractionAllowed(uid, post.communityId);
     await this.prisma.post.update({ where: { id: postId }, data: { deletedAt: new Date() } });
     // 圈子动态数 postCount--（best-effort）
     if (post.communityId) {
@@ -398,11 +433,19 @@ export class ConfessionService {
   }
 
   async toggleLike(uid: string, postId: string): Promise<LikeResult> {
-    const post = await this.prisma.post.findUnique({
-      where: { id: postId },
+    const communityId = await this.community.getActiveCommunityId(uid);
+    const post = await this.prisma.post.findFirst({
+      where: {
+        id: postId,
+        status: PostStatus.APPROVED,
+        deletedAt: null,
+        visibility: 'PUBLIC',
+        AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
+      },
       select: { id: true, authorId: true },
     });
     if (!post) throw new BizException(20003, '帖子不存在');
+    await this.publicationPolicy.assertCommunityInteractionAllowed(uid, communityId);
 
     const existing = await this.prisma.postLike.findUnique({
       where: { postId_userId: { postId, userId: uid } },
@@ -476,11 +519,19 @@ export class ConfessionService {
     postId: string,
     dto: CreateCommentDto,
   ): Promise<CommentVo> {
+    const communityId = await this.community.getActiveCommunityId(uid);
     const post = await this.prisma.post.findFirst({
-      where: { id: postId, status: PostStatus.APPROVED },
+      where: {
+        id: postId,
+        status: PostStatus.APPROVED,
+        deletedAt: null,
+        visibility: 'PUBLIC',
+        AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
+      },
       select: { id: true, authorId: true },
     });
     if (!post) throw new BizException(20003, '帖子不存在');
+    await this.publicationPolicy.assertCommunityInteractionAllowed(uid, communityId);
 
     await this.moderation.checkText(dto.content, openid);
 
@@ -709,6 +760,8 @@ export class ConfessionService {
         targetId: postId,
         reason: reason ?? '用户举报',
         reporterId: uid,
+        targetPublisherScope: post.publisherScope,
+        targetCommunityId: post.communityId,
       },
     });
     return { reported: true };
@@ -723,6 +776,9 @@ export class ConfessionService {
     const limit = query.limit ?? 20;
     const cursor = query.cursor ? decodeCursor(query.cursor) : null;
     const now = new Date();
+    const visibilityScope = this.publicationPolicy.postVisibilityFilter(
+      communityId ?? (await this.community.resolveFeedCommunityId(uid)),
+    );
 
     // P2-05 feed 主体只查普通帖（pinned=false）；置顶帖仅在首页（无 cursor）额外查合并到头部，翻页不重复。
     // 内容推广：推广中（boostUntil>now）帖子也不进主体查询，首页在 pinned 后合并 boosted，翻页不重复。
@@ -737,17 +793,13 @@ export class ConfessionService {
       deletedAt: null,
       visibility: 'PUBLIC',
       pinned: false,
-      AND: [boostInactive],
+      AND: [visibilityScope, boostInactive],
     };
     if (circleId) where.circleId = circleId;
-    if (communityId) {
-      where.communityId = communityId;
-      // 圈子禁用则内容不可见（广场作用域下 admin disable 后 feed 空）
-      where.community = { is: { status: CommunityStatus.ACTIVE } };
-    }
     if (cursor) {
       // 与游标条件 AND 嵌套（不能扁平化进同一 OR，否则推广中帖会因命中游标漏入）
       where.AND = [
+        visibilityScope,
         boostInactive,
         {
           OR: [
@@ -764,7 +816,7 @@ export class ConfessionService {
       visibility: 'PUBLIC',
       pinned: true,
       ...(circleId ? { circleId } : {}),
-      ...(communityId ? { communityId, community: { is: { status: CommunityStatus.ACTIVE } } } : {}),
+      AND: [visibilityScope],
     };
 
     const boostedWhere: Prisma.PostWhereInput = {
@@ -774,7 +826,7 @@ export class ConfessionService {
       pinned: false,
       boostUntil: { gt: now },
       ...(circleId ? { circleId } : {}),
-      ...(communityId ? { communityId, community: { is: { status: CommunityStatus.ACTIVE } } } : {}),
+      AND: [visibilityScope],
     };
 
     const [posts, pinnedPosts, boostedPosts] = await Promise.all([
@@ -821,12 +873,15 @@ export class ConfessionService {
   ): Promise<FeedResult> {
     const limit = query.limit ?? 20;
     const now = new Date();
+    const visibilityScope = this.publicationPolicy.postVisibilityFilter(
+      communityId ?? (await this.community.resolveFeedCommunityId(uid)),
+    );
     const base: Prisma.PostWhereInput = {
       status: PostStatus.APPROVED,
       deletedAt: null,
       visibility: 'PUBLIC',
       ...(circleId ? { circleId } : {}),
-      ...(communityId ? { communityId, community: { is: { status: CommunityStatus.ACTIVE } } } : {}),
+      AND: [visibilityScope],
     };
     // 三档合并：置顶 -> 推广中 -> 普通（各档内部按热度排序），再 slice 到 limit
     const orderBy: Prisma.PostOrderByWithRelationInput[] =
@@ -856,7 +911,13 @@ export class ConfessionService {
   async listHotTop(uid: string, limit = 10): Promise<{ list: PostVo[] }> {
     const take = Math.min(50, Math.max(1, limit));
     const now = new Date();
-    const base: Prisma.PostWhereInput = { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC' };
+    const communityId = await this.community.resolveFeedCommunityId(uid);
+    const base: Prisma.PostWhereInput = {
+      status: PostStatus.APPROVED,
+      deletedAt: null,
+      visibility: 'PUBLIC',
+      AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
+    };
     const orderBy: Prisma.PostOrderByWithRelationInput[] = [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }];
     const [pinned, boosted, normal] = await Promise.all([
       this.prisma.post.findMany({ where: { ...base, pinned: true }, orderBy, take, include: postInclude(uid) }),
@@ -880,11 +941,13 @@ export class ConfessionService {
   async listTodayHit(uid: string, page = 1, pageSize = 20): Promise<PageResult<PostVo>> {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const now = new Date();
+    const communityId = await this.community.resolveFeedCommunityId(uid);
     const baseWhere: Prisma.PostWhereInput = {
       status: PostStatus.APPROVED,
       deletedAt: null,
       visibility: 'PUBLIC',
       createdAt: { gte: since },
+      AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
     };
     const orderBy: Prisma.PostOrderByWithRelationInput[] = [{ likeCount: 'desc' }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }];
     // 首页前置 pinned + boosted。⚠️ 前置会挤掉普通帖主体切片尾部，翻页 skip 必须减去
@@ -918,6 +981,7 @@ export class ConfessionService {
   // 关注流：只看关注作者的最新帖
   private async queryFollowPosts(uid: string, query: FeedQueryDto): Promise<FeedResult> {
     const limit = query.limit ?? 20;
+    const communityId = await this.community.resolveFeedCommunityId(uid, query.communityId);
     const follows = await this.prisma.follow.findMany({
       where: { followerId: uid },
       select: { followeeId: true },
@@ -925,7 +989,13 @@ export class ConfessionService {
     const followeeIds = follows.map((f) => f.followeeId);
     if (followeeIds.length === 0) return { list: [], nextCursor: null, hasMore: false };
     const posts = await this.prisma.post.findMany({
-      where: { status: PostStatus.APPROVED, deletedAt: null, visibility: 'PUBLIC', authorId: { in: followeeIds } },
+      where: {
+        status: PostStatus.APPROVED,
+        deletedAt: null,
+        visibility: 'PUBLIC',
+        authorId: { in: followeeIds },
+        AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
       include: postInclude(uid),
@@ -938,6 +1008,7 @@ export class ConfessionService {
     return {
       id: post.id,
       circleId: post.circleId,
+      platformPublished: post.publisherScope === PublicationScope.PLATFORM,
       authorId: isAnonymous ? '' : post.authorId,
       authorNickname: isAnonymous ? (post.anonName ?? '匿名用户') : post.author.nickname,
       authorAvatarUrl: isAnonymous ? null : post.author.avatarUrl,
@@ -999,11 +1070,21 @@ export class ConfessionService {
 
   // P1-02 评论点赞 toggle（commentId 不存在抛 20005；并发 P2002/P2025 兜底）
   async toggleCommentLike(uid: string, commentId: string): Promise<{ liked: boolean; likeCount: number }> {
-    const comment = await this.prisma.comment.findUnique({
-      where: { id: commentId },
+    const communityId = await this.community.getActiveCommunityId(uid);
+    const comment = await this.prisma.comment.findFirst({
+      where: {
+        id: commentId,
+        post: {
+          status: PostStatus.APPROVED,
+          deletedAt: null,
+          visibility: 'PUBLIC',
+          AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
+        },
+      },
       select: { id: true, authorId: true, postId: true },
     });
     if (!comment) throw new BizException(20005, '评论不存在');
+    await this.publicationPolicy.assertCommunityInteractionAllowed(uid, communityId);
 
     const existing = await this.prisma.commentLike.findUnique({
       where: { commentId_userId: { commentId, userId: uid } },
@@ -1098,12 +1179,29 @@ export class ConfessionService {
           await this.moderation.checkImage(url);
         }
         if (post.videoCover) await this.moderation.checkImage(post.videoCover);
-        // 审核通过：转 PUBLIC + 清 publishAt（避免重复触发）
-        await this.prisma.post.update({
-          where: { id: post.id },
-          data: { visibility: 'PUBLIC', publishAt: null },
+        // 审核通过：资格复核与状态写入同一事务，锁住平台管理员资格避免并发撤权。
+        const changed = await this.prisma.$transaction(async (tx) => {
+          await this.publicationPolicy.assertOwnerCanManageInTransaction(
+            tx,
+            post.authorId,
+            post.publisherScope,
+          );
+          await this.publicationPolicy.assertCommunityInteractionAllowedInTransaction(
+            tx,
+            post.authorId,
+            post.communityId,
+          );
+          const result = await tx.post.updateMany({
+            where: {
+              id: post.id,
+              visibility: 'DRAFT',
+              publishAt: post.publishAt,
+            },
+            data: { visibility: 'PUBLIC', publishAt: null },
+          });
+          return result.count === 1;
         });
-        published += 1;
+        if (changed) published += 1;
       } catch (e) {
         // 审核失败（90002 等）：保持 DRAFT，清 publishAt 终止重试，通知作者
         failed += 1;
@@ -1134,13 +1232,14 @@ export class ConfessionService {
   async searchPosts(uid: string, q: string, limit: number, communityId?: string) {
     const kw = q.trim();
     if (!kw) return { list: [] as PostVo[] };
+    const resolvedCommunityId = await this.community.resolveFeedCommunityId(uid, communityId);
     const posts = await this.prisma.post.findMany({
       where: {
         status: PostStatus.APPROVED,
         deletedAt: null,
         visibility: 'PUBLIC',
         content: { contains: kw, mode: 'insensitive' },
-        ...(communityId ? { communityId } : {}),
+        AND: [this.publicationPolicy.postVisibilityFilter(resolvedCommunityId)],
       },
       orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
       take: limit,
@@ -1171,6 +1270,7 @@ export class ConfessionService {
   async searchTags(uid: string, q: string, limit: number) {
     const kw = q.trim();
     if (!kw) return { list: [] as { tag: string; postCount: number }[] };
+    const communityId = await this.community.resolveFeedCommunityId(uid);
     // tags 是 String[]；PG hasArrayContain? 用 contains
     const matched = await this.prisma.post.findMany({
       where: {
@@ -1178,6 +1278,7 @@ export class ConfessionService {
         deletedAt: null,
         visibility: 'PUBLIC',
         tags: { has: kw },
+        AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
       },
       orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
       take: limit * 4,
@@ -1254,8 +1355,17 @@ export class ConfessionService {
       where: { id, status: 'PUBLISHED' },
     });
     if (!topic) throw new BizException(20001, '活动专题不存在', HttpStatus.NOT_FOUND);
+    const communityId = await this.community.resolveFeedCommunityId(uid);
     const links = await this.prisma.activityTopicPost.findMany({
-      where: { topicId: id },
+      where: {
+        topicId: id,
+        post: {
+          status: PostStatus.APPROVED,
+          deletedAt: null,
+          visibility: 'PUBLIC',
+          AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
+        },
+      },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
       include: { post: { include: postInclude(uid) } },
       take: 50,
@@ -1302,11 +1412,13 @@ export class ConfessionService {
       include: { _count: { select: { posts: true } } },
     });
     if (!topic) throw new BizException(20001, '话题不存在', HttpStatus.NOT_FOUND);
+    const communityId = await this.community.resolveFeedCommunityId(uid);
     const where: Prisma.PostWhereInput = {
       topicId: id,
       status: PostStatus.APPROVED,
       deletedAt: null,
       visibility: 'PUBLIC',
+      AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
     };
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({

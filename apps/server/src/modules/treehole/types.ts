@@ -3,6 +3,7 @@
 export interface AnonPostVo {
   id: string;
   anonId: string; // 树洞匿名 id，不含真实 uid
+  platformPublished: boolean;
   content: string;
   images: string[];
   mood: string | null;

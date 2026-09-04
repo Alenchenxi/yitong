@@ -7,6 +7,7 @@
       <view class="meta">
         <view class="nickname">
           {{post.authorNickname}}
+          <text class="yt-platform-badge" wx:if="{{post.platformPublished}}">平台发布</text>
           <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
           <text class="boost-badge" wx:if="{{post.boosted}}">推广</text>
         </view>

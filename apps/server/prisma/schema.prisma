@@ -9,44 +9,48 @@ datasource db {
 
 // ===== 身份 =====
 model User {
-  id          String    @id @default(cuid())
-  openid      String    @unique
-  unionid     String?
-  nickname    String
-  avatarUrl   String?   @map("avatar_url")
-  gender      String?   // 性别：male / female / other
-  birthday    String?   // 生日：YYYY-MM-DD
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")  // P1-12 封禁
-  mutedUntil  DateTime? @map("muted_until") // P1-12 禁言到期时间
-  postLikes PostLike[]
-  posts     Post[]
-  comments  Comment[]
-  commentReplyTos Comment[] @relation("CommentReplyTo")
-  userRoles UserRole[]
-  applications JobApplication[]
-  favorites Favorite[]
-  supportTickets SupportTicket[]
-  following Follow[] @relation("FollowFollower")
-  followers Follow[] @relation("FollowFollowee")
-  referralCode ReferralCode?
-  referralsGiven ReferralRecord[] @relation("ReferrerRel")
-  referralGot    ReferralRecord? @relation("RefereeRel")
-  commentLikes CommentLike[]
-  searchHistories SearchHistory[]
-  jobImpressions JobImpression[]
-  activeCommunityId String?            @map("active_community_id") // 圈子：当前圈子（每用户一个，可切换）
-  activeCommunity   Community?         @relation("CommunityActiveUser", fields: [activeCommunityId], references: [id], onDelete: SetNull)
-  ownedCommunities  Community[]        @relation("CommunityOwner")
-  communityMembers  CommunityMember[]
+  id                          String                   @id @default(cuid())
+  openid                      String                   @unique
+  unionid                     String?
+  nickname                    String
+  avatarUrl                   String?                  @map("avatar_url")
+  gender                      String? // 性别：male / female / other
+  birthday                    String? // 生日：YYYY-MM-DD
+  createdAt                   DateTime                 @default(now()) @map("created_at")
+  updatedAt                   DateTime                 @updatedAt @map("updated_at")
+  banAuthority                ModerationAuthority?     @map("ban_authority")
+  deletedAt                   DateTime?                @map("deleted_at") // P1-12 封禁
+  mutedUntil                  DateTime?                @map("muted_until") // P1-12 禁言到期时间
+  postLikes                   PostLike[]
+  posts                       Post[]
+  comments                    Comment[]
+  commentReplyTos             Comment[]                @relation("CommentReplyTo")
+  userRoles                   UserRole[]
+  applications                JobApplication[]
+  favorites                   Favorite[]
+  supportTickets              SupportTicket[]
+  following                   Follow[]                 @relation("FollowFollower")
+  followers                   Follow[]                 @relation("FollowFollowee")
+  referralCode                ReferralCode?
+  referralsGiven              ReferralRecord[]         @relation("ReferrerRel")
+  referralGot                 ReferralRecord?          @relation("RefereeRel")
+  commentLikes                CommentLike[]
+  searchHistories             SearchHistory[]
+  jobImpressions              JobImpression[]
+  activeCommunityId           String?                  @map("active_community_id") // 圈子：当前圈子（每用户一个，可切换）
+  activeCommunity             Community?               @relation("CommunityActiveUser", fields: [activeCommunityId], references: [id], onDelete: SetNull)
+  ownedCommunities            Community[]              @relation("CommunityOwner")
+  communityMembers            CommunityMember[]
   jobConversationsAsStudent   JobConversation[]        @relation("JobConversationStudent")
   jobConversationsAsMerchant  JobConversation[]        @relation("JobConversationMerchant")
   jobConversationMessages     JobConversationMessage[] @relation("JobConversationMessageSender")
   interviewInvitationsCreated InterviewInvitation[]    @relation("InterviewInvitationCreator")
+  communityBans               CommunityUserBan[]
+
   @@index([activeCommunityId])
   @@map("users")
 }
+
 enum Role {
   USER
   MERCHANT
@@ -60,6 +64,7 @@ model UserRole {
   role      Role     @map("role")
   createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id])
+
   @@unique([userId, role])
   @@map("user_roles")
 }
@@ -69,11 +74,12 @@ model AnonymousProfile {
   userId          String   @unique @map("user_id")
   anonId          String   @unique @map("anon_id")
   nickname        String
-  avatar          String?  @map("avatar")              // P0-12 匿名头像（预设 key 或 URL）
+  avatar          String?  @map("avatar") // P0-12 匿名头像（预设 key 或 URL）
   personalityTags String[] @default([]) @map("personality_tags") // P0-12 个性标签（P1-13 从 AnonTag 库选）
-  interestTags    String[] @default([]) @map("interest_tags")    // P0-12 兴趣标签（P1-13 从 AnonTag 库选）
-  moodState       String?  @map("mood_state")          // P0-12 心情状态
+  interestTags    String[] @default([]) @map("interest_tags") // P0-12 兴趣标签（P1-13 从 AnonTag 库选）
+  moodState       String?  @map("mood_state") // P0-12 心情状态
   createdAt       DateTime @default(now()) @map("created_at")
+
   @@map("anonymous_profiles")
 }
 
@@ -81,10 +87,11 @@ model AnonymousProfile {
 model QuestionnaireAnswer {
   id         String   @id @default(cuid())
   anonId     String   @map("anon_id")
-  type       String   // personality | interest | values | mood
-  answers    Json     // [{ questionId, optionId }]
+  type       String // personality | interest | values | mood
+  answers    Json // [{ questionId, optionId }]
   resultTags String[] @map("result_tags") // 算出的标签（top N）
   createdAt  DateTime @default(now()) @map("created_at")
+
   @@index([anonId, type, createdAt])
   @@map("questionnaire_answers")
 }
@@ -92,11 +99,12 @@ model QuestionnaireAnswer {
 // P1-13 树洞标签库：个性 / 兴趣 / 心情 三类，admin 可配置；用户选标签 / 发帖 mood 从此库校验
 model AnonTag {
   id        String   @id @default(cuid())
-  category  String   // personality | interest | mood
-  name      String   // 标签名（1-12 字）
+  category  String // personality | interest | mood
+  name      String // 标签名（1-12 字）
   sortOrder Int      @default(0) @map("sort_order")
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
+
   @@unique([category, name])
   @@index([category, active, sortOrder])
   @@map("anon_tags")
@@ -114,6 +122,7 @@ model AdminUser {
   adminType       AdminType             @relation(fields: [adminTypeId], references: [id], onDelete: Restrict)
   communityScopes AdminCommunityScope[]
   auditLogs       AdminAuditLog[]
+
   @@index([adminTypeId])
   @@map("admin_users")
 }
@@ -131,6 +140,7 @@ model AdminType {
   deletedAt       DateTime?             @map("deleted_at")
   permissions     AdminTypePermission[]
   admins          AdminUser[]
+
   @@index([active, deletedAt])
   @@map("admin_types")
 }
@@ -143,6 +153,7 @@ model AdminPermission {
   description String?
   sortOrder   Int                   @default(0) @map("sort_order")
   types       AdminTypePermission[]
+
   @@index([module, sortOrder])
   @@map("admin_permissions")
 }
@@ -153,6 +164,7 @@ model AdminTypePermission {
   permissionId String          @map("permission_id")
   adminType    AdminType       @relation(fields: [adminTypeId], references: [id], onDelete: Cascade)
   permission   AdminPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
   @@unique([adminTypeId, permissionId])
   @@index([permissionId])
   @@map("admin_type_permissions")
@@ -165,6 +177,7 @@ model AdminCommunityScope {
   createdAt   DateTime  @default(now()) @map("created_at")
   adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
   community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
   @@unique([adminUserId, communityId])
   @@index([communityId])
   @@map("admin_community_scopes")
@@ -180,6 +193,7 @@ model AdminAuditLog {
   details      Json?
   createdAt    DateTime   @default(now()) @map("created_at")
   actor        AdminUser? @relation(fields: [actorAdminId], references: [id], onDelete: SetNull)
+
   @@index([actorAdminId, createdAt])
   @@index([targetType, targetId, createdAt])
   @@map("admin_audit_logs")
@@ -187,45 +201,54 @@ model AdminAuditLog {
 
 // ===== 表白墙 =====
 model Circle {
-  id    String @id @default(cuid())
+  id    String  @id @default(cuid())
   name  String
   icon  String?
   posts Post[]
+
   @@map("circles")
 }
+
 model Post {
-  id          String         @id @default(cuid())
-  circleId    String         @map("circle_id")
-  communityId String         @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
-  authorId    String         @map("author_id")
-  content     String
-  images      String[]
-  tags        String[]       @default([])
-  isAnonymous Boolean        @default(false) @map("is_anonymous")
-  anonName    String?        @map("anon_name")
-  videoUrl    String?        @map("video_url")
-  videoCover  String?        @map("video_cover")
-  likeCount   Int            @default(0) @map("like_count")
-  viewCount   Int            @default(0) @map("view_count") // 累计浏览数（PV）：详情接口 fire-and-forget 自增；与 circle 计划 ContentView（今日上头去重）并存
-  status      PostStatus     @default(PENDING)
-  visibility  PostVisibility @default(PUBLIC)  // P1-11 草稿/私密投稿
-  pinned      Boolean        @default(false) // P2-05 置顶
-  featured    Boolean        @default(false) // P2-05 加精
-  boostUntil  DateTime?      @map("boost_until") // 内容推广：付费置顶曝光到期（null=未推广；>now 即推广中）
-  topicId     String?        @map("topic_id") // P2-04 校园话题
-  publishAt   DateTime?      @map("publish_at") // P2-06 定时发布时间（到点 DRAFT->PUBLIC + 审核）
-  createdAt   DateTime       @default(now()) @map("created_at")
-  editedAt    DateTime?      @map("edited_at")    // P1-10 最后编辑时间
-  deletedAt   DateTime?      @map("deleted_at")   // P1-10 作者软删
-  circle      Circle         @relation(fields: [circleId], references: [id])
-  community   Community      @relation(fields: [communityId], references: [id], onDelete: Restrict)
-  author      User           @relation(fields: [authorId], references: [id])
-  topic       Topic?         @relation(fields: [topicId], references: [id])
-  postLikes   PostLike[]
-  comments    Comment[]
-  activityTopics ActivityTopicPost[]
+  id                  String                 @id @default(cuid())
+  circleId            String                 @map("circle_id")
+  communityId         String                 @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
+  authorId            String                 @map("author_id")
+  content             String
+  images              String[]
+  tags                String[]               @default([])
+  isAnonymous         Boolean                @default(false) @map("is_anonymous")
+  anonName            String?                @map("anon_name")
+  videoUrl            String?                @map("video_url")
+  videoCover          String?                @map("video_cover")
+  likeCount           Int                    @default(0) @map("like_count")
+  viewCount           Int                    @default(0) @map("view_count") // 累计浏览数（PV）：详情接口 fire-and-forget 自增；与 circle 计划 ContentView（今日上头去重）并存
+  status              PostStatus             @default(PENDING)
+  publisherScope      PublicationScope       @default(COMMUNITY) @map("publisher_scope")
+  visibilityScope     ContentVisibilityScope @default(COMMUNITY) @map("visibility_scope")
+  moderationAuthority ModerationAuthority?   @map("moderation_authority")
+  moderationVersion   Int                    @default(0) @map("moderation_version")
+  visibility          PostVisibility         @default(PUBLIC) // P1-11 草稿/私密投稿
+  pinned              Boolean                @default(false) // P2-05 置顶
+  featured            Boolean                @default(false) // P2-05 加精
+  boostUntil          DateTime?              @map("boost_until") // 内容推广：付费置顶曝光到期（null=未推广；>now 即推广中）
+  topicId             String?                @map("topic_id") // P2-04 校园话题
+  publishAt           DateTime?              @map("publish_at") // P2-06 定时发布时间（到点 DRAFT->PUBLIC + 审核）
+  createdAt           DateTime               @default(now()) @map("created_at")
+  editedAt            DateTime?              @map("edited_at") // P1-10 最后编辑时间
+  deletedAt           DateTime?              @map("deleted_at") // P1-10 作者软删
+  circle              Circle                 @relation(fields: [circleId], references: [id])
+  community           Community              @relation(fields: [communityId], references: [id], onDelete: Restrict)
+  author              User                   @relation(fields: [authorId], references: [id])
+  topic               Topic?                 @relation(fields: [topicId], references: [id])
+  postLikes           PostLike[]
+  comments            Comment[]
+  activityTopics      ActivityTopicPost[]
+
   @@index([communityId, status, visibility, createdAt])
   @@index([circleId, status, createdAt])
+  @@index([publisherScope, status, createdAt])
+  @@index([visibilityScope, status, createdAt])
   @@index([status, createdAt])
   @@index([authorId, deletedAt])
   @@index([authorId, visibility, createdAt])
@@ -234,6 +257,7 @@ model Post {
   @@index([boostUntil])
   @@map("posts")
 }
+
 enum PostStatus {
   PENDING
   APPROVED
@@ -247,22 +271,38 @@ enum PostVisibility {
   DRAFT
 }
 
+enum PublicationScope {
+  COMMUNITY
+  PLATFORM
+}
+
+enum ContentVisibilityScope {
+  COMMUNITY
+  ALL_COMMUNITIES
+}
+
+enum ModerationAuthority {
+  COMMUNITY
+  PLATFORM
+}
+
 model Comment {
-  id            String   @id @default(cuid())
-  postId        String   @map("post_id")
-  authorId      String   @map("author_id")
+  id            String        @id @default(cuid())
+  postId        String        @map("post_id")
+  authorId      String        @map("author_id")
   content       String
-  parentId      String?  @map("parent_id")         // 所属顶级评论（thread root）；null=顶级评论
-  replyToUserId String?  @map("reply_to_user_id")  // 被回复用户（denormalized，用于"回复@user"展示）；回复顶级评论时=null
-  likeCount     Int      @default(0) @map("like_count") // P1-02 评论点赞数冗余
-  pinned        Boolean  @default(false)          // P1-04 热评置顶（true=被自动/人工置顶）
-  createdAt     DateTime @default(now()) @map("created_at")
-  post          Post     @relation(fields: [postId], references: [id])
-  author        User     @relation(fields: [authorId], references: [id])
-  replyToUser   User?    @relation("CommentReplyTo", fields: [replyToUserId], references: [id])
-  parent        Comment?  @relation("CommentThread", fields: [parentId], references: [id])
-  replies       Comment[] @relation("CommentThread")
+  parentId      String?       @map("parent_id") // 所属顶级评论（thread root）；null=顶级评论
+  replyToUserId String?       @map("reply_to_user_id") // 被回复用户（denormalized，用于"回复@user"展示）；回复顶级评论时=null
+  likeCount     Int           @default(0) @map("like_count") // P1-02 评论点赞数冗余
+  pinned        Boolean       @default(false) // P1-04 热评置顶（true=被自动/人工置顶）
+  createdAt     DateTime      @default(now()) @map("created_at")
+  post          Post          @relation(fields: [postId], references: [id])
+  author        User          @relation(fields: [authorId], references: [id])
+  replyToUser   User?         @relation("CommentReplyTo", fields: [replyToUserId], references: [id])
+  parent        Comment?      @relation("CommentThread", fields: [parentId], references: [id])
+  replies       Comment[]     @relation("CommentThread")
   likes         CommentLike[]
+
   @@index([postId, parentId, createdAt])
   @@index([postId, pinned, likeCount])
   @@map("comments")
@@ -276,54 +316,64 @@ model PostLike {
   createdAt DateTime @default(now()) @map("created_at")
   post      Post     @relation(fields: [postId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+
   @@unique([postId, userId])
   @@map("post_likes")
 }
 
 // ===== 树洞（匿名）=====
 model AnonymousPost {
-  id          String     @id @default(cuid())
-  communityId String     @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
-  anonId      String     @map("anon_id")
-  content     String
-  images      String[]
-  mood        String?    @map("mood")   // P0-13 情绪分类：开心/emo/吐槽/求安慰/学习/恋爱/迷茫
-  status      PostStatus @default(PENDING)
-  createdAt   DateTime   @default(now()) @map("created_at")
-  likeCount   Int        @default(0) @map("like_count")
-  viewCount   Int        @default(0) @map("view_count") // 累计浏览数（PV）：详情接口 fire-and-forget 自增
-  boostUntil DateTime? @map("boost_until") // 内容推广：付费置顶曝光到期（null=未推广；>now 即推广中）
-  community   Community  @relation(fields: [communityId], references: [id], onDelete: Restrict)
-  likes       AnonPostLike[]
-  comments    AnonComment[]
+  id                  String                 @id @default(cuid())
+  communityId         String                 @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
+  anonId              String                 @map("anon_id")
+  content             String
+  images              String[]
+  mood                String?                @map("mood") // P0-13 情绪分类：开心/emo/吐槽/求安慰/学习/恋爱/迷茫
+  status              PostStatus             @default(PENDING)
+  createdAt           DateTime               @default(now()) @map("created_at")
+  likeCount           Int                    @default(0) @map("like_count")
+  publisherScope      PublicationScope       @default(COMMUNITY) @map("publisher_scope")
+  visibilityScope     ContentVisibilityScope @default(COMMUNITY) @map("visibility_scope")
+  moderationAuthority ModerationAuthority?   @map("moderation_authority")
+  moderationVersion   Int                    @default(0) @map("moderation_version")
+  viewCount           Int                    @default(0) @map("view_count") // 累计浏览数（PV）：详情接口 fire-and-forget 自增
+  boostUntil          DateTime?              @map("boost_until") // 内容推广：付费置顶曝光到期（null=未推广；>now 即推广中）
+  community           Community              @relation(fields: [communityId], references: [id], onDelete: Restrict)
+  likes               AnonPostLike[]
+  comments            AnonComment[]
+
   @@index([communityId, status, createdAt])
   @@index([createdAt])
   @@index([mood, createdAt])
+  @@index([publisherScope, status, createdAt])
+  @@index([visibilityScope, status, createdAt])
   @@index([boostUntil])
   @@map("anonymous_posts")
 }
 
 // 树洞匿名帖点赞（postId+anonId 唯一，支持去重/取消）
 model AnonPostLike {
-  id        String         @id @default(cuid())
-  postId    String         @map("post_id")
-  anonId    String         @map("anon_id")
-  createdAt DateTime       @default(now()) @map("created_at")
-  post      AnonymousPost  @relation(fields: [postId], references: [id])
+  id        String        @id @default(cuid())
+  postId    String        @map("post_id")
+  anonId    String        @map("anon_id")
+  createdAt DateTime      @default(now()) @map("created_at")
+  post      AnonymousPost @relation(fields: [postId], references: [id])
+
   @@unique([postId, anonId])
   @@map("anon_post_likes")
 }
 
 // 树洞匿名评论：anonId 标识评论者，0 真实 uid（守匿名红线）。平铺无回复 thread，最新优先。
 model AnonComment {
-  id        String          @id @default(cuid())
-  postId    String          @map("post_id")
-  anonId    String          @map("anon_id") // 评论者匿名 id（不含真实 uid）
+  id        String            @id @default(cuid())
+  postId    String            @map("post_id")
+  anonId    String            @map("anon_id") // 评论者匿名 id（不含真实 uid）
   content   String
-  likeCount Int             @default(0) @map("like_count")
-  createdAt DateTime        @default(now()) @map("created_at")
-  post      AnonymousPost   @relation(fields: [postId], references: [id])
+  likeCount Int               @default(0) @map("like_count")
+  createdAt DateTime          @default(now()) @map("created_at")
+  post      AnonymousPost     @relation(fields: [postId], references: [id])
   likes     AnonCommentLike[]
+
   @@index([postId, createdAt])
   @@map("anon_comments")
 }
@@ -335,6 +385,7 @@ model AnonCommentLike {
   anonId    String      @map("anon_id")
   createdAt DateTime    @default(now()) @map("created_at")
   comment   AnonComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
   @@unique([commentId, anonId])
   @@index([commentId])
   @@map("anon_comment_likes")
@@ -343,15 +394,17 @@ model AnonCommentLike {
 // P0-16 树洞匿名屏蔽：blocker 屏蔽 blocked（按 anonId，0 真实 uid，守匿名红线）
 // 查询时双向判断（A 屏蔽 B -> 广场/匹配/聊天双向隔离）
 model AnonBlock {
-  id             String   @id @default(cuid())
-  blockerAnonId  String   @map("blocker_anon_id")
-  blockedAnonId  String   @map("blocked_anon_id")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id            String   @id @default(cuid())
+  blockerAnonId String   @map("blocker_anon_id")
+  blockedAnonId String   @map("blocked_anon_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
   @@unique([blockerAnonId, blockedAnonId])
   @@index([blockerAnonId])
   @@index([blockedAnonId])
   @@map("anon_blocks")
 }
+
 model ChatMatch {
   id          String      @id @default(cuid())
   anonIdA     String      @map("anon_id_a")
@@ -359,18 +412,21 @@ model ChatMatch {
   kind        MatchKind   @default(RANDOM)
   directKey   String?     @unique @map("direct_key")
   status      MatchStatus @default(ACTIVE)
-  matchScore  Int?        @map("match_score")   // P1-15 规则匹配度 0-100
+  matchScore  Int?        @map("match_score") // P1-15 规则匹配度 0-100
   matchedTags String[]    @default([]) @map("matched_tags") // P1-15 命中标签
-  expireAt    DateTime?   @map("expire_at")     // P1-17 限时聊天过期时间
+  expireAt    DateTime?   @map("expire_at") // P1-17 限时聊天过期时间
   createdAt   DateTime    @default(now()) @map("created_at")
+
   @@index([status, expireAt])
   @@index([kind, status, createdAt])
   @@map("chat_matches")
 }
+
 enum MatchKind {
   RANDOM
   DIRECT
 }
+
 enum MatchStatus {
   ACTIVE
   CLOSED
@@ -381,31 +437,35 @@ enum GroupStatus {
   ACTIVE
   DISBANDED
 }
+
 enum GroupMemberRole {
   OWNER
   ADMIN
   MEMBER
 }
+
 model AnonGroup {
-  id           String      @id @default(cuid())
+  id           String                 @id @default(cuid())
   name         String
-  avatarUrl    String?     @map("avatar_url")
+  avatarUrl    String?                @map("avatar_url")
   description  String?
-  tags         String[]    @default([])
+  tags         String[]               @default([])
   announcement String?
-  maxMembers   Int         @default(100) @map("max_members")
-  isPrivate    Boolean     @default(false) @map("is_private")
-  ownerAnonId  String      @map("owner_anon_id")
-  status       GroupStatus @default(ACTIVE)
-  memberCount  Int         @default(0) @map("member_count")
-  createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @updatedAt @map("updated_at")
+  maxMembers   Int                    @default(100) @map("max_members")
+  isPrivate    Boolean                @default(false) @map("is_private")
+  ownerAnonId  String                 @map("owner_anon_id")
+  status       GroupStatus            @default(ACTIVE)
+  memberCount  Int                    @default(0) @map("member_count")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
   members      AnonGroupMember[]
   joinRequests AnonGroupJoinRequest[]
+
   @@index([isPrivate, status, memberCount])
   @@index([isPrivate, status, createdAt])
   @@map("anon_groups")
 }
+
 model AnonGroupMember {
   id         String          @id @default(cuid())
   groupId    String          @map("group_id")
@@ -414,6 +474,7 @@ model AnonGroupMember {
   mutedUntil DateTime?       @map("muted_until")
   joinedAt   DateTime        @default(now()) @map("joined_at")
   group      AnonGroup       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
   @@unique([groupId, anonId])
   @@index([groupId])
   @@index([anonId])
@@ -426,6 +487,7 @@ enum JoinRequestStatus {
   APPROVED
   REJECTED
 }
+
 model AnonGroupJoinRequest {
   id         String            @id @default(cuid())
   groupId    String            @map("group_id")
@@ -436,6 +498,7 @@ model AnonGroupJoinRequest {
   createdAt  DateTime          @default(now()) @map("created_at")
   updatedAt  DateTime          @updatedAt @map("updated_at")
   group      AnonGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
   @@unique([groupId, anonId, status]) // 同人同群同一状态唯一（一个 PENDING）
   @@index([groupId, status])
   @@map("anon_group_join_requests")
@@ -444,15 +507,16 @@ model AnonGroupJoinRequest {
 // ===== 聊天（1v1，通用）=====
 // fromId/toId 为标识符：实名场景用 uid，树洞匿名场景用 anonId（不存 uid，匿名隔离）
 model ChatMessage {
-  id          String    @id @default(cuid())
-  fromId      String    @map("from_id")
-  toId        String?   @map("to_id") // P2-11 群消息时为 null，1v1 时为对端
-  content     String
-  type        String    @default("text") @map("type") // text / image / voice
-  duration    Int?      @map("duration") // 语音消息时长（秒），仅 type=voice
-  groupId     String?   @map("group_id") // P2-11 群消息时为群 id
-  deletedAt   DateTime? @map("deleted_at") // P2-11 撤回标记
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id        String    @id @default(cuid())
+  fromId    String    @map("from_id")
+  toId      String?   @map("to_id") // P2-11 群消息时为 null，1v1 时为对端
+  content   String
+  type      String    @default("text") @map("type") // text / image / voice
+  duration  Int?      @map("duration") // 语音消息时长（秒），仅 type=voice
+  groupId   String?   @map("group_id") // P2-11 群消息时为群 id
+  deletedAt DateTime? @map("deleted_at") // P2-11 撤回标记
+  createdAt DateTime  @default(now()) @map("created_at")
+
   @@index([fromId, toId, createdAt])
   @@index([toId, createdAt])
   @@index([groupId, createdAt])
@@ -466,7 +530,8 @@ model ChatSession {
   peerId      String   @map("peer_id")
   lastMessage String   @map("last_message")
   lastAt      DateTime @default(now()) @map("last_at")
-  unreadCount Int      @default(0)         @map("unread_count") // 未读消息数（接收方按 lastAt 累计；进入聊天清零）
+  unreadCount Int      @default(0) @map("unread_count") // 未读消息数（接收方按 lastAt 累计；进入聊天清零）
+
   @@unique([ownerId, peerId])
   @@index([ownerId, lastAt])
   @@map("chat_sessions")
@@ -474,16 +539,17 @@ model ChatSession {
 
 // ===== 通知 =====
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  type        String   // job_apply / job_accept / job_complete / post_takedown
-  title       String
-  content     String
-  targetType  String?  @map("target_type")
-  targetId    String?  @map("target_id")
-  extraId     String?  @map("extra_id") // 附属定位 id（如评论通知的 commentId，用于跳转定位）
-  read        Boolean  @default(false)
-  createdAt   DateTime @default(now()) @map("created_at")
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  type       String // job_apply / job_accept / job_complete / post_takedown
+  title      String
+  content    String
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id")
+  extraId    String?  @map("extra_id") // 附属定位 id（如评论通知的 commentId，用于跳转定位）
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
   @@index([userId, read, createdAt])
   @@map("notifications")
 }
@@ -496,6 +562,7 @@ model CommentLike {
   createdAt DateTime @default(now()) @map("created_at")
   comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
+
   @@unique([commentId, userId])
   @@index([commentId])
   @@map("comment_likes")
@@ -508,6 +575,7 @@ model SearchHistory {
   keyword   String
   createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id])
+
   @@index([userId, createdAt])
   @@map("search_histories")
 }
@@ -518,6 +586,7 @@ model HotSearch {
   keyword   String   @unique
   count     Int      @default(0)
   updatedAt DateTime @updatedAt @map("updated_at")
+
   @@map("hot_searches")
 }
 
@@ -529,6 +598,7 @@ model Announcement {
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
   @@map("announcements")
 }
 
@@ -537,27 +607,31 @@ enum ActivityTopicStatus {
   DRAFT
   PUBLISHED
 }
+
 model ActivityTopic {
-  id          String             @id @default(cuid())
+  id          String              @id @default(cuid())
   title       String
-  coverUrl    String?            @map("cover_url")
+  coverUrl    String?             @map("cover_url")
   description String?
   status      ActivityTopicStatus @default(DRAFT)
-  sortOrder   Int                @default(0) @map("sort_order")
-  createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @updatedAt @map("updated_at")
+  sortOrder   Int                 @default(0) @map("sort_order")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
   posts       ActivityTopicPost[]
+
   @@map("activity_topics")
 }
+
 // 活动专题 ↔ 帖子（多对多，可排序）
 model ActivityTopicPost {
-  id           String        @id @default(cuid())
-  topicId      String        @map("topic_id")
-  postId       String        @map("post_id")
-  sortOrder    Int           @default(0) @map("sort_order")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  topic        ActivityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  post         Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  id        String        @id @default(cuid())
+  topicId   String        @map("topic_id")
+  postId    String        @map("post_id")
+  sortOrder Int           @default(0) @map("sort_order")
+  createdAt DateTime      @default(now()) @map("created_at")
+  topic     ActivityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   @@unique([topicId, postId])
   @@index([topicId, sortOrder])
   @@map("activity_topic_posts")
@@ -568,6 +642,7 @@ enum TopicStatus {
   DRAFT
   PUBLISHED
 }
+
 model Topic {
   id          String      @id @default(cuid())
   name        String      @unique
@@ -578,6 +653,7 @@ model Topic {
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
   posts       Post[]
+
   @@map("topics")
 }
 
@@ -589,6 +665,7 @@ model Favorite {
   targetId   String   @map("target_id")
   createdAt  DateTime @default(now()) @map("created_at")
   user       User     @relation(fields: [userId], references: [id])
+
   @@unique([userId, targetType, targetId])
   @@index([userId, targetType, createdAt])
   @@map("favorites")
@@ -600,19 +677,21 @@ enum TicketStatus {
   IN_PROGRESS
   CLOSED
 }
+
 model SupportTicket {
-  id          String       @id @default(cuid())
-  userId      String       @map("user_id")
-  role        String       @default("user") // user / merchant
-  title       String
-  content     String
-  status      TicketStatus @default(OPEN)
-  reply       String?
-  repliedBy   String?      @map("replied_by")
-  repliedAt   DateTime?    @map("replied_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  role      String       @default("user") // user / merchant
+  title     String
+  content   String
+  status    TicketStatus @default(OPEN)
+  reply     String?
+  repliedBy String?      @map("replied_by")
+  repliedAt DateTime?    @map("replied_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([status, createdAt])
   @@map("support_tickets")
@@ -620,12 +699,13 @@ model SupportTicket {
 
 // 关注关系（follower 关注 followee）
 model Follow {
-  id          String   @id @default(cuid())
-  followerId  String   @map("follower_id")
-  followeeId  String   @map("followee_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  follower    User     @relation("FollowFollower", fields: [followerId], references: [id])
-  followee    User     @relation("FollowFollowee", fields: [followeeId], references: [id])
+  id         String   @id @default(cuid())
+  followerId String   @map("follower_id")
+  followeeId String   @map("followee_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  follower   User     @relation("FollowFollower", fields: [followerId], references: [id])
+  followee   User     @relation("FollowFollowee", fields: [followeeId], references: [id])
+
   @@unique([followerId, followeeId])
   @@index([followeeId, createdAt])
   @@map("follows")
@@ -639,6 +719,7 @@ model ReferralCode {
   code      String   @unique
   createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id])
+
   @@map("referral_codes")
 }
 
@@ -650,6 +731,7 @@ model ReferralRecord {
   createdAt    DateTime @default(now()) @map("created_at")
   referrer     User     @relation("ReferrerRel", fields: [referrerId], references: [id])
   referee      User     @relation("RefereeRel", fields: [refereeId], references: [id])
+
   @@index([referrerId, createdAt])
   @@map("referral_records")
 }
@@ -665,8 +747,10 @@ model Merchant {
   status        MerchantStatus @default(PENDING)
   createdAt     DateTime       @default(now()) @map("created_at")
   jobPosts      JobPost[]
+
   @@map("merchants")
 }
+
 enum MerchantStatus {
   PENDING
   APPROVED
@@ -674,78 +758,88 @@ enum MerchantStatus {
 }
 
 model JobPost {
-  id           String        @id @default(cuid())
-  merchantId   String        @map("merchant_id")
-  communityId  String        @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
-  title        String
-  description  String
-  requirements String?       @map("requirements")                     // P0-19 任职要求（可空，与工作内容分开）
-  contactPhoneSnapshot  String? @map("contact_phone_snapshot")  // M3-10 发岗时商家电话快照
-  contactWechatSnapshot String? @map("contact_wechat_snapshot") // M3-10 发岗时商家微信快照
-  salary       String
-  salaryAmount Int?          @map("salary_amount")                    // P0-18 薪资数额（auto-parse 自 salary，范围筛选用；单位差异为已知限制）
-  location     String
+  id                    String               @id @default(cuid())
+  merchantId            String               @map("merchant_id")
+  communityId           String               @map("community_id") // 圈子：归属圈子（必填，存量回填默认圈子）
+  title                 String
+  description           String
+  requirements          String?              @map("requirements") // P0-19 任职要求（可空，与工作内容分开）
+  contactPhoneSnapshot  String?              @map("contact_phone_snapshot") // M3-10 发岗时商家电话快照
+  contactWechatSnapshot String?              @map("contact_wechat_snapshot") // M3-10 发岗时商家微信快照
+  salary                String
+  salaryAmount          Int?                 @map("salary_amount") // P0-18 薪资数额（auto-parse 自 salary，范围筛选用；单位差异为已知限制）
+  location              String
   // 智能生成流程(2026-08-10):工作地点必须经百度地图选点 / GPS 定位获得，禁止用户手动输入文本。
   // 老数据兼容：4 字段可空；新创建岗位 createPost 强制必填（缺一抛 40003）。
-  locationPoiId String?       @map("location_poi_id")  // 百度地图 poi uid
-  locationLng   Decimal?      @db.Decimal(10, 6) @map("location_lng") // 经度
-  locationLat   Decimal?      @db.Decimal(10, 6) @map("location_lat") // 纬度
-  locationCity  String?       @map("location_city")      // 城市（如「北京」）
-  category     JobCategory?  @map("category")                          // P0-17 分类
-  customCategory String?      @map("custom_category")                   // P2-33 商家自定义岗位类型
-  settlement   Settlement?   @map("settlement")                        // P0-17 结算方式
-  workDates    String[]      @default([]) @map("work_dates")           // P0-17 工作日期（周一..周日/可商议）
-  workPeriods  String[]      @default([]) @map("work_periods")         // P0-17 工作时段（上午/下午/晚上/全天/可商议）
-  headcount    Int           @default(1) @map("headcount")             // P0-17 招聘人数
-  urgent       Boolean       @default(false) @map("urgent")            // P0-17 急招
-  featured     Boolean       @default(false) @map("featured")          // P2-15 精品
-  featuredAt   DateTime?     @map("featured_at")                       // P2-15 精品设置时间
-  online       Boolean       @default(false) @map("online")            // P0-17 是否可线上
-  questions    String[]      @default([]) @map("questions")            // P0-21 报名问题（商家设置）
-  duration     JobDuration
-  expireAt     DateTime?     @map("expire_at")
-  visibilityScope JobVisibilityScope @default(COMMUNITY) @map("visibility_scope")
-  applyMode       JobApplyMode       @default(IN_APP) @map("apply_mode")
-  publisherName   String?            @map("publisher_name")
-  status       JobPostStatus @default(PENDING)
-  takenDownAt  DateTime?     @map("taken_down_at") // M3-05 商家主动下架时间（null=未下架或非下架状态）
-  deletedAt    DateTime?     @map("deleted_at")    // M3-07 商家硬删草稿（软删字段，null=未删；list/get 全链路过滤 deletedAt:null）
-  createdAt    DateTime      @default(now()) @map("created_at")
-  merchant     Merchant      @relation(fields: [merchantId], references: [id])
-  community    Community     @relation(fields: [communityId], references: [id], onDelete: Restrict)
-  applications JobApplication[]
-  views        JobView[]
-  impressions  JobImpression[]
-  tutorSyncBinding TutorJobSyncBinding?
+  locationPoiId         String?              @map("location_poi_id") // 百度地图 poi uid
+  locationLng           Decimal?             @map("location_lng") @db.Decimal(10, 6) // 经度
+  locationLat           Decimal?             @map("location_lat") @db.Decimal(10, 6) // 纬度
+  locationCity          String?              @map("location_city") // 城市（如「北京」）
+  category              JobCategory?         @map("category") // P0-17 分类
+  customCategory        String?              @map("custom_category") // P2-33 商家自定义岗位类型
+  settlement            Settlement?          @map("settlement") // P0-17 结算方式
+  workDates             String[]             @default([]) @map("work_dates") // P0-17 工作日期（周一..周日/可商议）
+  workPeriods           String[]             @default([]) @map("work_periods") // P0-17 工作时段（上午/下午/晚上/全天/可商议）
+  headcount             Int                  @default(1) @map("headcount") // P0-17 招聘人数
+  urgent                Boolean              @default(false) @map("urgent") // P0-17 急招
+  featured              Boolean              @default(false) @map("featured") // P2-15 精品
+  featuredAt            DateTime?            @map("featured_at") // P2-15 精品设置时间
+  online                Boolean              @default(false) @map("online") // P0-17 是否可线上
+  questions             String[]             @default([]) @map("questions") // P0-21 报名问题（商家设置）
+  duration              JobDuration
+  expireAt              DateTime?            @map("expire_at")
+  visibilityScope       JobVisibilityScope   @default(COMMUNITY) @map("visibility_scope")
+  applyMode             JobApplyMode         @default(IN_APP) @map("apply_mode")
+  publisherName         String?              @map("publisher_name")
+  status                JobPostStatus        @default(PENDING)
+  publisherScope        PublicationScope     @default(COMMUNITY) @map("publisher_scope")
+  moderationAuthority   ModerationAuthority? @map("moderation_authority")
+  moderationVersion     Int                  @default(0) @map("moderation_version")
+  takenDownAt           DateTime?            @map("taken_down_at") // M3-05 商家主动下架时间（null=未下架或非下架状态）
+  deletedAt             DateTime?            @map("deleted_at") // M3-07 商家硬删草稿（软删字段，null=未删；list/get 全链路过滤 deletedAt:null）
+  createdAt             DateTime             @default(now()) @map("created_at")
+  merchant              Merchant             @relation(fields: [merchantId], references: [id])
+  community             Community            @relation(fields: [communityId], references: [id], onDelete: Restrict)
+  applications          JobApplication[]
+  views                 JobView[]
+  impressions           JobImpression[]
+  tutorSyncBinding      TutorJobSyncBinding?
+
   @@index([communityId, status, createdAt])
   @@index([status, expireAt])
   @@index([status, createdAt])
   @@index([status, urgent, createdAt])
+  @@index([publisherScope, status, createdAt])
   @@index([status, category, createdAt])
   @@index([status, salaryAmount])
   @@index([status, featured, featuredAt])
-@@index([merchantId, status, deletedAt, createdAt]) // M3-07 商家视角列表过滤加速
+  @@index([merchantId, status, deletedAt, createdAt]) // M3-07 商家视角列表过滤加速
   @@index([locationCity, status])
   @@map("job_posts")
 }
+
 enum JobDuration {
   D30
   D90
 }
+
 enum JobVisibilityScope {
   COMMUNITY
   ALL_COMMUNITIES
 }
+
 enum JobApplyMode {
   IN_APP
   CONTACT_ONLY
 }
+
 enum JobPostStatus {
   PENDING
   PUBLISHED
   TAKEN_DOWN
   EXPIRED
 }
+
 // P0-17 岗位分类（功能规划 §3.2，日结/周结/月结属结算方式不在此）
 enum JobCategory {
   CATERING
@@ -759,6 +853,7 @@ enum JobCategory {
   INTERNSHIP
   LONG_TERM
 }
+
 // P0-17 结算方式
 enum Settlement {
   DAILY
@@ -768,15 +863,15 @@ enum Settlement {
 }
 
 model TutorJobSyncBinding {
-  id         String   @id @default(cuid())
-  source     String
-  externalId String   @map("external_id")
+  id                String    @id @default(cuid())
+  source            String
+  externalId        String    @map("external_id")
   jobPostId         String    @unique @map("job_post_id")
   platformBlockedAt DateTime? @map("platform_blocked_at")
   sourceActive      Boolean   @default(true) @map("source_active")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
-  jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  jobPost           JobPost   @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
 
   @@unique([source, externalId])
   @@index([source, updatedAt])
@@ -793,25 +888,27 @@ model TutorSyncState {
 }
 
 model JobApplication {
-  id           String    @id @default(cuid())
-  jobPostId    String    @map("job_post_id")
-  userId       String    @map("user_id")
-  resumeId     String?   @map("resume_id")                               // P0-21 报名所附简历
-  resumeSnapshot Json?   @map("resume_snapshot")                         // M2-08 报名时完整简历快照
-  answers      Json?     @map("answers")                                 // P0-21 报名问题回答 [{question, answer}]
-  status       AppStatus @default(PENDING)
+  id                   String                @id @default(cuid())
+  jobPostId            String                @map("job_post_id")
+  userId               String                @map("user_id")
+  resumeId             String?               @map("resume_id") // P0-21 报名所附简历
+  resumeSnapshot       Json?                 @map("resume_snapshot") // M2-08 报名时完整简历快照
+  answers              Json?                 @map("answers") // P0-21 报名问题回答 [{question, answer}]
+  status               AppStatus             @default(PENDING)
   // M2-04/05 商家标记：已联系时间（null=未联系）；合适/不合适标记（null=未标记，可修改可清除）
-  contactedAt  DateTime? @map("contacted_at")
-  fitMark      FitMark?
-  createdAt    DateTime  @default(now()) @map("created_at")
-  jobPost      JobPost   @relation(fields: [jobPostId], references: [id])
-  user         User      @relation(fields: [userId], references: [id])
-  review       JobReview[] @relation("AppReview")
-  conversation JobConversation?
+  contactedAt          DateTime?             @map("contacted_at")
+  fitMark              FitMark?
+  createdAt            DateTime              @default(now()) @map("created_at")
+  jobPost              JobPost               @relation(fields: [jobPostId], references: [id])
+  user                 User                  @relation(fields: [userId], references: [id])
+  review               JobReview[]           @relation("AppReview")
+  conversation         JobConversation?
   interviewInvitations InterviewInvitation[]
+
   @@unique([jobPostId, userId])
   @@map("job_applications")
 }
+
 enum AppStatus {
   PENDING
   ACCEPTED
@@ -850,6 +947,7 @@ model JobConversation {
   merchantUser   User                     @relation("JobConversationMerchant", fields: [merchantUserId], references: [id])
   messages       JobConversationMessage[]
   invitations    InterviewInvitation[]
+
   @@index([studentId, updatedAt])
   @@index([merchantUserId, updatedAt])
   @@map("job_conversations")
@@ -868,6 +966,7 @@ model JobConversationMessage {
   conversation          JobConversation            @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender                User                       @relation("JobConversationMessageSender", fields: [senderId], references: [id])
   interviewInvitation   InterviewInvitation?       @relation(fields: [interviewInvitationId], references: [id], onDelete: SetNull)
+
   @@unique([conversationId, senderId, clientMessageId])
   @@index([conversationId, createdAt])
   @@map("job_conversation_messages")
@@ -892,6 +991,7 @@ model InterviewInvitation {
   conversation    JobConversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   createdBy       User                      @relation("InterviewInvitationCreator", fields: [createdById], references: [id])
   message         JobConversationMessage?
+
   @@index([applicationId, createdAt])
   @@index([conversationId, createdAt])
   @@map("interview_invitations")
@@ -906,6 +1006,7 @@ model JobReview {
   content       String
   createdAt     DateTime       @default(now()) @map("created_at")
   application   JobApplication @relation("AppReview", fields: [applicationId], references: [id])
+
   @@unique([applicationId, direction]) // P1-26 同一报名可双向评（学生评商家 + 商家评学生）
   @@index([reviewerId])
   @@map("job_reviews")
@@ -920,6 +1021,7 @@ model JobImpression {
   createdAt  DateTime @default(now()) @map("created_at")
   jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([jobPostId, userId, hourBucket])
   @@index([jobPostId, createdAt])
   @@index([userId, createdAt])
@@ -933,6 +1035,7 @@ model JobView {
   userId    String   @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
   jobPost   JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+
   @@index([jobPostId, createdAt])
   @@index([userId, createdAt])
   @@map("job_views")
@@ -951,6 +1054,7 @@ model Resume {
   experience     String?
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
+
   @@map("resumes")
 }
 
@@ -960,35 +1064,43 @@ model PricingConfig {
   duration  JobDuration
   price     Decimal     @db.Decimal(10, 2)
   updatedAt DateTime    @updatedAt @map("updated_at")
+
   @@unique([duration])
   @@map("pricing_config")
 }
+
 model PaymentOrder {
-  id         String    @id @default(cuid())
+  id                 String       @id @default(cuid())
   // 订单场景：JOB_PUBLISH 兼职付费发布 / POST_BOOST 表白墙推广 / ANON_POST_BOOST 树洞推广
-  scene      PayScene  @default(JOB_PUBLISH)
+  scene              PayScene     @default(JOB_PUBLISH)
   // job 场景：商家/岗位/档期；boost 场景为空
-  merchantId String?   @map("merchant_id")
-  jobPostId  String?   @map("job_post_id")
-  duration   JobDuration?
+  merchantId         String?      @map("merchant_id")
+  jobPostId          String?      @map("job_post_id")
+  duration           JobDuration?
   // boost 场景：购买者真实 uid（后台可追溯，等同于 AnonymousProfile 定位）+ 推广目标 + 档位
-  userId     String?   @map("user_id")
-  postId     String?   @map("post_id")
-  anonPostId String?   @map("anon_post_id")
-  boostPlanId String?  @map("boost_plan_id")
-  amount     Decimal   @db.Decimal(10, 2)
-  wxPrepayId String?   @map("wx_prepay_id")
-  status     PayStatus @default(PENDING)
-  paidAt     DateTime? @map("paid_at")
-  refundedAt DateTime? @map("refunded_at")
-  refundReason String? @map("refund_reason")
-  // M6：微信支付单号（回调写入）、退款单号（退款 API 返回）、退款状态（SUCCESS/PROCESSING/CLOSED/ABNORMAL）
-  wxTransactionId String? @map("wx_transaction_id")
-  wxRefundId      String? @map("wx_refund_id")
-  refundStatus    String? @map("refund_status")
-  createdAt  DateTime  @default(now()) @map("created_at")
+  userId             String?      @map("user_id")
+  postId             String?      @map("post_id")
+  anonPostId         String?      @map("anon_post_id")
+  boostPlanId        String?      @map("boost_plan_id")
+  amount             Decimal      @db.Decimal(10, 2)
+  wxPrepayId         String?      @map("wx_prepay_id")
+  status             PayStatus    @default(PENDING)
+  paidAt             DateTime?    @map("paid_at")
+  refundedAt         DateTime?    @map("refunded_at")
+  refundReason       String?      @map("refund_reason")
+  // M6：微信支付单号（回调写入）、退款单号（退款 API 返回）、退款状态（REQUIRED/SUCCESS/PROCESSING/CLOSED/ABNORMAL）
+  wxTransactionId    String?      @map("wx_transaction_id")
+  wxRefundId         String?      @map("wx_refund_id")
+  refundStatus       String?      @map("refund_status")
+  fulfillmentApplied Boolean      @default(false) @map("fulfillment_applied")
+  refundAttempt      Int          @default(0) @map("refund_attempt")
+  refundRetryAt      DateTime     @default(now()) @map("refund_retry_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+
+  @@index([status, refundStatus, refundRetryAt, createdAt], map: "payment_orders_refund_retry_queue_idx")
   @@map("payment_orders")
 }
+
 enum PayStatus {
   PENDING
   PAID
@@ -996,6 +1108,7 @@ enum PayStatus {
   REFUNDED
   CLOSED
 }
+
 enum PayScene {
   JOB_PUBLISH
   POST_BOOST
@@ -1006,29 +1119,35 @@ enum PayScene {
 model BoostPlan {
   id            String   @id @default(cuid())
   code          String   @unique // BOOST_1D / BOOST_3D / BOOST_7D
-  name          String             // 1天推广 / 3天推广 / 7天推广
+  name          String // 1天推广 / 3天推广 / 7天推广
   durationHours Int      @map("duration_hours") // 24 / 72 / 168
   price         Decimal  @db.Decimal(10, 2)
   enabled       Boolean  @default(true)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+
   @@map("boost_plans")
 }
 
 // ===== 内容审核 =====
 model ModerationRecord {
-  id         String            @id @default(cuid())
-  targetType String            @map("target_type")
-  targetId   String            @map("target_id")
-  reason     String?
-  status     ModerationStatus  @default(PENDING)
-  reviewerId String?           @map("reviewer_id")
-  reporterId String?           @map("reporter_id") // P1-27 举报人 uid
-  result     String?           @map("result")      // P1-28 处理结果备注
-  resolvedAt DateTime?         @map("resolved_at") // P1-28 处理时间
-  createdAt  DateTime          @default(now()) @map("created_at")
+  id                   String            @id @default(cuid())
+  targetType           String            @map("target_type")
+  targetId             String            @map("target_id")
+  targetPublisherScope PublicationScope? @map("target_publisher_scope")
+  targetCommunityId    String?           @map("target_community_id")
+  reason               String?
+  status               ModerationStatus  @default(PENDING)
+  reviewerId           String?           @map("reviewer_id")
+  reporterId           String?           @map("reporter_id") // P1-27 举报人 uid
+  result               String?           @map("result") // P1-28 处理结果备注
+  resolvedAt           DateTime?         @map("resolved_at") // P1-28 处理时间
+  createdAt            DateTime          @default(now()) @map("created_at")
+
+  @@index([reporterId, targetPublisherScope, targetCommunityId, createdAt])
   @@map("moderation_records")
 }
+
 enum ModerationStatus {
   PENDING
   APPROVED
@@ -1041,48 +1160,72 @@ enum ModerationStatus {
 enum CommunityStatus {
   ACTIVE
   DISABLED
-  PENDING  // P2-26 待管理员审核（仅 creator 可见）
+  PENDING // P2-26 待管理员审核（仅 creator 可见）
 }
+
 model Community {
-  id          String            @id @default(cuid())
-  name        String
-  logo        String?
-  backgroundImage String?       @map("background_image")
-  description String?
-  category    String            @default("校园") // 圈子类型（广场左侧分类：校园/兴趣/生活/兼职）
-  region      String?                            // 所在地区（城市/校区，仅展示，广场不过滤）
-  location    String?                            // 所在地点（具体地址/POI，仅展示）
-  ownerId     String?           @map("owner_id") // 默认圈子平台所有，nullable；用户创建时=creator
-  status      CommunityStatus   @default(ACTIVE)
-  memberCount Int               @default(0) @map("member_count") // 成员数（join/leave 时维护）
-  postCount   Int               @default(0) @map("post_count")   // 动态数 = 表白墙帖数（Post create/软删时维护）
-  createdAt   DateTime          @default(now()) @map("created_at")
+  id              String                @id @default(cuid())
+  name            String
+  logo            String?
+  backgroundImage String?               @map("background_image")
+  description     String?
+  category        String                @default("校园") // 圈子类型（广场左侧分类：校园/兴趣/生活/兼职）
+  region          String? // 所在地区（城市/校区，仅展示，广场不过滤）
+  location        String? // 所在地点（具体地址/POI，仅展示）
+  ownerId         String?               @map("owner_id") // 默认圈子平台所有，nullable；用户创建时=creator
+  status          CommunityStatus       @default(ACTIVE)
+  memberCount     Int                   @default(0) @map("member_count") // 成员数（join/leave 时维护）
+  postCount       Int                   @default(0) @map("post_count") // 动态数 = 表白墙帖数（Post create/软删时维护）
+  createdAt       DateTime              @default(now()) @map("created_at")
   // P2-26 审核留痕字段
-  reviewedBy   String?   @map("reviewed_by")    // AdminUser.openid
-  reviewedAt   DateTime? @map("reviewed_at")
-  rejectReason String?   @map("reject_reason") @db.VarChar(200)
-  owner       User?             @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  activeUsers User[]            @relation("CommunityActiveUser")
-  members     CommunityMember[]
-  posts       Post[]
-  anonPosts   AnonymousPost[]
-  jobPosts    JobPost[]
-  banners     Banner[]
-  adminScopes AdminCommunityScope[]
+  reviewedBy      String?               @map("reviewed_by") // AdminUser.openid
+  reviewedAt      DateTime?             @map("reviewed_at")
+  rejectReason    String?               @map("reject_reason") @db.VarChar(200)
+  owner           User?                 @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  activeUsers     User[]                @relation("CommunityActiveUser")
+  members         CommunityMember[]
+  posts           Post[]
+  anonPosts       AnonymousPost[]
+  jobPosts        JobPost[]
+  banners         Banner[]
+  adminScopes     AdminCommunityScope[]
+  userBans        CommunityUserBan[]
+
   @@index([status, createdAt])
   @@index([status, memberCount])
-  @@index([ownerId, status])  // P2-26 creator 视角查"我的全部圈子"
+  @@index([ownerId, status]) // P2-26 creator 视角查"我的全部圈子"
   @@map("communities")
+}
+
+model CommunityUserBan {
+  id          String              @id @default(cuid())
+  communityId String              @map("community_id")
+  userId      String              @map("user_id")
+  authority   ModerationAuthority @default(COMMUNITY)
+  reason      String?
+  active      Boolean             @default(true)
+  bannedBy    String              @map("banned_by")
+  bannedAt    DateTime            @default(now()) @map("banned_at")
+  liftedBy    String?             @map("lifted_by")
+  liftedAt    DateTime?           @map("lifted_at")
+  community   Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([userId, active])
+  @@index([communityId, active])
+  @@map("community_user_bans")
 }
 
 // ===== P2-26 全局配置 KV（通用 FeatureFlag / 系统参数）=====
 model AppConfig {
   id        String   @id @default(cuid())
-  key       String   @unique                    // 例 "community.need_review"
-  value     Json                                  // 任意 JSON（boolean / number / object / string）
-  updatedBy String?  @map("updated_by")          // 最后修改者（admin openid 或 'seed'）
+  key       String   @unique // 例 "community.need_review"
+  value     Json // 任意 JSON（boolean / number / object / string）
+  updatedBy String?  @map("updated_by") // 最后修改者（admin openid 或 'seed'）
   updatedAt DateTime @updatedAt @map("updated_at")
   createdAt DateTime @default(now()) @map("created_at")
+
   @@map("app_configs")
 }
 
@@ -1091,6 +1234,7 @@ enum CommunityMemberRole {
   ADMIN
   MEMBER
 }
+
 model CommunityMember {
   id          String              @id @default(cuid())
   communityId String              @map("community_id")
@@ -1099,6 +1243,7 @@ model CommunityMember {
   joinedAt    DateTime            @default(now()) @map("joined_at")
   community   Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([communityId, userId])
   @@index([userId, joinedAt])
   @@map("community_members")
@@ -1109,16 +1254,18 @@ enum BannerStatus {
   ENABLED
   DISABLED
 }
+
 model Banner {
   id          String       @id @default(cuid())
   title       String
   imageUrl    String       @map("image_url")
-  linkUrl     String?      @map("link_url")     // 可空：广告跳转链接
+  linkUrl     String?      @map("link_url") // 可空：广告跳转链接
   communityId String       @map("community_id") // 所有广告位必须归属具体圈子
   sortOrder   Int          @default(0) @map("sort_order")
   status      BannerStatus @default(ENABLED)
   createdAt   DateTime     @default(now()) @map("created_at")
   community   Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
   @@index([communityId, status, sortOrder])
   @@map("banners")
 }
@@ -1131,9 +1278,10 @@ model ContentView {
   id         String   @id @default(cuid())
   targetType String   @map("target_type") // 'post' | 'anon_post'
   targetId   String   @map("target_id")
-  viewerKey  String   @map("viewer_key")  // post→uid；anon_post→anonId
+  viewerKey  String   @map("viewer_key") // post→uid；anon_post→anonId
   hourBucket Int      @map("hour_bucket") // Math.floor(Date.now()/3_600_000)
   createdAt  DateTime @default(now()) @map("created_at")
+
   @@unique([targetType, targetId, viewerKey, hourBucket])
   @@index([targetType, targetId, createdAt])
   @@index([createdAt]) // 近24h 聚合加速

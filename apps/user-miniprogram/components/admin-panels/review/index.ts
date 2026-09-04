@@ -3,6 +3,7 @@
 import type { AppInstance } from '../../../app';
 import {
   getQueue,
+  getModerationContexts,
   approveMerchant,
   rejectMerchant,
   batchMerchants,
@@ -18,12 +19,17 @@ import {
   resolveReport,
   listJobPostsAdmin,
   takedownJobPost,
+  restorePost,
+  restoreAnonPost,
+  restoreJobPost,
   type AdminQueueVo,
   type AdminPostVo,
   type AdminAnonPostVo,
   type AdminCommentVo,
   type AdminReportVo,
   type AdminJobPostVo,
+  type AdminModerationScope,
+  type ModerationContextsVo,
 } from '../../../services/admin';
 
 type Sub = 'merchant' | 'posts' | 'anon' | 'comments' | 'reports' | 'jobs';
@@ -54,6 +60,13 @@ Component({
     sub: 'merchant' as Sub,
     allowedSubs: [] as Sub[],
     subLabels: SUB_LABELS,
+    moderationScopes: [] as ModerationContextsVo['scopes'],
+    moderationCommunities: [] as ModerationContextsVo['communities'],
+    moderationCommunityOptions: [] as Array<{ id: string; name: string }>,
+    moderationScope: 'COMMUNITY' as AdminModerationScope,
+    moderationCommunityId: '',
+    moderationCommunityIndex: 0,
+    isPlatformAdmin: false,
     // 商家入驻
     queue: null as AdminQueueVo | null,
     merchantStatus: 'PENDING' as 'all' | 'PENDING' | 'APPROVED' | 'REJECTED',
@@ -80,12 +93,27 @@ Component({
     // 举报
     reports: [] as AdminReportVo[],
     reportStatus: 'PENDING',
+    reportPage: 0,
+    reportHasMore: false,
     // 岗位（R4）
     jobs: [] as AdminJobPostVo[],
+    jobPage: 0,
+    jobHasMore: false,
     loading: false,
+    loadingMore: false,
+    requestVersion: 0,
   },
 
   methods: {
+    beginRequest() {
+      const requestVersion = this.data.requestVersion + 1;
+      this.setData({ requestVersion, loading: false, loadingMore: false });
+      return requestVersion;
+    },
+
+    isCurrentRequest(requestVersion: number) {
+      return requestVersion === this.data.requestVersion;
+    },
     // shell 注入 params（带 _ts nonce 保证同值重触发）；可接 sub 预选子 tab
     onParams(params: Record<string, unknown>) {
       const sub = params.sub as Sub | undefined;
@@ -109,7 +137,48 @@ Component({
       });
       const sub = allowedSubs.includes(this.data.sub) ? this.data.sub : allowedSubs[0];
       if (!sub) return;
-      this.setData({ allowedSubs, sub });
+      this.setData({ allowedSubs, sub, isPlatformAdmin: access.isPlatform });
+      if (can('content.moderate') || can('report.manage')) {
+        void this.ensureModerationContexts().then(() => this.load());
+      } else {
+        void this.load();
+      }
+    },
+
+    async ensureModerationContexts() {
+      if (this.data.moderationScopes.length > 0) return;
+      const contexts = await getModerationContexts();
+      const scope = contexts.scopes.some((item) => item.scope === 'PLATFORM') ? 'PLATFORM' : 'COMMUNITY';
+      this.setData({
+        moderationScopes: contexts.scopes,
+        moderationCommunities: contexts.communities,
+        moderationCommunityOptions: [{ id: '', name: '全部授权圈子' }, ...contexts.communities],
+        moderationScope: scope,
+        moderationCommunityId: '',
+        moderationCommunityIndex: 0,
+      });
+    },
+
+    moderationQuery() {
+      return {
+        scope: this.data.moderationScope,
+        communityId: this.data.moderationScope === 'COMMUNITY'
+          ? (this.data.moderationCommunityId || undefined)
+          : undefined,
+      };
+    },
+
+    switchModerationScope(e: WechatMiniprogram.TouchEvent) {
+      const scope = e.currentTarget.dataset.scope as AdminModerationScope;
+      if (!this.data.moderationScopes.some((item) => item.scope === scope)) return;
+      this.setData({ moderationScope: scope, moderationCommunityId: '', moderationCommunityIndex: 0 });
+      void this.load();
+    },
+
+    onModerationCommunityChange(e: WechatMiniprogram.PickerChange) {
+      const index = Number(e.detail.value) || 0;
+      const selected = this.data.moderationCommunityOptions[index];
+      this.setData({ moderationCommunityIndex: index, moderationCommunityId: selected?.id ?? '' });
       void this.load();
     },
 
@@ -119,6 +188,8 @@ Component({
       if (sub === 'posts') this.loadMorePosts();
       else if (sub === 'anon') this.loadMoreAnonPosts();
       else if (sub === 'comments') this.loadMoreComments();
+      else if (sub === 'reports') this.loadMoreReports();
+      else if (sub === 'jobs') this.loadMoreJobs();
     },
 
     onPanelPullDown() {
@@ -134,30 +205,30 @@ Component({
     },
 
     async load() {
+      const requestVersion = this.beginRequest();
       this.setData({ loading: true });
       try {
         const sub = this.data.sub;
         if (sub === 'merchant') {
           const queue = await getQueue();
+          if (!this.isCurrentRequest(requestVersion)) return;
           this.setData({ queue });
           this.filterMerchants();
         } else if (sub === 'posts') {
-          await this.loadPosts(false);
+          await this.loadPosts(false, requestVersion);
         } else if (sub === 'anon') {
-          await this.loadAnonPosts(false);
+          await this.loadAnonPosts(false, requestVersion);
         } else if (sub === 'comments') {
-          await this.loadComments(false);
+          await this.loadComments(false, requestVersion);
         } else if (sub === 'reports') {
-          const r = await listReports(this.data.reportStatus);
-          this.setData({ reports: r.list });
+          await this.loadReports(false, requestVersion);
         } else if (sub === 'jobs') {
-          const jobs = await listJobPostsAdmin(50);
-          this.setData({ jobs });
+          await this.loadJobs(false, requestVersion);
         }
       } catch {
         /* toast */
       } finally {
-        this.setData({ loading: false });
+        if (this.isCurrentRequest(requestVersion)) this.setData({ loading: false });
       }
     },
 
@@ -226,14 +297,24 @@ Component({
     },
 
     // ===== 表白墙帖 =====
-    async loadPosts(append: boolean) {
+    async loadPosts(append: boolean, requestVersion?: number) {
+      const activeRequestVersion = requestVersion ?? this.beginRequest();
       const page = append ? this.data.postPage + 1 : 1;
-      const r = await listPostsAdmin(page, 20, this.data.postKeyword || undefined, this.data.postStatus || undefined);
+      const keyword = this.data.postKeyword || undefined;
+      const status = this.data.postStatus || undefined;
+      const query = this.moderationQuery();
+      const r = await listPostsAdmin(page, 20, keyword, status, query);
+      if (!this.isCurrentRequest(activeRequestVersion)) return;
       const posts = append ? [...this.data.posts, ...r.list] : r.list;
       this.setData({ posts, postPage: page, postHasMore: posts.length < r.total });
     },
     loadMorePosts() {
-      if (this.data.postHasMore) void this.loadPosts(true);
+      if (!this.data.postHasMore || this.data.loading || this.data.loadingMore) return;
+      const requestVersion = this.beginRequest();
+      this.setData({ loadingMore: true });
+      void this.loadPosts(true, requestVersion).finally(() => {
+        if (this.isCurrentRequest(requestVersion)) this.setData({ loadingMore: false });
+      });
     },
     switchPostStatus(e: WechatMiniprogram.TouchEvent) {
       this.setData({ postStatus: e.currentTarget.dataset.s as string });
@@ -276,14 +357,22 @@ Component({
     },
 
     // ===== 树洞帖 =====
-    async loadAnonPosts(append: boolean) {
+    async loadAnonPosts(append: boolean, requestVersion?: number) {
+      const activeRequestVersion = requestVersion ?? this.beginRequest();
       const page = append ? this.data.anonPostPage + 1 : 1;
-      const r = await listAnonPostsAdmin(page, 20);
+      const query = this.moderationQuery();
+      const r = await listAnonPostsAdmin(page, 20, query);
+      if (!this.isCurrentRequest(activeRequestVersion)) return;
       const anonPosts = append ? [...this.data.anonPosts, ...r.list] : r.list;
       this.setData({ anonPosts, anonPostPage: page, anonPostHasMore: anonPosts.length < r.total });
     },
     loadMoreAnonPosts() {
-      if (this.data.anonPostHasMore) void this.loadAnonPosts(true);
+      if (!this.data.anonPostHasMore || this.data.loading || this.data.loadingMore) return;
+      const requestVersion = this.beginRequest();
+      this.setData({ loadingMore: true });
+      void this.loadAnonPosts(true, requestVersion).finally(() => {
+        if (this.isCurrentRequest(requestVersion)) this.setData({ loadingMore: false });
+      });
     },
     takedownAnon(e: WechatMiniprogram.TouchEvent) {
       const id = e.currentTarget.dataset.id as string;
@@ -302,6 +391,25 @@ Component({
     },
 
     // ===== 岗位（R4 管理员主动下架）=====
+    async loadJobs(append: boolean, requestVersion?: number) {
+      const activeRequestVersion = requestVersion ?? this.beginRequest();
+      const page = append ? this.data.jobPage + 1 : 1;
+      const query = this.moderationQuery();
+      const r = await listJobPostsAdmin(page, 20, query);
+      if (!this.isCurrentRequest(activeRequestVersion)) return;
+      const jobs = append ? [...this.data.jobs, ...r.list] : r.list;
+      this.setData({ jobs, jobPage: page, jobHasMore: jobs.length < r.total });
+    },
+
+    loadMoreJobs() {
+      if (!this.data.jobHasMore || this.data.loading || this.data.loadingMore) return;
+      const requestVersion = this.beginRequest();
+      this.setData({ loadingMore: true });
+      void this.loadJobs(true, requestVersion).finally(() => {
+        if (this.isCurrentRequest(requestVersion)) this.setData({ loadingMore: false });
+      });
+    },
+
     takedownJob(e: WechatMiniprogram.TouchEvent) {
       const id = e.currentTarget.dataset.id as string;
       wx.showModal({
@@ -318,23 +426,51 @@ Component({
       });
     },
 
+    restorePostTap(e: WechatMiniprogram.TouchEvent) {
+      const { id, version } = e.currentTarget.dataset as { id: string; version: number };
+      void restorePost(id, Number(version)).then(() => {
+        wx.showToast({ title: '已恢复', icon: 'success' });
+        return this.loadPosts(false);
+      }).catch(() => this.loadPosts(false));
+    },
+
+    restoreAnonPostTap(e: WechatMiniprogram.TouchEvent) {
+      const { id, version } = e.currentTarget.dataset as { id: string; version: number };
+      void restoreAnonPost(id, Number(version)).then(() => {
+        wx.showToast({ title: '已恢复', icon: 'success' });
+        return this.loadAnonPosts(false);
+      }).catch(() => this.loadAnonPosts(false));
+    },
+
+    restoreJobPostTap(e: WechatMiniprogram.TouchEvent) {
+      const { id, version } = e.currentTarget.dataset as { id: string; version: number };
+      void restoreJobPost(id, Number(version)).then(() => {
+        wx.showToast({ title: '已恢复', icon: 'success' });
+        return this.load();
+      }).catch(() => this.load());
+    },
+
     // ===== 评论 =====
-    async loadComments(append: boolean) {
+    async loadComments(append: boolean, requestVersion?: number) {
+      const activeRequestVersion = requestVersion ?? this.beginRequest();
       const page = append ? this.data.commentPage + 1 : 1;
-      const r = await listCommentsAdmin(
-        this.data.commentPostId || undefined,
-        page,
-        20,
-        this.data.commentKeyword || undefined,
-        this.data.commentAuthorId || undefined,
-        this.data.commentAuthorNickname || undefined,
-        this.data.commentPostTitleKw || undefined,
-      );
+      const postId = this.data.commentPostId || undefined;
+      const keyword = this.data.commentKeyword || undefined;
+      const authorId = this.data.commentAuthorId || undefined;
+      const authorNickname = this.data.commentAuthorNickname || undefined;
+      const postTitle = this.data.commentPostTitleKw || undefined;
+      const r = await listCommentsAdmin(postId, page, 20, keyword, authorId, authorNickname, postTitle);
+      if (!this.isCurrentRequest(activeRequestVersion)) return;
       const comments = append ? [...this.data.comments, ...r.list] : r.list;
       this.setData({ comments, commentPage: page, commentHasMore: comments.length < r.total });
     },
     loadMoreComments() {
-      if (this.data.commentHasMore) void this.loadComments(true);
+      if (!this.data.commentHasMore || this.data.loading || this.data.loadingMore) return;
+      const requestVersion = this.beginRequest();
+      this.setData({ loadingMore: true });
+      void this.loadComments(true, requestVersion).finally(() => {
+        if (this.isCurrentRequest(requestVersion)) this.setData({ loadingMore: false });
+      });
     },
     onCommentPostIdInput(e: WechatMiniprogram.Input) {
       this.setData({ commentPostId: e.detail.value });
@@ -364,6 +500,26 @@ Component({
     },
 
     // ===== 举报处理 =====
+    async loadReports(append: boolean, requestVersion?: number) {
+      const activeRequestVersion = requestVersion ?? this.beginRequest();
+      const page = append ? this.data.reportPage + 1 : 1;
+      const status = this.data.reportStatus;
+      const query = this.moderationQuery();
+      const r = await listReports(status, page, 20, query);
+      if (!this.isCurrentRequest(activeRequestVersion)) return;
+      const reports = append ? [...this.data.reports, ...r.list] : r.list;
+      this.setData({ reports, reportPage: page, reportHasMore: reports.length < r.total });
+    },
+
+    loadMoreReports() {
+      if (!this.data.reportHasMore || this.data.loading || this.data.loadingMore) return;
+      const requestVersion = this.beginRequest();
+      this.setData({ loadingMore: true });
+      void this.loadReports(true, requestVersion).finally(() => {
+        if (this.isCurrentRequest(requestVersion)) this.setData({ loadingMore: false });
+      });
+    },
+
     switchReportStatus(e: WechatMiniprogram.TouchEvent) {
       this.setData({ reportStatus: e.currentTarget.dataset.s as string });
       this.load();

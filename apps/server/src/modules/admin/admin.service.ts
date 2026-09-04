@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { BannerStatus, CommunityStatus, JobPostStatus, MerchantStatus, ModerationStatus, PostStatus, Prisma, Role } from '@prisma/client';
+import { BannerStatus, CommunityStatus, JobPostStatus, MerchantStatus, ModerationAuthority, ModerationStatus, PayScene, PayStatus, PostStatus, Prisma, PublicationScope, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfessionService } from '../confession/confession.service';
@@ -29,6 +29,7 @@ import type {
 } from './dto/admin-type.dto';
 import type { CreateAdminDto } from './dto/create-admin.dto';
 import type { UpdateCommunityDto } from './dto/update-community.dto';
+import type { ModerationScope } from './dto/moderation-context.dto';
 
 @Injectable()
 export class AdminService {
@@ -68,19 +69,53 @@ export class AdminService {
     };
   }
 
-  // ===== C 帖子分页管理（getQueue 精简掉 posts/anonPosts，改用独立分页接口）=====
+  async getModerationContexts(access: AdminAccessContext) {
+    const communities = await this.prisma.community.findMany({
+      where: this.accessService.communityWhere(access),
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+    return {
+      scopes: access.isPlatform
+        ? [{ scope: 'PLATFORM' as const, label: '平台内容' }, { scope: 'COMMUNITY' as const, label: '圈子内容' }]
+        : [{ scope: 'COMMUNITY' as const, label: '圈子内容' }],
+      communities,
+    };
+  }
 
-  // 表白墙帖子分页（keyword 模糊搜 content）
-  async listPostsAdmin(page = 1, pageSize = 20, keyword?: string, status?: string, access?: AdminAccessContext) {
-    const where: Prisma.PostWhereInput = {};
-    const communityId = access ? this.accessService.communityIdWhere(access) : undefined;
-    if (communityId) where.communityId = communityId;
+  private async resolveContentContext(
+    access: AdminAccessContext,
+    scope: ModerationScope | undefined,
+    communityId?: string,
+  ) {
+    const resolvedScope = await this.accessService.assertModerationContext(access, scope, communityId);
+    return {
+      scope: resolvedScope,
+      communityId: resolvedScope === 'COMMUNITY'
+        ? (communityId ?? this.accessService.communityIdWhere(access))
+        : undefined,
+    };
+  }
+
+  // ===== C 帖子分页管理 =====
+  async listPostsAdmin(
+    page = 1,
+    pageSize = 20,
+    keyword: string | undefined,
+    status: string | undefined,
+    scope: ModerationScope | undefined,
+    communityId: string | undefined,
+    access: AdminAccessContext,
+  ) {
+    const context = await this.resolveContentContext(access, scope, communityId);
+    const where: Prisma.PostWhereInput = { publisherScope: context.scope as PublicationScope };
+    if (context.communityId) where.communityId = context.communityId;
     if (keyword?.trim()) where.content = { contains: keyword.trim(), mode: 'insensitive' };
     if (status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED') where.status = status;
     const [list, total] = await Promise.all([
       this.prisma.post.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { author: { select: { nickname: true } }, circle: { select: { name: true } } },
@@ -92,6 +127,10 @@ export class AdminService {
         id: p.id,
         content: p.content,
         status: p.status,
+        communityId: p.communityId,
+        publisherScope: p.publisherScope,
+        moderationAuthority: p.moderationAuthority,
+        moderationVersion: p.moderationVersion,
         authorNickname: p.author?.nickname ?? '',
         circleName: p.circle?.name ?? '',
         pinned: p.pinned,
@@ -104,14 +143,20 @@ export class AdminService {
     };
   }
 
-  // 树洞匿名帖分页
-  async listAnonPostsAdmin(page = 1, pageSize = 20, access?: AdminAccessContext) {
-    const communityId = access ? this.accessService.communityIdWhere(access) : undefined;
-    const where: Prisma.AnonymousPostWhereInput = communityId ? { communityId } : {};
+  async listAnonPostsAdmin(
+    page: number,
+    pageSize: number,
+    scope: ModerationScope | undefined,
+    communityId: string | undefined,
+    access: AdminAccessContext,
+  ) {
+    const context = await this.resolveContentContext(access, scope, communityId);
+    const where: Prisma.AnonymousPostWhereInput = { publisherScope: context.scope as PublicationScope };
+    if (context.communityId) where.communityId = context.communityId;
     const [list, total] = await Promise.all([
       this.prisma.anonymousPost.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -123,6 +168,10 @@ export class AdminService {
         content: p.content,
         anonId: p.anonId,
         status: p.status,
+        communityId: p.communityId,
+        publisherScope: p.publisherScope,
+        moderationAuthority: p.moderationAuthority,
+        moderationVersion: p.moderationVersion,
         createdAt: p.createdAt.toISOString(),
       })),
       total,
@@ -146,8 +195,12 @@ export class AdminService {
     access?: AdminAccessContext,
   ) {
     const where: Prisma.CommentWhereInput = {};
-    const communityId = access ? this.accessService.communityIdWhere(access) : undefined;
-    if (communityId) where.post = { communityId };
+    if (access && !access.isPlatform) {
+      where.post = {
+        publisherScope: PublicationScope.COMMUNITY,
+        communityId: this.accessService.communityIdWhere(access),
+      };
+    }
     if (postId) {
       where.postId = postId;
     } else if (postTitleKw?.trim()) {
@@ -174,7 +227,7 @@ export class AdminService {
     const [list, total] = await Promise.all([
       this.prisma.comment.findMany({
         where,
-        orderBy: [{ pinned: 'desc' }, { likeCount: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ pinned: 'desc' }, { likeCount: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { post: { select: { id: true, content: true } } },
@@ -201,10 +254,10 @@ export class AdminService {
   async pinComment(id: string, reviewerId: string, pinned: boolean, access?: AdminAccessContext) {
     const c = await this.prisma.comment.findUnique({
       where: { id },
-      include: { post: { select: { communityId: true } } },
+      include: { post: { select: { publisherScope: true, communityId: true } } },
     });
     if (!c) throw new BizException(40001, '评论不存在', HttpStatus.NOT_FOUND);
-    if (access) await this.accessService.assertCommunity(access, c.post.communityId);
+    if (access) await this.accessService.assertModerationTarget(access, c.post.publisherScope, c.post.communityId);
     await this.prisma.comment.update({ where: { id }, data: { pinned } });
     await this.prisma.moderationRecord.create({
       data: {
@@ -221,15 +274,27 @@ export class AdminService {
   // ===== P1-28 举报处理队列 =====
 
   // 举报列表（含举报人昵称 + 目标摘要，分页 + 状态筛选）
-  async listReports(status?: string, page = 1, pageSize = 20) {
+  async listReports(
+    status?: string,
+    page = 1,
+    pageSize = 20,
+    access?: AdminAccessContext,
+    scope?: ModerationScope,
+    communityId?: string,
+  ) {
     const where: Prisma.ModerationRecordWhereInput = { reporterId: { not: null } };
+    if (access && (scope !== undefined || !access.isPlatform)) {
+      const context = await this.resolveContentContext(access, scope, communityId);
+      where.targetPublisherScope = context.scope as PublicationScope;
+      if (context.communityId) where.targetCommunityId = context.communityId;
+    }
     if (status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED') {
       where.status = status;
     }
     const [list, total] = await Promise.all([
       this.prisma.moderationRecord.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -294,9 +359,15 @@ export class AdminService {
   }
 
   // 处理举报：approve=成立（可选下架目标），reject=驳回；通知举报人
-  async resolveReport(id: string, reviewerId: string, dto: { action: 'approve' | 'reject'; result?: string; takedown?: boolean }) {
+  async resolveReport(
+    id: string,
+    reviewerId: string,
+    dto: { action: 'approve' | 'reject'; result?: string; takedown?: boolean },
+    access?: AdminAccessContext,
+  ) {
     const record = await this.prisma.moderationRecord.findUnique({ where: { id } });
     if (!record) throw new BizException(40001, '举报记录不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.assertReportTargetAccess(record.targetType, record.targetId, access);
     if (record.status !== 'PENDING') {
       throw new BizException(40004, `举报已处理（${record.status}），不能重复处理`, HttpStatus.CONFLICT);
     }
@@ -310,8 +381,19 @@ export class AdminService {
     };
     let didTakedown = false;
     let jobMerchantUserId: string | null = null;
+    let contentAuthorUserId: string | null = null;
 
     if (approved && record.targetType === 'job_post' && dto.takedown === true) {
+      let authority: ModerationAuthority | undefined;
+      const target = await this.prisma.jobPost.findUnique({
+        where: { id: record.targetId },
+        select: { publisherScope: true, communityId: true, moderationAuthority: true },
+      });
+      if (!target) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+      if (access) {
+        authority = await this.accessService.assertModerationTarget(access, target.publisherScope, target.communityId);
+        this.assertNoAuthorityDowngrade(target.moderationAuthority, authority);
+      }
       const outcome = await this.prisma.$transaction(async (tx) => {
         const blockedAt = new Date();
         const shouldTakedown = await this.tutorJobPolicy.takeDownJobPostWithGuard(
@@ -328,6 +410,12 @@ export class AdminService {
           throw new BizException(40004, '举报已被其他管理员处理', HttpStatus.CONFLICT);
         }
         if (!shouldTakedown) return { didTakedown: false, merchantUserId: null };
+        if (authority) {
+          await tx.jobPost.update({
+            where: { id: record.targetId },
+            data: { moderationAuthority: authority, moderationVersion: { increment: 1 } },
+          });
+        }
         const post = await tx.jobPost.findUnique({
           where: { id: record.targetId },
           select: { merchant: { select: { userId: true } } },
@@ -336,18 +424,111 @@ export class AdminService {
       });
       didTakedown = outcome.didTakedown;
       jobMerchantUserId = outcome.merchantUserId;
+    } else if (approved && record.targetType === 'post' && dto.takedown === true) {
+      const target = await this.prisma.post.findUnique({ where: { id: record.targetId } });
+      if (!target) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+      const authority = access
+        ? await this.accessService.assertModerationTarget(access, target.publisherScope, target.communityId)
+        : ModerationAuthority.PLATFORM;
+      this.assertNoAuthorityDowngrade(target.moderationAuthority, authority);
+      if (target.status === PostStatus.REJECTED) {
+        throw new BizException(40004, '内容已下架，请刷新后重试', HttpStatus.CONFLICT);
+      }
+      await this.prisma.$transaction(async (tx) => {
+        const changed = await tx.post.updateMany({
+          where: { id: target.id, status: target.status, moderationVersion: target.moderationVersion },
+          data: {
+            status: PostStatus.REJECTED,
+            moderationAuthority: authority,
+            moderationVersion: { increment: 1 },
+          },
+        });
+        if (changed.count !== 1) {
+          throw new BizException(40004, '内容已变更，请刷新后重试', HttpStatus.CONFLICT);
+        }
+        await tx.moderationRecord.create({
+          data: {
+            targetType: 'post',
+            targetId: target.id,
+            reason: dto.result ?? '管理员下架',
+            status: ModerationStatus.REJECTED,
+            reviewerId,
+          },
+        });
+        const resolution = await tx.moderationRecord.updateMany({
+          where: { id, status: ModerationStatus.PENDING },
+          data: resolutionData,
+        });
+        if (resolution.count !== 1) {
+          throw new BizException(40004, '举报已被其他管理员处理', HttpStatus.CONFLICT);
+        }
+      });
+      didTakedown = true;
+      contentAuthorUserId = target.authorId;
+      this.confession.invalidateFeedCache();
+    } else if (approved && record.targetType === 'anon-post' && dto.takedown === true) {
+      const target = await this.prisma.anonymousPost.findUnique({ where: { id: record.targetId } });
+      if (!target) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+      const authority = access
+        ? await this.accessService.assertModerationTarget(access, target.publisherScope, target.communityId)
+        : ModerationAuthority.PLATFORM;
+      this.assertNoAuthorityDowngrade(target.moderationAuthority, authority);
+      if (target.status === PostStatus.REJECTED) {
+        throw new BizException(40004, '内容已下架，请刷新后重试', HttpStatus.CONFLICT);
+      }
+      await this.prisma.$transaction(async (tx) => {
+        const changed = await tx.anonymousPost.updateMany({
+          where: { id: target.id, status: target.status, moderationVersion: target.moderationVersion },
+          data: {
+            status: PostStatus.REJECTED,
+            moderationAuthority: authority,
+            moderationVersion: { increment: 1 },
+          },
+        });
+        if (changed.count !== 1) {
+          throw new BizException(40004, '内容已变更，请刷新后重试', HttpStatus.CONFLICT);
+        }
+        await tx.moderationRecord.create({
+          data: {
+            targetType: 'anon-post',
+            targetId: target.id,
+            reason: dto.result ?? '管理员下架',
+            status: ModerationStatus.REJECTED,
+            reviewerId,
+          },
+        });
+        const resolution = await tx.moderationRecord.updateMany({
+          where: { id, status: ModerationStatus.PENDING },
+          data: resolutionData,
+        });
+        if (resolution.count !== 1) {
+          throw new BizException(40004, '举报已被其他管理员处理', HttpStatus.CONFLICT);
+        }
+      });
+      didTakedown = true;
     } else {
       const resolution = await this.prisma.moderationRecord.updateMany({
-        where: { id, status: 'PENDING' },
+        where: { id, status: ModerationStatus.PENDING },
         data: resolutionData,
       });
       if (resolution.count !== 1) {
         throw new BizException(40004, '举报已被其他管理员处理', HttpStatus.CONFLICT);
       }
-      if (approved && dto.takedown) {
-        await this.takedownReportTarget(record.targetType, record.targetId, reviewerId, dto.result);
-        didTakedown = true;
-      }
+    }
+
+    if (contentAuthorUserId && contentAuthorUserId !== reviewerId) {
+      void this.notification
+        .create({
+          userId: contentAuthorUserId,
+          type: NotificationType.POST_TAKEDOWN,
+          title: '表白墙 · 内容下架',
+          content: dto.result ? `你的帖子已被管理员下架：${dto.result}` : '你的帖子已被管理员下架',
+          targetType: 'post',
+          targetId: record.targetId,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify takedown failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
     }
 
     if (jobMerchantUserId) {
@@ -384,14 +565,42 @@ export class AdminService {
     return { id, status: resolvedStatus };
   }
 
-  private async takedownReportTarget(targetType: string, targetId: string, reviewerId: string, reason?: string) {
+  private async assertReportTargetAccess(targetType: string, targetId: string, access: AdminAccessContext) {
+    if (access.isPlatform) return;
     if (targetType === 'post') {
-      await this.takedownPost(targetId, reviewerId, reason);
-    } else if (targetType === 'anon-post') {
-      await this.takedownAnonPost(targetId, reviewerId, reason);
+      const target = await this.prisma.post.findUnique({ where: { id: targetId }, select: { publisherScope: true, communityId: true } });
+      if (!target) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+      await this.accessService.assertModerationTarget(access, target.publisherScope, target.communityId);
+      return;
     }
-    // merchant / application 目标：不自动处置，留人工跟进
+    if (targetType === 'anon-post') {
+      const target = await this.prisma.anonymousPost.findUnique({ where: { id: targetId }, select: { publisherScope: true, communityId: true } });
+      if (!target) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+      await this.accessService.assertModerationTarget(access, target.publisherScope, target.communityId);
+      return;
+    }
+    if (targetType === 'job_post') {
+      const target = await this.prisma.jobPost.findUnique({ where: { id: targetId }, select: { publisherScope: true, communityId: true } });
+      if (!target) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+      await this.accessService.assertModerationTarget(access, target.publisherScope, target.communityId);
+      return;
+    }
+    if (targetType === 'application') {
+      const target = await this.prisma.jobApplication.findUnique({
+        where: { id: targetId },
+        select: { jobPost: { select: { publisherScope: true, communityId: true } } },
+      });
+      if (!target) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
+      await this.accessService.assertModerationTarget(
+        access,
+        target.jobPost.publisherScope,
+        target.jobPost.communityId,
+      );
+      return;
+    }
+    throw new BizException(10003, '该举报仅平台管理员可处理', HttpStatus.FORBIDDEN);
   }
+
 
   // 商家审核通过：置 APPROVED + 加 MERCHANT 角色 + 留痕 ModerationRecord
   async approveMerchant(id: string, reviewerId: string, reason?: string) {
@@ -425,19 +634,30 @@ export class AdminService {
 
   // 帖子下架（表白墙）+ 留痕
   async takedownPost(id: string, reviewerId: string, reason?: string, access?: AdminAccessContext) {
-    const p = await this.prisma.post.findUnique({ where: { id } });
-    if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
-    if (access) await this.accessService.assertCommunity(access, p.communityId);
-    await this.prisma.post.update({ where: { id }, data: { status: PostStatus.REJECTED } });
-    this.confession.invalidateFeedCache();
-    await this.prisma.moderationRecord.create({
-      data: { targetType: 'post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
+    const post = await this.prisma.post.findUnique({ where: { id } });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    const authority = access
+      ? await this.accessService.assertModerationTarget(access, post.publisherScope, post.communityId)
+      : ModerationAuthority.PLATFORM;
+    this.assertNoAuthorityDowngrade(post.moderationAuthority, authority);
+    if (post.status === PostStatus.REJECTED) {
+      throw new BizException(40004, '内容已下架，请刷新后重试', HttpStatus.CONFLICT);
+    }
+    await this.prisma.$transaction(async (tx) => {
+      const result = await tx.post.updateMany({
+        where: { id, status: post.status, moderationVersion: post.moderationVersion },
+        data: { status: PostStatus.REJECTED, moderationAuthority: authority, moderationVersion: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new BizException(40004, '内容已变更，请刷新后重试', HttpStatus.CONFLICT);
+      await tx.moderationRecord.create({
+        data: { targetType: 'post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
+      });
     });
-    // P0-11 下架通知作者（注明来源表白墙；不通知自己）
-    if (p.authorId !== reviewerId) {
+    this.confession.invalidateFeedCache();
+    if (post.authorId !== reviewerId) {
       void this.notification
         .create({
-          userId: p.authorId,
+          userId: post.authorId,
           type: NotificationType.POST_TAKEDOWN,
           title: '表白墙 · 内容下架',
           content: reason ? `你的帖子已被管理员下架：${reason}` : '你的帖子已被管理员下架',
@@ -453,12 +673,24 @@ export class AdminService {
 
   // 匿名帖下架（树洞）+ 留痕
   async takedownAnonPost(id: string, reviewerId: string, reason?: string, access?: AdminAccessContext) {
-    const p = await this.prisma.anonymousPost.findUnique({ where: { id } });
-    if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
-    if (access) await this.accessService.assertCommunity(access, p.communityId);
-    await this.prisma.anonymousPost.update({ where: { id }, data: { status: PostStatus.REJECTED } });
-    await this.prisma.moderationRecord.create({
-      data: { targetType: 'anon-post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
+    const post = await this.prisma.anonymousPost.findUnique({ where: { id } });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    const authority = access
+      ? await this.accessService.assertModerationTarget(access, post.publisherScope, post.communityId)
+      : ModerationAuthority.PLATFORM;
+    this.assertNoAuthorityDowngrade(post.moderationAuthority, authority);
+    if (post.status === PostStatus.REJECTED) {
+      throw new BizException(40004, '内容已下架，请刷新后重试', HttpStatus.CONFLICT);
+    }
+    await this.prisma.$transaction(async (tx) => {
+      const result = await tx.anonymousPost.updateMany({
+        where: { id, status: post.status, moderationVersion: post.moderationVersion },
+        data: { status: PostStatus.REJECTED, moderationAuthority: authority, moderationVersion: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new BizException(40004, '内容已变更，请刷新后重试', HttpStatus.CONFLICT);
+      await tx.moderationRecord.create({
+        data: { targetType: 'anon-post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
+      });
     });
     return { id, status: PostStatus.REJECTED };
   }
@@ -470,15 +702,27 @@ export class AdminService {
       include: { merchant: { select: { userId: true } } },
     });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
-    if (access) await this.accessService.assertCommunity(access, post.communityId);
+    const authority = access
+      ? await this.accessService.assertModerationTarget(access, post.publisherScope, post.communityId)
+      : ModerationAuthority.PLATFORM;
+    this.assertNoAuthorityDowngrade(post.moderationAuthority, authority);
+    if (post.status !== JobPostStatus.PUBLISHED) {
+      throw new BizException(40004, '仅已发布岗位可由管理员下架', HttpStatus.CONFLICT);
+    }
     const blockedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
-      await this.tutorJobPolicy.takeDownJobPostWithGuard(
+      const changed = await this.tutorJobPolicy.takeDownJobPostWithGuard(
         tx,
         id,
         blockedAt,
-        { requireTutorBinding: false, publishedOnly: false },
+        { requireTutorBinding: false, publishedOnly: true },
       );
+      if (!changed) throw new BizException(40004, '岗位已变更，请刷新后重试', HttpStatus.CONFLICT);
+      const result = await tx.jobPost.updateMany({
+        where: { id, status: JobPostStatus.TAKEN_DOWN, moderationVersion: post.moderationVersion },
+        data: { moderationAuthority: authority, moderationVersion: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new BizException(40004, '岗位已变更，请刷新后重试', HttpStatus.CONFLICT);
       await tx.moderationRecord.create({
         data: { targetType: 'job_post', targetId: id, reason: reason ?? '管理员下架', status: 'REJECTED', reviewerId },
       });
@@ -500,11 +744,127 @@ export class AdminService {
     return { id, status: JobPostStatus.TAKEN_DOWN };
   }
 
+  async restorePost(id: string, expectedVersion: number, reviewerId: string, access: AdminAccessContext) {
+    const post = await this.prisma.post.findUnique({ where: { id } });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    await this.accessService.assertModerationTarget(access, post.publisherScope, post.communityId);
+    this.assertRestoreAuthority(post.moderationAuthority, access);
+    await this.prisma.$transaction(async (tx) => {
+      const result = await tx.post.updateMany({
+        where: {
+          id,
+          status: PostStatus.REJECTED,
+          moderationAuthority: post.moderationAuthority,
+          moderationVersion: expectedVersion,
+        },
+        data: { status: PostStatus.APPROVED, moderationAuthority: null, moderationVersion: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new BizException(40004, '内容已变更，请刷新后重试', HttpStatus.CONFLICT);
+      await tx.moderationRecord.create({
+        data: { targetType: 'post', targetId: id, reason: '管理员恢复内容', status: 'APPROVED', reviewerId },
+      });
+    });
+    this.confession.invalidateFeedCache();
+    return { id, status: PostStatus.APPROVED, moderationVersion: expectedVersion + 1 };
+  }
+
+  async restoreAnonPost(id: string, expectedVersion: number, reviewerId: string, access: AdminAccessContext) {
+    const post = await this.prisma.anonymousPost.findUnique({ where: { id } });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    await this.accessService.assertModerationTarget(access, post.publisherScope, post.communityId);
+    this.assertRestoreAuthority(post.moderationAuthority, access);
+    await this.prisma.$transaction(async (tx) => {
+      const result = await tx.anonymousPost.updateMany({
+        where: {
+          id,
+          status: PostStatus.REJECTED,
+          moderationAuthority: post.moderationAuthority,
+          moderationVersion: expectedVersion,
+        },
+        data: { status: PostStatus.APPROVED, moderationAuthority: null, moderationVersion: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new BizException(40004, '内容已变更，请刷新后重试', HttpStatus.CONFLICT);
+      await tx.moderationRecord.create({
+        data: { targetType: 'anon-post', targetId: id, reason: '管理员恢复内容', status: 'APPROVED', reviewerId },
+      });
+    });
+    return { id, status: PostStatus.APPROVED, moderationVersion: expectedVersion + 1 };
+  }
+
+  async restoreJobPost(id: string, expectedVersion: number, reviewerId: string, access: AdminAccessContext) {
+    const post = await this.prisma.jobPost.findUnique({ where: { id } });
+    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    await this.accessService.assertModerationTarget(access, post.publisherScope, post.communityId);
+    this.assertRestoreAuthority(post.moderationAuthority, access);
+    await this.prisma.$transaction(async (tx) => {
+      const [lockedPost] = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT "id"
+         FROM "job_posts"
+         WHERE "id" = $1
+         FOR UPDATE`,
+        id,
+      );
+      if (!lockedPost) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+      const [latestPublishOrder] = await tx.$queryRawUnsafe<Array<{ id: string; status: PayStatus }>>(
+        `SELECT "id", "status"
+         FROM "payment_orders"
+         WHERE "job_post_id" = $1 AND "scene" = 'JOB_PUBLISH'
+         ORDER BY "created_at" DESC, "id" DESC
+         LIMIT 1
+         FOR UPDATE`,
+        id,
+      );
+      if (latestPublishOrder?.status !== PayStatus.PAID) {
+        throw new BizException(40004, '岗位没有有效发布订单，请由商家重新发布并支付', HttpStatus.CONFLICT);
+      }
+      const result = await tx.jobPost.updateMany({
+        where: {
+          id,
+          status: JobPostStatus.TAKEN_DOWN,
+          moderationAuthority: post.moderationAuthority,
+          moderationVersion: expectedVersion,
+        },
+        data: {
+          status: JobPostStatus.PUBLISHED,
+          takenDownAt: null,
+          moderationAuthority: null,
+          moderationVersion: { increment: 1 },
+        },
+      });
+      if (result.count !== 1) throw new BizException(40004, '内容已变更，请刷新后重试', HttpStatus.CONFLICT);
+      await tx.moderationRecord.create({
+        data: { targetType: 'job_post', targetId: id, reason: '管理员恢复岗位', status: 'APPROVED', reviewerId },
+      });
+    });
+    return { id, status: JobPostStatus.PUBLISHED, moderationVersion: expectedVersion + 1 };
+  }
+
+  private assertNoAuthorityDowngrade(
+    existing: ModerationAuthority | null,
+    requested: ModerationAuthority,
+  ): void {
+    if (existing === ModerationAuthority.PLATFORM && requested === ModerationAuthority.COMMUNITY) {
+      throw new BizException(10003, '平台处置不可被圈子管理员覆盖', HttpStatus.FORBIDDEN);
+    }
+  }
+
+  private assertRestoreAuthority(
+    authority: ModerationAuthority | null,
+    access: AdminAccessContext,
+  ): asserts authority is ModerationAuthority {
+    if (!authority) {
+      throw new BizException(40004, '该状态不是管理员下架，请按原发布流程处理', HttpStatus.CONFLICT);
+    }
+    if (authority === ModerationAuthority.PLATFORM && !access.isPlatform) {
+      throw new BizException(10003, '平台下架内容仅平台管理员可恢复', HttpStatus.FORBIDDEN);
+    }
+  }
+
   // P2-05 帖子置顶/取消置顶 + 留痕
   async pinPost(id: string, reviewerId: string, pinned: boolean, reason?: string, access?: AdminAccessContext) {
     const p = await this.prisma.post.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
-    if (access) await this.accessService.assertCommunity(access, p.communityId);
+    if (access) await this.accessService.assertModerationTarget(access, p.publisherScope, p.communityId);
     await this.prisma.post.update({ where: { id }, data: { pinned } });
     this.confession.invalidateFeedCache();
     await this.prisma.moderationRecord.create({
@@ -523,7 +883,7 @@ export class AdminService {
   async featurePost(id: string, reviewerId: string, featured: boolean, reason?: string, access?: AdminAccessContext) {
     const p = await this.prisma.post.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
-    if (access) await this.accessService.assertCommunity(access, p.communityId);
+    if (access) await this.accessService.assertModerationTarget(access, p.publisherScope, p.communityId);
     await this.prisma.post.update({ where: { id }, data: { featured } });
     this.confession.invalidateFeedCache();
     await this.prisma.moderationRecord.create({
@@ -542,7 +902,7 @@ export class AdminService {
   async featureJob(id: string, reviewerId: string, featured: boolean, access?: AdminAccessContext) {
     const p = await this.prisma.jobPost.findUnique({ where: { id } });
     if (!p) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
-    if (access) await this.accessService.assertCommunity(access, p.communityId);
+    if (access) await this.accessService.assertModerationTarget(access, p.publisherScope, p.communityId);
     // 仅已发布岗位可设/取消精品：未发布/已下架/已过期不在精品池（featured 列表查 status=PUBLISHED），设了也不展示
     if (p.status !== JobPostStatus.PUBLISHED) {
       throw new BizException(50002, '仅已发布岗位可设精品', HttpStatus.CONFLICT);
@@ -634,29 +994,64 @@ export class AdminService {
     return { id, status: 'IN_PROGRESS' as const };
   }
 
-  // ===== 兼职岗位列表（admin，含 featured，用于精品管理）=====
-  async listJobPostsAdmin(limit = 50, access?: AdminAccessContext) {
-    const communityId = access ? this.accessService.communityIdWhere(access) : undefined;
-    const posts = await this.prisma.jobPost.findMany({
-      where: communityId ? { communityId } : {},
-      orderBy: { createdAt: 'desc' },
-      take: Math.min(100, Math.max(1, limit)),
-      include: { merchant: { select: { shopName: true } } },
-    });
-    return posts.map((p) => ({
-      id: p.id,
-      title: p.title,
-      status: p.status,
-      urgent: p.urgent,
-      featured: p.featured,
-      merchantShopName: p.merchant?.shopName ?? '',
-      createdAt: p.createdAt.toISOString(),
-    }));
+  // ===== 兼职岗位列表 =====
+  async listJobPostsAdmin(
+    page: number,
+    pageSize: number,
+    scope: ModerationScope | undefined,
+    communityId: string | undefined,
+    access: AdminAccessContext,
+  ) {
+    const context = await this.resolveContentContext(access, scope, communityId);
+    const where: Prisma.JobPostWhereInput = { publisherScope: context.scope as PublicationScope };
+    if (context.communityId) where.communityId = context.communityId;
+    const [posts, total] = await Promise.all([
+      this.prisma.jobPost.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { merchant: { select: { shopName: true } } },
+      }),
+      this.prisma.jobPost.count({ where }),
+    ]);
+    return {
+      list: posts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        status: p.status,
+        communityId: p.communityId,
+        publisherScope: p.publisherScope,
+        moderationAuthority: p.moderationAuthority,
+        moderationVersion: p.moderationVersion,
+        urgent: p.urgent,
+        featured: p.featured,
+        merchantShopName: p.merchant?.shopName ?? '',
+        createdAt: p.createdAt.toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
-  // ===== 用户列表（admin，用于封禁/禁言；ban/mute 见 banUser/muteUser）=====
-  async listUsers(keyword?: string, limit = 50) {
+  // ===== 用户列表 =====
+  async listUsers(
+    keyword: string | undefined,
+    limit: number,
+    scope: ModerationScope | undefined,
+    communityId: string | undefined,
+    access: AdminAccessContext,
+  ) {
+    const resolvedScope = await this.accessService.assertModerationContext(access, scope, communityId, true);
     const where: Prisma.UserWhereInput = {};
+    if (resolvedScope === 'COMMUNITY') {
+      if (communityId) {
+        where.communityMembers = { some: { communityId } };
+      } else if (!access.allCommunities) {
+        where.communityMembers = { some: { communityId: { in: access.communityIds } } };
+      }
+    }
     if (keyword?.trim()) {
       where.OR = [
         { nickname: { contains: keyword.trim(), mode: 'insensitive' } },
@@ -667,15 +1062,33 @@ export class AdminService {
       where,
       orderBy: { createdAt: 'desc' },
       take: Math.min(100, Math.max(1, limit)),
-      select: { id: true, nickname: true, avatarUrl: true, deletedAt: true, mutedUntil: true, createdAt: true },
+      select: { id: true, nickname: true, avatarUrl: true, banAuthority: true, deletedAt: true, mutedUntil: true, createdAt: true },
     });
-    return users.map((u) => ({
-      id: u.id,
-      nickname: u.nickname,
-      avatarUrl: u.avatarUrl,
-      banned: !!u.deletedAt,
-      mutedUntil: u.mutedUntil?.toISOString() ?? null,
-      createdAt: u.createdAt.toISOString(),
+    const communityBans = resolvedScope === 'COMMUNITY' && users.length
+      ? await this.prisma.communityUserBan.findMany({
+          where: {
+            userId: { in: users.map((user) => user.id) },
+            active: true,
+            ...(communityId ? { communityId } : (!access.allCommunities ? { communityId: { in: access.communityIds } } : {})),
+          },
+          select: { userId: true, authority: true },
+        })
+      : [];
+    const banByUser = new Map(communityBans.map((ban) => [ban.userId, ban.authority]));
+    return users.map((user) => ({
+      id: user.id,
+      nickname: user.nickname,
+      avatarUrl: user.avatarUrl,
+      scope: resolvedScope,
+      communityId: resolvedScope === 'COMMUNITY' ? (communityId ?? null) : null,
+      banned: resolvedScope === 'PLATFORM' ? !!user.deletedAt : banByUser.has(user.id),
+      banAuthority: resolvedScope === 'PLATFORM' ? user.banAuthority : (banByUser.get(user.id) ?? null),
+      platformBanned: !!user.deletedAt,
+      platformBanAuthority: user.banAuthority,
+      communityBanned: banByUser.has(user.id),
+      communityBanAuthority: banByUser.get(user.id) ?? null,
+      mutedUntil: user.mutedUntil?.toISOString() ?? null,
+      createdAt: user.createdAt.toISOString(),
     }));
   }
 
@@ -733,26 +1146,141 @@ export class AdminService {
     return { code, price: dto.price.toString() };
   }
 
-  // 用户封禁（soft delete）
-  async banUser(id: string) {
-    const u = await this.prisma.user.findUnique({ where: { id } });
-    if (!u) throw new BizException(10001, '用户不存在', HttpStatus.NOT_FOUND);
-    if (u.deletedAt) return { id, banned: true };
-    await this.prisma.user.update({ where: { id }, data: { deletedAt: new Date() } });
-    // P1-12 封禁通知
-    void this.notification
-      .create({
-        userId: id,
-        type: NotificationType.USER_BANNED,
-        title: '账号 · 已封禁',
-        content: '你的账号因违反社区规范被封禁；如需申诉请联系客服',
-        targetType: 'user',
-        targetId: id,
-      })
-      .catch((e: unknown) =>
-        this.logger.warn(`notify ban failed: ${e instanceof Error ? e.message : String(e)}`),
-      );
-    return { id, banned: true };
+  async banUser(
+    id: string,
+    scope: ModerationScope | undefined,
+    communityId: string | undefined,
+    reason: string | undefined,
+    reviewerId: string,
+    access: AdminAccessContext,
+  ) {
+    const resolvedScope = await this.accessService.assertModerationContext(
+      access,
+      scope,
+      communityId,
+      (scope ?? 'COMMUNITY') === 'COMMUNITY',
+    );
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true, openid: true } });
+    if (!user) throw new BizException(10001, '用户不存在', HttpStatus.NOT_FOUND);
+    const targetAdmin = await this.prisma.adminUser.findUnique({
+      where: { openid: user.openid },
+      include: { adminType: { select: { isPlatform: true } } },
+    });
+    if (resolvedScope === 'COMMUNITY' && !access.isPlatform && targetAdmin?.adminType.isPlatform) {
+      throw new BizException(10003, '圈子管理员不能封禁平台管理员', HttpStatus.FORBIDDEN);
+    }
+    if (resolvedScope === 'PLATFORM') {
+      await this.prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date(), banAuthority: ModerationAuthority.PLATFORM },
+      });
+      void this.notification
+        .create({
+          userId: id,
+          type: NotificationType.USER_BANNED,
+          title: '账号 · 已封禁',
+          content: reason?.trim() ? `你的账号因违反社区规范被封禁：${reason.trim()}` : '你的账号因违反社区规范被封禁；如需申诉请联系客服',
+          targetType: 'user',
+          targetId: id,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(`notify ban failed: ${e instanceof Error ? e.message : String(e)}`),
+        );
+    } else {
+      const requestedAuthority = access.isPlatform
+        ? ModerationAuthority.PLATFORM
+        : ModerationAuthority.COMMUNITY;
+      await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRawUnsafe<Array<{ id: string }>>(
+          `SELECT "id"
+           FROM "users"
+           WHERE "id" = $1
+           FOR UPDATE`,
+          id,
+        );
+        const existing = await tx.communityUserBan.findUnique({
+          where: { communityId_userId: { communityId: communityId!, userId: id } },
+        });
+        if (!existing) {
+          await tx.communityUserBan.create({
+            data: {
+              communityId: communityId!,
+              userId: id,
+              authority: requestedAuthority,
+              reason: reason?.trim() || null,
+              bannedBy: reviewerId,
+            },
+          });
+          return;
+        }
+        const result = await tx.communityUserBan.updateMany({
+          where: {
+            id: existing.id,
+            ...(requestedAuthority === ModerationAuthority.COMMUNITY
+              ? { OR: [{ active: false }, { authority: ModerationAuthority.COMMUNITY }] }
+              : {}),
+          },
+          data: {
+            active: true,
+            authority: requestedAuthority,
+            reason: reason?.trim() || null,
+            bannedBy: reviewerId,
+            bannedAt: new Date(),
+            liftedBy: null,
+            liftedAt: null,
+          },
+        });
+        if (result.count !== 1) {
+          throw new BizException(10003, '平台封禁不可被圈子管理员覆盖', HttpStatus.FORBIDDEN);
+        }
+      });
+    }
+    return { id, scope: resolvedScope, communityId: resolvedScope === 'COMMUNITY' ? communityId : null, banned: true };
+  }
+
+  async unbanUser(
+    id: string,
+    scope: ModerationScope | undefined,
+    communityId: string | undefined,
+    reviewerId: string,
+    access: AdminAccessContext,
+  ) {
+    const resolvedScope = await this.accessService.assertModerationContext(
+      access,
+      scope,
+      communityId,
+      (scope ?? 'COMMUNITY') === 'COMMUNITY',
+    );
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!user) throw new BizException(10001, '用户不存在', HttpStatus.NOT_FOUND);
+    if (resolvedScope === 'PLATFORM') {
+      await this.prisma.user.update({ where: { id }, data: { deletedAt: null, banAuthority: null } });
+    } else {
+      const ban = await this.prisma.communityUserBan.findUnique({
+        where: { communityId_userId: { communityId: communityId!, userId: id } },
+      });
+      if (ban?.authority === ModerationAuthority.PLATFORM && !access.isPlatform) {
+        throw new BizException(10003, '圈子管理员不能解除平台封禁', HttpStatus.FORBIDDEN);
+      }
+      if (ban?.active) {
+        const result = await this.prisma.communityUserBan.updateMany({
+          where: {
+            id: ban.id,
+            active: true,
+            ...(!access.isPlatform ? { authority: ModerationAuthority.COMMUNITY } : {}),
+          },
+          data: { active: false, liftedBy: reviewerId, liftedAt: new Date() },
+        });
+        if (result.count !== 1) {
+          throw new BizException(
+            access.isPlatform ? 40004 : 10003,
+            access.isPlatform ? '封禁状态已变更，请刷新后重试' : '圈子管理员不能解除平台封禁',
+            access.isPlatform ? HttpStatus.CONFLICT : HttpStatus.FORBIDDEN,
+          );
+        }
+      }
+    }
+    return { id, scope: resolvedScope, communityId: resolvedScope === 'COMMUNITY' ? communityId : null, banned: false };
   }
 
   // P1-12 禁言（参数 days；0 或 undefined = 解除；1-365 天）

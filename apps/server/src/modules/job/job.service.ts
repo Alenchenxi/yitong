@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   AppStatus,
   CommunityStatus,
@@ -8,6 +8,7 @@ import {
   JobPostStatus,
   JobVisibilityScope,
   MerchantStatus,
+  PublicationScope,
   Prisma,
   Settlement,
 } from '@prisma/client';
@@ -22,6 +23,7 @@ import { LocationService } from './location.service';
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
 import type { JobPostVo } from './types';
 import { TutorJobPolicyService } from '../tutor-sync/tutor-job-policy.service';
+import { PublicationPolicyService } from '../publication/publication-policy.service';
 import type {
   CreateJobPostDto,
   JobListQueryDto,
@@ -211,7 +213,12 @@ export class JobService {
     private readonly community: CommunityService,
     private readonly jobVisibility: JobVisibilityPolicyService,
     private readonly tutorJobPolicy: TutorJobPolicyService,
+    @Optional() private readonly publication?: PublicationPolicyService,
   ) {}
+
+  private get publicationPolicy(): PublicationPolicyService {
+    return this.publication ?? new PublicationPolicyService(this.prisma);
+  }
 
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
   // 智能生成流程(2026-08-10):工作地点强制地图选点,4 字段必填,缺一抛 40003
@@ -257,6 +264,8 @@ export class JobService {
     } else {
       communityId = await this.community.getActiveCommunityId(merchantUid);
     }
+    await this.community.assertUserCanParticipate(merchantUid, communityId);
+    const publisherScope = await this.publicationPolicy.resolveForUser(merchantUid);
     const post = await this.prisma.jobPost.create({
       data: {
         merchantId: merchant.id,
@@ -284,6 +293,10 @@ export class JobService {
         questions: dto.questions ?? [],
         duration: dto.duration,
         expireAt,
+        publisherScope,
+        visibilityScope: publisherScope === PublicationScope.PLATFORM
+          ? JobVisibilityScope.ALL_COMMUNITIES
+          : JobVisibilityScope.COMMUNITY,
         status: JobPostStatus.PENDING,
       },
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
@@ -305,6 +318,8 @@ export class JobService {
     if (post.merchant.userId !== merchantUid) {
       throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
     }
+    await this.publicationPolicy.assertOwnerCanManage(merchantUid, post.publisherScope);
+    await this.community.assertUserCanParticipate(merchantUid, post.communityId);
     if (post.status === JobPostStatus.TAKEN_DOWN || post.status === JobPostStatus.EXPIRED) {
       throw new BizException(40003, '已下架或已过期岗位不可编辑', HttpStatus.CONFLICT);
     }
@@ -400,6 +415,8 @@ export class JobService {
     if (post.merchant.userId !== merchantUid) {
       throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
     }
+    await this.publicationPolicy.assertOwnerCanManage(merchantUid, post.publisherScope);
+    await this.community.assertUserCanParticipate(merchantUid, post.communityId);
     if (post.status !== JobPostStatus.PUBLISHED) {
       throw new BizException(40004, `状态非法流转：${post.status} -> TAKEN_DOWN`, HttpStatus.CONFLICT);
     }
@@ -422,6 +439,8 @@ export class JobService {
     if (post.merchant.userId !== merchantUid) {
       throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
     }
+    await this.publicationPolicy.assertOwnerCanManage(merchantUid, post.publisherScope);
+    await this.community.assertUserCanParticipate(merchantUid, post.communityId);
     if (post.status !== JobPostStatus.PENDING) {
       throw new BizException(40004, `状态非法流转：${post.status} -> DELETED（非 PENDING 草稿请走下架）`, HttpStatus.CONFLICT);
     }
@@ -510,6 +529,11 @@ export class JobService {
     if (post.merchant.userId !== uid) {
       throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
     }
+    await this.publicationPolicy.assertOwnerCanManage(uid, post.publisherScope);
+    await this.community.assertUserCanParticipate(uid, post.communityId);
+    if (post.moderationAuthority) {
+      throw new BizException(40004, '管理员下架的岗位不可由商家重新发布', HttpStatus.CONFLICT);
+    }
     if (!['PUBLISHED', 'TAKEN_DOWN', 'EXPIRED'].includes(post.status)) {
       throw new BizException(40004, '状态非法流转：仅已发布/已下架/已过期可重新发布', HttpStatus.CONFLICT);
     }
@@ -562,7 +586,7 @@ export class JobService {
     if (q.mine === 1) {
       if (q.communityId) where.communityId = q.communityId;
     } else {
-      const communityId = q.communityId ?? await this.community.resolveFeedCommunityId(uid);
+      const communityId = await this.community.resolveFeedCommunityId(uid, q.communityId);
       visibleCommunityId = communityId;
       andFilters.push(...this.jobVisibility.buildFilters(communityId, discoveryNow));
     }
@@ -848,7 +872,10 @@ export class JobService {
 
   // P2-16 记录浏览事件（用于商家看板统计）
   async recordView(uid: string, postId: string) {
-    const post = await this.prisma.jobPost.findUnique({ where: { id: postId }, select: { id: true } });
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      select: { id: true, publisherScope: true, communityId: true },
+    });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     await this.prisma.jobView.create({ data: { jobPostId: postId, userId: uid } });
     return { recorded: true };
@@ -903,7 +930,10 @@ export class JobService {
 
   // P0-19 举报岗位 -> 创建 ModerationRecord（targetType=job_post，管理员审核队列可见）；P1-27 记录举报人
   async report(uid: string, postId: string, reason?: string) {
-    const post = await this.prisma.jobPost.findUnique({ where: { id: postId }, select: { id: true } });
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      select: { id: true, publisherScope: true, communityId: true },
+    });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     await this.prisma.moderationRecord.create({
       data: {
@@ -911,6 +941,8 @@ export class JobService {
         targetId: postId,
         reason: reason ?? '用户举报',
         reporterId: uid,
+        targetPublisherScope: post.publisherScope,
+        targetCommunityId: post.communityId,
       },
     });
     return { reported: true };
@@ -926,6 +958,7 @@ export class JobService {
         targetId: merchantId,
         reason: reason ?? '用户举报商家',
         reporterId: uid,
+        targetPublisherScope: PublicationScope.PLATFORM,
       },
     });
     return { reported: true };
@@ -935,7 +968,16 @@ export class JobService {
   async reportApplication(uid: string, appId: string, reason?: string) {
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: appId },
-      include: { jobPost: { select: { merchantId: true, merchant: { select: { userId: true } } } } },
+      include: {
+        jobPost: {
+          select: {
+            merchantId: true,
+            publisherScope: true,
+            communityId: true,
+            merchant: { select: { userId: true } },
+          },
+        },
+      },
     });
     if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
     const isStudent = app.userId === uid;
@@ -949,6 +991,8 @@ export class JobService {
         targetId: appId,
         reason: reason ?? '报名投诉',
         reporterId: uid,
+        targetPublisherScope: app.jobPost.publisherScope,
+        targetCommunityId: app.jobPost.communityId,
       },
     });
     return { reported: true };
@@ -967,6 +1011,7 @@ export class JobService {
     }
     if (post.expireAt && post.expireAt.getTime() < Date.now()) throw new BizException(40003, '岗位已过期');
     const communityId = await this.community.getActiveCommunityId(uid);
+    await this.community.assertUserCanParticipate(uid, communityId);
     const visiblePost = await this.prisma.jobPost.findFirst({
       where: {
         id: postId,
@@ -1375,6 +1420,7 @@ export class JobService {
     duration: JobDuration;
     expireAt: Date | null;
     visibilityScope?: JobVisibilityScope;
+    publisherScope?: PublicationScope;
     applyMode?: JobApplyMode;
     publisherName?: string | null;
     status: JobPostStatus;
@@ -1428,6 +1474,7 @@ export class JobService {
       visibilityScope: p.visibilityScope ?? JobVisibilityScope.COMMUNITY,
       applyMode: p.applyMode ?? JobApplyMode.IN_APP,
       isExternalSource: isExternalTutorPost,
+      platformPublished: p.publisherScope === PublicationScope.PLATFORM,
       status: p.status,
       takenDownAt: p.takenDownAt ? p.takenDownAt.toISOString() : null,
       deletedAt: p.deletedAt ? p.deletedAt.toISOString() : null, // M3-07 审计字段

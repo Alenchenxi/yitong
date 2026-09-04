@@ -57,7 +57,7 @@ export interface BannerVo {
   linkUrl: string | null;
 }
 
-// 今日上头：近24h 浏览量 TopN 聚合结果（kind: 'post' | 'anon_post'）
+// 今日上头：近24h 浏览量 TopN 聚合结果
 export interface TodayHotItem {
   targetType: 'post' | 'anon_post';
   targetId: string;

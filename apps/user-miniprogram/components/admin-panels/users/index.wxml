@@ -6,6 +6,28 @@
 
   <!-- 用户 -->
   <block wx:if="{{sub === 'users'}}">
+    <view class="adm-user-scope">
+      <view class="adm-user-scope-options">
+        <view
+          wx:for="{{userScopes}}"
+          wx:key="scope"
+          class="adm-user-scope-btn {{userScope === item.scope ? 'on' : ''}}"
+          data-scope="{{item.scope}}"
+          bindtap="switchUserScope"
+        >{{item.label}}</view>
+      </view>
+      <picker
+        wx:if="{{userScope === 'COMMUNITY'}}"
+        mode="selector"
+        range="{{userCommunities}}"
+        range-key="name"
+        value="{{userCommunityIndex}}"
+        bindchange="onUserCommunityChange"
+      >
+        <view class="adm-user-community">{{userCommunities[userCommunityIndex].name || '请选择圈子'}}</view>
+      </picker>
+      <view class="adm-user-scope-note">{{userScope === 'PLATFORM' ? '平台封禁对所有圈子生效，仅平台管理员可解除' : '圈子封禁仅在当前圈子生效，平台管理员可解除'}}</view>
+    </view>
     <view class="adm-search">
       <input class="adm-search-input" placeholder="搜索昵称/用户ID" value="{{userKeyword}}" bindinput="onUserKeywordInput" bindconfirm="searchUsers" />
       <button size="mini" bindtap="searchUsers">搜索</button>
@@ -13,10 +35,11 @@
     <view class="adm-item" wx:for="{{users}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title">{{item.nickname}}</text>
-        <text class="adm-item-sub"><text class="adm-status {{item.banned ? 'adm-status--rejected' : 'adm-status--approved'}}">{{item.banned ? '已封禁' : '正常'}}</text>{{item.mutedUntil ? ' · 禁言至 ' + item.mutedUntil : ''}}</text>
+        <text class="adm-item-sub"><text class="adm-status {{item.banned ? 'adm-status--rejected' : 'adm-status--approved'}}">{{item.banned ? (item.banAuthority === 'PLATFORM' ? '平台封禁' : '圈子封禁') : '正常'}}</text>{{item.mutedUntil ? ' · 禁言至 ' + item.mutedUntil : ''}}</text>
       </view>
       <view class="adm-item-actions">
         <button wx:if="{{!item.banned}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="banUserTap">封禁</button>
+        <button wx:elif="{{isPlatformAdmin || item.banAuthority === 'COMMUNITY'}}" size="mini" data-id="{{item.id}}" bindtap="unbanUserTap">解除封禁</button>
         <button size="mini" data-id="{{item.id}}" data-muted="{{item.mutedUntil}}" bindtap="muteUserTap">{{item.mutedUntil ? '解除禁言' : '禁言'}}</button>
       </view>
     </view>

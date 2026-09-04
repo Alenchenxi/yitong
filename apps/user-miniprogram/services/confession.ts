@@ -33,6 +33,7 @@ export interface PostVo {
   publishAt: string | null; // P2-06 定时发布时间
   createdAt: string;
   editedAt: string | null; // P1-10
+  platformPublished: boolean;
 }
 
 export interface CreatePostPayload {

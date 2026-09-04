@@ -26,7 +26,7 @@
     <view class="section-title">动态</view>
     <view class="post-list" wx:if="{{posts.length > 0}}">
       <view class="post-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
-        <view class="post-content">{{item.content}}</view>
+        <view class="post-content"><text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text>{{item.content}}</view>
         <view class="post-images" wx:if="{{item.images.length > 0}}">
           <image class="post-image" wx:for="{{item.images}}" wx:key="*this" src="{{item}}" mode="aspectFill"></image>
         </view>

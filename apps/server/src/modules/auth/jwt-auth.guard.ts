@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, HttpStatus, Injectable } from '@nestjs/c
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { BizException } from '../../common/exceptions/biz.exception';
+import { PrismaService } from '../../prisma/prisma.service';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import type { AuthenticatedRequest, JwtPayload } from './types';
 
@@ -11,6 +12,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwt: JwtService,
     private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -36,6 +38,12 @@ export class JwtAuthGuard implements CanActivate {
     if (payload.type !== 'access') {
       throw new BizException(10002, 'token 类型不正确', HttpStatus.UNAUTHORIZED);
     }
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.uid },
+      select: { deletedAt: true },
+    });
+    if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
+    if (user.deletedAt) throw new BizException(10005, '账号已被封禁', HttpStatus.FORBIDDEN);
     req.user = payload;
     return true;
   }

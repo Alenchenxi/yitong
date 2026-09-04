@@ -5,7 +5,9 @@ import type { AppInstance } from '../../../app';
 import {
   listUsers,
   banUser,
+  unbanUser,
   muteUser,
+  getModerationContexts,
   listTickets,
   replyTicket,
   reopenTicket,
@@ -27,6 +29,8 @@ import {
   type AdminTypeVo,
   type AdminPermissionVo,
   type AdminCommunityVo,
+  type AdminModerationScope,
+  type ModerationContextsVo,
 } from '../../../services/admin';
 
 type Sub = 'users' | 'tickets' | 'admins' | 'adminTypes';
@@ -60,6 +64,12 @@ Component({
     subs: [] as Sub[],
     users: [] as AdminUserVo[],
     userKeyword: '',
+    userScopes: [] as ModerationContextsVo['scopes'],
+    userCommunities: [] as ModerationContextsVo['communities'],
+    userScope: 'COMMUNITY' as AdminModerationScope,
+    userCommunityId: '',
+    userCommunityIndex: 0,
+    isPlatformAdmin: false,
     tickets: [] as AdminTicketVo[],
     ticketStatus: 'OPEN',
     admins: [] as ManagerVo[],
@@ -85,6 +95,7 @@ Component({
     typeDescription: '',
     typePermissionCodes: [] as string[],
     loading: false,
+    requestVersion: 0,
   },
 
   methods: {
@@ -112,7 +123,52 @@ Component({
       ));
       const sub = subs.includes(this.data.sub) ? this.data.sub : subs[0];
       if (!sub) return;
-      this.setData({ subs, sub });
+      this.setData({ subs, sub, isPlatformAdmin: access.isPlatform });
+      if (sub === 'users') {
+        void this.ensureUserContexts().then(() => this.load());
+      } else {
+        void this.load();
+      }
+    },
+
+    async ensureUserContexts() {
+      if (this.data.userScopes.length > 0) return;
+      const contexts = await getModerationContexts();
+      const scope = contexts.scopes.some((item) => item.scope === 'PLATFORM') ? 'PLATFORM' : 'COMMUNITY';
+      const firstCommunityId = scope === 'COMMUNITY' ? (contexts.communities[0]?.id ?? '') : '';
+      this.setData({
+        userScopes: contexts.scopes,
+        userCommunities: contexts.communities,
+        userScope: scope,
+        userCommunityId: firstCommunityId,
+        userCommunityIndex: 0,
+      });
+    },
+
+    userQuery() {
+      return {
+        scope: this.data.userScope,
+        communityId: this.data.userScope === 'COMMUNITY' ? this.data.userCommunityId : undefined,
+      };
+    },
+
+    switchUserScope(e: WechatMiniprogram.TouchEvent) {
+      const scope = e.currentTarget.dataset.scope as AdminModerationScope;
+      if (!this.data.userScopes.some((item) => item.scope === scope)) return;
+      this.setData({
+        userScope: scope,
+        userCommunityIndex: 0,
+        userCommunityId: scope === 'COMMUNITY' ? (this.data.userCommunities[0]?.id ?? '') : '',
+      });
+      void this.load();
+    },
+
+    onUserCommunityChange(e: WechatMiniprogram.PickerChange) {
+      const index = Number(e.detail.value) || 0;
+      this.setData({
+        userCommunityIndex: index,
+        userCommunityId: this.data.userCommunities[index]?.id ?? '',
+      });
       void this.load();
     },
 
@@ -136,19 +192,32 @@ Component({
     },
 
     async load() {
-      this.setData({ loading: true });
+      const requestVersion = this.data.requestVersion + 1;
+      const sub = this.data.sub;
+      const userKeyword = this.data.userKeyword || undefined;
+      const userQuery = this.userQuery();
+      const ticketStatus = this.data.ticketStatus;
+      const adminKeyword = this.data.adminKeyword || undefined;
+      this.setData({ loading: true, requestVersion });
       try {
-        if (this.data.sub === 'users') {
-          this.setData({ users: await listUsers(this.data.userKeyword || undefined) });
-        } else if (this.data.sub === 'tickets') {
-          this.setData({ tickets: await listTickets(this.data.ticketStatus) });
-        } else if (this.data.sub === 'admins') {
-          this.setData({ admins: await listAdmins(this.data.adminKeyword || undefined) });
+        if (sub === 'users') {
+          const users = await listUsers(userKeyword, userQuery);
+          if (this.data.requestVersion !== requestVersion) return;
+          this.setData({ users });
+        } else if (sub === 'tickets') {
+          const tickets = await listTickets(ticketStatus);
+          if (this.data.requestVersion !== requestVersion) return;
+          this.setData({ tickets });
+        } else if (sub === 'admins') {
+          const admins = await listAdmins(adminKeyword);
+          if (this.data.requestVersion !== requestVersion) return;
+          this.setData({ admins });
         } else {
           const [adminTypes, permissions] = await Promise.all([
             listAdminTypes(),
             listAdminPermissions(),
           ]);
+          if (this.data.requestVersion !== requestVersion) return;
           this.setData({
             adminTypes,
             permissions,
@@ -161,7 +230,9 @@ Component({
       } catch {
         /* toast */
       } finally {
-        this.setData({ loading: false });
+        if (this.data.requestVersion === requestVersion) {
+          this.setData({ loading: false });
+        }
       }
     },
 
@@ -174,16 +245,39 @@ Component({
     },
     banUserTap(e: WechatMiniprogram.TouchEvent) {
       const id = e.currentTarget.dataset.id as string;
+      if (this.data.userScope === 'COMMUNITY' && !this.data.userCommunityId) {
+        wx.showToast({ title: '请先选择圈子', icon: 'none' });
+        return;
+      }
+      const scopeLabel = this.data.userScope === 'PLATFORM' ? '全平台' : '当前圈子';
       wx.showModal({
-        title: '封禁用户',
-        content: '封禁后用户无法登录，确定？',
+        title: `封禁用户（${scopeLabel}）`,
+        editable: true,
+        placeholderText: '封禁原因（可选）',
         confirmColor: '#F53F3F',
         success: async (r) => {
-          if (r.confirm) {
-            await banUser(id);
-            wx.showToast({ title: '已封禁', icon: 'success' });
-            this.load();
-          }
+          if (!r.confirm) return;
+          await banUser(id, {
+            ...this.userQuery(),
+            scope: this.data.userScope,
+            reason: r.content?.trim() || undefined,
+          });
+          wx.showToast({ title: '已封禁', icon: 'success' });
+          void this.load();
+        },
+      });
+    },
+    unbanUserTap(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      const scopeLabel = this.data.userScope === 'PLATFORM' ? '全平台' : '当前圈子';
+      wx.showModal({
+        title: `解除封禁（${scopeLabel}）`,
+        content: '仅解除当前所选治理层级的封禁，确定继续？',
+        success: async (r) => {
+          if (!r.confirm) return;
+          await unbanUser(id, { ...this.userQuery(), scope: this.data.userScope });
+          wx.showToast({ title: '已解除', icon: 'success' });
+          void this.load();
         },
       });
     },
