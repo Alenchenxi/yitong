@@ -3,9 +3,15 @@ import { suggestPlaces, reverseGeocode, type PoiInfoVo } from '../../../services
 import { listCommunities, type CommunityVo } from '../../../services/community';
 import type { AppInstance } from '../../../app';
 
+type LocationPermissionAction = '' | 'miniProgramSettings' | 'appSettings' | 'privacy' | 'retry';
+
+interface LocationFailure {
+  errMsg?: string;
+}
+
 // 岗位发布同页入口(2026-08-11):类别网格 + 搜索选点 同页
 // 交互:
-//  1. onLoad 调 wx.getFuzzyLocation 定位 → 调百度 reverse → 反查 poiId/lng/lat/city → 自动锁定为默认选点
+//  1. onLoad 检查隐私与模糊定位权限 → 调百度 reverse → 反查 poiId/lng/lat/city → 自动锁定为默认选点
 //  2. 搜索框 input:防抖 300ms 调 suggestPlaces → 候选列表实时展示
 //  3. 点击候选:锁定 poiId/lng/lat/city → 列表收起 → 搜索框显示选中地址
 //  4. 点"下一步":跳到 post-create,带 8 字段 (selectedKey/categoryLabel/address/poiId/lng/lat/city + communityId)
@@ -36,6 +42,8 @@ Page({
     locating: true, // 初次定位中(wx.getFuzzyLocation 进行中)
     locationFailed: false,
     locationErrMsg: '' as string,
+    locationPermissionAction: '' as LocationPermissionAction,
+    locationPermissionActionLabel: '' as string,
     autoLocking: false, // 反向地理编码进行中(wx.getFuzzyLocation 成功 → 调 reverse 中)
     autoLockFailed: false, // 反向地理编码失败(降级提示,允许用户手动搜)
     candidates: [] as PoiInfoVo[],
@@ -46,8 +54,20 @@ Page({
 
   onLoad() {
     this.loadCategories();
-    this.startLocate();
+    this.requestLocationAccess();
     this.loadCommunities();
+  },
+
+  onShow() {
+    if (this._waitingForAppLocationSettings) {
+      this._waitingForAppLocationSettings = false;
+      this.requestLocationAccess(false);
+      return;
+    }
+    if (this._waitingForPrivacyContract) {
+      this._waitingForPrivacyContract = false;
+      this.requestLocationAccess(false);
+    }
   },
 
   // 加载圈子供发岗选择：默认当前圈子（app.globalData.activeCommunityId），否则第一个
@@ -100,14 +120,205 @@ Page({
     }
   },
 
-  // 初次定位:wx.getFuzzyLocation 拿到 gcj02 坐标 → 调后端 reverse-geocode 自动锁定默认 POI
-  // 真实"锁定"由自动反查完成;用户仍可手动搜候选替换(走 onPickCandidate → lockLocation 同一路径)
-  // 反查失败(silent):降级到「当前定位(经纬度)」占位,提示「未识别当前位置,请搜索」,不阻断流程
-  startLocate() {
+  requestLocationAccess(showGuide = true) {
+    this._fuzzyLocationScopeAuthorized = false;
     this.setData({
       locating: true,
       locationFailed: false,
       locationErrMsg: '',
+      locationPermissionAction: '',
+      locationPermissionActionLabel: '',
+    });
+    wx.getSetting({
+      success: ({ authSetting }) => {
+        this._fuzzyLocationScopeAuthorized = authSetting['scope.userFuzzyLocation'] === true;
+        if (authSetting['scope.userFuzzyLocation'] === false) {
+          this.handleMiniProgramLocationDenied(showGuide);
+          return;
+        }
+        this.ensurePrivacyAuthorization(() => this.startLocate(showGuide));
+      },
+      fail: () => this.ensurePrivacyAuthorization(() => this.startLocate(showGuide)),
+    });
+  },
+
+  ensurePrivacyAuthorization(onAuthorized: () => void) {
+    const privacyApi = wx as typeof wx & {
+      getPrivacySetting?: (options: {
+        success: (result: { needAuthorization: boolean }) => void;
+        fail: () => void;
+      }) => void;
+      requirePrivacyAuthorize?: (options: { success: () => void; fail: () => void }) => void;
+    };
+    const canCheckPrivacy =
+      wx.canIUse('getPrivacySetting') &&
+      wx.canIUse('requirePrivacyAuthorize') &&
+      typeof privacyApi.getPrivacySetting === 'function' &&
+      typeof privacyApi.requirePrivacyAuthorize === 'function';
+    if (!canCheckPrivacy) {
+      onAuthorized();
+      return;
+    }
+
+    privacyApi.getPrivacySetting!({
+      success: ({ needAuthorization }) => {
+        if (!needAuthorization) {
+          onAuthorized();
+          return;
+        }
+        privacyApi.requirePrivacyAuthorize!({
+          success: onAuthorized,
+          fail: () => this.handlePrivacyAuthorizationDenied(),
+        });
+      },
+      fail: () => {
+        this.setLocationFailure('暂时无法确认隐私授权状态，请重试或手动搜索地点', 'retry', '重新定位');
+      },
+    });
+  },
+
+  handlePrivacyAuthorizationDenied() {
+    this.setLocationFailure('请先同意隐私保护指引，再使用自动定位', 'privacy', '查看隐私说明');
+  },
+
+  handleMiniProgramLocationDenied(showGuide = true) {
+    this.setLocationFailure('小程序定位权限未开启，可开启后自动填写地点或手动搜索', 'miniProgramSettings', '去开启');
+    if (!showGuide) return;
+    wx.showModal({
+      title: '定位权限未开启',
+      content: '开启小程序定位权限后，可自动填写岗位地点；你也可以继续手动搜索地点。',
+      confirmText: '去开启',
+      cancelText: '手动填写',
+      success: ({ confirm }) => {
+        if (confirm) this.openMiniProgramLocationSettings();
+      },
+    });
+  },
+
+  openMiniProgramLocationSettings() {
+    wx.openSetting({
+      success: ({ authSetting }) => {
+        if (authSetting['scope.userFuzzyLocation']) {
+          this._fuzzyLocationScopeAuthorized = true;
+          this.ensurePrivacyAuthorization(() => this.startLocate(false));
+          return;
+        }
+        this.handleMiniProgramLocationDenied(false);
+      },
+      fail: () => this.handleMiniProgramLocationDenied(false),
+    });
+  },
+
+  handleSystemLocationDenied(showGuide = true) {
+    this.setLocationFailure('iPhone 未允许微信使用定位，可开启后重试或手动搜索', 'appSettings', '去设置');
+    if (!showGuide) return;
+    wx.showModal({
+      title: '系统定位权限未开启',
+      content: '请允许微信使用定位信息，返回小程序后会自动重新定位。',
+      confirmText: '去设置',
+      cancelText: '手动填写',
+      success: ({ confirm }) => {
+        if (confirm) this.openAppLocationSettings();
+      },
+    });
+  },
+
+  openAppLocationSettings() {
+    const appAuthorizeApi = wx as typeof wx & {
+      openAppAuthorizeSetting?: (options?: { fail?: () => void }) => void;
+    };
+    const supported =
+      wx.canIUse('openAppAuthorizeSetting') && typeof appAuthorizeApi.openAppAuthorizeSetting === 'function';
+    if (!supported) {
+      this.showManualIosLocationGuide();
+      return;
+    }
+    this._waitingForAppLocationSettings = true;
+    appAuthorizeApi.openAppAuthorizeSetting!({
+      fail: () => {
+        this._waitingForAppLocationSettings = false;
+        this.showManualIosLocationGuide();
+      },
+    });
+  },
+
+  showManualIosLocationGuide() {
+    wx.showModal({
+      title: '请手动开启定位',
+      content: '请前往 iPhone 设置 → 隐私与安全性 → 定位服务 → 微信，允许微信使用定位信息。',
+      showCancel: false,
+      confirmText: '知道了',
+    });
+  },
+
+  handleLocationFailure(err: LocationFailure, showGuide = true) {
+    const message = (err.errMsg || '').toLowerCase();
+    if (/system permission|location service|app permission|gps/.test(message)) {
+      this.handleSystemLocationDenied(showGuide);
+      return;
+    }
+    if (/auth deny|auth denied|authorize.*deny|permission denied/.test(message)) {
+      if (this._fuzzyLocationScopeAuthorized) {
+        this.handleSystemLocationDenied(showGuide);
+      } else {
+        this.handleMiniProgramLocationDenied(showGuide);
+      }
+      return;
+    }
+    this.setLocationFailure('定位失败，可重新定位或手动搜索地点', 'retry', '重新定位');
+    if (showGuide) wx.showToast({ title: '定位失败，请手动输入', icon: 'none' });
+  },
+
+  setLocationFailure(message: string, action: LocationPermissionAction, actionLabel: string) {
+    this.setData({
+      locating: false,
+      locationFailed: true,
+      locationErrMsg: message,
+      locationPermissionAction: action,
+      locationPermissionActionLabel: actionLabel,
+    });
+  },
+
+  onLocationPermissionAction() {
+    switch (this.data.locationPermissionAction) {
+      case 'miniProgramSettings':
+        this.openMiniProgramLocationSettings();
+        return;
+      case 'appSettings':
+        this.openAppLocationSettings();
+        return;
+      case 'privacy': {
+        const privacyApi = wx as typeof wx & {
+          openPrivacyContract?: (options?: { fail?: () => void }) => void;
+        };
+        if (typeof privacyApi.openPrivacyContract === 'function') {
+          this._waitingForPrivacyContract = true;
+          privacyApi.openPrivacyContract({
+            fail: () => {
+              this._waitingForPrivacyContract = false;
+              wx.showToast({ title: '隐私保护指引打开失败', icon: 'none' });
+            },
+          });
+        } else {
+          wx.showToast({ title: '请先同意隐私保护指引', icon: 'none' });
+        }
+        return;
+      }
+      default:
+        this.requestLocationAccess();
+    }
+  },
+
+  // 初次定位:wx.getFuzzyLocation 拿到 gcj02 坐标 → 调后端 reverse-geocode 自动锁定默认 POI
+  // 真实"锁定"由自动反查完成;用户仍可手动搜候选替换(走 onPickCandidate → lockLocation 同一路径)
+  // 反查失败(silent):降级到「当前定位(经纬度)」占位,提示「未识别当前位置,请搜索」,不阻断流程
+  startLocate(showGuide = true) {
+    this.setData({
+      locating: true,
+      locationFailed: false,
+      locationErrMsg: '',
+      locationPermissionAction: '',
+      locationPermissionActionLabel: '',
       autoLocking: false,
       autoLockFailed: false,
     });
@@ -145,13 +356,7 @@ Page({
           });
       },
       fail: (err) => {
-        console.error('wx.getFuzzyLocation failed:', err?.errMsg);
-        this.setData({
-          locating: false,
-          locationFailed: true,
-          locationErrMsg: err?.errMsg || '未知错误',
-        });
-        wx.showToast({ title: '定位失败，请手动输入', icon: 'none' });
+        this.handleLocationFailure(err, showGuide);
       },
     });
   },
@@ -247,7 +452,7 @@ Page({
 
   // 重新定位
   onRelocate() {
-    this.startLocate();
+    this.requestLocationAccess();
   },
 
   refreshCanSubmit() {
@@ -277,4 +482,7 @@ Page({
   },
 
   _searchTimer: 0 as number,
+  _waitingForAppLocationSettings: false as boolean,
+  _waitingForPrivacyContract: false as boolean,
+  _fuzzyLocationScopeAuthorized: false as boolean,
 });

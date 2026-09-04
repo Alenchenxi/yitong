@@ -72,6 +72,21 @@
 }
 .hint-ok { color: #00B42A; }
 .hint-warn { color: #F53F3F; }
+.location-failure {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+.location-failure-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.location-permission-action {
+  flex: 0 0 auto;
+  color: #D46B08;
+  font-weight: 500;
+}
 
 .candidates {
   margin-top: 16rpx; border: 2rpx solid #E5E6EB; border-radius: 12rpx;
