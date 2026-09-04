@@ -1,10 +1,22 @@
 /**
  * 招聘沟通回归测试：全部使用 Prisma mock，不连接数据库，不产生测试数据。
  */
-import { AppStatus, JobDuration, JobPostStatus, PayScene, PayStatus, PublicationScope } from '@prisma/client';
+import {
+  AppStatus,
+  InterviewInvitationStatus,
+  JobDuration,
+  JobPostStatus,
+  PayScene,
+  PayStatus,
+  PublicationScope,
+} from '@prisma/client';
 import { validate } from 'class-validator';
 import { BizException } from '../../src/common/exceptions/biz.exception';
-import { CreateInterviewInvitationDto, SendJobExchangeDto } from '../../src/modules/job-communication/dto/job-communication.dto';
+import {
+  CreateInterviewInvitationDto,
+  RespondInterviewInvitationDto,
+  SendJobExchangeDto,
+} from '../../src/modules/job-communication/dto/job-communication.dto';
 import { JobCommunicationService } from '../../src/modules/job-communication/job-communication.service';
 import { parseTencentMeetingShare } from '../../src/modules/job-communication/tencent-meeting.parser';
 import { JobService } from '../../src/modules/job/job.service';
@@ -74,6 +86,21 @@ describe('SendJobExchangeDto', () => {
   });
 });
 
+describe('RespondInterviewInvitationDto', () => {
+  it.each(['accept', 'reject'])('应接受 %s 操作', async (action) => {
+    await expect(
+      validate(Object.assign(new RespondInterviewInvitationDto(), { action })),
+    ).resolves.toHaveLength(0);
+  });
+
+  it('应拒绝非白名单响应', async () => {
+    const errors = await validate(
+      Object.assign(new RespondInterviewInvitationDto(), { action: 'cancel' }),
+    );
+    expect(errors.some((error) => error.property === 'action')).toBe(true);
+  });
+});
+
 
 function buildService(
   status: AppStatus = AppStatus.PENDING,
@@ -132,6 +159,24 @@ function buildService(
     exchangePayload: null,
     createdAt: new Date("2026-08-27T00:01:00.000Z"),
   };
+  const invitation = {
+    id: 'invitation_a',
+    applicationId: app.id,
+    conversationId: conversation.id,
+    createdById: app.jobPost.merchant.userId,
+    meetingUrl: 'https://meeting.tencent.com/dm/AbCdEf',
+    title: '校园活动助理面试',
+    meetingDate: '2026-08-29',
+    meetingTime: '14:30',
+    meetingNo: '123456789',
+    password: '2468',
+    interviewerName: '陈老师',
+    status: InterviewInvitationStatus.PENDING,
+    respondedAt: null,
+    cancelledAt: null,
+    createdAt: new Date('2026-08-27T00:02:00.000Z'),
+    application: lockedApp,
+  };
   const jobConversationMessage = {
     findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn().mockResolvedValue(null),
@@ -148,7 +193,11 @@ function buildService(
     jobConversationMessage,
     interviewInvitation: {
       findMany: jest.fn().mockResolvedValue([]),
-      create: jest.fn(),
+      findUnique: jest.fn().mockResolvedValue(invitation),
+      create: jest.fn().mockResolvedValue(invitation),
+      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ ...invitation, ...data }),
+      ),
     },
   };
   const prisma = {
@@ -174,6 +223,7 @@ function buildService(
     conversation,
     resume,
     message,
+    invitation,
   };
 }
 
@@ -310,6 +360,112 @@ describe('JobCommunicationService', () => {
       expect(error).toBeInstanceOf(BizException);
       expect(error).toMatchObject({ bizCode: 10003 });
     }
+  });
+
+  it('只有报名用户可以响应面试邀请', async () => {
+    const { service } = buildService();
+    await expect(
+      service.respondInterviewInvitation('stranger_a', 'invitation_a', 'accept'),
+    ).rejects.toMatchObject({ bizCode: 10003 });
+  });
+
+  it.each([
+    ['accept', InterviewInvitationStatus.ACCEPTED],
+    ['reject', InterviewInvitationStatus.REJECTED],
+  ] as const)('用户 %s 时应在邀请与报名行锁后更新并通知商家', async (action, status) => {
+    const { service, tx, gateway } = buildService();
+
+    await expect(
+      service.respondInterviewInvitation('student_a', 'invitation_a', action),
+    ).resolves.toMatchObject({
+      id: 'invitation_a',
+      status,
+      respondedAt: expect.any(String),
+    });
+
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(tx.interviewInvitation.update).toHaveBeenCalledWith({
+      where: { id: 'invitation_a' },
+      data: { status, respondedAt: expect.any(Date) },
+    });
+    expect(gateway.sendToUser).toHaveBeenCalledWith(
+      'merchant_user_a',
+      expect.objectContaining({
+        type: 'job-interview-updated',
+        conversationId: 'conversation_a',
+        invitationId: 'invitation_a',
+        invitation: expect.objectContaining({ status }),
+      }),
+    );
+  });
+
+  it('相同面试响应重试应幂等返回且不重复推送', async () => {
+    const { service, tx, gateway, invitation } = buildService();
+    tx.interviewInvitation.findUnique.mockResolvedValue({
+      ...invitation,
+      status: InterviewInvitationStatus.ACCEPTED,
+      respondedAt: new Date('2026-08-27T00:03:00.000Z'),
+    });
+
+    await expect(
+      service.respondInterviewInvitation('student_a', 'invitation_a', 'accept'),
+    ).resolves.toMatchObject({ status: InterviewInvitationStatus.ACCEPTED });
+
+    expect(tx.interviewInvitation.update).not.toHaveBeenCalled();
+    expect(gateway.sendToUser).not.toHaveBeenCalled();
+  });
+
+  it('已拒绝邀请不能反向改为接受', async () => {
+    const { service, tx, invitation } = buildService();
+    tx.interviewInvitation.findUnique.mockResolvedValue({
+      ...invitation,
+      status: InterviewInvitationStatus.REJECTED,
+      respondedAt: new Date(),
+    });
+
+    await expect(
+      service.respondInterviewInvitation('student_a', 'invitation_a', 'accept'),
+    ).rejects.toMatchObject({ bizCode: 40004 });
+    expect(tx.interviewInvitation.update).not.toHaveBeenCalled();
+  });
+
+  it('邀请行锁后报名已结束时不得响应', async () => {
+    const { service, tx } = buildService(AppStatus.PENDING, AppStatus.CANCELLED);
+
+    await expect(
+      service.respondInterviewInvitation('student_a', 'invitation_a', 'accept'),
+    ).rejects.toMatchObject({ bizCode: 40004 });
+    expect(tx.interviewInvitation.update).not.toHaveBeenCalled();
+  });
+
+  it('商家可取消已接受邀请并同时发送新旧兼容事件', async () => {
+    const { service, tx, gateway, invitation } = buildService();
+    tx.interviewInvitation.findUnique.mockResolvedValue({
+      ...invitation,
+      status: InterviewInvitationStatus.ACCEPTED,
+      respondedAt: new Date(),
+    });
+
+    await expect(
+      service.cancelInterviewInvitation('merchant_user_a', 'invitation_a'),
+    ).resolves.toMatchObject({ status: InterviewInvitationStatus.CANCELLED });
+
+    expect(tx.interviewInvitation.update).toHaveBeenCalledWith({
+      where: { id: 'invitation_a' },
+      data: {
+        status: InterviewInvitationStatus.CANCELLED,
+        cancelledAt: expect.any(Date),
+      },
+    });
+    expect(gateway.sendToUser).toHaveBeenCalledTimes(2);
+    expect(gateway.sendToUser).toHaveBeenCalledWith(
+      'student_a',
+      expect.objectContaining({ type: 'job-interview-updated' }),
+    );
+    expect(gateway.sendToUser).toHaveBeenCalledWith(
+      'student_a',
+      expect.objectContaining({ type: 'job-interview-cancelled' }),
+    );
   });
 
   it.each([
@@ -570,20 +726,30 @@ describe('JobService 联系方式可见性', () => {
     await expect(service.getPost('post_a', 'student_a')).resolves.toMatchObject({
       contactPhone: null,
       contactWechat: null,
+      myApplication: null,
     });
   });
 
   it('报名成功的用户查看岗位详情时应返回发岗快照联系方式', async () => {
     const { service, prisma } = buildJobService();
-    prisma.jobApplication.findUnique.mockResolvedValueOnce({ id: 'application_a' });
+    prisma.jobApplication.findUnique.mockResolvedValueOnce({
+      id: 'application_a',
+      status: AppStatus.CANCELLED,
+      conversation: { id: 'conversation_a' },
+    });
 
     await expect(service.getPost('post_a', 'student_a')).resolves.toMatchObject({
       contactPhone: '13800000000',
       contactWechat: 'campus-job',
+      myApplication: {
+        id: 'application_a',
+        status: AppStatus.CANCELLED,
+        conversationId: 'conversation_a',
+      },
     });
     expect(prisma.jobApplication.findUnique).toHaveBeenCalledWith({
       where: { jobPostId_userId: { jobPostId: 'post_a', userId: 'student_a' } },
-      select: { id: true },
+      select: { id: true, status: true, conversation: { select: { id: true } } },
     });
   });
 
@@ -592,7 +758,81 @@ describe('JobService 联系方式可见性', () => {
     await expect(service.getPost('post_a', 'merchant_user_a')).resolves.toMatchObject({
       contactPhone: '13800000000',
       contactWechat: 'campus-job',
+      myApplication: null,
     });
+  });
+});
+
+describe('MerchantService 待面试候选人', () => {
+  it('仅按已接受邀约和有效报名筛选，并返回最新邀约摘要', async () => {
+    const respondedAt = new Date('2026-09-04T08:00:00.000Z');
+    const prisma = {
+      merchant: { findUnique: jest.fn().mockResolvedValue({ id: 'merchant_a' }) },
+      jobApplication: {
+        count: jest.fn().mockResolvedValue(1),
+        findMany: jest.fn().mockResolvedValue([{
+          id: 'application_a',
+          jobPostId: 'post_a',
+          userId: 'student_a',
+          resumeId: null,
+          resumeSnapshot: null,
+          status: AppStatus.PENDING,
+          contactedAt: null,
+          fitMark: null,
+          createdAt: new Date('2026-09-04T07:00:00.000Z'),
+          user: { nickname: '林同学' },
+          jobPost: { title: '校园活动助理' },
+          interviewInvitations: [{
+            id: 'invitation_a',
+            title: '一面',
+            meetingDate: '2026-09-05',
+            meetingTime: '14:30',
+            interviewerName: '陈老师',
+            respondedAt,
+          }],
+        }]),
+      },
+      resume: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = new MerchantService(prisma as never, {} as never);
+
+    await expect(
+      service.listCandidates('merchant_user_a', {
+        interviewStatus: 'ACCEPTED',
+        page: 1,
+        pageSize: 20,
+      }),
+    ).resolves.toMatchObject({
+      list: [{
+        id: 'application_a',
+        acceptedInterview: {
+          id: 'invitation_a',
+          respondedAt: respondedAt.toISOString(),
+        },
+      }],
+      total: 1,
+    });
+    expect(prisma.jobApplication.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          jobPost: { merchantId: 'merchant_a' },
+          AND: [
+            { status: { in: [AppStatus.PENDING, AppStatus.ACCEPTED] } },
+            {
+              interviewInvitations: {
+                some: { status: InterviewInvitationStatus.ACCEPTED },
+              },
+            },
+          ],
+        }),
+        include: expect.objectContaining({
+          interviewInvitations: expect.objectContaining({
+            where: { status: InterviewInvitationStatus.ACCEPTED },
+            take: 1,
+          }),
+        }),
+      }),
+    );
   });
 });
 

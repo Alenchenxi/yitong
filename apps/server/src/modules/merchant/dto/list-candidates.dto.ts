@@ -5,6 +5,7 @@ import { Type } from 'class-transformer';
 export const APP_STATUS_VALUES = ['PENDING', 'ACCEPTED', 'DONE', 'CANCELLED', 'REJECTED'] as const;
 // M2-05 合适度标记（与 schema.prisma FitMark 对齐）
 export const FIT_MARK_VALUES = ['FIT', 'UNFIT'] as const;
+export const INTERVIEW_STATUS_VALUES = ['ACCEPTED'] as const;
 
 export class ListCandidatesDto {
   /** 按岗位过滤（仅商家自己的岗位；传不属于自己的岗位会查不到数据） */
@@ -16,6 +17,11 @@ export class ListCandidatesDto {
   @IsOptional()
   @IsIn([...APP_STATUS_VALUES])
   status?: (typeof APP_STATUS_VALUES)[number];
+
+  /** 邀约维度筛选；ACCEPTED 表示用户已接受且报名仍有效。 */
+  @IsOptional()
+  @IsIn([...INTERVIEW_STATUS_VALUES])
+  interviewStatus?: (typeof INTERVIEW_STATUS_VALUES)[number];
 
   /** M2-04 按已联系过滤：1=已联系，0=未联系 */
   @IsOptional()

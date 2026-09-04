@@ -217,7 +217,7 @@ describe('平台岗位发布与报名治理', () => {
     const community = new CommunityService(
       prisma as never,
       {} as never,
-      new JobVisibilityPolicyService(),
+      new PublicationPolicyService(prisma as never),
     );
     const service = buildJobService(prisma, community as never);
 
@@ -353,7 +353,7 @@ describe('广场平台内容可见性', () => {
     _count: { comments: 2 },
   };
 
-  it('混合流应允许平台全圈内容、限制圈子内容到当前圈，并映射平台标识', async () => {
+  it('双源混合流应允许平台全圈内容、限制圈子内容到当前圈，并映射平台标识', async () => {
     const prisma = {
       post: {
         findMany: jest.fn()
@@ -365,16 +365,13 @@ describe('广场平台内容可见性', () => {
           .mockResolvedValueOnce([platformAnonPost])
           .mockResolvedValueOnce([]),
       },
-      jobPost: {
-        findMany: jest.fn().mockResolvedValue([]),
-      },
+      jobPost: { findMany: jest.fn() },
     };
     const publication = new PublicationPolicyService(prisma as never);
     const service = new SquareService(
       prisma as never,
       {} as never,
       { resolveFeedCommunityId: jest.fn().mockResolvedValue('community_current') } as never,
-      { toPostVo: jest.fn() } as never,
       publication,
     );
 
@@ -396,20 +393,7 @@ describe('广场平台内容可见性', () => {
     };
     expect(prisma.post.findMany.mock.calls[0][0].where.AND[0]).toEqual(expectedContentVisibility);
     expect(prisma.anonymousPost.findMany.mock.calls[0][0].where.AND[0]).toEqual(expectedContentVisibility);
-    expect(prisma.jobPost.findMany.mock.calls[0][0].where.AND[0]).toEqual({
-      OR: [
-        {
-          publisherScope: PublicationScope.PLATFORM,
-          visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
-        },
-        {
-          publisherScope: PublicationScope.COMMUNITY,
-          visibilityScope: JobVisibilityScope.COMMUNITY,
-          communityId: 'community_current',
-          community: { is: { status: CommunityStatus.ACTIVE } },
-        },
-      ],
-    });
+    expect(prisma.jobPost.findMany).not.toHaveBeenCalled();
     expect(result.list).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: 'post', data: expect.objectContaining({ platformPublished: true }) }),
       expect.objectContaining({ kind: 'anon_post', data: expect.objectContaining({ platformPublished: true }) }),
@@ -422,7 +406,6 @@ describe('广场平台内容可见性', () => {
       anonymousPost: { findMany: jest.fn() },
       jobPost: { findMany: jest.fn() },
     };
-    const job = { toPostVo: jest.fn() };
     const service = new SquareService(
       prisma as never,
       {} as never,
@@ -432,13 +415,11 @@ describe('广场平台内容可见性', () => {
           { targetType: 'job_post', targetId: 'job_hot', viewCount: 21 },
         ]),
       } as never,
-      job as never,
       new PublicationPolicyService(prisma as never),
     );
 
     await expect(service.todayHit('viewer', null, { limit: 10 })).resolves.toEqual({ list: [] });
     expect(prisma.jobPost.findMany).not.toHaveBeenCalled();
-    expect(job.toPostVo).not.toHaveBeenCalled();
   });
 });
 
@@ -529,19 +510,19 @@ describe('圈子批量动态统计', () => {
     const service = new CommunityService(
       prisma as never,
       {} as never,
-      new JobVisibilityPolicyService(),
+      new PublicationPolicyService(prisma as never),
     );
 
     const result = await service.listPublic('viewer');
 
     expect(result).toEqual([
-      expect.objectContaining({ id: 'community_b', memberCount: 2, postCount: 28 }),
-      expect.objectContaining({ id: 'community_a', memberCount: 1, postCount: 38 }),
+      expect.objectContaining({ id: 'community_b', memberCount: 2, postCount: 15 }),
+      expect.objectContaining({ id: 'community_a', memberCount: 1, postCount: 14 }),
     ]);
     expect(prisma.communityMember.groupBy).toHaveBeenCalledTimes(1);
     expect(prisma.post.groupBy).toHaveBeenCalledTimes(1);
     expect(prisma.anonymousPost.groupBy).toHaveBeenCalledTimes(1);
-    expect(prisma.jobPost.groupBy).toHaveBeenCalledTimes(1);
-    expect(prisma.jobPost.count).toHaveBeenCalledTimes(1);
+    expect(prisma.jobPost.groupBy).not.toHaveBeenCalled();
+    expect(prisma.jobPost.count).not.toHaveBeenCalled();
   });
 });

@@ -1,13 +1,11 @@
 import type { PostVo } from '../confession/types';
 import type { AnonPostVo } from '../treehole/types';
-import type { JobPostVo } from '../job/types';
 
-// 广场 union feed 条目：表白墙帖 + 树洞匿名帖 + 兼职岗位（圈子动态混合流）
+// 广场动态仅包含表白墙帖和树洞匿名帖；兼职保留在独立 tab。
 // 红线：anon_post kind 的 data 严禁回填 authorId/authorNickname/authorAvatarUrl 等真实身份字段
 export type FeedItemVo =
   | { kind: 'post'; data: PostVo }
-  | { kind: 'anon_post'; data: AnonPostVo }
-  | { kind: 'job_post'; data: JobPostVo };
+  | { kind: 'anon_post'; data: AnonPostVo };
 
 export interface SquareFeedResult {
   list: FeedItemVo[];

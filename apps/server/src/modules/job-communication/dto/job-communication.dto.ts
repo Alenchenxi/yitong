@@ -2,6 +2,8 @@ import { IsDateString, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength
 
 export const JOB_EXCHANGE_KINDS = ['PHONE', 'WECHAT', 'RESUME'] as const;
 export type JobExchangeKind = (typeof JOB_EXCHANGE_KINDS)[number];
+export const INTERVIEW_RESPONSE_ACTIONS = ['accept', 'reject'] as const;
+export type InterviewResponseAction = (typeof INTERVIEW_RESPONSE_ACTIONS)[number];
 
 export class SendJobMessageDto {
   @IsString()
@@ -42,4 +44,9 @@ export class CreateInterviewInvitationDto {
   @IsOptional() @IsString() @MaxLength(40) meetingNo?: string;
   @IsOptional() @IsString() @MaxLength(40) password?: string;
   @IsString() @Matches(/\S/u) @MaxLength(50) interviewerName!: string;
+}
+
+export class RespondInterviewInvitationDto {
+  @IsIn(INTERVIEW_RESPONSE_ACTIONS)
+  action!: InterviewResponseAction;
 }

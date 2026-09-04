@@ -80,6 +80,14 @@ export interface MerchantCandidateVo {
   // M2-04/05 标记字段
   contactedAt: string | null;
   fitMark: 'FIT' | 'UNFIT' | null;
+  acceptedInterview: {
+    id: string;
+    title: string;
+    meetingDate: string;
+    meetingTime: string;
+    interviewerName: string;
+    respondedAt: string | null;
+  } | null;
   createdAt: string;
 }
 
@@ -93,6 +101,7 @@ export interface MerchantCandidatePage {
 export interface MerchantCandidateFilter {
   jobPostId?: string;
   status?: MerchantCandidateVo['status'];
+  interviewStatus?: 'ACCEPTED';
   contacted?: 0 | 1; // M2-04 1=已联系 0=未联系
   fitMark?: 'FIT' | 'UNFIT'; // M2-05
   keyword?: string;
@@ -104,6 +113,7 @@ export function listMerchantCandidates(filter: MerchantCandidateFilter = {}) {
   const params: string[] = [];
   if (filter.jobPostId) params.push(`jobPostId=${encodeURIComponent(filter.jobPostId)}`);
   if (filter.status) params.push(`status=${filter.status}`);
+  if (filter.interviewStatus) params.push(`interviewStatus=${filter.interviewStatus}`);
   if (filter.contacted !== undefined) params.push(`contacted=${filter.contacted}`);
   if (filter.fitMark) params.push(`fitMark=${filter.fitMark}`);
   if (filter.keyword) params.push(`keyword=${encodeURIComponent(filter.keyword)}`);

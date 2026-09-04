@@ -1,4 +1,5 @@
 import type {
+  AppStatus,
   JobApplyMode,
   JobCategory,
   JobDuration,
@@ -47,6 +48,11 @@ export interface JobPostVo {
   takenDownAt: string | null;
   deletedAt: string | null;
   createdAt: string;
+  myApplication?: {
+    id: string;
+    status: AppStatus;
+    conversationId: string | null;
+  } | null;
   editedFromStatus?: string;
   needsRepublish?: boolean;
 }

@@ -45,12 +45,17 @@
   <view class="chat-section">
     <view class="chat-title">群消息 ({{messages.length}})</view>
     <view class="chat-list" wx:if="{{messages.length > 0}}">
-      <view wx:for="{{messages}}" wx:key="id">
-        <view wx:if="{{item.type === 'system'}}" class="chat-system">{{item.contentText}}</view>
+      <view class="chat-tip" wx:if="{{hasMoreMsg}}" bindtap="loadMore">加载更早消息</view>
+      <view class="chat-tip" wx:else>没有更早消息了</view>
+      <view wx:for="{{messages}}" wx:key="id" id="group-message-{{item.id}}">
+        <view wx:if="{{item.type === 'system'}}" class="chat-system">
+          <text>{{item.contentText}}</text>
+          <text class="chat-system-time">{{item.timeText}}</text>
+        </view>
         <view wx:else class="chat-msg {{item.isMine ? 'mine' : ''}} {{item.deleted ? 'deleted' : ''}}">
           <view class="chat-meta">
             <text class="chat-nick">{{item.nickname}}</text>
-            <text class="chat-time">{{item.createdAt}}</text>
+            <text class="chat-time">{{item.timeText}}</text>
           </view>
           <view wx:if="{{item.type === 'image' && !item.deleted}}" class="chat-img-wrap" data-url="{{item.content}}" bindtap="previewImg">
             <image class="chat-img-inner" src="{{item.content}}" mode="aspectFill"></image>
@@ -59,8 +64,6 @@
           <view wx:if="{{item.isMine && !item.deleted}}" class="chat-revoke" data-id="{{item.id}}" bindtap="revokeMsg">撤回</view>
         </view>
       </view>
-      <view class="chat-tip" wx:if="{{hasMoreMsg}}" bindtap="loadMore">加载更多</view>
-      <view class="chat-tip" wx:elif="{{messages.length > 0}}">没有更多了</view>
     </view>
     <view class="chat-empty" wx:elif="{{!loading}}">暂无消息</view>
   </view>

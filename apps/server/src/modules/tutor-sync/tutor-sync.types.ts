@@ -1,5 +1,6 @@
 export const TUTOR_SYNC_SOURCE = 'SENYANG_TUTOR';
-export const TUTOR_SYNC_PUBLISHER = '森阳家教';
+export const TUTOR_SYNC_PUBLISHER = '燚桐家教';
+export const TUTOR_SYNC_LEGACY_PUBLISHERS = ['森阳家教'] as const;
 export const TUTOR_SYNC_CONTACT = '13057867818';
 export const TUTOR_SYNC_CONTACT_INSTRUCTION = `此岗位需联系${TUTOR_SYNC_CONTACT}（同微信）`;
 

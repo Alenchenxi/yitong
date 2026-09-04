@@ -4,6 +4,7 @@ import type { JwtPayload } from '../auth/types';
 import {
   CreateInterviewInvitationDto,
   ParseMeetingDto,
+  RespondInterviewInvitationDto,
   SendJobExchangeDto,
   SendJobMessageDto,
 } from './dto/job-communication.dto';
@@ -53,5 +54,14 @@ export class JobCommunicationController {
   @Post('interview-invitations/:id/cancel')
   async cancel(@Param('id') id: string, @Req() req: JobCommunicationRequest) {
     return ok(await this.communication.cancelInterviewInvitation(req.user.uid, id));
+  }
+
+  @Post('interview-invitations/:id/respond')
+  async respond(
+    @Param('id') id: string,
+    @Body() dto: RespondInterviewInvitationDto,
+    @Req() req: JobCommunicationRequest,
+  ) {
+    return ok(await this.communication.respondInterviewInvitation(req.user.uid, id, dto.action));
   }
 }

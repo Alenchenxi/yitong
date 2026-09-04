@@ -226,6 +226,28 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.interview-summary {
+  margin-top: 14rpx;
+  padding: 14rpx 16rpx;
+  border-left: 6rpx solid var(--yt-primary, #f9c801);
+  background: #fffbe6;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+.interview-summary-label {
+  font-size: 22rpx;
+  color: #ad6800;
+  font-weight: 600;
+}
+.interview-summary-main {
+  font-size: 25rpx;
+  color: var(--yt-text-main, #1d2129);
+}
+.interview-summary-sub {
+  font-size: 22rpx;
+  color: var(--yt-text-sub, #86909c);
+}
 .card-marks {
   display: flex;
   flex-wrap: wrap;

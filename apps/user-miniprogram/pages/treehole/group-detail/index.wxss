@@ -42,7 +42,8 @@
 .chat-title { font-size: 28rpx; font-weight: 600; color: var(--yt-text-main); margin-bottom: 16rpx; }
 .chat-list { display: flex; flex-direction: column; gap: 16rpx; }
 .chat-msg { padding: 14rpx; border-radius: 12rpx; background: #f7f8fa; position: relative; }
-.chat-system { text-align: center; font-size: 22rpx; color: var(--yt-text-sub); padding: 10rpx 0; }
+.chat-system { text-align: center; font-size: 22rpx; color: var(--yt-text-sub); padding: 10rpx 0; display: flex; flex-direction: column; gap: 4rpx; }
+.chat-system-time { font-size: 20rpx; color: #C9CDD4; }
 .chat-msg.mine { background: var(--yt-primary-lighter); margin-left: 60rpx; }
 .chat-msg.deleted .chat-content { color: #C9CDD4; font-style: italic; }
 .chat-meta { display: flex; justify-content: space-between; margin-bottom: 6rpx; }

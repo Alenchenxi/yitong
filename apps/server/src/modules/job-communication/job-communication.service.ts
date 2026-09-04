@@ -4,7 +4,11 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ModerationService } from '../moderation/moderation.service';
-import type { CreateInterviewInvitationDto, JobExchangeKind } from './dto/job-communication.dto';
+import type {
+  CreateInterviewInvitationDto,
+  InterviewResponseAction,
+  JobExchangeKind,
+} from './dto/job-communication.dto';
 import { assertTencentMeetingUrl, parseTencentMeetingShare } from './tencent-meeting.parser';
 
 const READ_ONLY_STATUSES: AppStatus[] = [AppStatus.CANCELLED, AppStatus.REJECTED];
@@ -382,16 +386,108 @@ export class JobCommunicationService {
   }
 
   async cancelInterviewInvitation(actorId: string, invitationId: string) {
-    const invitation = await this.prisma.interviewInvitation.findUnique({
-      where: { id: invitationId },
-      include: { application: { include: { jobPost: { include: { merchant: { select: { userId: true } } } } } } },
+    const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockInterviewInvitation(tx, invitationId);
+      const invitation = await tx.interviewInvitation.findUnique({
+        where: { id: invitationId },
+        include: { application: { include: { jobPost: { include: { merchant: { select: { userId: true } } } } } } },
+      });
+      if (!invitation) throw new BizException(40001, '面试邀请不存在', HttpStatus.NOT_FOUND);
+      this.assertMerchant(actorId, invitation.application);
+      if (invitation.status === InterviewInvitationStatus.CANCELLED) {
+        return { invitation, changed: false };
+      }
+      if (
+        invitation.status !== InterviewInvitationStatus.PENDING
+        && invitation.status !== InterviewInvitationStatus.ACCEPTED
+      ) {
+        throw new BizException(40004, '已拒绝的面试邀请不能取消', HttpStatus.CONFLICT);
+      }
+      await this.lockApplication(tx, invitation.applicationId);
+      const lockedApplication = await tx.jobApplication.findUnique({
+        where: { id: invitation.applicationId },
+        include: { jobPost: { include: { merchant: { select: { userId: true } } } } },
+      });
+      if (!lockedApplication) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
+      this.assertMerchant(actorId, lockedApplication);
+      this.assertWritable(lockedApplication.status);
+      const updated = await tx.interviewInvitation.update({
+        where: { id: invitationId },
+        data: { status: InterviewInvitationStatus.CANCELLED, cancelledAt: new Date() },
+      });
+      return { invitation: { ...updated, application: lockedApplication }, changed: true };
     });
-    if (!invitation) throw new BizException(40001, '面试邀请不存在', HttpStatus.NOT_FOUND);
-    this.assertMerchant(actorId, invitation.application);
-    if (invitation.status === InterviewInvitationStatus.CANCELLED) return this.toInvitation(invitation);
-    const updated = await this.prisma.interviewInvitation.update({ where: { id: invitationId }, data: { status: InterviewInvitationStatus.CANCELLED, cancelledAt: new Date() } });
-    this.gateway.sendToUser(invitation.application.userId, { type: 'job-interview-cancelled', conversationId: invitation.conversationId, invitationId });
-    return this.toInvitation(updated);
+    const invitation = this.toInvitation(result.invitation);
+    if (result.changed) {
+      this.gateway.sendToUser(result.invitation.application.userId, {
+        type: 'job-interview-updated',
+        conversationId: result.invitation.conversationId,
+        invitationId,
+        invitation,
+      });
+      // Older clients only understand this cancellation event.
+      this.gateway.sendToUser(result.invitation.application.userId, {
+        type: 'job-interview-cancelled',
+        conversationId: result.invitation.conversationId,
+        invitationId,
+      });
+    }
+    return invitation;
+  }
+
+  async respondInterviewInvitation(
+    actorId: string,
+    invitationId: string,
+    action: InterviewResponseAction,
+  ) {
+    const targetStatus = action === 'accept'
+      ? InterviewInvitationStatus.ACCEPTED
+      : InterviewInvitationStatus.REJECTED;
+    const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockInterviewInvitation(tx, invitationId);
+      const invitation = await tx.interviewInvitation.findUnique({
+        where: { id: invitationId },
+        include: { application: { include: { jobPost: { include: { merchant: { select: { userId: true } } } } } } },
+      });
+      if (!invitation) throw new BizException(40001, '面试邀请不存在', HttpStatus.NOT_FOUND);
+      this.assertStudent(actorId, invitation.application);
+      if (invitation.status === targetStatus) {
+        return { invitation, merchantUserId: invitation.application.jobPost.merchant.userId, changed: false };
+      }
+      if (invitation.status !== InterviewInvitationStatus.PENDING) {
+        throw new BizException(40004, '面试邀请已处理，不能重复变更', HttpStatus.CONFLICT);
+      }
+      await this.lockApplication(tx, invitation.applicationId);
+      const lockedApplication = await tx.jobApplication.findUnique({
+        where: { id: invitation.applicationId },
+        include: { jobPost: { include: { merchant: { select: { userId: true } } } } },
+      });
+      if (!lockedApplication) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
+      this.assertStudent(actorId, lockedApplication);
+      this.assertWritable(lockedApplication.status);
+      const updated = await tx.interviewInvitation.update({
+        where: { id: invitationId },
+        data: {
+          status: targetStatus,
+          respondedAt: new Date(),
+        },
+      });
+      return {
+        invitation: updated,
+        merchantUserId: lockedApplication.jobPost.merchant.userId,
+        changed: true,
+      };
+    });
+    const invitation = this.toInvitation(result.invitation);
+    if (result.changed) {
+      this.gateway.sendToUser(result.merchantUserId, {
+        type: 'job-interview-updated',
+        conversationId: result.invitation.conversationId,
+        invitationId,
+        invitation,
+      });
+    }
+    return invitation;
   }
 
   private async lockApplication(tx: Prisma.TransactionClient, applicationId: string) {
@@ -401,6 +497,15 @@ export class JobCommunicationService {
        WHERE "id" = ${applicationId}
        FOR UPDATE`;
     if (!rows.length) throw new BizException(40001, "报名记录不存在", HttpStatus.NOT_FOUND);
+  }
+
+  private async lockInterviewInvitation(tx: Prisma.TransactionClient, invitationId: string) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>
+      `SELECT "id"
+       FROM "interview_invitations"
+       WHERE "id" = ${invitationId}
+       FOR UPDATE`;
+    if (!rows.length) throw new BizException(40001, '面试邀请不存在', HttpStatus.NOT_FOUND);
   }
 
   private buildExchangePayload(
@@ -609,6 +714,7 @@ export class JobCommunicationService {
     password: string | null;
     interviewerName: string;
     status: InterviewInvitationStatus;
+    respondedAt: Date | null;
     cancelledAt: Date | null;
     createdAt: Date;
   }) {
@@ -622,6 +728,7 @@ export class JobCommunicationService {
       password: item.password,
       interviewerName: item.interviewerName,
       status: item.status,
+      respondedAt: item.respondedAt?.toISOString() ?? null,
       cancelledAt: item.cancelledAt?.toISOString() ?? null,
       createdAt: item.createdAt.toISOString(),
     };

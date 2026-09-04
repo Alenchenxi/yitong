@@ -91,6 +91,11 @@
       </view>
       <view class="card-line">岗位：{{item.jobPostTitle}}</view>
       <view class="card-line">简历：{{item.resumeSummary}}</view>
+      <view wx:if="{{item.acceptedInterview}}" class="interview-summary">
+        <text class="interview-summary-label">待面试</text>
+        <text class="interview-summary-main">{{item.acceptedInterviewText}}</text>
+        <text class="interview-summary-sub">面试官：{{item.acceptedInterview.interviewerName}}</text>
+      </view>
       <view class="card-marks">
         <text wx:if="{{item.contacted}}" class="mark mark-contacted">已联系</text>
         <text wx:if="{{item.fitMark === 'FIT'}}" class="mark mark-fit">合适</text>

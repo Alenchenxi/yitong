@@ -217,7 +217,7 @@
 
               <view
                 wx:elif="{{item.invitation}}"
-                class="meeting-card {{item.invitation.status === 'CANCELLED' ? 'cancelled' : ''}}"
+                class="meeting-card {{item.invitation.status === 'CANCELLED' || item.invitation.status === 'REJECTED' ? 'cancelled' : ''}}"
               >
                 <view class="meeting-head">
                   <view class="meeting-icon">
@@ -228,7 +228,7 @@
                     <text class="meeting-title">{{item.invitation.title}}</text>
                   </view>
                   <text class="meeting-status">
-                    {{item.invitation.status === 'CANCELLED' ? '已取消' : '待面试'}}
+                    {{item.invitation.status === 'PENDING' ? '待确认' : item.invitation.status === 'ACCEPTED' ? '已接受' : item.invitation.status === 'REJECTED' ? '已拒绝' : '已取消'}}
                   </text>
                 </view>
 
@@ -272,10 +272,9 @@
                   </view>
                 </view>
 
-                <view class="meeting-actions">
+                <view wx:if="{{item.invitation.status !== 'CANCELLED' && item.invitation.status !== 'REJECTED'}}" class="meeting-actions">
                   <button
                     class="meeting-primary"
-                    disabled="{{item.invitation.status === 'CANCELLED'}}"
                     data-url="{{item.invitation.meetingUrl}}"
                     catchtap="enterMeeting"
                   >
@@ -293,7 +292,27 @@
                 </view>
 
                 <view
-                  wx:if="{{conversation.role === 'merchant' && item.invitation.status === 'ACTIVE'}}"
+                  wx:if="{{conversation.role === 'student' && item.invitation.status === 'PENDING'}}"
+                  class="meeting-response-actions"
+                >
+                  <button
+                    class="meeting-response accept"
+                    data-id="{{item.invitation.id}}"
+                    data-action="accept"
+                    disabled="{{respondingInvitationId === item.invitation.id}}"
+                    catchtap="respondInvitation"
+                  >接受</button>
+                  <button
+                    class="meeting-response reject"
+                    data-id="{{item.invitation.id}}"
+                    data-action="reject"
+                    disabled="{{respondingInvitationId === item.invitation.id}}"
+                    catchtap="respondInvitation"
+                  >拒绝</button>
+                </view>
+
+                <view
+                  wx:if="{{conversation.role === 'merchant' && (item.invitation.status === 'PENDING' || item.invitation.status === 'ACCEPTED')}}"
                   class="cancel-meeting"
                   data-id="{{item.invitation.id}}"
                   catchtap="cancelInvitation"
@@ -533,7 +552,7 @@
 
         <view class="meeting-note">
           <image src="/assets/icons/recruitment/info-circle.svg" mode="aspectFit"></image>
-          <text>发送后将以会议卡片展示给候选人。本期支持取消邀请，暂不支持接受、拒绝和改期。</text>
+          <text>发送后将以会议卡片展示给候选人，候选人可接受或拒绝；已发送邀请支持取消。</text>
         </view>
       </view>
     </scroll-view>

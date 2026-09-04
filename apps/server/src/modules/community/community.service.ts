@@ -4,15 +4,12 @@ import {
   CommunityMemberRole,
   CommunityStatus,
   ContentVisibilityScope,
-  JobPostStatus,
-  JobVisibilityScope,
   PostStatus,
   PostVisibility,
   PublicationScope,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
-import { JobVisibilityPolicyService } from '../job-visibility/job-visibility.service';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PublicationPolicyService } from '../publication/publication-policy.service';
 import type {
@@ -55,7 +52,6 @@ export class CommunityService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderation: ModerationService,
-    private readonly jobVisibility: JobVisibilityPolicyService,
     @Optional() private readonly publication?: PublicationPolicyService,
   ) {}
 
@@ -508,10 +504,9 @@ export class CommunityService {
     return rows.map((b) => ({ id: b.id, title: b.title, imageUrl: b.imageUrl, linkUrl: b.linkUrl }));
   }
 
-  /** 广场动态数按当前混合流可见口径实时计算。 */
+  /** 广场动态数按表白墙和树洞两源可见口径实时计算。 */
   private async countVisibleDynamics(communityId: string): Promise<number> {
-    const now = new Date();
-    const [postCount, anonymousPostCount, jobPostCount] = await Promise.all([
+    const [postCount, anonymousPostCount] = await Promise.all([
       this.prisma.post.count({
         where: {
           status: PostStatus.APPROVED,
@@ -526,15 +521,8 @@ export class CommunityService {
           AND: [this.publicationPolicy.anonymousPostVisibilityFilter(communityId)],
         },
       }),
-      this.prisma.jobPost.count({
-        where: {
-          status: JobPostStatus.PUBLISHED,
-          deletedAt: null,
-          AND: this.jobVisibility.buildFilters(communityId, now),
-        },
-      }),
     ]);
-    return postCount + anonymousPostCount + jobPostCount;
+    return postCount + anonymousPostCount;
   }
 
   /** 列表页批量按真实关系与当前可见内容聚合，避免展示冗余字段的历史漂移。 */
@@ -545,9 +533,7 @@ export class CommunityService {
     const activeCommunityIds = communities
       .filter((community) => community.status === CommunityStatus.ACTIVE)
       .map((community) => community.id);
-    const now = new Date();
-
-    const [memberRows, postRows, anonymousPostRows, communityJobRows, globalJobCount] = await Promise.all([
+    const [memberRows, postRows, anonymousPostRows] = await Promise.all([
       this.prisma.communityMember.groupBy({
         by: ['communityId'],
         where: { communityId: { in: communityIds } },
@@ -593,28 +579,6 @@ export class CommunityService {
         },
         _count: { _all: true },
       }),
-      this.prisma.jobPost.groupBy({
-        by: ['communityId'],
-        where: {
-          communityId: { in: activeCommunityIds },
-          community: { is: { status: CommunityStatus.ACTIVE } },
-          publisherScope: PublicationScope.COMMUNITY,
-          visibilityScope: JobVisibilityScope.COMMUNITY,
-          status: JobPostStatus.PUBLISHED,
-          deletedAt: null,
-          OR: [{ expireAt: null }, { expireAt: { gt: now } }],
-        },
-        _count: { _all: true },
-      }),
-      this.prisma.jobPost.count({
-        where: {
-          publisherScope: PublicationScope.PLATFORM,
-          visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
-          status: JobPostStatus.PUBLISHED,
-          deletedAt: null,
-          OR: [{ expireAt: null }, { expireAt: { gt: now } }],
-        },
-      }),
     ]);
 
     const globalPostCount = postRows
@@ -625,7 +589,7 @@ export class CommunityService {
       .filter((row) => row.publisherScope === PublicationScope.PLATFORM
         && row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES)
       .reduce((sum, row) => sum + row._count._all, 0);
-    const globalContentCount = globalPostCount + globalAnonymousPostCount + globalJobCount;
+    const globalContentCount = globalPostCount + globalAnonymousPostCount;
 
     const stats = new Map<string, CommunityStats>(
       communities.map((community) => [
@@ -641,7 +605,7 @@ export class CommunityService {
       const current = stats.get(row.communityId);
       if (current) current.memberCount = row._count._all;
     }
-    for (const rows of [postRows, anonymousPostRows, communityJobRows]) {
+    for (const rows of [postRows, anonymousPostRows]) {
       for (const row of rows) {
         if ('publisherScope' in row && row.publisherScope === PublicationScope.PLATFORM) continue;
         const current = stats.get(row.communityId);

@@ -1,6 +1,5 @@
 import { CommunityMemberRole, CommunityStatus } from '@prisma/client';
 import { CommunityService } from '../../src/modules/community/community.service';
-import { JobVisibilityPolicyService } from '../../src/modules/job-visibility/job-visibility.service';
 
 describe('CommunityService 圈子列表实时统计', () => {
   const community = {
@@ -60,20 +59,11 @@ describe('CommunityService 圈子列表实时统计', () => {
         ]),
         count: jest.fn().mockResolvedValue(3),
       },
-      jobPost: {
-        groupBy: jest.fn().mockResolvedValue([
-          { communityId: community.id, _count: { _all: 1 } },
-        ]),
-        count: jest.fn().mockImplementation((args: { where: { visibilityScope?: string } }) =>
-          Promise.resolve(args.where.visibilityScope ? 3 : 4),
-        ),
-      },
     };
 
     return new CommunityService(
       prisma as never,
       {} as never,
-      new JobVisibilityPolicyService(),
     );
   }
 
@@ -84,7 +74,7 @@ describe('CommunityService 圈子列表实时统计', () => {
       expect.objectContaining({
         id: community.id,
         memberCount: 2,
-        postCount: 9,
+        postCount: 5,
       }),
     ]);
   });
@@ -153,7 +143,7 @@ describe('CommunityService 圈子列表实时统计', () => {
           expect.objectContaining({
             id: community.id,
             memberCount: 2,
-            postCount: 9,
+            postCount: 5,
           }),
         ],
       }),
@@ -169,7 +159,7 @@ describe('CommunityService 圈子列表实时统计', () => {
           expect.objectContaining({
             id: community.id,
             memberCount: 2,
-            postCount: 9,
+            postCount: 5,
           }),
         ],
       }),
@@ -180,10 +170,10 @@ describe('CommunityService 圈子列表实时统计', () => {
     const service = buildService();
 
     await expect(service.getActive('user_a')).resolves.toEqual(
-      expect.objectContaining({ memberCount: 2, postCount: 9 }),
+      expect.objectContaining({ memberCount: 2, postCount: 5 }),
     );
     await expect(service.detail('user_a', community.id)).resolves.toEqual(
-      expect.objectContaining({ memberCount: 2, postCount: 9 }),
+      expect.objectContaining({ memberCount: 2, postCount: 5 }),
     );
   });
 });

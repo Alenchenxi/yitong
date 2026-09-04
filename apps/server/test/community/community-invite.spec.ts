@@ -5,7 +5,6 @@ import { HttpStatus } from '@nestjs/common';
 import { CommunityMemberRole, CommunityStatus } from '@prisma/client';
 import { BizException } from '../../src/common/exceptions/biz.exception';
 import { CommunityService } from '../../src/modules/community/community.service';
-import { JobVisibilityPolicyService } from '../../src/modules/job-visibility/job-visibility.service';
 
 type TransactionMock = {
   communityMember: { createMany: jest.Mock };
@@ -28,7 +27,6 @@ function buildService(status: CommunityStatus | null, insertedCount: number) {
   const service = new CommunityService(
     prisma as never,
     {} as never,
-    new JobVisibilityPolicyService(),
   );
   return { service, prisma, tx };
 }
@@ -143,22 +141,20 @@ describe('CommunityService 圈子广场动态数', () => {
       },
       post: { count: jest.fn().mockResolvedValue(2) },
       anonymousPost: { count: jest.fn().mockResolvedValue(3) },
-      jobPost: { count: jest.fn().mockResolvedValue(4) },
     };
     return {
       service: new CommunityService(
         prisma as never,
         {} as never,
-        new JobVisibilityPolicyService(),
       ),
       prisma,
     };
   }
 
-  it('当前圈子应实时返回表白墙、树洞、有效兼职的混合动态总数', async () => {
+  it('当前圈子应实时返回表白墙和树洞动态总数并排除兼职', async () => {
     const { service, prisma } = buildCountService();
 
-    await expect(service.getActive('user_a')).resolves.toMatchObject({ postCount: 9 });
+    await expect(service.getActive('user_a')).resolves.toMatchObject({ postCount: 5 });
     expect(prisma.post.count).toHaveBeenCalledWith({
       where: {
         status: 'APPROVED',
@@ -193,44 +189,16 @@ describe('CommunityService 圈子广场动态数', () => {
         }],
       },
     });
-    expect(prisma.jobPost.count).toHaveBeenCalledWith({
-      where: {
-        status: 'PUBLISHED',
-        deletedAt: null,
-        AND: [
-          {
-            OR: [
-              { publisherScope: 'PLATFORM', visibilityScope: 'ALL_COMMUNITIES' },
-              {
-                publisherScope: 'COMMUNITY',
-                visibilityScope: 'COMMUNITY',
-                communityId: community.id,
-                community: { is: { status: 'ACTIVE' } },
-              },
-            ],
-          },
-          {
-            OR: [
-              { expireAt: null },
-              { expireAt: { gt: expect.any(Date) } },
-            ],
-          },
-
-        ],
-      },
-    });
   });
 
   it('圈子详情接口也应重新计算动态数，供菜单展开时刷新', async () => {
     const { service, prisma } = buildCountService();
     prisma.post.count.mockResolvedValue(5);
     prisma.anonymousPost.count.mockResolvedValue(1);
-    prisma.jobPost.count.mockResolvedValue(2);
 
-    await expect(service.detail('user_a', community.id)).resolves.toMatchObject({ postCount: 8 });
+    await expect(service.detail('user_a', community.id)).resolves.toMatchObject({ postCount: 6 });
     expect(prisma.post.count).toHaveBeenCalledTimes(1);
     expect(prisma.anonymousPost.count).toHaveBeenCalledTimes(1);
-    expect(prisma.jobPost.count).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -257,7 +225,6 @@ describe('CommunityService 圈子图片内容安全', () => {
     const service = new CommunityService(
       prisma as never,
       moderation as never,
-      new JobVisibilityPolicyService(),
     );
 
     await expect(service.create('user_a', dto, 'openid_a')).rejects.toBe(violation);
@@ -289,7 +256,6 @@ describe('CommunityService 圈子图片内容安全', () => {
     const service = new CommunityService(
       prisma as never,
       moderation as never,
-      new JobVisibilityPolicyService(),
     );
 
     await expect(service.resubmit('community_a', 'user_a')).rejects.toBe(violation);

@@ -1333,6 +1333,10 @@ describe('数据库与部署静态契约', () => {
     __dirname,
     '../../prisma/migrations/20260830023000_tutor_sync_active_cursor_index/migration.sql',
   );
+  const publisherRenameMigrationPath = resolve(
+    __dirname,
+    '../../prisma/migrations/20260904193000_job_interview_feed_chat/migration.sql',
+  );
 
   it('binding迁移包含活跃状态与有界查询索引', () => {
     const migration = readFileSync(migrationPath, 'utf8');
@@ -1349,6 +1353,14 @@ describe('数据库与部署静态契约', () => {
     expect(migration).toContain('tutor_job_sync_bindings_source_source_active_id_idx');
     expect(migration).toContain('ON "tutor_job_sync_bindings"("source", "source_active", "id")');
     expect(schema).toContain('@@index([source, sourceActive, id])');
+  });
+
+  it('发布主体迁移保持同步源并精确更新系统身份和binding岗位', () => {
+    const migration = readFileSync(publisherRenameMigrationPath, 'utf8');
+    expect(TUTOR_SYNC_PUBLISHER).toBe('燚桐家教');
+    expect(migration).toContain('"openid" = \'internal:tutor-sync:senyang\'');
+    expect(migration).toContain('"source" = \'SENYANG_TUTOR\'');
+    expect(migration).toContain('"publisher_name" = \'燚桐家教\'');
   });
 
   it('nearest迁移包含两个可部署的部分B-tree索引', () => {
@@ -1580,7 +1592,7 @@ describe('小程序同步岗位静态契约', () => {
     expect(TUTOR_SYNC_CONTACT_INSTRUCTION).toBe('此岗位需联系13057867818（同微信）');
   });
 
-  it('服务端岗位VO仍固定展示森阳家教并禁止站内报名', () => {
+  it('服务端岗位VO固定展示燚桐家教并禁止站内报名', () => {
     const jobService = readFileSync(
       resolve(__dirname, '../../src/modules/job/job.service.ts'),
       'utf8',

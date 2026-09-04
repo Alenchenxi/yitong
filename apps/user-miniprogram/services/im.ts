@@ -155,6 +155,7 @@ function handleMessage(m: WsMessage) {
     case 'msg-revoke':
     case 'unread-update':
     case 'job-message':
+    case 'job-interview-updated':
     case 'job-interview-cancelled':
       onMessageCb?.(m);
       break;

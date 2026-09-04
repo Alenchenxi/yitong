@@ -65,6 +65,11 @@ export interface JobPostVo {
   status: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
   createdAt: string;
   platformPublished: boolean;
+  myApplication?: {
+    id: string;
+    status: 'PENDING' | 'ACCEPTED' | 'DONE' | 'CANCELLED' | 'REJECTED';
+    conversationId: string | null;
+  } | null;
   // M3-06 仅 mine=1 列表返回：当前岗的 PENDING 报名数
   pendingApplicationCount?: number;
   // M3-05 主动下架时间（null=未下架）
@@ -144,7 +149,7 @@ export interface JobReviewVo {
 export type JobConversationRole = 'merchant' | 'student';
 export type JobConversationMessageType = 'TEXT' | 'INTERVIEW' | 'CONTACT_EXCHANGE' | 'RESUME_EXCHANGE';
 export type JobExchangeKind = 'PHONE' | 'WECHAT' | 'RESUME';
-export type InterviewInvitationStatus = 'ACTIVE' | 'CANCELLED';
+export type InterviewInvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
 export interface ContactExchangePayload {
   kind: 'PHONE' | 'WECHAT';
   student: { name: string; value: string };
@@ -178,6 +183,7 @@ export interface InterviewInvitationVo {
   password: string | null;
   interviewerName: string;
   status: InterviewInvitationStatus;
+  respondedAt: string | null;
   cancelledAt: string | null;
   createdAt: string;
 }
@@ -443,6 +449,14 @@ export function cancelInterviewInvitation(invitationId: string) {
   return request<InterviewInvitationVo>({
     url: `/interview-invitations/${invitationId}/cancel`,
     method: 'POST',
+  });
+}
+
+export function respondInterviewInvitation(invitationId: string, action: 'accept' | 'reject') {
+  return request<InterviewInvitationVo>({
+    url: `/interview-invitations/${invitationId}/respond`,
+    method: 'POST',
+    data: { action },
   });
 }
 

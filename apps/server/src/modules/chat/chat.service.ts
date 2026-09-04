@@ -231,28 +231,53 @@ export class ChatService {
 
   // 群消息历史（游标分页）
   async listGroupMessages(groupId: string, cursor?: string, limit = 50) {
-    const where: { groupId: string; deletedAt: null; OR?: object[]; createdAt?: object } = {
+    const where: Prisma.ChatMessageWhereInput = {
       groupId,
       deletedAt: null,
     };
-    if (cursor) {
-      const t = new Date(cursor);
-      if (!Number.isNaN(t.getTime())) where.createdAt = { lt: t };
+    const decodedCursor = cursor ? this.decodeGroupMessageCursor(cursor) : null;
+    if (decodedCursor?.id) {
+      where.OR = [
+        { createdAt: { lt: decodedCursor.createdAt } },
+        { createdAt: decodedCursor.createdAt, id: { lt: decodedCursor.id } },
+      ];
+    } else if (decodedCursor) {
+      // Legacy clients sent a raw ISO timestamp.
+      where.createdAt = { lt: decodedCursor.createdAt };
     }
     const msgs = await this.prisma.chatMessage.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
     });
     const hasMore = msgs.length > limit;
     const slice = hasMore ? msgs.slice(0, limit) : msgs;
     const last = slice[slice.length - 1];
-    const nextCursor = hasMore && last ? last.createdAt.toISOString() : null;
+    const nextCursor = hasMore && last
+      ? Buffer.from(JSON.stringify({ t: last.createdAt.toISOString(), id: last.id })).toString('base64url')
+      : null;
     return {
       list: slice.reverse().map((m) => this.toMsgVo(m)),
       nextCursor,
       hasMore,
     };
+  }
+
+  private decodeGroupMessageCursor(cursor: string): { createdAt: Date; id: string | null } | null {
+    try {
+      const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as {
+        t?: unknown;
+        id?: unknown;
+      };
+      const createdAt = new Date(String(parsed.t ?? ''));
+      if (!Number.isNaN(createdAt.getTime()) && typeof parsed.id === 'string' && parsed.id) {
+        return { createdAt, id: parsed.id };
+      }
+    } catch {
+      // Fall through to the legacy ISO cursor.
+    }
+    const legacy = new Date(cursor);
+    return Number.isNaN(legacy.getTime()) ? null : { createdAt: legacy, id: null };
   }
 
   // 撤回消息（仅发送者可撤回，标记 deletedAt）

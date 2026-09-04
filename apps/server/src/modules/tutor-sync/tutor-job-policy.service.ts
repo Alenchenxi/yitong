@@ -4,6 +4,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { tryAcquireTutorSyncLock } from './tutor-sync.lock';
 import {
   TUTOR_SYNC_CONTACT_INSTRUCTION,
+  TUTOR_SYNC_LEGACY_PUBLISHERS,
   TUTOR_SYNC_PUBLISHER,
 } from './tutor-sync.types';
 
@@ -16,7 +17,10 @@ type TutorJobIdentity = {
 export class TutorJobPolicyService {
   isExternalTutorPost(post: TutorJobIdentity): boolean {
     return post.applyMode === JobApplyMode.CONTACT_ONLY
-      && post.publisherName === TUTOR_SYNC_PUBLISHER;
+      && (
+        post.publisherName === TUTOR_SYNC_PUBLISHER
+        || TUTOR_SYNC_LEGACY_PUBLISHERS.some((name) => name === post.publisherName)
+      );
   }
 
   contactInstruction(post: TutorJobIdentity): string | null {

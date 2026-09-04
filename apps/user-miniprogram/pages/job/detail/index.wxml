@@ -52,7 +52,7 @@
     <view class="act report" bindtap="onReport">举报</view>
   </view>
 
-  <button wx:if="{{!isMerchantOwner && post.applyMode !== 'CONTACT_ONLY'}}" class="apply-btn" bindtap="apply" disabled="{{applying}}">{{applying ? '报名中…' : '立即报名'}}</button>
+  <button wx:if="{{!isMerchantOwner && post.applyMode !== 'CONTACT_ONLY'}}" class="apply-btn" bindtap="apply" disabled="{{applying}}">{{applying ? '进入中…' : (post.myApplication ? '去沟通' : '立即报名')}}</button>
 
   <!-- P0-19 风险提示（固定区块） -->
   <view class="risk">

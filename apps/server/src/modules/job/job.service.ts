@@ -864,10 +864,19 @@ export class JobService {
     const application = actorId && !isOwner
       ? await this.prisma.jobApplication.findUnique({
         where: { jobPostId_userId: { jobPostId: id, userId: actorId } },
-        select: { id: true },
+        select: { id: true, status: true, conversation: { select: { id: true } } },
       })
       : null;
-    return this.toPostVo(post, isOwner || !!application);
+    return {
+      ...this.toPostVo(post, isOwner || !!application),
+      myApplication: application
+        ? {
+            id: application.id,
+            status: application.status,
+            conversationId: application.conversation?.id ?? null,
+          }
+        : null,
+    };
   }
 
   // P2-16 记录浏览事件（用于商家看板统计）

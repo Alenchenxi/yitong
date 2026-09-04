@@ -5,6 +5,7 @@ import {
   listPostApplications,
   transitionApp,
   batchTransitionApps,
+  ensureJobConversation,
   reportJob,
   reportMerchant,
   reportApplication,
@@ -107,7 +108,20 @@ Page({
   },
 
   async apply() {
-    if (this.data.post?.applyMode === 'CONTACT_ONLY') return;
+    const post = this.data.post;
+    if (!post || post.applyMode === 'CONTACT_ONLY' || this.data.applying) return;
+    if (post.myApplication) {
+      this.setData({ applying: true });
+      try {
+        const conversation = await ensureJobConversation(post.myApplication.id);
+        wx.navigateTo({
+          url: `/pages/job/chat/index?applicationId=${encodeURIComponent(post.myApplication.id)}&conversationId=${encodeURIComponent(conversation.id)}`,
+        });
+      } finally {
+        this.setData({ applying: false });
+      }
+      return;
+    }
     // P0-21 报名走报名页（带简历 + 报名问题）
     wx.navigateTo({ url: `/pages/job/apply/index?id=${this.postId}` });
   },

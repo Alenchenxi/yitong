@@ -654,6 +654,28 @@ button::after {
   color: #f53f3f;
   font-size: 21rpx;
 }
+.meeting-response-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+.meeting-response {
+  width: 100%;
+  height: 72rpx;
+  line-height: 72rpx;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+}
+.meeting-response.accept {
+  background: var(--yt-primary, #f9c801);
+  color: var(--yt-text-main, #1d2129);
+}
+.meeting-response.reject {
+  background: #fff;
+  color: #f53f3f;
+  border: 1rpx solid #f53f3f;
+}
 
 .exchange-card {
   overflow: hidden;

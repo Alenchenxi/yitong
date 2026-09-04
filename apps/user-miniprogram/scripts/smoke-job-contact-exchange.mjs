@@ -28,7 +28,7 @@ assert.match(migration, /ADD COLUMN "wechat" TEXT/, 'migration must add resume W
 
 assert.match(
   jobService,
-  /jobPostId_userId: \{ jobPostId: id, userId: actorId \}[\s\S]*toPostVo\(post, isOwner \|\| !!application\)/,
+  /jobPostId_userId: \{ jobPostId: id, userId: actorId \}[\s\S]*toPostVo\(post, isOwner \|\| !!application\)[\s\S]*myApplication:/,
   'only the owner or an existing applicant may unlock in-app job contacts',
 );
 assert.match(

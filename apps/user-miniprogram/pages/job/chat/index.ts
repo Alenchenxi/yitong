@@ -5,6 +5,7 @@ import {
   getJobConversation,
   listJobConversationMessages,
   parseTencentMeeting,
+  respondInterviewInvitation,
   sendInterviewInvitation,
   sendJobConversationExchange,
   sendJobConversationMessage,
@@ -118,6 +119,7 @@ Page({
     parsing: false,
     parsed: false,
     inviting: false,
+    respondingInvitationId: '',
     peerInitial: '同',
     readOnlyText: '',
   },
@@ -193,6 +195,10 @@ Page({
     if (frame.conversationId !== this.data.conversationId) return;
     if (frame.type === 'job-message' && frame.message && typeof frame.message === 'object') {
       this.mergeMessages([frame.message as unknown as JobConversationMessageVo], true);
+      return;
+    }
+    if (frame.type === 'job-interview-updated' && frame.invitation && typeof frame.invitation === 'object') {
+      this.applyInvitationUpdate(frame.invitation as unknown as InterviewInvitationVo);
       return;
     }
     if (frame.type === 'job-interview-cancelled' && typeof frame.invitationId === 'string') {
@@ -643,8 +649,8 @@ Page({
       success: async (result) => {
         if (!result.confirm) return;
         try {
-          await cancelInterviewInvitation(invitationId);
-          this.markInvitationCancelled(invitationId);
+          const invitation = await cancelInterviewInvitation(invitationId);
+          this.applyInvitationUpdate(invitation);
           wx.showToast({ title: '邀请已取消', icon: 'success' });
         } catch {
           // 请求层已给出具体错误。
@@ -662,10 +668,53 @@ Page({
         const updated: InterviewInvitationVo = {
           ...invitation,
           status: 'CANCELLED',
+          respondedAt: invitation.respondedAt,
           cancelledAt: invitation.cancelledAt ?? now,
         };
         return { ...message, invitation: updated };
       }),
+    });
+  },
+
+  respondInvitation(event: WechatMiniprogram.TouchEvent) {
+    const { id, action } = event.currentTarget.dataset as {
+      id: string;
+      action: 'accept' | 'reject';
+    };
+    if (!id || !['accept', 'reject'].includes(action) || this.data.respondingInvitationId) return;
+    const accepting = action === 'accept';
+    wx.showModal({
+      title: accepting ? '接受面试邀请' : '拒绝面试邀请',
+      content: accepting
+        ? '确认接受本次面试邀请？商家将在候选人列表中看到你的响应。'
+        : '确认拒绝本次面试邀请？提交后不能改为接受。',
+      confirmText: accepting ? '确认接受' : '确认拒绝',
+      confirmColor: accepting ? '#D4A900' : '#F53F3F',
+      success: (result) => {
+        if (result.confirm) void this.submitInvitationResponse(id, action);
+      },
+    });
+  },
+
+  async submitInvitationResponse(invitationId: string, action: 'accept' | 'reject') {
+    if (this.data.respondingInvitationId) return;
+    this.setData({ respondingInvitationId: invitationId });
+    try {
+      const invitation = await respondInterviewInvitation(invitationId, action);
+      this.applyInvitationUpdate(invitation);
+      wx.showToast({ title: action === 'accept' ? '已接受邀请' : '已拒绝邀请', icon: 'success' });
+    } finally {
+      this.setData({ respondingInvitationId: '' });
+    }
+  },
+
+  applyInvitationUpdate(invitation: InterviewInvitationVo) {
+    this.setData({
+      messages: this.data.messages.map((message) =>
+        message.invitation?.id === invitation.id
+          ? { ...message, invitation }
+          : message,
+      ),
     });
   },
 

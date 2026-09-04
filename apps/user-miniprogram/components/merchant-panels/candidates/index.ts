@@ -18,6 +18,7 @@ import {
 const STATUS_FILTERS = [
   { value: '', label: '全部' },
   { value: 'PENDING', label: '待处理' },
+  { value: 'INTERVIEW_ACCEPTED', label: '待面试' },
   { value: 'ACCEPTED', label: '已录用' },
   { value: 'DONE', label: '已完成' },
   { value: 'REJECTED', label: '未录用' },
@@ -49,6 +50,7 @@ interface CandidateItem extends MerchantCandidateVo {
   contacted: boolean;
   fitLabel: string;
   selected: boolean;
+  acceptedInterviewText: string;
 }
 
 interface ViewerItem extends MerchantViewerVo {
@@ -205,7 +207,10 @@ Component({
         }
         const res = await listMerchantCandidates({
           jobPostId: effectiveJobPostId || undefined,
-          status: (activeStatus || undefined) as MerchantCandidateVo['status'] | undefined,
+          status: activeStatus === 'INTERVIEW_ACCEPTED'
+            ? undefined
+            : (activeStatus || undefined) as MerchantCandidateVo['status'] | undefined,
+          interviewStatus: activeStatus === 'INTERVIEW_ACCEPTED' ? 'ACCEPTED' : undefined,
           fitMark: (activeFit || undefined) as 'FIT' | 'UNFIT' | undefined,
           keyword: keyword.trim() || undefined,
           page,
@@ -237,6 +242,9 @@ Component({
         resumeSummary,
         contacted: !!a.contactedAt,
         fitLabel: a.fitMark === 'FIT' ? '合适' : a.fitMark === 'UNFIT' ? '不合适' : '',
+        acceptedInterviewText: a.acceptedInterview
+          ? `${a.acceptedInterview.meetingDate} ${a.acceptedInterview.meetingTime} · ${a.acceptedInterview.title}`
+          : '',
         selected: false,
       };
     },

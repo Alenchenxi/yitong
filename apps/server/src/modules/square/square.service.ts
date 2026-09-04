@@ -1,17 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import {
-  CommunityStatus,
-  JobPostStatus,
-  JobVisibilityScope,
-  Prisma,
-  PostStatus,
-  PostVisibility,
-  PublicationScope,
-} from '@prisma/client';
+import { Prisma, PostStatus, PostVisibility, PublicationScope } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TreeholeService } from '../treehole/treehole.service';
 import { CommunityService } from '../community/community.service';
-import { JobService } from '../job/job.service';
 import { PublicationPolicyService } from '../publication/publication-policy.service';
 import type { PostVo } from '../confession/types';
 import type { AnonPostVo } from '../treehole/types';
@@ -19,8 +10,8 @@ import type { FeedItemVo, SquareFeedResult, SquareTodayHitResult, TodayHitItem }
 import type { SquareFeedQueryDto, SquareFeedSort, SquareTodayHitQueryDto } from './dto';
 
 // CR-001 广场 union feed（扩展为圈子广场数据模块）：
-// 合并表白墙公开帖 + 树洞个人匿名动态 + 兼职岗位（圈子动态混合流），按圈子（communityId）作用域过滤。
-// 曝光度 = 付费推广（boostUntil>now）前置，仅表白墙/树洞两源；岗位无推广逻辑。
+// 合并表白墙公开帖 + 树洞个人匿名动态，按圈子（communityId）作用域过滤。
+// 曝光度 = 付费推广（boostUntil>now）前置。
 // 红线：anon_post kind 的 data 严禁回填 authorId/authorNickname/authorAvatarUrl 等真实身份字段
 @Injectable()
 export class SquareService {
@@ -28,7 +19,6 @@ export class SquareService {
     private readonly prisma: PrismaService,
     private readonly treehole: TreeholeService,
     private readonly community: CommunityService,
-    private readonly job: JobService,
     private readonly publication: PublicationPolicyService,
   ) {}
 
@@ -55,11 +45,10 @@ export class SquareService {
     // 推广置顶仅首页（无 cursor）前置；翻页只走普通流，游标/hasMore 均按普通流计算
     const isFirstPage = !q.cursor;
 
-    // 并行拉取三源普通流 + （首页）双源推广帖（不串行，提性能）
-    const [posts, anonPosts, jobs, boostedPosts, boostedAnonPosts] = await Promise.all([
+    // 并行拉取双源普通流 + （首页）双源推广帖（不串行，提性能）
+    const [posts, anonPosts, boostedPosts, boostedAnonPosts] = await Promise.all([
       this.fetchApprovedPosts(uid, sort, fetchSize, q.cursor, communityId),
       this.fetchApprovedAnonPosts(anonId, sort, fetchSize, q.cursor, communityId),
-      this.fetchApprovedJobs(communityId, fetchSize, q.cursor),
       isFirstPage ? this.fetchBoostedPosts(uid, limit, communityId) : Promise.resolve([]),
       isFirstPage ? this.fetchBoostedAnonPosts(anonId, limit, communityId) : Promise.resolve([]),
     ]);
@@ -68,7 +57,6 @@ export class SquareService {
     const normal = this.mergeAndPaginate(
       posts.map((p) => ({ kind: 'post' as const, data: this.toPostVo(p) })),
       anonPosts.map((p) => ({ kind: 'anon_post' as const, data: this.toAnonPostVo(p, anonId) })),
-      jobs.map((p) => ({ kind: 'job_post' as const, data: this.job.toPostVo(p) })),
       limit,
     );
     if (!isFirstPage) return normal;
@@ -88,16 +76,15 @@ export class SquareService {
   }
 
   /**
-   * 合并多个 FeedItemVo 列表（post/anon_post/job_post），按 createdAt desc（id 兜底避同时间戳错位），
+   * 合并两个 FeedItemVo 列表（post/anon_post），按 createdAt desc（id 兜底避同时间戳错位），
    * 切片取前 limit 条并计算 nextCursor（base64url JSON 编码的 {t, id}）。
    */
   private mergeAndPaginate(
     postItems: FeedItemVo[],
     anonItems: FeedItemVo[],
-    jobItems: FeedItemVo[],
     limit: number,
   ): SquareFeedResult {
-    const merged: FeedItemVo[] = [...postItems, ...anonItems, ...jobItems];
+    const merged: FeedItemVo[] = [...postItems, ...anonItems];
     merged.sort((a, b) => {
       const cmp = b.data.createdAt.localeCompare(a.data.createdAt);
       return cmp !== 0 ? cmp : b.data.id.localeCompare(a.data.id);
@@ -171,40 +158,6 @@ export class SquareService {
         _count: { select: { comments: true } },
         postLikes: { where: { userId: uid }, select: { id: true }, take: 1 },
       },
-    });
-  }
-
-  // ===== JobPost 部分查询（兼职混合流；岗位无 boost 前置，仅普通流）=====
-  private async fetchApprovedJobs(
-    communityId: string,
-    fetchSize: number,
-    cursor?: string,
-  ) {
-    const cur = cursor ? this.decodeCursor(cursor) : null;
-    const andFilters = this.jobVisibilityFilters(communityId);
-    if (cur) {
-      andFilters.push({
-        OR: [
-          { createdAt: { lt: cur.createdAt } },
-          { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
-        ],
-      });
-    }
-    const where: Prisma.JobPostWhereInput = {
-      status: JobPostStatus.PUBLISHED,
-      deletedAt: null,
-      AND: andFilters,
-    };
-    // 混合流统一按 (createdAt,id) 游标遍历；featured 仅作为展示字段。
-    const orderBy: Prisma.JobPostOrderByWithRelationInput[] = [
-      { createdAt: 'desc' },
-      { id: 'desc' },
-    ];
-    return this.prisma.jobPost.findMany({
-      where,
-      orderBy,
-      take: fetchSize,
-      include: { merchant: { select: { shopName: true } } },
     });
   }
 
@@ -328,26 +281,6 @@ export class SquareService {
   async banners(uid: string, communityId?: string) {
     const cid = await this.community.resolveFeedCommunityId(uid, communityId);
     return this.community.listBanners(cid);
-  }
-
-  private jobVisibilityFilters(communityId: string, now = new Date()): Prisma.JobPostWhereInput[] {
-    return [
-      {
-        OR: [
-          {
-            publisherScope: PublicationScope.PLATFORM,
-            visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
-          },
-          {
-            publisherScope: PublicationScope.COMMUNITY,
-            visibilityScope: JobVisibilityScope.COMMUNITY,
-            communityId,
-            community: { is: { status: CommunityStatus.ACTIVE } },
-          },
-        ],
-      },
-      { OR: [{ expireAt: null }, { expireAt: { gt: now } }] },
-    ];
   }
 
   // ===== VO 映射 =====

@@ -1,6 +1,5 @@
 import { Global, Module } from '@nestjs/common';
 import { ModerationModule } from '../moderation/moderation.module';
-import { JobVisibilityModule } from '../job-visibility/job-visibility.module';
 import { CommunityController } from './community.controller';
 import { CommunityService } from './community.service';
 
@@ -8,7 +7,7 @@ import { CommunityService } from './community.service';
 // CommunityService（发帖/发岗写入 active community、浏览量埋点）
 @Global()
 @Module({
-  imports: [ModerationModule, JobVisibilityModule],
+  imports: [ModerationModule],
   controllers: [CommunityController],
   providers: [CommunityService],
   exports: [CommunityService],

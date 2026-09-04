@@ -57,6 +57,16 @@ function buildContentText(msg: { type: string; content: string }): string {
   return msg.type === 'system' ? buildSystemText(msg.content) : msg.content;
 }
 
+function formatMessageTime(value: string | number | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return [
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+  ].join(' ');
+}
+
 // 禁言剩余时间格式化：>1天 "剩余 X 天 Y 小时"，>1小时 "剩余 Y 小时 Z 分钟"，否则 "剩余 MM:SS"；到期返回空串
 function fmtMutedCountdown(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -84,7 +94,12 @@ Page({
   data: {
     group: null as AnonGroupDetailVo | null,
     members: [] as (AnonGroupDetailVo['members'][number] & { roleText: string; muted: boolean })[],
-    messages: [] as Array<GroupMessageVo & { nickname: string; isMine: boolean; contentText: string }>,
+    messages: [] as Array<GroupMessageVo & {
+      nickname: string;
+      isMine: boolean;
+      contentText: string;
+      timeText: string;
+    }>,
     draft: '',
     sending: false,
     myAnonId: '',
@@ -136,8 +151,10 @@ Page({
           const memberMap = new Map(this.data.members.map((mb) => [mb.anonId, mb]));
           const msgType = m.msgType === 'image' ? 'image' : m.msgType === 'system' ? 'system' : 'text';
           const content = m.content ?? '';
+          const createdAt = m.ts ? new Date(m.ts).toISOString() : new Date().toISOString();
           this.setData({
             messages: [
+              ...this.data.messages,
               {
                 id: m.id ?? `ws_${m.ts ?? Date.now()}_${m.fromId}`,
                 fromId: m.fromId,
@@ -147,14 +164,15 @@ Page({
                 duration: null,
                 groupId: this.groupId,
                 deleted: false,
-                createdAt: m.ts ? new Date(m.ts).toISOString() : new Date().toISOString(),
+                createdAt,
                 nickname: msgType === 'system' ? '' : (memberMap.get(m.fromId)?.nickname ?? '匿名'),
                 isMine: m.fromId === this.data.myAnonId,
                 contentText: buildContentText({ type: msgType, content }),
+                timeText: formatMessageTime(createdAt),
               },
-              ...this.data.messages,
             ],
           });
+          this.scrollMessagesToBottom();
           // 禁言/解禁作用于自己时，刷新自己的禁言状态（输入区置灰/恢复）
           if (msgType === 'system') {
             try {
@@ -267,12 +285,14 @@ Page({
         nickname: msg.type === 'system' ? '' : (memberMap.get(msg.fromId)?.nickname ?? '匿名'),
         isMine: msg.fromId === this.data.myAnonId,
         contentText: buildContentText(msg),
+        timeText: formatMessageTime(msg.createdAt),
       }));
       this.setData({
         messages: append ? [...list, ...this.data.messages] : list,
         msgCursor: r.nextCursor ?? '',
         hasMoreMsg: r.hasMore,
       });
+      if (!append) this.scrollMessagesToBottom();
     } catch {
       /* toast */
     } finally {
@@ -285,13 +305,15 @@ Page({
     this.loadMessages();
   },
 
-  onReachBottom() {
+  // 点击顶部「加载更早消息」手动翻页。
+  loadMore() {
     if (this.data.hasMoreMsg) this.loadMessages(true);
   },
 
-  // 点击「加载更多」手动翻页（wxml chat-tip 绑定）
-  loadMore() {
-    if (this.data.hasMoreMsg) this.loadMessages(true);
+  scrollMessagesToBottom() {
+    wx.nextTick(() => {
+      wx.pageScrollTo({ scrollTop: 1_000_000, duration: 0 });
+    });
   },
 
   onDraft(e: WechatMiniprogram.Input) {
@@ -307,16 +329,18 @@ Page({
       // P2-11 后端 sendGroupMessage 已主动广播给群内其他成员，前端不再 WS 双发
       this.setData({
         messages: [
+          ...this.data.messages,
           {
             ...m,
             nickname: this.data.members.find((x) => x.anonId === m.fromId)?.nickname ?? '我',
             isMine: true,
             contentText: m.content,
+            timeText: formatMessageTime(m.createdAt),
           },
-          ...this.data.messages,
         ],
         draft: '',
       });
+      this.scrollMessagesToBottom();
     } catch (e) {
       wx.showToast({ title: (e as Error).message ?? '发送失败', icon: 'none' });
     } finally {
@@ -347,15 +371,17 @@ Page({
       // P2-11 后端已主动广播，前端不双发
       this.setData({
         messages: [
+          ...this.data.messages,
           {
             ...m,
             nickname: this.data.members.find((x) => x.anonId === m.fromId)?.nickname ?? '我',
             isMine: true,
             contentText: m.content,
+            timeText: formatMessageTime(m.createdAt),
           },
-          ...this.data.messages,
         ],
       });
+      this.scrollMessagesToBottom();
     } catch (e) {
       wx.showToast({ title: (e as { message?: string })?.message ?? '发送失败', icon: 'none' });
     } finally {

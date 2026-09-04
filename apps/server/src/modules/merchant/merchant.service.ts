@@ -3,7 +3,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { AppStatus, FitMark, MerchantStatus, Prisma, Role } from '@prisma/client';
+import { AppStatus, FitMark, InterviewInvitationStatus, MerchantStatus, Prisma, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
@@ -197,6 +197,14 @@ export class MerchantService {
       jobPost: { merchantId: merchant.id },
       ...(dto.jobPostId ? { jobPostId: dto.jobPostId } : {}),
       ...(dto.status ? { status: dto.status as AppStatus } : {}),
+      ...(dto.interviewStatus
+        ? {
+            AND: [
+              { status: { in: [AppStatus.PENDING, AppStatus.ACCEPTED] } },
+              { interviewInvitations: { some: { status: InterviewInvitationStatus.ACCEPTED } } },
+            ],
+          }
+        : {}),
       // M2-04 已联系筛选：1=已联系(not null)，0=未联系(null)
       ...(dto.contacted !== undefined
         ? dto.contacted === 1
@@ -227,6 +235,19 @@ export class MerchantService {
         include: {
           user: { select: { nickname: true } },
           jobPost: { select: { title: true } },
+          interviewInvitations: {
+            where: { status: InterviewInvitationStatus.ACCEPTED },
+            orderBy: [{ respondedAt: 'desc' }, { createdAt: 'desc' }],
+            take: 1,
+            select: {
+              id: true,
+              title: true,
+              meetingDate: true,
+              meetingTime: true,
+              interviewerName: true,
+              respondedAt: true,
+            },
+          },
         },
       }),
     ]);
@@ -260,6 +281,12 @@ export class MerchantService {
           // M2-04/05 标记字段
           contactedAt: a.contactedAt?.toISOString() ?? null,
           fitMark: a.fitMark,
+          acceptedInterview: a.interviewInvitations[0]
+            ? {
+                ...a.interviewInvitations[0],
+                respondedAt: a.interviewInvitations[0].respondedAt?.toISOString() ?? null,
+              }
+            : null,
           createdAt: a.createdAt.toISOString(),
         };
       }),

@@ -931,7 +931,9 @@ enum JobConversationMessageType {
 }
 
 enum InterviewInvitationStatus {
-  ACTIVE
+  PENDING
+  ACCEPTED
+  REJECTED
   CANCELLED
 }
 
@@ -984,7 +986,8 @@ model InterviewInvitation {
   meetingNo       String?                   @map("meeting_no")
   password        String?
   interviewerName String                    @map("interviewer_name")
-  status          InterviewInvitationStatus @default(ACTIVE)
+  status          InterviewInvitationStatus @default(PENDING)
+  respondedAt     DateTime?                 @map("responded_at")
   cancelledAt     DateTime?                 @map("cancelled_at")
   createdAt       DateTime                  @default(now()) @map("created_at")
   application     JobApplication            @relation(fields: [applicationId], references: [id], onDelete: Cascade)

@@ -7,7 +7,7 @@ import {
   hasAnonToken,
   getAnonymousToken,
 } from '../../services/treehole';
-import { isJobListCursorExpired, listJobPosts } from '../../services/job';
+import { isJobListCursorExpired, listJobPosts, type JobPostVo } from '../../services/job';
 import {
   acceptCommunityInvite,
   getActiveCommunity,
@@ -27,6 +27,7 @@ import {
 
 // 广场（圈子首页）：树洞能力由全局匿名内容开关控制。
 type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
+type PageFeedItemVo = FeedItemVo | { kind: 'job_post'; data: JobPostVo };
 
 function inviteErrorCode(error: unknown): number | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
@@ -38,7 +39,7 @@ interface PageData {
   community: CommunityVo | null;
   banners: BannerVo[];
   todayHit: TodayHitItem[];
-  items: FeedItemVo[];
+  items: PageFeedItemVo[];
   nextCursor: string | null;
   hasMore: boolean;
   loading: boolean;
@@ -277,7 +278,7 @@ Page({
     let resetExpiredJobCursor = false;
     try {
       const tab = this.data.activeTab;
-      let resp: { list: FeedItemVo[]; nextCursor: string | null; hasMore: boolean };
+      let resp: { list: PageFeedItemVo[]; nextCursor: string | null; hasMore: boolean };
       if (tab === 'dynamic') {
         resp = await squareFeed(this.data.nextCursor ?? undefined, 20, 'recommend', communityId);
         if (!this.data.anonymousContentEnabled) {
