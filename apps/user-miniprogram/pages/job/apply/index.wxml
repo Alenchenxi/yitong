@@ -10,6 +10,15 @@
         <view class="success-job-meta">{{post.salary}} · {{post.location}}</view>
       </view>
     </view>
+    <view class="success-contact" wx:if="{{post.contactPhone || post.contactWechat}}">
+      <view class="success-contact-title">发布方联系方式</view>
+      <view class="success-contact-row" wx:if="{{post.contactPhone}}">
+        <text>电话</text><text user-select>{{post.contactPhone}}</text>
+      </view>
+      <view class="success-contact-row" wx:if="{{post.contactWechat}}">
+        <text>微信</text><text user-select>{{post.contactWechat}}</text>
+      </view>
+    </view>
     <view class="success-actions">
       <view class="success-btn success-btn-secondary" bindtap="backToJob">返回岗位</view>
       <view class="success-btn success-btn-primary" bindtap="goChat">

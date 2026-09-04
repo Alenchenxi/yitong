@@ -26,6 +26,11 @@
 .success-job-main { min-width: 0; flex: 1; }
 .success-job-title { font-size: 28rpx; font-weight: 600; color: #1D2129; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .success-job-meta { margin-top: 6rpx; font-size: 23rpx; color: #86909C; }
+.success-contact { margin-top: 18rpx; padding: 20rpx 22rpx; border: 1rpx solid #E5E6EB; border-radius: 12rpx; text-align: left; }
+.success-contact-title { margin-bottom: 12rpx; color: #1D2129; font-size: 25rpx; font-weight: 600; }
+.success-contact-row { display: flex; justify-content: space-between; gap: 24rpx; padding: 8rpx 0; color: #4E5969; font-size: 24rpx; }
+.success-contact-row text:first-child { flex-shrink: 0; }
+.success-contact-row text:last-child { flex: 1; min-width: 0; text-align: right; word-break: break-all; }
 .success-actions { display: flex; gap: 16rpx; margin-top: 36rpx; }
 .success-btn { flex: 1; min-height: 84rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; gap: 10rpx; font-size: 27rpx; font-weight: 600; }
 .success-btn-secondary { border: 1rpx solid #E5E6EB; color: #4E5969; background: #fff; }

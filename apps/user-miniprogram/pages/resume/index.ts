@@ -15,6 +15,7 @@ Page({
   data: {
     name: '',
     phone: '',
+    wechat: '',
     selfIntro: '',
     experience: '',
     skillInput: '',
@@ -48,6 +49,7 @@ Page({
         this.setData({
           name: r.name,
           phone: r.phone,
+          wechat: r.wechat ?? '',
           selfIntro: r.selfIntro ?? '',
           experience: r.experience ?? '',
           skills: r.skills,
@@ -123,6 +125,7 @@ Page({
       await upsertResume({
         name,
         phone,
+        wechat: this.data.wechat.trim() || undefined,
         selfIntro: this.data.selfIntro.trim() || undefined,
         skills: this.data.skills,
         availabilities: this.data.availOpts.filter((o) => o.selected).map((o) => o.label),

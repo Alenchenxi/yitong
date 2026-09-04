@@ -4,7 +4,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ModerationService } from '../moderation/moderation.service';
-import type { CreateInterviewInvitationDto } from './dto/job-communication.dto';
+import type { CreateInterviewInvitationDto, JobExchangeKind } from './dto/job-communication.dto';
 import { assertTencentMeetingUrl, parseTencentMeetingShare } from './tencent-meeting.parser';
 
 const READ_ONLY_STATUSES: AppStatus[] = [AppStatus.CANCELLED, AppStatus.REJECTED];
@@ -15,10 +15,32 @@ interface MessageCursor {
   id?: string;
 }
 
+type ContactExchangePayload = {
+  kind: 'PHONE' | 'WECHAT';
+  student: { name: string; value: string };
+  merchant: { name: string; value: string };
+};
+
+type ResumeExchangePayload = {
+  kind: 'RESUME';
+  resume: {
+    name: string;
+    phone: string;
+    wechat: string | null;
+    selfIntro: string | null;
+    skills: string[];
+    availabilities: string[];
+    experience: string | null;
+    updatedAt: string;
+  };
+};
+
+type JobExchangePayload = ContactExchangePayload | ResumeExchangePayload;
+
 type CommunicationApplication = Prisma.JobApplicationGetPayload<{
   include: {
     user: { select: { nickname: true; avatarUrl: true } };
-    jobPost: { include: { merchant: { select: { id: true; userId: true; shopName: true } } } };
+    jobPost: { include: { merchant: { select: { id: true; userId: true; shopName: true; contactPhone: true; contactWechat: true } } } };
   };
 }>;
 
@@ -52,7 +74,7 @@ export class JobCommunicationService {
         application: {
           include: {
             user: { select: { nickname: true, avatarUrl: true } },
-            jobPost: { include: { merchant: { select: { userId: true, shopName: true } } } },
+            jobPost: { include: { merchant: { select: { id: true, userId: true, shopName: true, contactPhone: true, contactWechat: true } } } },
           },
         },
       },
@@ -98,6 +120,7 @@ export class JobCommunicationService {
         content: m.content,
         clientMessageId: m.clientMessageId ?? null,
         invitation: m.interviewInvitationId ? invitationMap.get(m.interviewInvitationId) ?? null : null,
+        exchange: m.exchangePayload ?? null,
         createdAt: m.createdAt.toISOString(),
       })),
       nextCursor,
@@ -162,10 +185,117 @@ export class JobCommunicationService {
       content: result.message.content,
       clientMessageId: result.message.clientMessageId ?? null,
       invitation: null,
+      exchange: null,
       createdAt: result.message.createdAt.toISOString(),
     };
     if (result.created && result.peerId) {
       this.gateway.sendToUser(result.peerId, { type: "job-message", conversationId, message: vo });
+    }
+    return vo;
+  }
+
+  async sendExchange(actorId: string, conversationId: string, kind: JobExchangeKind, clientMessageId?: string) {
+    const conversation = await this.prisma.jobConversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        application: {
+          include: {
+            user: { select: { nickname: true, avatarUrl: true } },
+            jobPost: {
+              include: {
+                merchant: {
+                  select: {
+                    id: true,
+                    userId: true,
+                    shopName: true,
+                    contactPhone: true,
+                    contactWechat: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!conversation) throw new BizException(40001, '岗位会话不存在', HttpStatus.NOT_FOUND);
+    this.assertStudent(actorId, conversation.application);
+    this.assertWritable(conversation.application.status);
+    const normalizedClientMessageId = this.normalizeClientMessageId(clientMessageId);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockApplication(tx, conversation.applicationId);
+      const lockedConversation = await tx.jobConversation.findUnique({
+        where: { id: conversationId },
+        include: {
+          application: {
+            include: {
+              user: { select: { nickname: true, avatarUrl: true } },
+              jobPost: {
+                include: {
+                  merchant: {
+                    select: {
+                      id: true,
+                      userId: true,
+                      shopName: true,
+                      contactPhone: true,
+                      contactWechat: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!lockedConversation) throw new BizException(40001, '岗位会话不存在', HttpStatus.NOT_FOUND);
+      this.assertStudent(actorId, lockedConversation.application);
+      this.assertWritable(lockedConversation.application.status);
+
+      if (normalizedClientMessageId) {
+        const existing = await tx.jobConversationMessage.findFirst({
+          where: {
+            conversationId,
+            senderId: actorId,
+            clientMessageId: normalizedClientMessageId,
+          },
+        });
+        if (existing) return { message: existing, peerId: null, created: false };
+      }
+
+      const resume = await tx.resume.findUnique({ where: { userId: actorId } });
+      const exchangePayload = this.buildExchangePayload(kind, lockedConversation.application, resume);
+      const message = await tx.jobConversationMessage.create({
+        data: {
+          conversationId,
+          senderId: actorId,
+          type: kind === 'RESUME'
+            ? JobConversationMessageType.RESUME_EXCHANGE
+            : JobConversationMessageType.CONTACT_EXCHANGE,
+          content: kind === 'PHONE' ? '交换电话' : kind === 'WECHAT' ? '交换微信' : '交换简历',
+          clientMessageId: normalizedClientMessageId ?? null,
+          exchangePayload: exchangePayload as Prisma.InputJsonValue,
+        },
+      });
+      return {
+        message,
+        peerId: lockedConversation.merchantUserId,
+        created: true,
+      };
+    });
+
+    const vo = {
+      id: result.message.id,
+      senderId: result.message.senderId,
+      type: result.message.type,
+      content: result.message.content,
+      clientMessageId: result.message.clientMessageId ?? null,
+      invitation: null,
+      exchange: result.message.exchangePayload ?? null,
+      createdAt: result.message.createdAt.toISOString(),
+    };
+    if (result.created && result.peerId) {
+      this.gateway.sendToUser(result.peerId, { type: 'job-message', conversationId, message: vo });
     }
     return vo;
   }
@@ -239,6 +369,7 @@ export class JobCommunicationService {
       type: JobConversationMessageType.INTERVIEW,
       content: result.message.content,
       clientMessageId: result.message.clientMessageId ?? null,
+      exchange: null,
       invitation,
       createdAt: result.message.createdAt.toISOString(),
     };
@@ -270,6 +401,80 @@ export class JobCommunicationService {
        WHERE "id" = ${applicationId}
        FOR UPDATE`;
     if (!rows.length) throw new BizException(40001, "报名记录不存在", HttpStatus.NOT_FOUND);
+  }
+
+  private buildExchangePayload(
+    kind: JobExchangeKind,
+    app: {
+      user?: { nickname: string } | null;
+      jobPost: {
+        publisherName: string | null;
+        contactPhoneSnapshot: string | null;
+        contactWechatSnapshot: string | null;
+        merchant: {
+          shopName: string;
+          contactPhone: string;
+          contactWechat: string | null;
+        };
+      };
+    },
+    resume: {
+      name: string;
+      phone: string;
+      wechat: string | null;
+      selfIntro: string | null;
+      skills: string[];
+      availabilities: string[];
+      experience: string | null;
+      updatedAt: Date;
+    } | null,
+  ): JobExchangePayload {
+    if (!resume) {
+      throw new BizException(40008, '请先在我的简历中完善个人信息', HttpStatus.BAD_REQUEST);
+    }
+
+    if (kind === 'RESUME') {
+      return {
+        kind,
+        resume: {
+          name: resume.name,
+          phone: resume.phone,
+          wechat: resume.wechat?.trim() || null,
+          selfIntro: resume.selfIntro,
+          skills: [...resume.skills],
+          availabilities: [...resume.availabilities],
+          experience: resume.experience,
+          updatedAt: resume.updatedAt.toISOString(),
+        },
+      };
+    }
+
+    const studentValue = kind === 'PHONE' ? resume.phone.trim() : resume.wechat?.trim() ?? '';
+    if (!studentValue) {
+      const label = kind === 'PHONE' ? '电话' : '微信';
+      throw new BizException(40008, `请先在我的简历中配置${label}`, HttpStatus.BAD_REQUEST);
+    }
+
+    const merchant = app.jobPost.merchant;
+    const merchantValue = kind === 'PHONE'
+      ? app.jobPost.contactPhoneSnapshot?.trim() || merchant.contactPhone.trim()
+      : app.jobPost.contactWechatSnapshot?.trim() || merchant.contactWechat?.trim() || '';
+    if (!merchantValue) {
+      const label = kind === 'PHONE' ? '电话' : '微信';
+      throw new BizException(40008, `岗位发布方未配置${label}`, HttpStatus.BAD_REQUEST);
+    }
+
+    return {
+      kind,
+      student: {
+        name: resume.name.trim() || app.user?.nickname || '报名用户',
+        value: studentValue,
+      },
+      merchant: {
+        name: app.jobPost.publisherName?.trim() || merchant.shopName,
+        value: merchantValue,
+      },
+    };
   }
 
   private normalizeClientMessageId(clientMessageId?: string) {
@@ -317,7 +522,7 @@ export class JobCommunicationService {
       where: { id: applicationId },
       include: {
         user: { select: { nickname: true, avatarUrl: true } },
-        jobPost: { include: { merchant: { select: { id: true, userId: true, shopName: true } } } },
+        jobPost: { include: { merchant: { select: { id: true, userId: true, shopName: true, contactPhone: true, contactWechat: true } } } },
       },
     }).then((app) => {
       if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
@@ -328,6 +533,12 @@ export class JobCommunicationService {
   private assertParticipant(actorId: string, app: { userId: string; jobPost: { merchant: { userId: string } } }) {
     if (actorId !== app.userId && actorId !== app.jobPost.merchant.userId) {
       throw new BizException(10003, '仅报名双方可访问岗位会话', HttpStatus.FORBIDDEN);
+    }
+  }
+
+  private assertStudent(actorId: string, app: { userId: string }) {
+    if (actorId !== app.userId) {
+      throw new BizException(10003, '仅报名用户可发起信息交换', HttpStatus.FORBIDDEN);
     }
   }
 

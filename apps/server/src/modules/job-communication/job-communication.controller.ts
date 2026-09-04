@@ -1,7 +1,12 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { ok } from '../../common/dto/api-response';
 import type { JwtPayload } from '../auth/types';
-import { CreateInterviewInvitationDto, ParseMeetingDto, SendJobMessageDto } from './dto/job-communication.dto';
+import {
+  CreateInterviewInvitationDto,
+  ParseMeetingDto,
+  SendJobExchangeDto,
+  SendJobMessageDto,
+} from './dto/job-communication.dto';
 import { JobCommunicationService } from './job-communication.service';
 
 type JobCommunicationRequest = { user: JwtPayload };
@@ -28,6 +33,11 @@ export class JobCommunicationController {
   @Post('job-conversations/:id/messages')
   async send(@Param('id') id: string, @Body() dto: SendJobMessageDto, @Req() req: JobCommunicationRequest) {
     return ok(await this.communication.sendText(req.user.uid, id, dto.content, dto.clientMessageId));
+  }
+
+  @Post('job-conversations/:id/exchanges')
+  async exchange(@Param('id') id: string, @Body() dto: SendJobExchangeDto, @Req() req: JobCommunicationRequest) {
+    return ok(await this.communication.sendExchange(req.user.uid, id, dto.kind, dto.clientMessageId));
   }
 
   @Post('job-applications/:id/interviews/parse')

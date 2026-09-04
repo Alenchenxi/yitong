@@ -4,7 +4,7 @@
 import { AppStatus, JobDuration, JobPostStatus, PayScene, PayStatus } from '@prisma/client';
 import { validate } from 'class-validator';
 import { BizException } from '../../src/common/exceptions/biz.exception';
-import { CreateInterviewInvitationDto } from '../../src/modules/job-communication/dto/job-communication.dto';
+import { CreateInterviewInvitationDto, SendJobExchangeDto } from '../../src/modules/job-communication/dto/job-communication.dto';
 import { JobCommunicationService } from '../../src/modules/job-communication/job-communication.service';
 import { parseTencentMeetingShare } from '../../src/modules/job-communication/tencent-meeting.parser';
 import { JobService } from '../../src/modules/job/job.service';
@@ -63,6 +63,17 @@ describe("CreateInterviewInvitationDto", () => {
     expect(errors.some((error) => error.property === "meetingDate")).toBe(true);
   });
 });
+describe('SendJobExchangeDto', () => {
+  it.each(['PHONE', 'WECHAT', 'RESUME'])('应接受 %s 交换类型', async (kind) => {
+    await expect(validate(Object.assign(new SendJobExchangeDto(), { kind }))).resolves.toHaveLength(0);
+  });
+
+  it('应拒绝客户端伪造的交换类型', async () => {
+    const errors = await validate(Object.assign(new SendJobExchangeDto(), { kind: 'CUSTOM' }));
+    expect(errors.some((error) => error.property === 'kind')).toBe(true);
+  });
+});
+
 
 function buildService(
   status: AppStatus = AppStatus.PENDING,
@@ -72,10 +83,20 @@ function buildService(
     id: "app_a",
     userId: "student_a",
     status,
+    user: { nickname: '林同学', avatarUrl: null },
     jobPost: {
       id: "post_a",
       title: "校园活动助理",
-      merchant: { id: "merchant_a", userId: "merchant_user_a", shopName: "校园服务站" },
+      publisherName: null,
+      contactPhoneSnapshot: '13800000000',
+      contactWechatSnapshot: 'campus-job',
+      merchant: {
+        id: "merchant_a",
+        userId: "merchant_user_a",
+        shopName: "校园服务站",
+        contactPhone: '13900000000',
+        contactWechat: 'merchant-wechat',
+      },
     },
   };
   const lockedApp = { ...app, status: lockedStatus };
@@ -87,6 +108,19 @@ function buildService(
     createdAt: new Date("2026-08-27T00:00:00.000Z"),
     updatedAt: new Date("2026-08-27T00:00:00.000Z"),
   };
+  const resume = {
+    id: 'resume_a',
+    userId: app.userId,
+    name: '林同学',
+    phone: '13700000000',
+    wechat: 'student-wechat',
+    selfIntro: '认真负责',
+    skills: ['活动执行'],
+    availabilities: ['周末'],
+    experience: '校园活动志愿者',
+    createdAt: new Date('2026-08-20T00:00:00.000Z'),
+    updatedAt: new Date('2026-08-27T00:00:00.000Z'),
+  };
   const message = {
     id: "message_a",
     conversationId: conversation.id,
@@ -95,16 +129,18 @@ function buildService(
     content: "你好",
     clientMessageId: "client_a",
     interviewInvitationId: null,
+    exchangePayload: null,
     createdAt: new Date("2026-08-27T00:01:00.000Z"),
   };
   const jobConversationMessage = {
     findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn().mockResolvedValue(null),
-    create: jest.fn().mockResolvedValue(message),
+    create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ ...message, ...data })),
   };
   const tx = {
     $queryRaw: jest.fn().mockResolvedValue([{ id: app.id }]),
     jobApplication: { findUnique: jest.fn().mockResolvedValue(lockedApp) },
+    resume: { findUnique: jest.fn().mockResolvedValue(resume) },
     jobConversation: {
       upsert: jest.fn().mockResolvedValue(conversation),
       findUnique: jest.fn().mockResolvedValue({ ...conversation, application: lockedApp }),
@@ -136,6 +172,7 @@ function buildService(
     app,
     lockedApp,
     conversation,
+    resume,
     message,
   };
 }
@@ -275,6 +312,112 @@ describe('JobCommunicationService', () => {
     }
   });
 
+  it.each([
+    ['PHONE', '13700000000', '13800000000'],
+    ['WECHAT', 'student-wechat', 'campus-job'],
+  ] as const)('报名用户交换 %s 时应使用当前简历和岗位发布快照', async (kind, studentValue, merchantValue) => {
+    const { service, tx, gateway } = buildService();
+
+    const result = await service.sendExchange('student_a', 'conversation_a', kind, 'exchange_a');
+
+    expect(result).toMatchObject({
+      type: 'CONTACT_EXCHANGE',
+      clientMessageId: 'exchange_a',
+      exchange: {
+        kind,
+        student: { name: '林同学', value: studentValue },
+        merchant: { name: '校园服务站', value: merchantValue },
+      },
+    });
+    expect(tx.resume.findUnique).toHaveBeenCalledWith({ where: { userId: 'student_a' } });
+    expect(tx.jobConversationMessage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        senderId: 'student_a',
+        type: 'CONTACT_EXCHANGE',
+        clientMessageId: 'exchange_a',
+        exchangePayload: expect.objectContaining({ kind }),
+      }),
+    });
+    expect(gateway.sendToUser).toHaveBeenCalledWith(
+      'merchant_user_a',
+      expect.objectContaining({ type: 'job-message', conversationId: 'conversation_a' }),
+    );
+  });
+
+  it('交换简历应保存用户当前完整简历快照', async () => {
+    const { service } = buildService();
+
+    await expect(service.sendExchange('student_a', 'conversation_a', 'RESUME', 'resume_exchange_a')).resolves.toMatchObject({
+      type: 'RESUME_EXCHANGE',
+      exchange: {
+        kind: 'RESUME',
+        resume: {
+          name: '林同学',
+          phone: '13700000000',
+          wechat: 'student-wechat',
+          selfIntro: '认真负责',
+          skills: ['活动执行'],
+          availabilities: ['周末'],
+          experience: '校园活动志愿者',
+          updatedAt: '2026-08-27T00:00:00.000Z',
+        },
+      },
+    });
+  });
+
+  it('商家不能代替报名用户发起信息交换', async () => {
+    const { service, prisma } = buildService();
+
+    await expect(
+      service.sendExchange('merchant_user_a', 'conversation_a', 'PHONE', 'exchange_a'),
+    ).rejects.toMatchObject({ bizCode: 10003 });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([AppStatus.CANCELLED, AppStatus.REJECTED])('%s 报名不能继续交换信息', async (status) => {
+    const { service, prisma } = buildService(status);
+
+    await expect(
+      service.sendExchange('student_a', 'conversation_a', 'PHONE', 'exchange_a'),
+    ).rejects.toMatchObject({ bizCode: 40004 });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('未创建简历时应拒绝交换且不创建消息', async () => {
+    const { service, tx } = buildService();
+    tx.resume.findUnique.mockResolvedValueOnce(null);
+
+    await expect(
+      service.sendExchange('student_a', 'conversation_a', 'PHONE', 'exchange_a'),
+    ).rejects.toMatchObject({ bizCode: 40008 });
+    expect(tx.jobConversationMessage.create).not.toHaveBeenCalled();
+  });
+
+  it('交换请求使用同一 clientMessageId 重试时不应重复建消息或推送', async () => {
+    const { service, tx, gateway, message } = buildService();
+    const exchangePayload = {
+      kind: 'PHONE',
+      student: { name: '林同学', value: '13700000000' },
+      merchant: { name: '校园服务站', value: '13800000000' },
+    };
+    tx.jobConversationMessage.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        ...message,
+        type: 'CONTACT_EXCHANGE',
+        content: '交换电话',
+        clientMessageId: 'exchange_a',
+        exchangePayload,
+      });
+
+    const first = await service.sendExchange('student_a', 'conversation_a', 'PHONE', 'exchange_a');
+    const second = await service.sendExchange('student_a', 'conversation_a', 'PHONE', 'exchange_a');
+
+    expect(first).toEqual(second);
+    expect(tx.jobConversationMessage.create).toHaveBeenCalledTimes(1);
+    expect(gateway.sendToUser).toHaveBeenCalledTimes(1);
+  });
+
   it('消息分页应按时间正序返回，并以本页最旧消息作为下一页游标', async () => {
     const { service, prisma } = buildService();
     const messages = Array.from({ length: 31 }, (_, index) => {
@@ -396,6 +539,7 @@ describe('JobService 联系方式可见性', () => {
 
   function buildJobService() {
     const prisma = {
+      jobApplication: { findUnique: jest.fn().mockResolvedValue(null) },
       jobPost: {
         findUnique: jest.fn().mockResolvedValue(post),
         findFirst: jest.fn().mockResolvedValue({ id: post.id }),
@@ -426,6 +570,20 @@ describe('JobService 联系方式可见性', () => {
     await expect(service.getPost('post_a', 'student_a')).resolves.toMatchObject({
       contactPhone: null,
       contactWechat: null,
+    });
+  });
+
+  it('报名成功的用户查看岗位详情时应返回发岗快照联系方式', async () => {
+    const { service, prisma } = buildJobService();
+    prisma.jobApplication.findUnique.mockResolvedValueOnce({ id: 'application_a' });
+
+    await expect(service.getPost('post_a', 'student_a')).resolves.toMatchObject({
+      contactPhone: '13800000000',
+      contactWechat: 'campus-job',
+    });
+    expect(prisma.jobApplication.findUnique).toHaveBeenCalledWith({
+      where: { jobPostId_userId: { jobPostId: 'post_a', userId: 'student_a' } },
+      select: { id: true },
     });
   });
 

@@ -408,7 +408,7 @@ button::after {
   max-width: 72%;
 }
 
-.message-stack.interview-stack {
+.message-stack.rich-stack {
   width: 570rpx;
   max-width: calc(100% - 78rpx);
 }
@@ -655,12 +655,191 @@ button::after {
   font-size: 21rpx;
 }
 
+.exchange-card {
+  overflow: hidden;
+  border: 1rpx solid #e5e6eb;
+  border-radius: 16rpx;
+  background: #fff;
+}
+
+.exchange-head {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 22rpx;
+  border-bottom: 1rpx solid #f0f1f2;
+}
+
+.exchange-icon {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #fff7d1;
+}
+
+.exchange-icon image {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.exchange-heading {
+  flex: 1;
+  min-width: 0;
+  margin-left: 14rpx;
+}
+
+.exchange-kicker {
+  display: block;
+  color: #86909c;
+  font-size: 20rpx;
+  line-height: 28rpx;
+}
+
+.exchange-title {
+  display: block;
+  margin-top: 2rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 27rpx;
+  line-height: 38rpx;
+  font-weight: 600;
+}
+
+.exchange-status {
+  margin-left: 12rpx;
+  padding: 5rpx 10rpx;
+  border-radius: 8rpx;
+  background: #e8ffea;
+  color: #008f22;
+  font-size: 19rpx;
+  line-height: 28rpx;
+}
+
+.exchange-row,
+.resume-exchange-row {
+  min-height: 82rpx;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 0 22rpx;
+  border-bottom: 1rpx solid #f0f1f2;
+}
+
+.exchange-row:last-child,
+.resume-exchange-row:last-child {
+  border-bottom: 0;
+}
+
+.exchange-party {
+  width: 128rpx;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.exchange-role,
+.exchange-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exchange-role {
+  color: #86909c;
+  font-size: 19rpx;
+  line-height: 27rpx;
+}
+
+.exchange-name {
+  color: #4e5969;
+  font-size: 22rpx;
+  line-height: 31rpx;
+}
+
+.exchange-value,
+.resume-exchange-value {
+  flex: 1;
+  min-width: 0;
+  color: #1d2129;
+  font-size: 23rpx;
+  line-height: 34rpx;
+  word-break: break-all;
+}
+
+.exchange-action {
+  min-width: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5rpx;
+  flex-shrink: 0;
+  color: #8a6500;
+  font-size: 20rpx;
+}
+
+.exchange-action image {
+  width: 23rpx;
+  height: 23rpx;
+}
+
+.resume-exchange-card {
+  padding-bottom: 8rpx;
+}
+
+.resume-exchange-label {
+  width: 112rpx;
+  flex-shrink: 0;
+  color: #86909c;
+  font-size: 21rpx;
+  line-height: 32rpx;
+}
+
+.resume-exchange-block {
+  padding: 16rpx 22rpx 8rpx;
+}
+
+.resume-exchange-block .resume-exchange-label {
+  display: block;
+  width: auto;
+  margin-bottom: 7rpx;
+}
+
+.resume-exchange-copy {
+  display: block;
+  color: #4e5969;
+  font-size: 23rpx;
+  line-height: 36rpx;
+  word-break: break-all;
+}
+
+.resume-exchange-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.resume-exchange-tags text {
+  padding: 5rpx 10rpx;
+  border-radius: 8rpx;
+  background: #f2f3f5;
+  color: #4e5969;
+  font-size: 20rpx;
+  line-height: 28rpx;
+}
+
 .message-end {
   height: 2rpx;
 }
 
 .extension-panel {
   min-height: 150rpx;
+  display: flex;
+  gap: 22rpx;
+  overflow-x: auto;
   padding: 24rpx;
   border-top: 1rpx solid #e5e6eb;
   background: #fff;
@@ -676,6 +855,10 @@ button::after {
   gap: 12rpx;
   color: #4e5969;
   font-size: 23rpx;
+}
+
+.extension-item.disabled {
+  opacity: 0.45;
 }
 
 .extension-icon {

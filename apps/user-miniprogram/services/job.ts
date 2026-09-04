@@ -108,6 +108,7 @@ export interface ResumeVo {
   id: string;
   name: string;
   phone: string;
+  wechat: string | null;
   selfIntro: string | null;
   skills: string[];
   availabilities: string[];
@@ -140,8 +141,31 @@ export interface JobReviewVo {
 
 // P2-34 / M4-06 岗位报名双方专属沟通
 export type JobConversationRole = 'merchant' | 'student';
-export type JobConversationMessageType = 'TEXT' | 'INTERVIEW';
+export type JobConversationMessageType = 'TEXT' | 'INTERVIEW' | 'CONTACT_EXCHANGE' | 'RESUME_EXCHANGE';
+export type JobExchangeKind = 'PHONE' | 'WECHAT' | 'RESUME';
 export type InterviewInvitationStatus = 'ACTIVE' | 'CANCELLED';
+export interface ContactExchangePayload {
+  kind: 'PHONE' | 'WECHAT';
+  student: { name: string; value: string };
+  merchant: { name: string; value: string };
+}
+
+export interface ResumeExchangePayload {
+  kind: 'RESUME';
+  resume: {
+    name: string;
+    phone: string;
+    wechat: string | null;
+    selfIntro: string | null;
+    skills: string[];
+    availabilities: string[];
+    experience: string | null;
+    updatedAt: string;
+  };
+}
+
+export type JobExchangePayload = ContactExchangePayload | ResumeExchangePayload;
+
 
 export interface InterviewInvitationVo {
   id: string;
@@ -164,6 +188,7 @@ export interface JobConversationMessageVo {
   content: string;
   clientMessageId: string | null;
   invitation: InterviewInvitationVo | null;
+  exchange: JobExchangePayload | null;
   createdAt: string;
 }
 
@@ -388,6 +413,15 @@ export function sendJobConversationMessage(conversationId: string, content: stri
   });
 }
 
+export function sendJobConversationExchange(conversationId: string, kind: JobExchangeKind, clientMessageId: string) {
+  return request<JobConversationMessageVo>({
+    url: `/job-conversations/${conversationId}/exchanges`,
+    method: 'POST',
+    data: { kind, clientMessageId },
+    silentBizCodes: [40008],
+  });
+}
+
 export function parseTencentMeeting(applicationId: string, input: string) {
   return request<ParsedTencentMeetingVo>({
     url: `/job-applications/${applicationId}/interviews/parse`,
@@ -419,6 +453,7 @@ export function getMyResume() {
 export function upsertResume(data: {
   name: string;
   phone: string;
+  wechat?: string;
   selfIntro?: string;
   skills?: string[];
   availabilities?: string[];

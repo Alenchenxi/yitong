@@ -6,8 +6,10 @@ import {
   listJobConversationMessages,
   parseTencentMeeting,
   sendInterviewInvitation,
+  sendJobConversationExchange,
   sendJobConversationMessage,
   type InterviewInvitationVo,
+  type JobExchangeKind,
   type JobConversationMessageVo,
   type JobConversationVo,
 } from '../../../services/job';
@@ -105,6 +107,7 @@ Page({
     input: '',
     canSend: false,
     sending: false,
+    exchanging: false,
     scrollIntoView: '',
     extensionOpen: false,
     invitationOpen: false,
@@ -342,6 +345,7 @@ Page({
         content,
         clientMessageId,
         invitation: null,
+        exchange: null,
         createdAt: new Date().toISOString(),
       };
       messages = this.decorateMessages([...this.data.messages, optimistic]);
@@ -377,8 +381,66 @@ Page({
   },
 
   toggleExtension() {
-    if (this.data.conversation?.readOnly || this.data.conversation?.role !== 'merchant') return;
+    if (this.data.conversation?.readOnly) return;
     this.setData({ extensionOpen: !this.data.extensionOpen });
+  },
+
+  confirmExchange(event: WechatMiniprogram.TouchEvent) {
+    const kind = event.currentTarget.dataset.kind as JobExchangeKind;
+    if (!['PHONE', 'WECHAT', 'RESUME'].includes(kind) || this.data.exchanging) return;
+    const prompts: Record<JobExchangeKind, { title: string; content: string }> = {
+      PHONE: {
+        title: '交换电话',
+        content: '确认将你在简历中设置的电话与招聘方岗位电话发送到当前聊天？',
+      },
+      WECHAT: {
+        title: '交换微信',
+        content: '确认将你在简历中设置的微信与招聘方岗位微信发送到当前聊天？',
+      },
+      RESUME: {
+        title: '交换简历',
+        content: '确认将当前完整简历发送给招聘方？发送后本次快照会保留在聊天记录中。',
+      },
+    };
+    const prompt = prompts[kind];
+    this.setData({ extensionOpen: false });
+    wx.showModal({
+      title: prompt.title,
+      content: prompt.content,
+      confirmText: '确认交换',
+      success: (result) => {
+        if (result.confirm) void this.submitExchange(kind);
+      },
+    });
+  },
+
+  async submitExchange(kind: JobExchangeKind) {
+    const conversation = this.data.conversation;
+    if (!conversation || conversation.role !== 'student' || conversation.readOnly || this.data.exchanging) return;
+    this.setData({ exchanging: true });
+    try {
+      const message = await sendJobConversationExchange(conversation.id, kind, createClientMessageId());
+      this.mergeMessages([message], true);
+      wx.showToast({ title: '已发送', icon: 'success' });
+    } catch (error) {
+      const apiError = error as { code?: number; message?: string };
+      if (apiError.code !== 40008) return;
+      const message = apiError.message || '交换信息未配置';
+      if (!message.includes('我的简历')) {
+        wx.showToast({ title: message, icon: 'none' });
+        return;
+      }
+      wx.showModal({
+        title: '信息未完善',
+        content: message,
+        confirmText: '去完善',
+        success: (result) => {
+          if (result.confirm) wx.navigateTo({ url: '/pages/resume/index' });
+        },
+      });
+    } finally {
+      this.setData({ exchanging: false });
+    }
   },
 
   openJobDetail() {
@@ -541,6 +603,11 @@ Page({
     } finally {
       this.setData({ inviting: false });
     }
+  },
+
+  callExchangePhone(event: WechatMiniprogram.TouchEvent) {
+    const phoneNumber = event.currentTarget.dataset.value as string;
+    if (phoneNumber) wx.makePhoneCall({ phoneNumber });
   },
 
   copyMeetingValue(event: WechatMiniprogram.TouchEvent) {

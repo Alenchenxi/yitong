@@ -837,7 +837,13 @@ export class JobService {
       });
       if (!visiblePost) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     }
-    return this.toPostVo(post, isOwner);
+    const application = actorId && !isOwner
+      ? await this.prisma.jobApplication.findUnique({
+        where: { jobPostId_userId: { jobPostId: id, userId: actorId } },
+        select: { id: true },
+      })
+      : null;
+    return this.toPostVo(post, isOwner || !!application);
   }
 
   // P2-16 记录浏览事件（用于商家看板统计）
@@ -1491,6 +1497,7 @@ export class JobService {
     const data = {
       name: dto.name,
       phone: dto.phone,
+      wechat: dto.wechat?.trim() || null,
       selfIntro: dto.selfIntro ?? null,
       skills: dto.skills ?? [],
       availabilities: dto.availabilities ?? [],
@@ -1526,6 +1533,7 @@ export class JobService {
     id: string;
     name: string;
     phone: string;
+    wechat: string | null;
     selfIntro: string | null;
     skills: string[];
     availabilities: string[];
@@ -1548,6 +1556,7 @@ export class JobService {
       id: r.id,
       name: r.name,
       phone: r.phone,
+      wechat: r.wechat,
       selfIntro: r.selfIntro,
       skills: r.skills,
       availabilities: r.availabilities,

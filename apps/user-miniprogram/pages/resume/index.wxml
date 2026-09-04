@@ -15,6 +15,7 @@
 
   <view class="row"><text class="label">姓名</text><input class="input" placeholder="你的姓名" value="{{name}}" data-field="name" bindinput="onInput" /></view>
   <view class="row"><text class="label">电话</text><input class="input" type="number" placeholder="联系电话" value="{{phone}}" data-field="phone" bindinput="onInput" /></view>
+  <view class="row"><text class="label">微信</text><input class="input" placeholder="微信号（交换微信时使用）" value="{{wechat}}" data-field="wechat" bindinput="onInput" maxlength="64" /></view>
 
   <view class="block">
     <text class="label">技能</text>

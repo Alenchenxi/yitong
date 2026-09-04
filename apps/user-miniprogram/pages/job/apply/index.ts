@@ -85,7 +85,8 @@ Page({
         resumeId: this.data.resume?.id,
         answers: questions.length > 0 ? this.data.answers.map((a) => (a ?? '').trim()) : undefined,
       });
-      this.setData({ application });
+      const refreshedPost = await getJobPost(this.data.postId).catch(() => this.data.post);
+      this.setData({ application, post: refreshedPost });
     } catch {
       /* 40002 重复报名 toast 已弹 */
     } finally {

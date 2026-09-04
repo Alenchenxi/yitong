@@ -421,6 +421,11 @@ export class UpsertResumeDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(64)
+  wechat?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(1000)
   selfIntro?: string;
 

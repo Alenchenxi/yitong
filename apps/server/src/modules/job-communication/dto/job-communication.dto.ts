@@ -1,10 +1,24 @@
-import { IsDateString, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+
+export const JOB_EXCHANGE_KINDS = ['PHONE', 'WECHAT', 'RESUME'] as const;
+export type JobExchangeKind = (typeof JOB_EXCHANGE_KINDS)[number];
 
 export class SendJobMessageDto {
   @IsString()
   @MinLength(1)
   @MaxLength(1000)
   content!: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/\S/u)
+  @MaxLength(100)
+  clientMessageId?: string;
+}
+
+export class SendJobExchangeDto {
+  @IsIn(JOB_EXCHANGE_KINDS)
+  kind!: JobExchangeKind;
 
   @IsOptional()
   @IsString()
