@@ -194,6 +194,10 @@ function buildService(
   };
   const jobConversationMessage = {
     findMany: jest.fn().mockResolvedValue([]),
+    groupBy: jest.fn().mockResolvedValue([
+      { senderId: app.userId },
+      { senderId: app.jobPost.merchant.userId },
+    ]),
     findFirst: jest.fn().mockResolvedValue(null),
     findUnique: jest.fn(),
     create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ ...message, ...data })),
@@ -340,6 +344,7 @@ describe('JobCommunicationService', () => {
     await expect(service.listMessages("student_a", "conversation_a")).resolves.toMatchObject({
       list: [{ id: "message_a", clientMessageId: "client_a" }],
     });
+    expect(prisma.jobConversationMessage.groupBy).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -486,6 +491,25 @@ describe('JobCommunicationService', () => {
   });
 
   it.each([
+    ['双方均未发送消息', []],
+    ['仅报名用户发送消息', [{ senderId: 'student_a' }]],
+    ['仅商家发送消息', [{ senderId: 'merchant_user_a' }]],
+  ] as const)('%s 时应拒绝发起交换', async (_label, senders) => {
+    const { service, tx, gateway } = buildService();
+    tx.jobConversationMessage.groupBy.mockResolvedValue(senders);
+
+    await expect(
+      service.sendExchange('student_a', 'conversation_a', 'PHONE', 'exchange_before_reply'),
+    ).rejects.toMatchObject({
+      bizCode: 40004,
+      message: '需要对方回复后才可以使用',
+    });
+
+    expect(tx.jobConversationMessage.create).not.toHaveBeenCalled();
+    expect(gateway.sendToUser).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ['student_a', 'merchant_user_a'],
     ['merchant_user_a', 'student_a'],
   ] as const)('双方都可发起交换请求（%s）且请求阶段不返回真实资料', async (actorId, peerId) => {
@@ -537,7 +561,16 @@ describe('JobCommunicationService', () => {
     });
 
     await expect(service.getConversation('student_a', 'conversation_a')).resolves.toMatchObject({
+      exchangeReady: true,
       pendingExchangeKinds: ['PHONE', 'RESUME'],
+    });
+    expect(prisma.jobConversationMessage.groupBy).toHaveBeenCalledWith({
+      by: ['senderId'],
+      where: {
+        conversationId: 'conversation_a',
+        senderId: { in: ['student_a', 'merchant_user_a'] },
+        type: 'TEXT',
+      },
     });
     expect(prisma.jobConversation.findUnique).toHaveBeenCalledWith(expect.objectContaining({
       include: expect.objectContaining({
@@ -547,6 +580,15 @@ describe('JobCommunicationService', () => {
         },
       }),
     }));
+  });
+
+  it('仅一方发送普通消息时会话摘要应标记为不可交换', async () => {
+    const { service, prisma } = buildService();
+    prisma.jobConversationMessage.groupBy.mockResolvedValue([{ senderId: 'student_a' }]);
+
+    await expect(service.getConversation('student_a', 'conversation_a')).resolves.toMatchObject({
+      exchangeReady: false,
+    });
   });
 
   it('商家发起简历请求后应等待报名用户响应，不能提前返回简历', async () => {
@@ -690,6 +732,35 @@ describe('JobCommunicationService', () => {
       where: { id: 'exchange_message_a' },
       data: expect.objectContaining({ exchangeStatus: 'REJECTED' }),
     });
+    expect(tx.jobConversationMessage.groupBy).not.toHaveBeenCalled();
+  });
+
+  it('双方尚未完成普通文本回复时不得接受历史待处理交换请求', async () => {
+    const { service, prisma, tx, message, conversation, lockedApp } = buildService();
+    const pending = {
+      ...message,
+      id: 'exchange_message_a',
+      senderId: 'student_a',
+      type: 'CONTACT_EXCHANGE',
+      content: '请求交换电话',
+      exchangeKind: 'PHONE',
+      exchangeStatus: 'PENDING',
+      exchangeRespondedAt: null,
+      exchangePayload: null,
+      conversation: { ...conversation, application: lockedApp },
+    };
+    prisma.jobConversationMessage.findUnique.mockResolvedValue(pending);
+    tx.jobConversationMessage.findUnique.mockResolvedValue(pending);
+    tx.jobConversationMessage.groupBy.mockResolvedValue([{ senderId: 'student_a' }]);
+
+    await expect(
+      service.respondExchange('merchant_user_a', 'conversation_a', 'exchange_message_a', 'accept'),
+    ).rejects.toMatchObject({
+      bizCode: 40004,
+      message: '需要对方回复后才可以使用',
+    });
+    expect(tx.resume.findUnique).not.toHaveBeenCalled();
+    expect(tx.jobConversationMessage.update).not.toHaveBeenCalled();
   });
 
   it('相同交换响应重试应幂等返回且不重复推送', async () => {

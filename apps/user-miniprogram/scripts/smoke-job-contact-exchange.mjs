@@ -58,6 +58,11 @@ assert.match(
 );
 assert.match(
   communicationService,
+  /JobConversationMessageType\.TEXT[\s\S]*需要对方回复后才可以使用/,
+  'the server must reject exchanges until both participants have sent text messages',
+);
+assert.match(
+  communicationService,
   /respondExchange[\s\S]*exchangeStatus: targetStatus[\s\S]*exchangePayload[,}]/,
   'only an explicit response may persist the unlocked exchange snapshot',
 );
@@ -73,6 +78,20 @@ assert.match(resumeTs, /wechat: this\.data\.wechat\.trim\(\) \|\| undefined/, 'r
 assert.match(resumeWxml, /data-field="wechat"/, 'resume page must expose a WeChat input');
 
 assert.match(chatTs, /\['PHONE', 'WECHAT', 'RESUME'\]/, 'chat must expose all three exchange actions');
+assert.match(jobApi, /exchangeReady: boolean/, 'conversation summary must expose exchange readiness');
+assert.match(chatWxml, /disabled="\{\{!conversation\.exchangeReady \|\| item\.pending \|\| conversation\.readOnly \|\| exchanging\}\}"/, 'unreplied exchange controls must use the native disabled state');
+assert.match(chatWxml, /!conversation\.exchangeReady[\s\S]*需要对方回复后才可以使用/, 'unreplied conversations must show the exchange gate reason');
+assert.match(chatTs, /需要对方回复后才可以使用/, 'tapping a gated exchange action must explain why it is unavailable');
+assert.match(
+  chatTs,
+  /observeConfirmedTextSenders[\s\S]*refreshExchangeReadiness[\s\S]*getJobConversation\(this\.data\.conversationId\)/,
+  'new confirmed text must refresh server readiness when the other participant text is outside the loaded page',
+);
+assert.match(
+  chatTs,
+  /catch \{[\s\S]{0,180}confirmedTextSenders\.clear\(\)/,
+  'a failed readiness refresh must be retried after the next message poll',
+);
 assert.match(chatWxml, /class="exchange-toolbar"[\s\S]*data-kind="\{\{item\.kind\}\}"/, 'exchange actions must be placed in the top toolbar');
 assert.ok(
   chatWxml.indexOf('class="exchange-toolbar"') < chatWxml.indexOf('class="conversation-card"'),
@@ -95,6 +114,11 @@ assert.match(chatWxml, /item\.type === 'CONTACT_EXCHANGE'/, 'chat must render co
 assert.match(chatWxml, /item\.type === 'RESUME_EXCHANGE'/, 'chat must render resume exchange cards');
 assert.match(chatWxml, /data-action="accept"/, 'pending exchange cards must expose accept');
 assert.match(chatWxml, /data-action="reject"/, 'pending exchange cards must expose reject');
+assert.match(
+  chatWxml,
+  /data-action="accept"[\s\S]{0,160}disabled="\{\{!conversation\.exchangeReady \|\| respondingExchangeId === item\.id\}\}"/,
+  'accepting a pending exchange must remain disabled until both participants have replied',
+);
 assert.match(chatWxml, /item\.exchange\.status === 'PENDING'/, 'pending exchanges must render without unlocked details');
 assert.match(chatWxml, /item\.exchange\.status === 'REJECTED'/, 'rejected exchanges must keep a terminal card');
 assert.match(chatWxml, /catchtap="callExchangePhone"/, 'phone cards must support direct calls');

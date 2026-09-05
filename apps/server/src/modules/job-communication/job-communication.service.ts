@@ -114,11 +114,32 @@ export class JobCommunicationService {
     const pendingExchangeKinds = (conversation.messages ?? [])
       .map((message) => message.exchangeKind)
       .filter((kind): kind is PrismaJobExchangeKind => kind !== null);
-    return this.toConversation(conversation, conversation.application, actorId, pendingExchangeKinds);
+    const textSenders = await this.prisma.jobConversationMessage.groupBy({
+      by: ['senderId'],
+      where: {
+        conversationId,
+        senderId: { in: [conversation.studentId, conversation.merchantUserId] },
+        type: JobConversationMessageType.TEXT,
+      },
+    });
+    const exchangeReady = this.isExchangeReady(textSenders, conversation);
+    return this.toConversation(conversation, conversation.application, actorId, pendingExchangeKinds, exchangeReady);
   }
 
   async listMessages(actorId: string, conversationId: string, cursor?: string) {
-    await this.getConversation(actorId, conversationId);
+    const conversation = await this.prisma.jobConversation.findUnique({
+      where: { id: conversationId },
+      select: {
+        application: {
+          select: {
+            userId: true,
+            jobPost: { select: { merchant: { select: { userId: true } } } },
+          },
+        },
+      },
+    });
+    if (!conversation) throw new BizException(40001, '岗位会话不存在', HttpStatus.NOT_FOUND);
+    this.assertParticipant(actorId, conversation.application);
     const where: Prisma.JobConversationMessageWhereInput = { conversationId };
     const parsedCursor = cursor ? this.parseMessageCursor(cursor) : null;
     if (parsedCursor?.id) {
@@ -281,6 +302,18 @@ export class JobCommunicationService {
         if (existing) return { message: existing, peerId: null, created: false };
       }
 
+      const textSenders = await tx.jobConversationMessage.groupBy({
+        by: ['senderId'],
+        where: {
+          conversationId,
+          senderId: { in: [lockedConversation.studentId, lockedConversation.merchantUserId] },
+          type: JobConversationMessageType.TEXT,
+        },
+      });
+      if (!this.isExchangeReady(textSenders, lockedConversation)) {
+        throw new BizException(40004, '需要对方回复后才可以使用', HttpStatus.CONFLICT);
+      }
+
       const pending = await tx.jobConversationMessage.findFirst({
         where: {
           conversationId,
@@ -415,6 +448,19 @@ export class JobCommunicationService {
 
       let exchangePayload: Prisma.InputJsonValue | typeof Prisma.JsonNull = Prisma.JsonNull;
       if (targetStatus === JobExchangeStatus.ACCEPTED) {
+        const textSenders = await tx.jobConversationMessage.groupBy({
+          by: ['senderId'],
+          where: {
+            conversationId,
+            senderId: {
+              in: [lockedRequest.conversation.studentId, lockedRequest.conversation.merchantUserId],
+            },
+            type: JobConversationMessageType.TEXT,
+          },
+        });
+        if (!this.isExchangeReady(textSenders, lockedRequest.conversation)) {
+          throw new BizException(40004, '需要对方回复后才可以使用', HttpStatus.CONFLICT);
+        }
         const resume = await tx.resume.findUnique({ where: { userId: lockedRequest.conversation.studentId } });
         exchangePayload = this.buildExchangePayload(
           lockedRequest.exchangeKind,
@@ -853,6 +899,14 @@ export class JobCommunicationService {
     if (READ_ONLY_STATUSES.includes(status)) throw new BizException(40004, '报名已结束，会话仅可查看历史', HttpStatus.CONFLICT);
   }
 
+  private isExchangeReady(
+    textSenders: Array<{ senderId: string }>,
+    conversation: { studentId: string; merchantUserId: string },
+  ) {
+    const senderIds = new Set(textSenders.map((item) => item.senderId));
+    return senderIds.has(conversation.studentId) && senderIds.has(conversation.merchantUserId);
+  }
+
   private parseMessageCursor(cursor: string): MessageCursor | null {
     try {
       const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as {
@@ -886,6 +940,7 @@ export class JobCommunicationService {
     app: CommunicationApplication,
     actorId: string,
     pendingExchangeKinds: PrismaJobExchangeKind[],
+    exchangeReady: boolean,
   ) {
     const isMerchant = actorId === app.jobPost.merchant.userId;
     return {
@@ -894,6 +949,7 @@ export class JobCommunicationService {
       role: isMerchant ? 'merchant' : 'student',
       readOnly: READ_ONLY_STATUSES.includes(app.status),
       applicationStatus: app.status,
+      exchangeReady,
       pendingExchangeKinds: [...new Set(pendingExchangeKinds)],
       jobPost: { id: app.jobPost.id, title: app.jobPost.title, salary: app.jobPost.salary ?? '', location: app.jobPost.location ?? '' },
       peer: isMerchant

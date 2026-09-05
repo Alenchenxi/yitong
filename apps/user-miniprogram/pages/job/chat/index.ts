@@ -147,6 +147,9 @@ Page({
   messageUnsubscribe: null as (() => void) | null,
   meetingParseSeq: 0,
   destroyed: false,
+  confirmedTextSenders: new Set<string>(),
+  exchangeReadinessRefresh: null as Promise<void> | null,
+  exchangeReadinessRefreshNeeded: false,
 
   async onLoad(options: { applicationId?: string; conversationId?: string }) {
     const app = getApp<AppInstance>();
@@ -166,6 +169,7 @@ Page({
     this.stopPolling();
     this.messageUnsubscribe?.();
     this.messageUnsubscribe = null;
+    this.exchangeReadinessRefreshNeeded = false;
   },
 
   async initialize() {
@@ -229,12 +233,17 @@ Page({
     const page = await listJobConversationMessages(this.data.conversationId);
     if (this.destroyed) return;
     const messages = this.decorateMessages(page.list);
+    const conversation = this.withExchangeReadiness(messages);
     this.setData({
       messages,
+      conversation,
       exchangeActions: this.buildExchangeActions(messages, this.data.conversation?.pendingExchangeKinds),
       hasMore: page.hasMore,
       nextCursor: page.nextCursor ?? '',
-    }, () => this.scrollToBottom(false));
+    }, () => {
+      this.scrollToBottom(false);
+      this.observeConfirmedTextSenders(messages);
+    });
   },
 
   async loadEarlier() {
@@ -246,8 +255,10 @@ Page({
       if (this.destroyed) return;
       const merged = this.mergeMessageValues(page.list, this.data.messages);
       const messages = this.decorateMessages(merged);
+      const conversation = this.withExchangeReadiness(messages);
       this.setData({
         messages,
+        conversation,
         exchangeActions: this.buildExchangeActions(messages, this.data.conversation?.pendingExchangeKinds),
         hasMore: page.hasMore,
         nextCursor: page.nextCursor ?? '',
@@ -304,12 +315,53 @@ Page({
     if (!incoming.length) return;
     const merged = this.mergeMessageValues(incoming, this.data.messages);
     const messages = this.decorateMessages(merged);
+    const conversation = this.withExchangeReadiness(messages);
     this.setData({
       messages,
+      conversation,
       exchangeActions: this.buildExchangeActions(messages, this.data.conversation?.pendingExchangeKinds),
     }, () => {
+      this.observeConfirmedTextSenders(messages);
       if (scroll) this.scrollToBottom(true);
     });
+  },
+
+  observeConfirmedTextSenders(messages: ChatMessage[]) {
+    let discovered = false;
+    messages.forEach((message) => {
+      if (message.type !== 'TEXT' || message.id.startsWith('local-') || this.confirmedTextSenders.has(message.senderId)) {
+        return;
+      }
+      this.confirmedTextSenders.add(message.senderId);
+      discovered = true;
+    });
+    if (!discovered || this.data.conversation?.exchangeReady) return;
+    this.exchangeReadinessRefreshNeeded = true;
+    void this.refreshExchangeReadiness();
+  },
+
+  async refreshExchangeReadiness() {
+    if (this.exchangeReadinessRefresh) return this.exchangeReadinessRefresh;
+    this.exchangeReadinessRefresh = (async () => {
+      while (this.exchangeReadinessRefreshNeeded && !this.destroyed && !this.data.conversation?.exchangeReady) {
+        this.exchangeReadinessRefreshNeeded = false;
+        try {
+          const conversation = await getJobConversation(this.data.conversationId);
+          if (this.destroyed || conversation.id !== this.data.conversationId) return;
+          this.setData({
+            conversation,
+            exchangeActions: this.buildExchangeActions(this.data.messages, conversation.pendingExchangeKinds),
+          });
+        } catch {
+          // 下一轮消息轮询重新发现发送者后重试，不阻断当前消息展示。
+          this.confirmedTextSenders.clear();
+        }
+      }
+    })().finally(() => {
+      this.exchangeReadinessRefresh = null;
+      if (this.exchangeReadinessRefreshNeeded && !this.destroyed) void this.refreshExchangeReadiness();
+    });
+    return this.exchangeReadinessRefresh;
   },
 
   decorateMessages(values: JobConversationMessageVo[]) {
@@ -337,6 +389,19 @@ Page({
         sendState: local ? (previousUi?.sendState ?? 'sending') : 'sent',
       };
     });
+  },
+
+  withExchangeReadiness(messages: ChatMessage[]) {
+    const conversation = this.data.conversation;
+    if (!conversation || conversation.exchangeReady) return conversation;
+    const confirmedTextSenders = new Set(
+      messages
+        .filter((message) => message.type === 'TEXT' && !message.id.startsWith('local-'))
+        .map((message) => message.senderId),
+    );
+    const me = getApp<AppInstance>().globalData.user?.id ?? '';
+    if (!confirmedTextSenders.has(me) || !confirmedTextSenders.has(conversation.peer.id)) return conversation;
+    return { ...conversation, exchangeReady: true };
   },
 
   buildExchangeActions(messages: ChatMessage[], serverPendingKinds: JobExchangeKind[] = []): ExchangeActionItem[] {
@@ -436,8 +501,12 @@ Page({
     const kind = event.currentTarget.dataset.kind as JobExchangeKind;
     const conversation = this.data.conversation;
     const action = this.data.exchangeActions.find((item) => item.kind === kind);
-    if (!conversation || conversation.readOnly || !['PHONE', 'WECHAT', 'RESUME'].includes(kind)
-      || action?.pending || this.data.exchanging) return;
+    if (!conversation || conversation.readOnly || !['PHONE', 'WECHAT', 'RESUME'].includes(kind)) return;
+    if (!conversation.exchangeReady) {
+      wx.showToast({ title: '需要对方回复后才可以使用', icon: 'none' });
+      return;
+    }
+    if (action?.pending || this.data.exchanging) return;
     const isMerchant = conversation.role === 'merchant';
     const prompts: Record<JobExchangeKind, { title: string; content: string }> = {
       PHONE: {
@@ -474,6 +543,10 @@ Page({
   async submitExchange(kind: JobExchangeKind) {
     const conversation = this.data.conversation;
     if (!conversation || conversation.readOnly || this.data.exchanging) return;
+    if (!conversation.exchangeReady) {
+      wx.showToast({ title: '需要对方回复后才可以使用', icon: 'none' });
+      return;
+    }
     this.setData({ exchanging: true });
     try {
       const message = await sendJobConversationExchange(conversation.id, kind, createClientMessageId());
@@ -481,6 +554,10 @@ Page({
       wx.showToast({ title: '请求已发送', icon: 'success' });
     } catch (error) {
       const apiError = error as { code?: number; message?: string };
+      if (apiError.code === 40004 && apiError.message?.includes('对方回复')) {
+        wx.showToast({ title: '需要对方回复后才可以使用', icon: 'none' });
+        return;
+      }
       if (apiError.code !== 40008) return;
       const message = apiError.message || '交换信息未配置';
       if (conversation.role !== 'student' || !message.includes('报名用户')) {
@@ -504,6 +581,10 @@ Page({
     const messageId = String(event.currentTarget.dataset.id ?? '');
     const action = event.currentTarget.dataset.action as JobExchangeResponseAction;
     if (!messageId || !['accept', 'reject'].includes(action) || this.data.respondingExchangeId) return;
+    if (action === 'accept' && !this.data.conversation?.exchangeReady) {
+      wx.showToast({ title: '需要对方回复后才可以使用', icon: 'none' });
+      return;
+    }
     const message = this.data.messages.find((item) => item.id === messageId);
     if (!message?.exchange || message.mine || message.exchange.status !== 'PENDING') return;
     this.setData({ respondingExchangeId: messageId });

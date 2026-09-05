@@ -314,6 +314,14 @@ button::after {
   opacity: 1;
 }
 
+.exchange-tool.disabled .exchange-tool-icon {
+  background: #f2f3f5;
+}
+
+.exchange-tool.disabled .exchange-tool-icon image {
+  opacity: 0.45;
+}
+
 .exchange-tool-icon {
   width: 50rpx;
   height: 50rpx;
@@ -331,6 +339,29 @@ button::after {
 .exchange-tool-icon image {
   width: 29rpx;
   height: 29rpx;
+}
+
+.exchange-gate-tip {
+  min-height: 52rpx;
+  padding: 8rpx 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  border-bottom: 1rpx solid #e5e6eb;
+  background: #f6f7fb;
+  color: #86909c;
+  font-size: 22rpx;
+  line-height: 32rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.exchange-gate-tip image {
+  width: 24rpx;
+  height: 24rpx;
+  flex-shrink: 0;
+  opacity: 0.64;
 }
 
 .readonly-banner {

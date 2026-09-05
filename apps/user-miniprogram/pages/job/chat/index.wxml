@@ -25,9 +25,10 @@
       <button
         wx:for="{{exchangeActions}}"
         wx:key="kind"
-        class="exchange-tool {{item.pending || conversation.readOnly || exchanging ? 'disabled' : ''}}"
+        class="exchange-tool {{!conversation.exchangeReady || item.pending || conversation.readOnly || exchanging ? 'disabled' : ''}}"
         data-kind="{{item.kind}}"
-        disabled="{{item.pending || conversation.readOnly || exchanging}}"
+        disabled="{{!conversation.exchangeReady || item.pending || conversation.readOnly || exchanging}}"
+        aria-disabled="{{!conversation.exchangeReady || item.pending || conversation.readOnly || exchanging}}"
         bindtap="confirmExchange"
       >
         <view class="exchange-tool-icon {{item.pending ? 'pending' : ''}}">
@@ -38,6 +39,10 @@
         </view>
         <text>{{item.label}}</text>
       </button>
+    </view>
+    <view wx:if="{{!conversation.exchangeReady && !conversation.readOnly}}" class="exchange-gate-tip">
+      <image src="/assets/icons/recruitment/info-circle.svg" mode="aspectFit"></image>
+      <text>需要对方回复后才可以使用</text>
     </view>
 
     <view class="conversation-card">
@@ -160,7 +165,8 @@
                       class="exchange-response accept"
                       data-id="{{item.id}}"
                       data-action="accept"
-                      disabled="{{respondingExchangeId === item.id}}"
+                      disabled="{{!conversation.exchangeReady || respondingExchangeId === item.id}}"
+                      aria-disabled="{{!conversation.exchangeReady || respondingExchangeId === item.id}}"
                       catchtap="respondExchange"
                     >同意交换</button>
                   </view>
@@ -260,7 +266,8 @@
                       class="exchange-response accept"
                       data-id="{{item.id}}"
                       data-action="accept"
-                      disabled="{{respondingExchangeId === item.id}}"
+                      disabled="{{!conversation.exchangeReady || respondingExchangeId === item.id}}"
+                      aria-disabled="{{!conversation.exchangeReady || respondingExchangeId === item.id}}"
                       catchtap="respondExchange"
                     >同意交换</button>
                   </view>

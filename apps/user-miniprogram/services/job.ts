@@ -214,6 +214,7 @@ export interface JobConversationVo {
   role: JobConversationRole;
   readOnly: boolean;
   applicationStatus: JobAppVo['status'];
+  exchangeReady: boolean;
   pendingExchangeKinds: JobExchangeKind[];
   jobPost: { id: string; title: string; salary: string; location: string };
   peer: { id: string; name: string; avatarUrl: string | null };
