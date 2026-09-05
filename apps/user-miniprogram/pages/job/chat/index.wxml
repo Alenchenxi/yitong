@@ -21,6 +21,25 @@
   </block>
 
   <block wx:elif="{{conversation}}">
+    <view class="exchange-toolbar">
+      <button
+        wx:for="{{exchangeActions}}"
+        wx:key="kind"
+        class="exchange-tool {{item.pending || conversation.readOnly || exchanging ? 'disabled' : ''}}"
+        data-kind="{{item.kind}}"
+        disabled="{{item.pending || conversation.readOnly || exchanging}}"
+        bindtap="confirmExchange"
+      >
+        <view class="exchange-tool-icon {{item.pending ? 'pending' : ''}}">
+          <image
+            src="{{item.kind === 'PHONE' ? '/assets/icons/recruitment/phone.svg' : item.kind === 'WECHAT' ? '/assets/icons/recruitment/brand-wechat.svg' : '/assets/icons/recruitment/file-text.svg'}}"
+            mode="aspectFit"
+          ></image>
+        </view>
+        <text>{{item.label}}</text>
+      </button>
+    </view>
+
     <view class="conversation-card">
       <view class="peer-row">
         <view class="peer-avatar">
@@ -54,25 +73,6 @@
         </view>
         <image class="chevron" src="/assets/icons/recruitment/chevron-right.svg" mode="aspectFit"></image>
       </view>
-    </view>
-
-    <view class="exchange-toolbar">
-      <button
-        wx:for="{{exchangeActions}}"
-        wx:key="kind"
-        class="exchange-tool {{item.pending || conversation.readOnly || exchanging ? 'disabled' : ''}}"
-        data-kind="{{item.kind}}"
-        disabled="{{item.pending || conversation.readOnly || exchanging}}"
-        bindtap="confirmExchange"
-      >
-        <view class="exchange-tool-icon {{item.pending ? 'pending' : ''}}">
-          <image
-            src="{{item.kind === 'PHONE' ? '/assets/icons/recruitment/phone.svg' : item.kind === 'WECHAT' ? '/assets/icons/recruitment/brand-wechat.svg' : '/assets/icons/recruitment/file-text.svg'}}"
-            mode="aspectFit"
-          ></image>
-        </view>
-        <text>{{item.label}}</text>
-      </button>
     </view>
 
     <view wx:if="{{readOnlyText}}" class="readonly-banner">

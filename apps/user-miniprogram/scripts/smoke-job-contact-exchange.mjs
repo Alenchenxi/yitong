@@ -74,6 +74,10 @@ assert.match(resumeWxml, /data-field="wechat"/, 'resume page must expose a WeCha
 
 assert.match(chatTs, /\['PHONE', 'WECHAT', 'RESUME'\]/, 'chat must expose all three exchange actions');
 assert.match(chatWxml, /class="exchange-toolbar"[\s\S]*data-kind="\{\{item\.kind\}\}"/, 'exchange actions must be placed in the top toolbar');
+assert.ok(
+  chatWxml.indexOf('class="exchange-toolbar"') < chatWxml.indexOf('class="conversation-card"'),
+  'exchange toolbar must be the first conversation block below the navigation bar',
+);
 assert.match(chatTs, /wx\.showModal\(\{[\s\S]*confirmText: '确认交换'/, 'exchange must require explicit confirmation');
 assert.match(chatTs, /sendJobConversationExchange\(conversation\.id, kind, createClientMessageId\(\)\)/, 'confirmed exchange must use a unique idempotency key');
 assert.match(chatTs, /respondJobConversationExchange/, 'chat must support accepting or rejecting exchange requests');
