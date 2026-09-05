@@ -57,7 +57,13 @@ Page({
     tabs: [] as AdminTab[],
     activeTab: DEFAULT_TAB,
     loaded: {} as Record<string, boolean>,
-    tabParams: {} as Record<string, PanelParams>,
+    tabParams: {
+      dashboard: {},
+      review: {},
+      ops: {},
+      users: {},
+      profile: {},
+    } as Record<string, PanelParams>,
     refreshing: false, // scroll-view 下拉刷新受控态
     accessReady: false,
   },

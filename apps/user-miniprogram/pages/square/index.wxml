@@ -69,7 +69,7 @@
           <view
             class="hot-item"
             wx:for="{{todayHit}}"
-            wx:key="data.id"
+            wx:key="feedKey"
             data-id="{{item.data.id}}"
             data-kind="{{item.kind}}"
             bindtap="goTodayHit"
@@ -131,7 +131,7 @@
 
   <!-- 混合流 / 各 tab 列表：按 kind 分发 -->
   <view class="list" wx:if="{{items.length > 0}}">
-    <block wx:for="{{items}}" wx:key="data.id">
+    <block wx:for="{{items}}" wx:key="feedKey">
       <!-- 表白墙帖：post-card 内部 onTap 跳详情 -->
       <view wx:if="{{item.kind === 'post'}}" class="feed-item">
         <post-card post="{{item.data}}" bind:like="onLike"></post-card>

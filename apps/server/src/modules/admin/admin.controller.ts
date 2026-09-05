@@ -21,6 +21,7 @@ import {
   UpdateAdminTypeDto,
 } from './dto/admin-type.dto';
 import { UpdateCommunityDto } from './dto/update-community.dto';
+import { ListReportsQueryDto } from './dto/list-reports-query.dto';
 import {
   ModerationContextDto,
   ModerateUserDto,
@@ -63,20 +64,17 @@ export class AdminController {
   @Get('reports')
   @RequireAdminPermission(ADMIN_PERMISSIONS.REPORT_MANAGE)
   async listReports(
-    @Query('status') status: string | undefined,
-    @Query('page') page: string | undefined,
-    @Query('pageSize') pageSize: string | undefined,
-    @Query() context: ModerationContextDto,
+    @Query() query: ListReportsQueryDto,
     @Req() req: Request,
   ) {
     return ok(
       await this.admin.listReports(
-        status,
-        Math.max(1, Number(page) || 1),
-        Math.min(100, Math.max(1, Number(pageSize) || 20)),
+        query.status,
+        Math.max(1, Number(query.page) || 1),
+        Math.min(100, Math.max(1, Number(query.pageSize) || 20)),
         (req as AuthenticatedRequest).adminAccess!,
-        context.scope,
-        context.communityId,
+        query.scope,
+        query.communityId,
       ),
     );
   }

@@ -30,7 +30,13 @@ Page({
     tabs: MERCHANT_TABS,
     activeTab: DEFAULT_TAB,
     loaded: {} as Record<string, boolean>,
-    tabParams: {} as Record<string, PanelParams>,
+    tabParams: {
+      candidates: {},
+      jobs: {},
+      post: {},
+      notifications: {},
+      profile: {},
+    } as Record<string, PanelParams>,
     refreshing: false, // scroll-view 下拉刷新受控态
   },
 

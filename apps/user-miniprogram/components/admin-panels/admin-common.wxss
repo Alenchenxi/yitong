@@ -195,7 +195,7 @@
 .adm-trend-head, .adm-trend-row { display: flex; justify-content: space-between; padding: 16rpx 24rpx; font-size: 24rpx; }
 .adm-trend-head { background: var(--yt-bg); color: var(--yt-text-sub); font-weight: 600; }
 .adm-trend-row { border-top: 1rpx solid var(--yt-border); color: var(--yt-text-body); }
-.adm-trend-head text, .adm-trend-row text { flex: 1; text-align: center; }
+.adm-trend-cell { flex: 1; text-align: center; }
 
 /* 加载更多 / 空状态 */
 .adm-loadmore { text-align: center; color: var(--yt-text-sub); font-size: 24rpx; padding: 16rpx 0; }

@@ -57,32 +57,32 @@
     <!-- 招聘管理 -->
     <view class="section yt-card">
       <view class="section-title">招聘管理</view>
-      <view class="menu-item" bindtap="goJobs"><text>我的岗位</text><text class="arrow">›</text></view>
-      <view class="menu-item" bindtap="goCandidates"><text>候选人</text><text class="arrow">›</text></view>
-      <view class="menu-item" bindtap="goPostJob"><text>发布岗位</text><text class="arrow">›</text></view>
-      <view class="menu-item" bindtap="goDashboard"><text>数据看板</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goJobs"><text class="menu-item-label">我的岗位</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goCandidates"><text class="menu-item-label">候选人</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goPostJob"><text class="menu-item-label">发布岗位</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goDashboard"><text class="menu-item-label">数据看板</text><text class="arrow">›</text></view>
     </view>
 
     <!-- 订单与评价 -->
     <view class="section yt-card">
       <view class="section-title">订单与评价</view>
-      <view class="menu-item" bindtap="goOrders"><text>订单记录</text><text class="arrow">›</text></view>
-      <view class="menu-item" bindtap="goReviews"><text>评价管理</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goOrders"><text class="menu-item-label">订单记录</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goReviews"><text class="menu-item-label">评价管理</text><text class="arrow">›</text></view>
     </view>
 
     <!-- 消息与反馈 -->
     <view class="section yt-card">
       <view class="section-title">消息与反馈</view>
-      <view class="menu-item" bindtap="goNotifications"><text>消息中心</text><text wx:if="{{unreadCount > 0}}" class="badge">{{unreadCount}}</text><text class="arrow">›</text></view>
-      <view class="menu-item" bindtap="goFeedback"><text>意见反馈</text><text class="arrow">›</text></view>
-      <view class="menu-item" bindtap="goHelp"><text>帮助中心</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goNotifications"><text class="menu-item-label">消息中心</text><text wx:if="{{unreadCount > 0}}" class="badge">{{unreadCount}}</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goFeedback"><text class="menu-item-label">意见反馈</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goHelp"><text class="menu-item-label">帮助中心</text><text class="arrow">›</text></view>
     </view>
 
     <!-- 账号 -->
     <view class="section yt-card">
       <view class="section-title">账号</view>
-      <view class="menu-item" bindtap="goAccountSecurity"><text>账号与安全</text><text class="arrow">›</text></view>
-      <view class="menu-item" bindtap="goSettings"><text>设置</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goAccountSecurity"><text class="menu-item-label">账号与安全</text><text class="arrow">›</text></view>
+      <view class="menu-item" bindtap="goSettings"><text class="menu-item-label">设置</text><text class="arrow">›</text></view>
     </view>
   </block>
 
@@ -106,7 +106,7 @@
   <!-- 关于 -->
   <view class="section yt-card">
     <view class="section-title">关于</view>
-    <view class="menu-item" bindtap="openPrivacyGuide"><text>用户隐私保护指引</text><text class="arrow">›</text></view>
+    <view class="menu-item" bindtap="openPrivacyGuide"><text class="menu-item-label">用户隐私保护指引</text><text class="arrow">›</text></view>
   </view>
 
   <button class="logout-btn" bindtap="logout">退出登录</button>

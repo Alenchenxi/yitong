@@ -56,7 +56,7 @@
   border-bottom: 1rpx solid var(--yt-border);
 }
 .menu-item:last-child { border-bottom: none; }
-.menu-item text:first-child { flex: 1; }
+.menu-item-label { flex: 1; }
 .badge {
   min-width: 32rpx;
   height: 32rpx;

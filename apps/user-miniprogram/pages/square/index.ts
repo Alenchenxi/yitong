@@ -27,7 +27,14 @@ import {
 
 // 广场（圈子首页）：树洞能力由全局匿名内容开关控制。
 type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
-type PageFeedItemVo = FeedItemVo | { kind: 'job_post'; data: JobPostVo };
+type RawPageFeedItemVo = FeedItemVo | { kind: 'job_post'; data: JobPostVo };
+type WithFeedKey<T> = T & { feedKey: string };
+type PageFeedItemVo = WithFeedKey<RawPageFeedItemVo>;
+type PageTodayHitItem = WithFeedKey<TodayHitItem>;
+
+function withFeedKey<T extends { kind: string; data: { id: string } }>(item: T): WithFeedKey<T> {
+  return { ...item, feedKey: `${item.kind}:${item.data.id}` };
+}
 
 function inviteErrorCode(error: unknown): number | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
@@ -38,7 +45,7 @@ function inviteErrorCode(error: unknown): number | null {
 interface PageData {
   community: CommunityVo | null;
   banners: BannerVo[];
-  todayHit: TodayHitItem[];
+  todayHit: PageTodayHitItem[];
   items: PageFeedItemVo[];
   nextCursor: string | null;
   hasMore: boolean;
@@ -258,7 +265,7 @@ Page({
         .catch(() => ({ list: [] as TodayHitItem[] })),
       listBanners(communityId).catch(() => [] as BannerVo[]),
     ]);
-    this.setData({ todayHit: hit.list, banners });
+    this.setData({ todayHit: hit.list.map(withFeedKey), banners });
   },
 
   async reloadFeed() {
@@ -278,7 +285,7 @@ Page({
     let resetExpiredJobCursor = false;
     try {
       const tab = this.data.activeTab;
-      let resp: { list: PageFeedItemVo[]; nextCursor: string | null; hasMore: boolean };
+      let resp: { list: RawPageFeedItemVo[]; nextCursor: string | null; hasMore: boolean };
       if (tab === 'dynamic') {
         resp = await squareFeed(this.data.nextCursor ?? undefined, 20, 'recommend', communityId);
         if (!this.data.anonymousContentEnabled) {
@@ -313,7 +320,7 @@ Page({
         };
       }
       this.setData({
-        items: [...this.data.items, ...resp.list],
+        items: [...this.data.items, ...resp.list.map(withFeedKey)],
         nextCursor: resp.nextCursor,
         hasMore: resp.hasMore,
       });

@@ -11,17 +11,17 @@
   <!-- 管理入口 -->
   <view class="yt-card profile-section">
     <view class="profile-section-title">管理入口</view>
-    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-tab="dashboard"><text>看板</text><text class="profile-arrow">›</text></view>
-    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-tab="review"><text>审核</text><text class="profile-arrow">›</text></view>
-    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-tab="ops"><text>运营</text><text class="profile-arrow">›</text></view>
-    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-tab="users"><text>用户</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-tab="dashboard"><text class="profile-menu-label">看板</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-tab="review"><text class="profile-menu-label">审核</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-tab="ops"><text class="profile-menu-label">运营</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="go" data-tab="users"><text class="profile-menu-label">用户</text><text class="profile-arrow">›</text></view>
   </view>
 
   <!-- 账号 -->
   <view class="yt-card profile-section">
     <view class="profile-section-title">账号</view>
-    <view class="profile-menu" hover-class="adm-hover" bindtap="goAccountSecurity"><text>账号与安全</text><text class="profile-arrow">›</text></view>
-    <view class="profile-menu" hover-class="adm-hover" bindtap="goSettings"><text>设置</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="goAccountSecurity"><text class="profile-menu-label">账号与安全</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="goSettings"><text class="profile-menu-label">设置</text><text class="profile-arrow">›</text></view>
   </view>
 
   <!-- 切换角色 -->
@@ -35,7 +35,7 @@
       hover-class="adm-hover"
       catchtap="onSwitchRole"
     >
-      <text>{{item === 'USER' ? '👤 用户端' : item === 'MERCHANT' ? '🏪 商家端' : '⚙ 管理端'}}</text>
+      <text class="profile-menu-label">{{item === 'USER' ? '👤 用户端' : item === 'MERCHANT' ? '🏪 商家端' : '⚙ 管理端'}}</text>
       <text wx:if="{{currentRole === item}}" style="font-size:22rpx;color:var(--yt-primary-dark);background:var(--yt-primary-light);padding:2rpx 12rpx;border-radius:999rpx;">当前</text>
       <text wx:elif="{{switchingRole === item}}" style="font-size:22rpx;color:var(--yt-text-sub)">切换中…</text>
       <text wx:else class="profile-arrow">›</text>
@@ -45,7 +45,7 @@
   <!-- 关于 -->
   <view class="yt-card profile-section">
     <view class="profile-section-title">关于</view>
-    <view class="profile-menu" hover-class="adm-hover" bindtap="openPrivacyGuide"><text>用户隐私保护指引</text><text class="profile-arrow">›</text></view>
+    <view class="profile-menu" hover-class="adm-hover" bindtap="openPrivacyGuide"><text class="profile-menu-label">用户隐私保护指引</text><text class="profile-arrow">›</text></view>
   </view>
 
   <button class="profile-logout" bindtap="logout">退出登录</button>

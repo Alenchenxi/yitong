@@ -40,9 +40,9 @@
     <!-- 近 7 天趋势 -->
     <view class="adm-section-title">近 7 天趋势</view>
     <view class="adm-trend">
-      <view class="adm-trend-head"><text>日期</text><text>发帖</text><text>报名</text><text>新用户</text></view>
+      <view class="adm-trend-head"><text class="adm-trend-cell">日期</text><text class="adm-trend-cell">发帖</text><text class="adm-trend-cell">报名</text><text class="adm-trend-cell">新用户</text></view>
       <view class="adm-trend-row" wx:for="{{stats.trend}}" wx:key="date">
-        <text>{{item.date}}</text><text>{{item.posts}}</text><text>{{item.applications}}</text><text>{{item.newUsers}}</text>
+        <text class="adm-trend-cell">{{item.date}}</text><text class="adm-trend-cell">{{item.posts}}</text><text class="adm-trend-cell">{{item.applications}}</text><text class="adm-trend-cell">{{item.newUsers}}</text>
       </view>
     </view>
   </block>
