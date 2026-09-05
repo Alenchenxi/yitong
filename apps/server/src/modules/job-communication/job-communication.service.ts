@@ -1,5 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { AppStatus, InterviewInvitationStatus, JobConversationMessageType, Prisma } from '@prisma/client';
+import {
+  AppStatus,
+  InterviewInvitationStatus,
+  JobConversationMessageType,
+  JobExchangeKind as PrismaJobExchangeKind,
+  JobExchangeStatus,
+  Prisma,
+} from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
@@ -8,6 +15,7 @@ import type {
   CreateInterviewInvitationDto,
   InterviewResponseAction,
   JobExchangeKind,
+  JobExchangeResponseAction,
 } from './dto/job-communication.dto';
 import { assertTencentMeetingUrl, parseTencentMeetingShare } from './tencent-meeting.parser';
 
@@ -41,6 +49,20 @@ type ResumeExchangePayload = {
 
 type JobExchangePayload = ContactExchangePayload | ResumeExchangePayload;
 
+type CommunicationMessage = {
+  id: string;
+  senderId: string;
+  type: JobConversationMessageType;
+  content: string;
+  clientMessageId: string | null;
+  interviewInvitationId: string | null;
+  exchangeKind: PrismaJobExchangeKind | null;
+  exchangeStatus: JobExchangeStatus | null;
+  exchangeRespondedAt: Date | null;
+  exchangePayload: Prisma.JsonValue | null;
+  createdAt: Date;
+};
+
 type CommunicationApplication = Prisma.JobApplicationGetPayload<{
   include: {
     user: { select: { nickname: true; avatarUrl: true } };
@@ -68,7 +90,7 @@ export class JobCommunicationService {
         merchantUserId: app.jobPost.merchant.userId,
       },
     });
-    return this.toConversation(conversation, app, actorId);
+    return this.getConversation(actorId, conversation.id);
   }
 
   async getConversation(actorId: string, conversationId: string) {
@@ -81,11 +103,18 @@ export class JobCommunicationService {
             jobPost: { include: { merchant: { select: { id: true, userId: true, shopName: true, contactPhone: true, contactWechat: true } } } },
           },
         },
+        messages: {
+          where: { exchangeStatus: JobExchangeStatus.PENDING },
+          select: { exchangeKind: true },
+        },
       },
     });
     if (!conversation) throw new BizException(40001, '岗位会话不存在', HttpStatus.NOT_FOUND);
     this.assertParticipant(actorId, conversation.application);
-    return this.toConversation(conversation, conversation.application, actorId);
+    const pendingExchangeKinds = (conversation.messages ?? [])
+      .map((message) => message.exchangeKind)
+      .filter((kind): kind is PrismaJobExchangeKind => kind !== null);
+    return this.toConversation(conversation, conversation.application, actorId, pendingExchangeKinds);
   }
 
   async listMessages(actorId: string, conversationId: string, cursor?: string) {
@@ -117,16 +146,10 @@ export class JobCommunicationService {
       ? this.encodeMessageCursor(oldest.createdAt, oldest.id)
       : null;
     return {
-      list: slice.reverse().map((m) => ({
-        id: m.id,
-        senderId: m.senderId,
-        type: m.type,
-        content: m.content,
-        clientMessageId: m.clientMessageId ?? null,
-        invitation: m.interviewInvitationId ? invitationMap.get(m.interviewInvitationId) ?? null : null,
-        exchange: m.exchangePayload ?? null,
-        createdAt: m.createdAt.toISOString(),
-      })),
+      list: slice.reverse().map((message) => this.toMessage(
+        message,
+        message.interviewInvitationId ? invitationMap.get(message.interviewInvitationId) ?? null : null,
+      )),
       nextCursor,
       hasMore: rows.length > MESSAGE_PAGE_SIZE,
     };
@@ -182,16 +205,7 @@ export class JobCommunicationService {
       return { message, peerId, created: true };
     });
 
-    const vo = {
-      id: result.message.id,
-      senderId: result.message.senderId,
-      type: result.message.type,
-      content: result.message.content,
-      clientMessageId: result.message.clientMessageId ?? null,
-      invitation: null,
-      exchange: null,
-      createdAt: result.message.createdAt.toISOString(),
-    };
+    const vo = this.toMessage(result.message, null);
     if (result.created && result.peerId) {
       this.gateway.sendToUser(result.peerId, { type: "job-message", conversationId, message: vo });
     }
@@ -223,7 +237,7 @@ export class JobCommunicationService {
       },
     });
     if (!conversation) throw new BizException(40001, '岗位会话不存在', HttpStatus.NOT_FOUND);
-    this.assertStudent(actorId, conversation.application);
+    this.assertParticipant(actorId, conversation.application);
     this.assertWritable(conversation.application.status);
     const normalizedClientMessageId = this.normalizeClientMessageId(clientMessageId);
 
@@ -253,7 +267,7 @@ export class JobCommunicationService {
         },
       });
       if (!lockedConversation) throw new BizException(40001, '岗位会话不存在', HttpStatus.NOT_FOUND);
-      this.assertStudent(actorId, lockedConversation.application);
+      this.assertParticipant(actorId, lockedConversation.application);
       this.assertWritable(lockedConversation.application.status);
 
       if (normalizedClientMessageId) {
@@ -267,8 +281,18 @@ export class JobCommunicationService {
         if (existing) return { message: existing, peerId: null, created: false };
       }
 
-      const resume = await tx.resume.findUnique({ where: { userId: actorId } });
-      const exchangePayload = this.buildExchangePayload(kind, lockedConversation.application, resume);
+      const pending = await tx.jobConversationMessage.findFirst({
+        where: {
+          conversationId,
+          exchangeKind: PrismaJobExchangeKind[kind],
+          exchangeStatus: JobExchangeStatus.PENDING,
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      });
+      if (pending) return { message: pending, peerId: null, created: false };
+
+      const resume = await tx.resume.findUnique({ where: { userId: lockedConversation.studentId } });
+      this.buildExchangePayload(kind, lockedConversation.application, resume);
       const message = await tx.jobConversationMessage.create({
         data: {
           conversationId,
@@ -276,30 +300,142 @@ export class JobCommunicationService {
           type: kind === 'RESUME'
             ? JobConversationMessageType.RESUME_EXCHANGE
             : JobConversationMessageType.CONTACT_EXCHANGE,
-          content: kind === 'PHONE' ? '交换电话' : kind === 'WECHAT' ? '交换微信' : '交换简历',
+          content: kind === 'PHONE' ? '请求交换电话' : kind === 'WECHAT' ? '请求交换微信' : '请求交换简历',
           clientMessageId: normalizedClientMessageId ?? null,
-          exchangePayload: exchangePayload as Prisma.InputJsonValue,
+          exchangeKind: PrismaJobExchangeKind[kind],
+          exchangeStatus: JobExchangeStatus.PENDING,
         },
       });
+      const peerId = actorId === lockedConversation.studentId
+        ? lockedConversation.merchantUserId
+        : lockedConversation.studentId;
       return {
         message,
-        peerId: lockedConversation.merchantUserId,
+        peerId,
         created: true,
       };
     });
 
-    const vo = {
-      id: result.message.id,
-      senderId: result.message.senderId,
-      type: result.message.type,
-      content: result.message.content,
-      clientMessageId: result.message.clientMessageId ?? null,
-      invitation: null,
-      exchange: result.message.exchangePayload ?? null,
-      createdAt: result.message.createdAt.toISOString(),
-    };
+    const vo = this.toMessage(result.message, null);
     if (result.created && result.peerId) {
       this.gateway.sendToUser(result.peerId, { type: 'job-message', conversationId, message: vo });
+    }
+    return vo;
+  }
+
+  async respondExchange(
+    actorId: string,
+    conversationId: string,
+    messageId: string,
+    action: JobExchangeResponseAction,
+  ) {
+    const request = await this.prisma.jobConversationMessage.findUnique({
+      where: { id: messageId },
+      include: {
+        conversation: {
+          include: {
+            application: {
+              include: {
+                user: { select: { nickname: true, avatarUrl: true } },
+                jobPost: {
+                  include: {
+                    merchant: {
+                      select: {
+                        id: true,
+                        userId: true,
+                        shopName: true,
+                        contactPhone: true,
+                        contactWechat: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!request || request.conversationId !== conversationId) {
+      throw new BizException(40001, '交换请求不存在', HttpStatus.NOT_FOUND);
+    }
+    this.assertParticipant(actorId, request.conversation.application);
+    this.assertWritable(request.conversation.application.status);
+    this.assertExchangeRequest(request);
+    if (request.senderId === actorId) {
+      throw new BizException(10003, '只能由请求对方处理交换请求', HttpStatus.FORBIDDEN);
+    }
+
+    const targetStatus = action === 'accept' ? JobExchangeStatus.ACCEPTED : JobExchangeStatus.REJECTED;
+    const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockApplication(tx, request.conversation.applicationId);
+      await this.lockExchangeMessage(tx, messageId);
+      const lockedRequest = await tx.jobConversationMessage.findUnique({
+        where: { id: messageId },
+        include: {
+          conversation: {
+            include: {
+              application: {
+                include: {
+                  user: { select: { nickname: true, avatarUrl: true } },
+                  jobPost: {
+                    include: {
+                      merchant: {
+                        select: {
+                          id: true,
+                          userId: true,
+                          shopName: true,
+                          contactPhone: true,
+                          contactWechat: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!lockedRequest || lockedRequest.conversationId !== conversationId) {
+        throw new BizException(40001, '交换请求不存在', HttpStatus.NOT_FOUND);
+      }
+      this.assertParticipant(actorId, lockedRequest.conversation.application);
+      this.assertWritable(lockedRequest.conversation.application.status);
+      this.assertExchangeRequest(lockedRequest);
+      if (lockedRequest.senderId === actorId) {
+        throw new BizException(10003, '只能由请求对方处理交换请求', HttpStatus.FORBIDDEN);
+      }
+      if (lockedRequest.exchangeStatus === targetStatus) {
+        return { message: lockedRequest, changed: false };
+      }
+      if (lockedRequest.exchangeStatus !== JobExchangeStatus.PENDING) {
+        throw new BizException(40004, '交换请求已处理，不能重复变更', HttpStatus.CONFLICT);
+      }
+
+      let exchangePayload: Prisma.InputJsonValue | typeof Prisma.JsonNull = Prisma.JsonNull;
+      if (targetStatus === JobExchangeStatus.ACCEPTED) {
+        const resume = await tx.resume.findUnique({ where: { userId: lockedRequest.conversation.studentId } });
+        exchangePayload = this.buildExchangePayload(
+          lockedRequest.exchangeKind,
+          lockedRequest.conversation.application,
+          resume,
+        ) as Prisma.InputJsonValue;
+      }
+      const message = await tx.jobConversationMessage.update({
+        where: { id: messageId },
+        data: {
+          exchangeStatus: targetStatus,
+          exchangeRespondedAt: new Date(),
+          exchangePayload,
+        },
+      });
+      return { message, changed: true };
+    });
+
+    const vo = this.toMessage(result.message, null);
+    if (result.changed) {
+      this.gateway.sendToUser(request.senderId, { type: 'job-message', conversationId, message: vo });
     }
     return vo;
   }
@@ -508,6 +644,68 @@ export class JobCommunicationService {
     if (!rows.length) throw new BizException(40001, '面试邀请不存在', HttpStatus.NOT_FOUND);
   }
 
+  private async lockExchangeMessage(tx: Prisma.TransactionClient, messageId: string) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>
+      `SELECT "id"
+       FROM "job_conversation_messages"
+       WHERE "id" = ${messageId}
+       FOR UPDATE`;
+    if (!rows.length) throw new BizException(40001, '交换请求不存在', HttpStatus.NOT_FOUND);
+  }
+
+  private toMessage(message: CommunicationMessage, invitation: ReturnType<JobCommunicationService['toInvitation']> | null) {
+    return {
+      id: message.id,
+      senderId: message.senderId,
+      type: message.type,
+      content: message.content,
+      clientMessageId: message.clientMessageId ?? null,
+      invitation,
+      exchange: this.toExchange(message),
+      createdAt: message.createdAt.toISOString(),
+    };
+  }
+
+  private toExchange(message: CommunicationMessage) {
+    if (message.type !== JobConversationMessageType.CONTACT_EXCHANGE
+      && message.type !== JobConversationMessageType.RESUME_EXCHANGE) {
+      return null;
+    }
+    const payload = this.asRecord(message.exchangePayload);
+    const legacyKind = typeof payload?.kind === 'string' && ['PHONE', 'WECHAT', 'RESUME'].includes(payload.kind)
+      ? payload.kind as JobExchangeKind
+      : null;
+    const kind = message.exchangeKind ?? legacyKind;
+    if (!kind) return null;
+    const status = message.exchangeStatus ?? (payload ? JobExchangeStatus.ACCEPTED : JobExchangeStatus.PENDING);
+    const exchange = {
+      kind,
+      status,
+      requesterId: message.senderId,
+      respondedAt: message.exchangeRespondedAt?.toISOString() ?? null,
+    };
+    if (status !== JobExchangeStatus.ACCEPTED || !payload) return exchange;
+    return { ...exchange, ...payload, kind };
+  }
+
+  private asRecord(value: Prisma.JsonValue | null): Record<string, Prisma.JsonValue> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? value as Record<string, Prisma.JsonValue>
+      : null;
+  }
+
+  private assertExchangeRequest(message: {
+    type: JobConversationMessageType;
+    exchangeKind: PrismaJobExchangeKind | null;
+    exchangeStatus: JobExchangeStatus | null;
+  }): asserts message is typeof message & { exchangeKind: PrismaJobExchangeKind; exchangeStatus: JobExchangeStatus } {
+    const exchangeType = message.type === JobConversationMessageType.CONTACT_EXCHANGE
+      || message.type === JobConversationMessageType.RESUME_EXCHANGE;
+    if (!exchangeType || !message.exchangeKind || !message.exchangeStatus) {
+      throw new BizException(40001, '交换请求不存在', HttpStatus.NOT_FOUND);
+    }
+  }
+
   private buildExchangePayload(
     kind: JobExchangeKind,
     app: {
@@ -535,7 +733,7 @@ export class JobCommunicationService {
     } | null,
   ): JobExchangePayload {
     if (!resume) {
-      throw new BizException(40008, '请先在我的简历中完善个人信息', HttpStatus.BAD_REQUEST);
+      throw new BizException(40008, '报名用户尚未完善简历', HttpStatus.BAD_REQUEST);
     }
 
     if (kind === 'RESUME') {
@@ -557,7 +755,7 @@ export class JobCommunicationService {
     const studentValue = kind === 'PHONE' ? resume.phone.trim() : resume.wechat?.trim() ?? '';
     if (!studentValue) {
       const label = kind === 'PHONE' ? '电话' : '微信';
-      throw new BizException(40008, `请先在我的简历中配置${label}`, HttpStatus.BAD_REQUEST);
+      throw new BizException(40008, `报名用户尚未配置${label}`, HttpStatus.BAD_REQUEST);
     }
 
     const merchant = app.jobPost.merchant;
@@ -643,7 +841,7 @@ export class JobCommunicationService {
 
   private assertStudent(actorId: string, app: { userId: string }) {
     if (actorId !== app.userId) {
-      throw new BizException(10003, '仅报名用户可发起信息交换', HttpStatus.FORBIDDEN);
+      throw new BizException(10003, '仅报名用户可处理面试邀请', HttpStatus.FORBIDDEN);
     }
   }
 
@@ -687,6 +885,7 @@ export class JobCommunicationService {
     },
     app: CommunicationApplication,
     actorId: string,
+    pendingExchangeKinds: PrismaJobExchangeKind[],
   ) {
     const isMerchant = actorId === app.jobPost.merchant.userId;
     return {
@@ -695,6 +894,7 @@ export class JobCommunicationService {
       role: isMerchant ? 'merchant' : 'student',
       readOnly: READ_ONLY_STATUSES.includes(app.status),
       applicationStatus: app.status,
+      pendingExchangeKinds: [...new Set(pendingExchangeKinds)],
       jobPost: { id: app.jobPost.id, title: app.jobPost.title, salary: app.jobPost.salary ?? '', location: app.jobPost.location ?? '' },
       peer: isMerchant
         ? { id: app.userId, name: app.user?.nickname ?? '候选人', avatarUrl: app.user?.avatarUrl ?? null }

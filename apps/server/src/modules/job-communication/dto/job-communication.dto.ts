@@ -2,6 +2,8 @@ import { IsDateString, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength
 
 export const JOB_EXCHANGE_KINDS = ['PHONE', 'WECHAT', 'RESUME'] as const;
 export type JobExchangeKind = (typeof JOB_EXCHANGE_KINDS)[number];
+export const JOB_EXCHANGE_RESPONSE_ACTIONS = ['accept', 'reject'] as const;
+export type JobExchangeResponseAction = (typeof JOB_EXCHANGE_RESPONSE_ACTIONS)[number];
 export const INTERVIEW_RESPONSE_ACTIONS = ['accept', 'reject'] as const;
 export type InterviewResponseAction = (typeof INTERVIEW_RESPONSE_ACTIONS)[number];
 
@@ -27,6 +29,11 @@ export class SendJobExchangeDto {
   @Matches(/\S/u)
   @MaxLength(100)
   clientMessageId?: string;
+}
+
+export class RespondJobExchangeDto {
+  @IsIn(JOB_EXCHANGE_RESPONSE_ACTIONS)
+  action!: JobExchangeResponseAction;
 }
 
 export class ParseMeetingDto {

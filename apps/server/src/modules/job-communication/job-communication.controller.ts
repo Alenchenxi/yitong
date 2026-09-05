@@ -4,6 +4,7 @@ import type { JwtPayload } from '../auth/types';
 import {
   CreateInterviewInvitationDto,
   ParseMeetingDto,
+  RespondJobExchangeDto,
   RespondInterviewInvitationDto,
   SendJobExchangeDto,
   SendJobMessageDto,
@@ -39,6 +40,16 @@ export class JobCommunicationController {
   @Post('job-conversations/:id/exchanges')
   async exchange(@Param('id') id: string, @Body() dto: SendJobExchangeDto, @Req() req: JobCommunicationRequest) {
     return ok(await this.communication.sendExchange(req.user.uid, id, dto.kind, dto.clientMessageId));
+  }
+
+  @Post('job-conversations/:id/exchanges/:messageId/respond')
+  async respondExchange(
+    @Param('id') id: string,
+    @Param('messageId') messageId: string,
+    @Body() dto: RespondJobExchangeDto,
+    @Req() req: JobCommunicationRequest,
+  ) {
+    return ok(await this.communication.respondExchange(req.user.uid, id, messageId, dto.action));
   }
 
   @Post('job-applications/:id/interviews/parse')

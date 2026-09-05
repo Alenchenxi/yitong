@@ -14,6 +14,7 @@ import { validate } from 'class-validator';
 import { BizException } from '../../src/common/exceptions/biz.exception';
 import {
   CreateInterviewInvitationDto,
+  RespondJobExchangeDto,
   RespondInterviewInvitationDto,
   SendJobExchangeDto,
 } from '../../src/modules/job-communication/dto/job-communication.dto';
@@ -83,6 +84,17 @@ describe('SendJobExchangeDto', () => {
   it('应拒绝客户端伪造的交换类型', async () => {
     const errors = await validate(Object.assign(new SendJobExchangeDto(), { kind: 'CUSTOM' }));
     expect(errors.some((error) => error.property === 'kind')).toBe(true);
+  });
+});
+
+describe('RespondJobExchangeDto', () => {
+  it.each(['accept', 'reject'])('应接受 %s 操作', async (action) => {
+    await expect(validate(Object.assign(new RespondJobExchangeDto(), { action }))).resolves.toHaveLength(0);
+  });
+
+  it('应拒绝非白名单响应', async () => {
+    const errors = await validate(Object.assign(new RespondJobExchangeDto(), { action: 'cancel' }));
+    expect(errors.some((error) => error.property === 'action')).toBe(true);
   });
 });
 
@@ -156,6 +168,9 @@ function buildService(
     content: "你好",
     clientMessageId: "client_a",
     interviewInvitationId: null,
+    exchangeKind: null,
+    exchangeStatus: null,
+    exchangeRespondedAt: null,
     exchangePayload: null,
     createdAt: new Date("2026-08-27T00:01:00.000Z"),
   };
@@ -180,7 +195,9 @@ function buildService(
   const jobConversationMessage = {
     findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn().mockResolvedValue(null),
+    findUnique: jest.fn(),
     create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ ...message, ...data })),
+    update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ ...message, ...data })),
   };
   const tx = {
     $queryRaw: jest.fn().mockResolvedValue([{ id: app.id }]),
@@ -469,44 +486,162 @@ describe('JobCommunicationService', () => {
   });
 
   it.each([
-    ['PHONE', '13700000000', '13800000000'],
-    ['WECHAT', 'student-wechat', 'campus-job'],
-  ] as const)('报名用户交换 %s 时应使用当前简历和岗位发布快照', async (kind, studentValue, merchantValue) => {
+    ['student_a', 'merchant_user_a'],
+    ['merchant_user_a', 'student_a'],
+  ] as const)('双方都可发起交换请求（%s）且请求阶段不返回真实资料', async (actorId, peerId) => {
     const { service, tx, gateway } = buildService();
 
-    const result = await service.sendExchange('student_a', 'conversation_a', kind, 'exchange_a');
+    const result = await service.sendExchange(actorId, 'conversation_a', 'PHONE', 'exchange_a');
 
     expect(result).toMatchObject({
       type: 'CONTACT_EXCHANGE',
       clientMessageId: 'exchange_a',
       exchange: {
-        kind,
-        student: { name: '林同学', value: studentValue },
-        merchant: { name: '校园服务站', value: merchantValue },
+        kind: 'PHONE',
+        status: 'PENDING',
+        requesterId: actorId,
+        respondedAt: null,
       },
     });
+    expect(result.exchange).not.toHaveProperty('student');
+    expect(result.exchange).not.toHaveProperty('merchant');
     expect(tx.resume.findUnique).toHaveBeenCalledWith({ where: { userId: 'student_a' } });
     expect(tx.jobConversationMessage.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        senderId: 'student_a',
+        senderId: actorId,
         type: 'CONTACT_EXCHANGE',
         clientMessageId: 'exchange_a',
-        exchangePayload: expect.objectContaining({ kind }),
+        exchangeKind: 'PHONE',
+        exchangeStatus: 'PENDING',
       }),
     });
+    expect(tx.jobConversationMessage.create).toHaveBeenCalledWith({
+      data: expect.not.objectContaining({ exchangePayload: expect.anything() }),
+    });
     expect(gateway.sendToUser).toHaveBeenCalledWith(
-      'merchant_user_a',
+      peerId,
       expect.objectContaining({ type: 'job-message', conversationId: 'conversation_a' }),
     );
   });
 
-  it('交换简历应保存用户当前完整简历快照', async () => {
+  it('会话摘要应返回未出现在首屏消息中的待处理交换类型', async () => {
+    const { service, prisma, conversation, app } = buildService();
+    prisma.jobConversation.findUnique.mockResolvedValue({
+      ...conversation,
+      application: app,
+      messages: [
+        { exchangeKind: 'PHONE' },
+        { exchangeKind: 'RESUME' },
+        { exchangeKind: 'PHONE' },
+      ],
+    });
+
+    await expect(service.getConversation('student_a', 'conversation_a')).resolves.toMatchObject({
+      pendingExchangeKinds: ['PHONE', 'RESUME'],
+    });
+    expect(prisma.jobConversation.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      include: expect.objectContaining({
+        messages: {
+          where: { exchangeStatus: 'PENDING' },
+          select: { exchangeKind: true },
+        },
+      }),
+    }));
+  });
+
+  it('商家发起简历请求后应等待报名用户响应，不能提前返回简历', async () => {
     const { service } = buildService();
 
-    await expect(service.sendExchange('student_a', 'conversation_a', 'RESUME', 'resume_exchange_a')).resolves.toMatchObject({
+    const result = await service.sendExchange('merchant_user_a', 'conversation_a', 'RESUME', 'resume_exchange_a');
+
+    expect(result).toMatchObject({
       type: 'RESUME_EXCHANGE',
+      exchange: { kind: 'RESUME', status: 'PENDING', requesterId: 'merchant_user_a' },
+    });
+    expect(result.exchange).not.toHaveProperty('resume');
+  });
+
+  it.each([
+    ['PHONE', '13700000000', '13800000000'],
+    ['WECHAT', 'student-wechat', 'campus-job'],
+  ] as const)('请求对方接受 %s 后才应生成双方联系方式快照', async (kind, studentValue, merchantValue) => {
+    const { service, prisma, tx, gateway, message, conversation, lockedApp } = buildService();
+    const pending = {
+      ...message,
+      id: 'exchange_message_a',
+      conversationId: conversation.id,
+      senderId: 'student_a',
+      type: 'CONTACT_EXCHANGE',
+      content: kind === 'PHONE' ? '请求交换电话' : '请求交换微信',
+      exchangeKind: kind,
+      exchangeStatus: 'PENDING',
+      exchangeRespondedAt: null,
+      exchangePayload: null,
+      conversation: { ...conversation, application: lockedApp },
+    };
+    prisma.jobConversationMessage.findUnique.mockResolvedValue(pending);
+    tx.jobConversationMessage.findUnique.mockResolvedValue(pending);
+    tx.jobConversationMessage.update.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({ ...pending, ...data }),
+    );
+
+    const result = await service.respondExchange(
+      'merchant_user_a',
+      'conversation_a',
+      'exchange_message_a',
+      'accept',
+    );
+
+    expect(result).toMatchObject({
+      exchange: {
+        kind,
+        status: 'ACCEPTED',
+        requesterId: 'student_a',
+        student: { name: '林同学', value: studentValue },
+        merchant: { name: '校园服务站', value: merchantValue },
+      },
+    });
+    expect(tx.jobConversationMessage.update).toHaveBeenCalledWith({
+      where: { id: 'exchange_message_a' },
+      data: expect.objectContaining({
+        exchangeStatus: 'ACCEPTED',
+        exchangeRespondedAt: expect.any(Date),
+        exchangePayload: expect.objectContaining({ kind }),
+      }),
+    });
+    expect(gateway.sendToUser).toHaveBeenCalledWith(
+      'student_a',
+      expect.objectContaining({ type: 'job-message', conversationId: 'conversation_a' }),
+    );
+  });
+
+  it('报名用户接受商家发起的简历请求后才应生成完整简历快照', async () => {
+    const { service, prisma, tx, message, conversation, lockedApp } = buildService();
+    const pending = {
+      ...message,
+      id: 'resume_request_a',
+      conversationId: conversation.id,
+      senderId: 'merchant_user_a',
+      type: 'RESUME_EXCHANGE',
+      content: '请求交换简历',
+      exchangeKind: 'RESUME',
+      exchangeStatus: 'PENDING',
+      exchangeRespondedAt: null,
+      exchangePayload: null,
+      conversation: { ...conversation, application: lockedApp },
+    };
+    prisma.jobConversationMessage.findUnique.mockResolvedValue(pending);
+    tx.jobConversationMessage.findUnique.mockResolvedValue(pending);
+    tx.jobConversationMessage.update.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({ ...pending, ...data }),
+    );
+
+    await expect(
+      service.respondExchange('student_a', 'conversation_a', 'resume_request_a', 'accept'),
+    ).resolves.toMatchObject({
       exchange: {
         kind: 'RESUME',
+        status: 'ACCEPTED',
         resume: {
           name: '林同学',
           phone: '13700000000',
@@ -521,13 +656,125 @@ describe('JobCommunicationService', () => {
     });
   });
 
-  it('商家不能代替报名用户发起信息交换', async () => {
-    const { service, prisma } = buildService();
+  it('请求对方拒绝时应进入终态且继续不返回交换内容', async () => {
+    const { service, prisma, tx, message, conversation, lockedApp } = buildService();
+    const pending = {
+      ...message,
+      id: 'exchange_message_a',
+      senderId: 'merchant_user_a',
+      type: 'CONTACT_EXCHANGE',
+      content: '请求交换微信',
+      exchangeKind: 'WECHAT',
+      exchangeStatus: 'PENDING',
+      exchangeRespondedAt: null,
+      exchangePayload: null,
+      conversation: { ...conversation, application: lockedApp },
+    };
+    prisma.jobConversationMessage.findUnique.mockResolvedValue(pending);
+    tx.jobConversationMessage.findUnique.mockResolvedValue(pending);
+    tx.jobConversationMessage.update.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({ ...pending, ...data }),
+    );
+
+    const result = await service.respondExchange(
+      'student_a',
+      'conversation_a',
+      'exchange_message_a',
+      'reject',
+    );
+
+    expect(result).toMatchObject({ exchange: { kind: 'WECHAT', status: 'REJECTED' } });
+    expect(result.exchange).not.toHaveProperty('student');
+    expect(result.exchange).not.toHaveProperty('merchant');
+    expect(tx.jobConversationMessage.update).toHaveBeenCalledWith({
+      where: { id: 'exchange_message_a' },
+      data: expect.objectContaining({ exchangeStatus: 'REJECTED' }),
+    });
+  });
+
+  it('相同交换响应重试应幂等返回且不重复推送', async () => {
+    const { service, prisma, tx, gateway, message, conversation, lockedApp } = buildService();
+    const accepted = {
+      ...message,
+      id: 'exchange_message_a',
+      senderId: 'student_a',
+      type: 'CONTACT_EXCHANGE',
+      exchangeKind: 'PHONE',
+      exchangeStatus: 'ACCEPTED',
+      exchangeRespondedAt: new Date('2026-08-27T00:03:00.000Z'),
+      exchangePayload: {
+        kind: 'PHONE',
+        student: { name: '林同学', value: '13700000000' },
+        merchant: { name: '校园服务站', value: '13800000000' },
+      },
+      conversation: { ...conversation, application: lockedApp },
+    };
+    prisma.jobConversationMessage.findUnique.mockResolvedValue(accepted);
+    tx.jobConversationMessage.findUnique.mockResolvedValue(accepted);
 
     await expect(
-      service.sendExchange('merchant_user_a', 'conversation_a', 'PHONE', 'exchange_a'),
+      service.respondExchange('merchant_user_a', 'conversation_a', 'exchange_message_a', 'accept'),
+    ).resolves.toMatchObject({ exchange: { kind: 'PHONE', status: 'ACCEPTED' } });
+    expect(tx.jobConversationMessage.update).not.toHaveBeenCalled();
+    expect(gateway.sendToUser).not.toHaveBeenCalled();
+  });
+
+  it('已接受的交换请求不能反向改为拒绝', async () => {
+    const { service, prisma, message, conversation, lockedApp } = buildService();
+    prisma.jobConversationMessage.findUnique.mockResolvedValue({
+      ...message,
+      id: 'exchange_message_a',
+      senderId: 'student_a',
+      type: 'CONTACT_EXCHANGE',
+      exchangeKind: 'WECHAT',
+      exchangeStatus: 'ACCEPTED',
+      conversation: { ...conversation, application: lockedApp },
+    });
+
+    await expect(
+      service.respondExchange('merchant_user_a', 'conversation_a', 'exchange_message_a', 'reject'),
+    ).rejects.toMatchObject({ bizCode: 40004 });
+  });
+
+  it('交换请求行锁后报名已结束时不得响应', async () => {
+    const { service, prisma, tx, message, conversation, lockedApp } = buildService();
+    const pending = {
+      ...message,
+      id: 'exchange_message_a',
+      senderId: 'student_a',
+      type: 'CONTACT_EXCHANGE',
+      exchangeKind: 'PHONE',
+      exchangeStatus: 'PENDING',
+      conversation: { ...conversation, application: lockedApp },
+    };
+    prisma.jobConversationMessage.findUnique
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce({
+        ...pending,
+        conversation: { ...conversation, application: { ...lockedApp, status: AppStatus.CANCELLED } },
+      });
+
+    await expect(
+      service.respondExchange('merchant_user_a', 'conversation_a', 'exchange_message_a', 'accept'),
+    ).rejects.toMatchObject({ bizCode: 40004 });
+    expect(tx.jobConversationMessage.update).not.toHaveBeenCalled();
+  });
+
+  it('发起方不能响应自己的请求', async () => {
+    const { service, prisma, message, conversation, lockedApp } = buildService();
+    prisma.jobConversationMessage.findUnique.mockResolvedValue({
+      ...message,
+      id: 'exchange_message_a',
+      senderId: 'student_a',
+      type: 'CONTACT_EXCHANGE',
+      exchangeKind: 'PHONE',
+      exchangeStatus: 'PENDING',
+      conversation: { ...conversation, application: lockedApp },
+    });
+
+    await expect(
+      service.respondExchange('student_a', 'conversation_a', 'exchange_message_a', 'accept'),
     ).rejects.toMatchObject({ bizCode: 10003 });
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it.each([AppStatus.CANCELLED, AppStatus.REJECTED])('%s 报名不能继续交换信息', async (status) => {
@@ -551,20 +798,22 @@ describe('JobCommunicationService', () => {
 
   it('交换请求使用同一 clientMessageId 重试时不应重复建消息或推送', async () => {
     const { service, tx, gateway, message } = buildService();
-    const exchangePayload = {
-      kind: 'PHONE',
-      student: { name: '林同学', value: '13700000000' },
-      merchant: { name: '校园服务站', value: '13800000000' },
-    };
-    tx.jobConversationMessage.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
+    const existing = {
         ...message,
         type: 'CONTACT_EXCHANGE',
-        content: '交换电话',
+        content: '请求交换电话',
         clientMessageId: 'exchange_a',
-        exchangePayload,
-      });
+        exchangeKind: 'PHONE',
+        exchangeStatus: 'PENDING',
+        exchangeRespondedAt: null,
+        exchangePayload: null,
+    };
+    let idempotencyLookups = 0;
+    tx.jobConversationMessage.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if (!where.clientMessageId) return Promise.resolve(null);
+      idempotencyLookups += 1;
+      return Promise.resolve(idempotencyLookups === 1 ? null : existing);
+    });
 
     const first = await service.sendExchange('student_a', 'conversation_a', 'PHONE', 'exchange_a');
     const second = await service.sendExchange('student_a', 'conversation_a', 'PHONE', 'exchange_a');
@@ -572,6 +821,51 @@ describe('JobCommunicationService', () => {
     expect(first).toEqual(second);
     expect(tx.jobConversationMessage.create).toHaveBeenCalledTimes(1);
     expect(gateway.sendToUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('同类型已有待处理请求时应复用原请求，不能重复建消息或推送', async () => {
+    const { service, tx, gateway, message } = buildService();
+    const pending = {
+      ...message,
+      id: 'pending_phone_a',
+      senderId: 'merchant_user_a',
+      type: 'CONTACT_EXCHANGE',
+      content: '请求交换电话',
+      clientMessageId: 'merchant_exchange_a',
+      exchangeKind: 'PHONE',
+      exchangeStatus: 'PENDING',
+      exchangeRespondedAt: null,
+      exchangePayload: null,
+    };
+    tx.jobConversationMessage.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) =>
+      Promise.resolve(where.exchangeStatus === 'PENDING' ? pending : null),
+    );
+
+    await expect(
+      service.sendExchange('student_a', 'conversation_a', 'PHONE', 'student_exchange_a'),
+    ).resolves.toMatchObject({ id: 'pending_phone_a', exchange: { status: 'PENDING', requesterId: 'merchant_user_a' } });
+    expect(tx.jobConversationMessage.create).not.toHaveBeenCalled();
+    expect(gateway.sendToUser).not.toHaveBeenCalled();
+  });
+
+  it('历史交换消息缺少新状态字段时应继续按已接受展示', async () => {
+    const { service, prisma, message } = buildService();
+    prisma.jobConversationMessage.findMany.mockResolvedValue([{
+      ...message,
+      type: 'CONTACT_EXCHANGE',
+      exchangeKind: null,
+      exchangeStatus: null,
+      exchangeRespondedAt: null,
+      exchangePayload: {
+        kind: 'WECHAT',
+        student: { name: '林同学', value: 'student-wechat' },
+        merchant: { name: '校园服务站', value: 'campus-job' },
+      },
+    }]);
+
+    await expect(service.listMessages('student_a', 'conversation_a')).resolves.toMatchObject({
+      list: [{ exchange: { kind: 'WECHAT', status: 'ACCEPTED' } }],
+    });
   });
 
   it('消息分页应按时间正序返回，并以本页最旧消息作为下一页游标', async () => {

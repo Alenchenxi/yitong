@@ -149,16 +149,25 @@ export interface JobReviewVo {
 export type JobConversationRole = 'merchant' | 'student';
 export type JobConversationMessageType = 'TEXT' | 'INTERVIEW' | 'CONTACT_EXCHANGE' | 'RESUME_EXCHANGE';
 export type JobExchangeKind = 'PHONE' | 'WECHAT' | 'RESUME';
+export type JobExchangeStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+export type JobExchangeResponseAction = 'accept' | 'reject';
 export type InterviewInvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
-export interface ContactExchangePayload {
-  kind: 'PHONE' | 'WECHAT';
-  student: { name: string; value: string };
-  merchant: { name: string; value: string };
+export interface JobExchangeBase {
+  kind: JobExchangeKind;
+  status: JobExchangeStatus;
+  requesterId: string;
+  respondedAt: string | null;
 }
 
-export interface ResumeExchangePayload {
+export interface ContactExchangePayload extends JobExchangeBase {
+  kind: 'PHONE' | 'WECHAT';
+  student?: { name: string; value: string };
+  merchant?: { name: string; value: string };
+}
+
+export interface ResumeExchangePayload extends JobExchangeBase {
   kind: 'RESUME';
-  resume: {
+  resume?: {
     name: string;
     phone: string;
     wechat: string | null;
@@ -205,6 +214,7 @@ export interface JobConversationVo {
   role: JobConversationRole;
   readOnly: boolean;
   applicationStatus: JobAppVo['status'];
+  pendingExchangeKinds: JobExchangeKind[];
   jobPost: { id: string; title: string; salary: string; location: string };
   peer: { id: string; name: string; avatarUrl: string | null };
   createdAt: string;
@@ -426,6 +436,18 @@ export function sendJobConversationExchange(conversationId: string, kind: JobExc
     method: 'POST',
     data: { kind, clientMessageId },
     silentBizCodes: [40008],
+  });
+}
+
+export function respondJobConversationExchange(
+  conversationId: string,
+  messageId: string,
+  action: JobExchangeResponseAction,
+) {
+  return request<JobConversationMessageVo>({
+    url: `/job-conversations/${conversationId}/exchanges/${messageId}/respond`,
+    method: 'POST',
+    data: { action },
   });
 }
 

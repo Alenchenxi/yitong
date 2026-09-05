@@ -930,6 +930,18 @@ enum JobConversationMessageType {
   RESUME_EXCHANGE
 }
 
+enum JobExchangeKind {
+  PHONE
+  WECHAT
+  RESUME
+}
+
+enum JobExchangeStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 enum InterviewInvitationStatus {
   PENDING
   ACCEPTED
@@ -963,6 +975,9 @@ model JobConversationMessage {
   content               String
   clientMessageId       String?                    @map("client_message_id")
   interviewInvitationId String?                    @unique @map("interview_invitation_id")
+  exchangeKind          JobExchangeKind?           @map("exchange_kind")
+  exchangeStatus        JobExchangeStatus?         @map("exchange_status")
+  exchangeRespondedAt   DateTime?                  @map("exchange_responded_at")
   exchangePayload       Json?                      @map("exchange_payload")
   createdAt             DateTime                   @default(now()) @map("created_at")
   conversation          JobConversation            @relation(fields: [conversationId], references: [id], onDelete: Cascade)

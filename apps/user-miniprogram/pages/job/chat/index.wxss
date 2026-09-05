@@ -276,6 +276,65 @@ button::after {
   margin-left: 12rpx;
 }
 
+.exchange-toolbar {
+  height: 124rpx;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex-shrink: 0;
+  margin-top: 16rpx;
+  padding: 10rpx 24rpx 12rpx;
+  border-top: 1rpx solid #e5e6eb;
+  border-bottom: 1rpx solid #e5e6eb;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.exchange-tool {
+  width: 100%;
+  min-width: 0;
+  height: 100rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  border-radius: 8rpx;
+  background: transparent;
+  color: #4e5969;
+  font-size: 23rpx;
+  line-height: 30rpx;
+}
+
+.exchange-tool:active {
+  background: #f6f7fb;
+}
+
+.exchange-tool.disabled,
+.exchange-tool[disabled] {
+  background: transparent;
+  color: #a9aeb8;
+  opacity: 1;
+}
+
+.exchange-tool-icon {
+  width: 50rpx;
+  height: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 25rpx;
+  background: #fff7d1;
+}
+
+.exchange-tool-icon.pending {
+  background: #f2f3f5;
+}
+
+.exchange-tool-icon image {
+  width: 29rpx;
+  height: 29rpx;
+}
+
 .readonly-banner {
   margin: 16rpx 24rpx 0;
   padding: 14rpx 18rpx;
@@ -684,6 +743,11 @@ button::after {
   background: #fff;
 }
 
+.exchange-card.rejected {
+  border-color: #e5e6eb;
+  background: #fafafa;
+}
+
 .exchange-head {
   display: flex;
   align-items: center;
@@ -739,6 +803,74 @@ button::after {
   color: #008f22;
   font-size: 19rpx;
   line-height: 28rpx;
+}
+
+.exchange-status.pending {
+  background: #fff7d1;
+  color: #8a6500;
+}
+
+.exchange-status.rejected {
+  background: #f2f3f5;
+  color: #86909c;
+}
+
+.exchange-request {
+  padding: 22rpx;
+}
+
+.exchange-request.rejected {
+  background: #fafafa;
+}
+
+.exchange-request-title,
+.exchange-request-copy {
+  display: block;
+}
+
+.exchange-request-title {
+  color: #1d2129;
+  font-size: 25rpx;
+  line-height: 36rpx;
+  font-weight: 600;
+}
+
+.exchange-request-copy {
+  margin-top: 8rpx;
+  color: #86909c;
+  font-size: 22rpx;
+  line-height: 34rpx;
+}
+
+.exchange-response-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 14rpx;
+  margin-top: 20rpx;
+}
+
+.exchange-response {
+  width: 100%;
+  height: 68rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  line-height: 68rpx;
+  font-weight: 600;
+}
+
+.exchange-response.accept {
+  background: #f9c801;
+  color: #1d2129;
+}
+
+.exchange-response.reject {
+  border: 1rpx solid #c9cdd4;
+  background: #fff;
+  color: #4e5969;
+}
+
+.exchange-response[disabled] {
+  opacity: 0.55;
 }
 
 .exchange-row,

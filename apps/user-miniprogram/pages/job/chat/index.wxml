@@ -56,6 +56,25 @@
       </view>
     </view>
 
+    <view class="exchange-toolbar">
+      <button
+        wx:for="{{exchangeActions}}"
+        wx:key="kind"
+        class="exchange-tool {{item.pending || conversation.readOnly || exchanging ? 'disabled' : ''}}"
+        data-kind="{{item.kind}}"
+        disabled="{{item.pending || conversation.readOnly || exchanging}}"
+        bindtap="confirmExchange"
+      >
+        <view class="exchange-tool-icon {{item.pending ? 'pending' : ''}}">
+          <image
+            src="{{item.kind === 'PHONE' ? '/assets/icons/recruitment/phone.svg' : item.kind === 'WECHAT' ? '/assets/icons/recruitment/brand-wechat.svg' : '/assets/icons/recruitment/file-text.svg'}}"
+            mode="aspectFit"
+          ></image>
+        </view>
+        <text>{{item.label}}</text>
+      </button>
+    </view>
+
     <view wx:if="{{readOnlyText}}" class="readonly-banner">
       <image src="/assets/icons/recruitment/info-circle.svg" mode="aspectFit"></image>
       <text>{{readOnlyText}}</text>
@@ -105,7 +124,10 @@
                 <text user-select>{{item.content}}</text>
               </view>
 
-              <view wx:elif="{{item.type === 'CONTACT_EXCHANGE' && item.exchange}}" class="exchange-card">
+              <view
+                wx:elif="{{item.type === 'CONTACT_EXCHANGE' && item.exchange}}"
+                class="exchange-card {{item.exchange.status === 'REJECTED' ? 'rejected' : ''}}"
+              >
                 <view class="exchange-head">
                   <view class="exchange-icon">
                     <image src="{{item.exchange.kind === 'PHONE' ? '/assets/icons/recruitment/phone.svg' : '/assets/icons/recruitment/brand-wechat.svg'}}" mode="aspectFit"></image>
@@ -114,105 +136,177 @@
                     <text class="exchange-kicker">联系方式交换</text>
                     <text class="exchange-title">{{item.exchange.kind === 'PHONE' ? '双方电话' : '双方微信'}}</text>
                   </view>
-                  <text class="exchange-status">已交换</text>
+                  <text class="exchange-status {{item.exchange.status === 'PENDING' ? 'pending' : item.exchange.status === 'REJECTED' ? 'rejected' : ''}}">
+                    {{item.exchange.status === 'PENDING' ? (item.mine ? '等待对方' : '待你处理') : item.exchange.status === 'REJECTED' ? '已拒绝' : '已交换'}}
+                  </text>
                 </view>
-                <view class="exchange-row">
-                  <view class="exchange-party">
-                    <text class="exchange-role">报名用户</text>
-                    <text class="exchange-name">{{item.exchange.student.name}}</text>
-                  </view>
-                  <text class="exchange-value" user-select>{{item.exchange.student.value}}</text>
-                  <view
-                    wx:if="{{item.exchange.kind === 'PHONE'}}"
-                    class="exchange-action"
-                    data-value="{{item.exchange.student.value}}"
-                    catchtap="callExchangePhone"
-                  >
-                    <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit"></image>
-                    <text>拨打</text>
-                  </view>
-                  <view
-                    wx:else
-                    class="exchange-action"
-                    data-value="{{item.exchange.student.value}}"
-                    catchtap="copyMeetingValue"
-                  >
-                    <image src="/assets/icons/recruitment/copy.svg" mode="aspectFit"></image>
-                    <text>复制</text>
-                  </view>
-                </view>
-                <view class="exchange-row">
-                  <view class="exchange-party">
-                    <text class="exchange-role">招聘方</text>
-                    <text class="exchange-name">{{item.exchange.merchant.name}}</text>
-                  </view>
-                  <text class="exchange-value" user-select>{{item.exchange.merchant.value}}</text>
-                  <view
-                    wx:if="{{item.exchange.kind === 'PHONE'}}"
-                    class="exchange-action"
-                    data-value="{{item.exchange.merchant.value}}"
-                    catchtap="callExchangePhone"
-                  >
-                    <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit"></image>
-                    <text>拨打</text>
-                  </view>
-                  <view
-                    wx:else
-                    class="exchange-action"
-                    data-value="{{item.exchange.merchant.value}}"
-                    catchtap="copyMeetingValue"
-                  >
-                    <image src="/assets/icons/recruitment/copy.svg" mode="aspectFit"></image>
-                    <text>复制</text>
+
+                <view wx:if="{{item.exchange.status === 'PENDING'}}" class="exchange-request">
+                  <text class="exchange-request-title">
+                    {{item.mine ? '交换请求已发送' : '对方申请交换' + (item.exchange.kind === 'PHONE' ? '电话' : '微信')}}
+                  </text>
+                  <text class="exchange-request-copy">
+                    {{item.mine ? '对方同意后，双方信息才会显示并可使用。' : '同意后双方信息会同时显示，你也可以拒绝本次交换。'}}
+                  </text>
+                  <view wx:if="{{!item.mine}}" class="exchange-response-actions">
+                    <button
+                      class="exchange-response reject"
+                      data-id="{{item.id}}"
+                      data-action="reject"
+                      disabled="{{respondingExchangeId === item.id}}"
+                      catchtap="respondExchange"
+                    >拒绝</button>
+                    <button
+                      class="exchange-response accept"
+                      data-id="{{item.id}}"
+                      data-action="accept"
+                      disabled="{{respondingExchangeId === item.id}}"
+                      catchtap="respondExchange"
+                    >同意交换</button>
                   </view>
                 </view>
+
+                <view wx:elif="{{item.exchange.status === 'REJECTED'}}" class="exchange-request rejected">
+                  <text class="exchange-request-title">交换请求已拒绝</text>
+                  <text class="exchange-request-copy">本次未交换任何信息，双方资料仍保持隐藏。</text>
+                </view>
+
+                <block wx:elif="{{item.exchange.student && item.exchange.merchant}}">
+                  <view class="exchange-row">
+                    <view class="exchange-party">
+                      <text class="exchange-role">报名用户</text>
+                      <text class="exchange-name">{{item.exchange.student.name}}</text>
+                    </view>
+                    <text class="exchange-value" user-select>{{item.exchange.student.value}}</text>
+                    <view
+                      wx:if="{{item.exchange.kind === 'PHONE'}}"
+                      class="exchange-action"
+                      data-value="{{item.exchange.student.value}}"
+                      catchtap="callExchangePhone"
+                    >
+                      <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit"></image>
+                      <text>拨打</text>
+                    </view>
+                    <view
+                      wx:else
+                      class="exchange-action"
+                      data-value="{{item.exchange.student.value}}"
+                      catchtap="copyMeetingValue"
+                    >
+                      <image src="/assets/icons/recruitment/copy.svg" mode="aspectFit"></image>
+                      <text>复制</text>
+                    </view>
+                  </view>
+                  <view class="exchange-row">
+                    <view class="exchange-party">
+                      <text class="exchange-role">招聘方</text>
+                      <text class="exchange-name">{{item.exchange.merchant.name}}</text>
+                    </view>
+                    <text class="exchange-value" user-select>{{item.exchange.merchant.value}}</text>
+                    <view
+                      wx:if="{{item.exchange.kind === 'PHONE'}}"
+                      class="exchange-action"
+                      data-value="{{item.exchange.merchant.value}}"
+                      catchtap="callExchangePhone"
+                    >
+                      <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit"></image>
+                      <text>拨打</text>
+                    </view>
+                    <view
+                      wx:else
+                      class="exchange-action"
+                      data-value="{{item.exchange.merchant.value}}"
+                      catchtap="copyMeetingValue"
+                    >
+                      <image src="/assets/icons/recruitment/copy.svg" mode="aspectFit"></image>
+                      <text>复制</text>
+                    </view>
+                  </view>
+                </block>
               </view>
 
-              <view wx:elif="{{item.type === 'RESUME_EXCHANGE' && item.exchange}}" class="exchange-card resume-exchange-card">
+              <view
+                wx:elif="{{item.type === 'RESUME_EXCHANGE' && item.exchange}}"
+                class="exchange-card resume-exchange-card {{item.exchange.status === 'REJECTED' ? 'rejected' : ''}}"
+              >
                 <view class="exchange-head">
                   <view class="exchange-icon">
                     <image src="/assets/icons/recruitment/file-text.svg" mode="aspectFit"></image>
                   </view>
                   <view class="exchange-heading">
                     <text class="exchange-kicker">简历交换</text>
-                    <text class="exchange-title">{{item.exchange.resume.name}}的简历</text>
+                    <text wx:if="{{item.exchange.status === 'ACCEPTED' && item.exchange.resume}}" class="exchange-title">{{item.exchange.resume.name}}的简历</text>
+                    <text wx:else class="exchange-title">完整简历申请</text>
                   </view>
-                  <text class="exchange-status">已发送</text>
+                  <text class="exchange-status {{item.exchange.status === 'PENDING' ? 'pending' : item.exchange.status === 'REJECTED' ? 'rejected' : ''}}">
+                    {{item.exchange.status === 'PENDING' ? (item.mine ? '等待对方' : '待你处理') : item.exchange.status === 'REJECTED' ? '已拒绝' : '已交换'}}
+                  </text>
                 </view>
-                <view class="resume-exchange-row">
-                  <text class="resume-exchange-label">电话</text>
-                  <text class="resume-exchange-value" user-select>{{item.exchange.resume.phone}}</text>
-                  <view class="exchange-action" data-value="{{item.exchange.resume.phone}}" catchtap="callExchangePhone">
-                    <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit"></image>
-                    <text>拨打</text>
+
+                <view wx:if="{{item.exchange.status === 'PENDING'}}" class="exchange-request">
+                  <text class="exchange-request-title">{{item.mine ? '简历交换请求已发送' : '对方申请交换完整简历'}}</text>
+                  <text class="exchange-request-copy">
+                    {{item.mine ? '对方同意后，报名用户的当前完整简历才会显示。' : '同意后将向双方展示报名用户的当前完整简历。'}}
+                  </text>
+                  <view wx:if="{{!item.mine}}" class="exchange-response-actions">
+                    <button
+                      class="exchange-response reject"
+                      data-id="{{item.id}}"
+                      data-action="reject"
+                      disabled="{{respondingExchangeId === item.id}}"
+                      catchtap="respondExchange"
+                    >拒绝</button>
+                    <button
+                      class="exchange-response accept"
+                      data-id="{{item.id}}"
+                      data-action="accept"
+                      disabled="{{respondingExchangeId === item.id}}"
+                      catchtap="respondExchange"
+                    >同意交换</button>
                   </view>
                 </view>
-                <view wx:if="{{item.exchange.resume.wechat}}" class="resume-exchange-row">
-                  <text class="resume-exchange-label">微信</text>
-                  <text class="resume-exchange-value" user-select>{{item.exchange.resume.wechat}}</text>
-                  <view class="exchange-action" data-value="{{item.exchange.resume.wechat}}" catchtap="copyMeetingValue">
-                    <image src="/assets/icons/recruitment/copy.svg" mode="aspectFit"></image>
-                    <text>复制</text>
+
+                <view wx:elif="{{item.exchange.status === 'REJECTED'}}" class="exchange-request rejected">
+                  <text class="exchange-request-title">简历交换请求已拒绝</text>
+                  <text class="exchange-request-copy">本次未公开报名用户的简历内容。</text>
+                </view>
+
+                <block wx:elif="{{item.exchange.resume}}">
+                  <view class="resume-exchange-row">
+                    <text class="resume-exchange-label">电话</text>
+                    <text class="resume-exchange-value" user-select>{{item.exchange.resume.phone}}</text>
+                    <view class="exchange-action" data-value="{{item.exchange.resume.phone}}" catchtap="callExchangePhone">
+                      <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit"></image>
+                      <text>拨打</text>
+                    </view>
                   </view>
-                </view>
-                <view wx:if="{{item.exchange.resume.skills.length}}" class="resume-exchange-block">
-                  <text class="resume-exchange-label">技能</text>
-                  <view class="resume-exchange-tags">
-                    <text wx:for="{{item.exchange.resume.skills}}" wx:key="*this" wx:for-item="skill">{{skill}}</text>
+                  <view wx:if="{{item.exchange.resume.wechat}}" class="resume-exchange-row">
+                    <text class="resume-exchange-label">微信</text>
+                    <text class="resume-exchange-value" user-select>{{item.exchange.resume.wechat}}</text>
+                    <view class="exchange-action" data-value="{{item.exchange.resume.wechat}}" catchtap="copyMeetingValue">
+                      <image src="/assets/icons/recruitment/copy.svg" mode="aspectFit"></image>
+                      <text>复制</text>
+                    </view>
                   </view>
-                </view>
-                <view wx:if="{{item.exchange.resume.availabilities.length}}" class="resume-exchange-block">
-                  <text class="resume-exchange-label">空闲时间</text>
-                  <text class="resume-exchange-copy">{{item.exchange.resume.availabilities}}</text>
-                </view>
-                <view wx:if="{{item.exchange.resume.selfIntro}}" class="resume-exchange-block">
-                  <text class="resume-exchange-label">自我介绍</text>
-                  <text class="resume-exchange-copy">{{item.exchange.resume.selfIntro}}</text>
-                </view>
-                <view wx:if="{{item.exchange.resume.experience}}" class="resume-exchange-block">
-                  <text class="resume-exchange-label">工作经历</text>
-                  <text class="resume-exchange-copy">{{item.exchange.resume.experience}}</text>
-                </view>
+                  <view wx:if="{{item.exchange.resume.skills.length}}" class="resume-exchange-block">
+                    <text class="resume-exchange-label">技能</text>
+                    <view class="resume-exchange-tags">
+                      <text wx:for="{{item.exchange.resume.skills}}" wx:key="*this" wx:for-item="skill">{{skill}}</text>
+                    </view>
+                  </view>
+                  <view wx:if="{{item.exchange.resume.availabilities.length}}" class="resume-exchange-block">
+                    <text class="resume-exchange-label">空闲时间</text>
+                    <text class="resume-exchange-copy">{{item.exchange.resume.availabilities}}</text>
+                  </view>
+                  <view wx:if="{{item.exchange.resume.selfIntro}}" class="resume-exchange-block">
+                    <text class="resume-exchange-label">自我介绍</text>
+                    <text class="resume-exchange-copy">{{item.exchange.resume.selfIntro}}</text>
+                  </view>
+                  <view wx:if="{{item.exchange.resume.experience}}" class="resume-exchange-block">
+                    <text class="resume-exchange-label">工作经历</text>
+                    <text class="resume-exchange-copy">{{item.exchange.resume.experience}}</text>
+                  </view>
+                </block>
               </view>
 
               <view
@@ -341,37 +435,17 @@
       </view>
     </scroll-view>
 
-    <view wx:if="{{extensionOpen}}" class="extension-panel">
-      <view wx:if="{{conversation.role === 'merchant'}}" class="extension-item" bindtap="openInvitation">
+    <view wx:if="{{extensionOpen && conversation.role === 'merchant'}}" class="extension-panel">
+      <view class="extension-item" bindtap="openInvitation">
         <view class="extension-icon">
           <image src="/assets/icons/recruitment/calendar-event.svg" mode="aspectFit"></image>
         </view>
         <text>邀请面试</text>
       </view>
-      <block wx:else>
-        <view class="extension-item {{exchanging ? 'disabled' : ''}}" data-kind="PHONE" bindtap="confirmExchange">
-          <view class="extension-icon">
-            <image src="/assets/icons/recruitment/phone.svg" mode="aspectFit"></image>
-          </view>
-          <text>交换电话</text>
-        </view>
-        <view class="extension-item {{exchanging ? 'disabled' : ''}}" data-kind="WECHAT" bindtap="confirmExchange">
-          <view class="extension-icon">
-            <image src="/assets/icons/recruitment/brand-wechat.svg" mode="aspectFit"></image>
-          </view>
-          <text>交换微信</text>
-        </view>
-        <view class="extension-item {{exchanging ? 'disabled' : ''}}" data-kind="RESUME" bindtap="confirmExchange">
-          <view class="extension-icon">
-            <image src="/assets/icons/recruitment/file-text.svg" mode="aspectFit"></image>
-          </view>
-          <text>交换简历</text>
-        </view>
-      </block>
     </view>
 
     <view wx:if="{{!conversation.readOnly}}" class="composer">
-      <button class="icon-button extension-button {{extensionOpen ? 'active' : ''}}" bindtap="toggleExtension">
+      <button wx:if="{{conversation.role === 'merchant'}}" class="icon-button extension-button {{extensionOpen ? 'active' : ''}}" bindtap="toggleExtension">
         <image wx:if="{{extensionOpen}}" src="/assets/icons/recruitment/x.svg" mode="aspectFit"></image>
         <image wx:else src="/assets/icons/recruitment/plus.svg" mode="aspectFit"></image>
       </button>

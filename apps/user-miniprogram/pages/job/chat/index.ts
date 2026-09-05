@@ -5,12 +5,14 @@ import {
   getJobConversation,
   listJobConversationMessages,
   parseTencentMeeting,
+  respondJobConversationExchange,
   respondInterviewInvitation,
   sendInterviewInvitation,
   sendJobConversationExchange,
   sendJobConversationMessage,
   type InterviewInvitationVo,
   type JobExchangeKind,
+  type JobExchangeResponseAction,
   type JobConversationMessageVo,
   type JobConversationVo,
 } from '../../../services/job';
@@ -32,6 +34,12 @@ interface ChatMessage extends JobConversationMessageVo {
   dayText: string;
   showDay: boolean;
   sendState: SendState;
+}
+
+interface ExchangeActionItem {
+  kind: JobExchangeKind;
+  label: string;
+  pending: boolean;
 }
 
 type RequiredMeetingField = 'meetingUrl' | 'title' | 'meetingDate' | 'meetingTime' | 'interviewerName';
@@ -57,6 +65,15 @@ const READ_ONLY_TEXT: Record<string, string> = {
   CANCELLED: '报名已取消，仅可查看历史消息',
   REJECTED: '报名已结束，仅可查看历史消息',
 };
+
+const EXCHANGE_ACTION_LABELS: Record<JobExchangeKind, string> = {
+  PHONE: '交换电话',
+  WECHAT: '交换微信',
+  RESUME: '交换简历',
+};
+
+const DEFAULT_EXCHANGE_ACTIONS: ExchangeActionItem[] = (['PHONE', 'WECHAT', 'RESUME'] as JobExchangeKind[])
+  .map((kind) => ({ kind, label: EXCHANGE_ACTION_LABELS[kind], pending: false }));
 
 function pad(value: number) {
   return value.toString().padStart(2, '0');
@@ -109,6 +126,8 @@ Page({
     canSend: false,
     sending: false,
     exchanging: false,
+    respondingExchangeId: '',
+    exchangeActions: DEFAULT_EXCHANGE_ACTIONS.map((item) => ({ ...item })) as ExchangeActionItem[],
     scrollIntoView: '',
     extensionOpen: false,
     invitationOpen: false,
@@ -209,8 +228,10 @@ Page({
   async loadInitialMessages() {
     const page = await listJobConversationMessages(this.data.conversationId);
     if (this.destroyed) return;
+    const messages = this.decorateMessages(page.list);
     this.setData({
-      messages: this.decorateMessages(page.list),
+      messages,
+      exchangeActions: this.buildExchangeActions(messages, this.data.conversation?.pendingExchangeKinds),
       hasMore: page.hasMore,
       nextCursor: page.nextCursor ?? '',
     }, () => this.scrollToBottom(false));
@@ -224,8 +245,10 @@ Page({
       const page = await listJobConversationMessages(this.data.conversationId, this.data.nextCursor);
       if (this.destroyed) return;
       const merged = this.mergeMessageValues(page.list, this.data.messages);
+      const messages = this.decorateMessages(merged);
       this.setData({
-        messages: this.decorateMessages(merged),
+        messages,
+        exchangeActions: this.buildExchangeActions(messages, this.data.conversation?.pendingExchangeKinds),
         hasMore: page.hasMore,
         nextCursor: page.nextCursor ?? '',
         scrollIntoView: previousFirst,
@@ -280,7 +303,11 @@ Page({
   mergeMessages(incoming: JobConversationMessageVo[], scroll: boolean) {
     if (!incoming.length) return;
     const merged = this.mergeMessageValues(incoming, this.data.messages);
-    this.setData({ messages: this.decorateMessages(merged) }, () => {
+    const messages = this.decorateMessages(merged);
+    this.setData({
+      messages,
+      exchangeActions: this.buildExchangeActions(messages, this.data.conversation?.pendingExchangeKinds),
+    }, () => {
       if (scroll) this.scrollToBottom(true);
     });
   },
@@ -308,6 +335,20 @@ Page({
         dayText: dayText(item.createdAt),
         showDay: currentDay !== previousDay,
         sendState: local ? (previousUi?.sendState ?? 'sending') : 'sent',
+      };
+    });
+  },
+
+  buildExchangeActions(messages: ChatMessage[], serverPendingKinds: JobExchangeKind[] = []): ExchangeActionItem[] {
+    return DEFAULT_EXCHANGE_ACTIONS.map((action) => {
+      const latest = [...messages].reverse().find((message) => message.exchange?.kind === action.kind);
+      const pending = latest
+        ? latest.exchange?.status === 'PENDING'
+        : serverPendingKinds.includes(action.kind);
+      return {
+        ...action,
+        label: pending ? '请求中' : EXCHANGE_ACTION_LABELS[action.kind],
+        pending,
       };
     });
   },
@@ -393,19 +434,29 @@ Page({
 
   confirmExchange(event: WechatMiniprogram.TouchEvent) {
     const kind = event.currentTarget.dataset.kind as JobExchangeKind;
-    if (!['PHONE', 'WECHAT', 'RESUME'].includes(kind) || this.data.exchanging) return;
+    const conversation = this.data.conversation;
+    const action = this.data.exchangeActions.find((item) => item.kind === kind);
+    if (!conversation || conversation.readOnly || !['PHONE', 'WECHAT', 'RESUME'].includes(kind)
+      || action?.pending || this.data.exchanging) return;
+    const isMerchant = conversation.role === 'merchant';
     const prompts: Record<JobExchangeKind, { title: string; content: string }> = {
       PHONE: {
         title: '交换电话',
-        content: '确认将你在简历中设置的电话与招聘方岗位电话发送到当前聊天？',
+        content: isMerchant
+          ? '向候选人发起电话交换请求？对方同意后，双方电话才会显示并可拨打。'
+          : '向招聘方发起电话交换请求？对方同意后，双方电话才会显示并可拨打。',
       },
       WECHAT: {
         title: '交换微信',
-        content: '确认将你在简历中设置的微信与招聘方岗位微信发送到当前聊天？',
+        content: isMerchant
+          ? '向候选人发起微信交换请求？对方同意后，双方微信才会显示并可复制。'
+          : '向招聘方发起微信交换请求？对方同意后，双方微信才会显示并可复制。',
       },
       RESUME: {
         title: '交换简历',
-        content: '确认将当前完整简历发送给招聘方？发送后本次快照会保留在聊天记录中。',
+        content: isMerchant
+          ? '请求查看候选人的当前完整简历？对方同意后才会展示。'
+          : '请求向招聘方发送当前完整简历？对方同意后才会展示。',
       },
     };
     const prompt = prompts[kind];
@@ -422,17 +473,17 @@ Page({
 
   async submitExchange(kind: JobExchangeKind) {
     const conversation = this.data.conversation;
-    if (!conversation || conversation.role !== 'student' || conversation.readOnly || this.data.exchanging) return;
+    if (!conversation || conversation.readOnly || this.data.exchanging) return;
     this.setData({ exchanging: true });
     try {
       const message = await sendJobConversationExchange(conversation.id, kind, createClientMessageId());
       this.mergeMessages([message], true);
-      wx.showToast({ title: '已发送', icon: 'success' });
+      wx.showToast({ title: '请求已发送', icon: 'success' });
     } catch (error) {
       const apiError = error as { code?: number; message?: string };
       if (apiError.code !== 40008) return;
       const message = apiError.message || '交换信息未配置';
-      if (!message.includes('我的简历')) {
+      if (conversation.role !== 'student' || !message.includes('报名用户')) {
         wx.showToast({ title: message, icon: 'none' });
         return;
       }
@@ -446,6 +497,22 @@ Page({
       });
     } finally {
       this.setData({ exchanging: false });
+    }
+  },
+
+  async respondExchange(event: WechatMiniprogram.TouchEvent) {
+    const messageId = String(event.currentTarget.dataset.id ?? '');
+    const action = event.currentTarget.dataset.action as JobExchangeResponseAction;
+    if (!messageId || !['accept', 'reject'].includes(action) || this.data.respondingExchangeId) return;
+    const message = this.data.messages.find((item) => item.id === messageId);
+    if (!message?.exchange || message.mine || message.exchange.status !== 'PENDING') return;
+    this.setData({ respondingExchangeId: messageId });
+    try {
+      const updated = await respondJobConversationExchange(this.data.conversationId, messageId, action);
+      this.mergeMessages([updated], false);
+      wx.showToast({ title: action === 'accept' ? '已同意' : '已拒绝', icon: 'success' });
+    } finally {
+      this.setData({ respondingExchangeId: '' });
     }
   },
 

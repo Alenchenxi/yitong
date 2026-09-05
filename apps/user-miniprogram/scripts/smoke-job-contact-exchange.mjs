@@ -38,13 +38,13 @@ assert.match(
 );
 assert.match(
   communicationService,
-  /assertStudent\(actorId, conversation\.application\)[\s\S]*lockApplication[\s\S]*assertStudent\(actorId, lockedConversation\.application\)/,
-  'exchange must check the student role before and after locking the application',
+  /assertParticipant\(actorId, conversation\.application\)[\s\S]*lockApplication[\s\S]*assertParticipant\(actorId, lockedConversation\.application\)/,
+  'both conversation participants must be able to request an exchange',
 );
 assert.match(
   communicationService,
-  /tx\.resume\.findUnique\(\{ where: \{ userId: actorId \} \}\)/,
-  'student exchange data must be read from the current resume',
+  /tx\.resume\.findUnique\(\{ where: \{ userId: lockedConversation\.studentId \} \}\)/,
+  'exchange data must always read the applicant current resume regardless of requester',
 );
 assert.match(
   communicationService,
@@ -53,9 +53,15 @@ assert.match(
 );
 assert.match(
   communicationService,
-  /exchangePayload: exchangePayload as Prisma\.InputJsonValue/,
-  'the generated exchange snapshot must be persisted',
+  /exchangeStatus: JobExchangeStatus\.PENDING/,
+  'new exchanges must start pending',
 );
+assert.match(
+  communicationService,
+  /respondExchange[\s\S]*exchangeStatus: targetStatus[\s\S]*exchangePayload[,}]/,
+  'only an explicit response may persist the unlocked exchange snapshot',
+);
+assert.match(communicationController, /exchanges\/:messageId\/respond/, 'exchange response endpoint must be registered');
 
 assert.match(jobApi, /data: \{ kind, clientMessageId \}/, 'the client may send only exchange kind and idempotency key');
 assert.doesNotMatch(
@@ -66,17 +72,31 @@ assert.doesNotMatch(
 assert.match(resumeTs, /wechat: this\.data\.wechat\.trim\(\) \|\| undefined/, 'resume save must include configured WeChat');
 assert.match(resumeWxml, /data-field="wechat"/, 'resume page must expose a WeChat input');
 
-for (const kind of ['PHONE', 'WECHAT', 'RESUME']) {
-  assert.match(chatWxml, new RegExp(`data-kind="${kind}"`), `chat extension must expose ${kind}`);
-}
+assert.match(chatTs, /\['PHONE', 'WECHAT', 'RESUME'\]/, 'chat must expose all three exchange actions');
+assert.match(chatWxml, /class="exchange-toolbar"[\s\S]*data-kind="\{\{item\.kind\}\}"/, 'exchange actions must be placed in the top toolbar');
 assert.match(chatTs, /wx\.showModal\(\{[\s\S]*confirmText: '确认交换'/, 'exchange must require explicit confirmation');
 assert.match(chatTs, /sendJobConversationExchange\(conversation\.id, kind, createClientMessageId\(\)\)/, 'confirmed exchange must use a unique idempotency key');
+assert.match(chatTs, /respondJobConversationExchange/, 'chat must support accepting or rejecting exchange requests');
+assert.match(
+  chatTs,
+  /serverPendingKinds\.includes\(action\.kind\)/,
+  'top toolbar must preserve pending state when a request is outside the first message page',
+);
+assert.doesNotMatch(
+  chatTs,
+  /if \(!conversation \|\| conversation\.role !== 'student' \|\| conversation\.readOnly/,
+  'merchant must also be able to initiate exchanges',
+);
 assert.match(chatWxml, /item\.type === 'CONTACT_EXCHANGE'/, 'chat must render contact exchange cards');
 assert.match(chatWxml, /item\.type === 'RESUME_EXCHANGE'/, 'chat must render resume exchange cards');
+assert.match(chatWxml, /data-action="accept"/, 'pending exchange cards must expose accept');
+assert.match(chatWxml, /data-action="reject"/, 'pending exchange cards must expose reject');
+assert.match(chatWxml, /item\.exchange\.status === 'PENDING'/, 'pending exchanges must render without unlocked details');
+assert.match(chatWxml, /item\.exchange\.status === 'REJECTED'/, 'rejected exchanges must keep a terminal card');
 assert.match(chatWxml, /catchtap="callExchangePhone"/, 'phone cards must support direct calls');
 assert.match(chatWxml, /catchtap="copyMeetingValue"/, 'WeChat cards must support copying');
 assert.match(chatWxss, /\.message-stack\.rich-stack[\s\S]*width: 570rpx/, 'structured cards must use a stable width');
-assert.match(chatWxss, /\.extension-panel[\s\S]*display: flex/, 'exchange actions must use a stable horizontal layout');
+assert.match(chatWxss, /\.exchange-toolbar[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, 'top exchange actions must use a stable three-column layout');
 
 assert.match(
   applyTs,
