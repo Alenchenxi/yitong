@@ -70,15 +70,17 @@ model UserRole {
 }
 
 model AnonymousProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique @map("user_id")
-  anonId          String   @unique @map("anon_id")
+  id              String       @id @default(cuid())
+  userId          String       @unique @map("user_id")
+  anonId          String       @unique @map("anon_id")
   nickname        String
-  avatar          String?  @map("avatar") // P0-12 匿名头像（预设 key 或 URL）
-  personalityTags String[] @default([]) @map("personality_tags") // P0-12 个性标签（P1-13 从 AnonTag 库选）
-  interestTags    String[] @default([]) @map("interest_tags") // P0-12 兴趣标签（P1-13 从 AnonTag 库选）
-  moodState       String?  @map("mood_state") // P0-12 心情状态
-  createdAt       DateTime @default(now()) @map("created_at")
+  avatar          String?      @map("avatar") // P0-12 匿名头像（预设 key 或 URL）
+  personalityTags String[]     @default([]) @map("personality_tags") // P0-12 个性标签（P1-13 从 AnonTag 库选）
+  interestTags    String[]     @default([]) @map("interest_tags") // P0-12 兴趣标签（P1-13 从 AnonTag 库选）
+  moodState       String?      @map("mood_state") // P0-12 心情状态
+  createdAt       DateTime     @default(now()) @map("created_at")
+  following       AnonFollow[] @relation("AnonFollowFollower")
+  followers       AnonFollow[] @relation("AnonFollowFollowee")
 
   @@map("anonymous_profiles")
 }
@@ -403,6 +405,21 @@ model AnonBlock {
   @@index([blockerAnonId])
   @@index([blockedAnonId])
   @@map("anon_blocks")
+}
+
+// P2-55 树洞匿名关注：仅保存两侧 anonId，禁止写入真实用户字段
+model AnonFollow {
+  id             String           @id @default(cuid())
+  followerAnonId String           @map("follower_anon_id")
+  followeeAnonId String           @map("followee_anon_id")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  follower       AnonymousProfile @relation("AnonFollowFollower", fields: [followerAnonId], references: [anonId], onDelete: Cascade, onUpdate: Cascade)
+  followee       AnonymousProfile @relation("AnonFollowFollowee", fields: [followeeAnonId], references: [anonId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([followerAnonId, followeeAnonId])
+  @@index([followerAnonId, createdAt])
+  @@index([followeeAnonId, createdAt])
+  @@map("anon_follows")
 }
 
 model ChatMatch {

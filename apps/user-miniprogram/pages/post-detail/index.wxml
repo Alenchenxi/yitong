@@ -2,17 +2,25 @@
   <!-- 详情头：头像昵称时间 + 正文 + 图 -->
   <view class="detail-card">
     <view class="header">
-      <image wx:if="{{post.authorAvatarUrl}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
-      <view wx:else class="avatar avatar-ph">{{post.authorNickname[0]}}</view>
-      <view class="meta">
-        <view class="nickname">
-          {{post.authorNickname}}
-          <text class="yt-platform-badge" wx:if="{{post.platformPublished}}">平台发布</text>
-          <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
-          <text class="boost-badge" wx:if="{{post.boosted}}">推广</text>
+      <view class="author-hit" wx:if="{{!post.isAnonymous}}" data-id="{{post.authorId}}" catchtap="openUserProfile">
+        <image wx:if="{{post.authorAvatarUrl}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
+        <view wx:else class="avatar avatar-ph">{{post.authorNickname[0]}}</view>
+        <view class="meta">
+          <view class="nickname">
+            {{post.authorNickname}}
+            <text class="yt-platform-badge" wx:if="{{post.platformPublished}}">平台发布</text>
+            <text class="boost-badge" wx:if="{{post.boosted}}">推广</text>
+          </view>
+          <view class="time">{{post.timeText}}</view>
         </view>
-        <view class="time">{{post.timeText}}</view>
       </view>
+      <block wx:else>
+        <view class="avatar avatar-ph">{{post.authorNickname[0]}}</view>
+        <view class="meta">
+          <view class="nickname">{{post.authorNickname}}<text class="anon-badge">匿名</text></view>
+          <view class="time">{{post.timeText}}</view>
+        </view>
+      </block>
       <view class="follow-btn {{post.following ? 'followed' : ''}}" wx:if="{{!post.isAnonymous}}" catchtap="onFollow">{{post.following ? '已关注' : '关注'}}</view>
     </view>
     <view class="content">{{post.content}}</view>
@@ -51,12 +59,12 @@
   <view class="comments">
     <view class="comments-title">评论 ({{post.commentCount}})</view>
     <view class="comment {{anchorId === item.id ? 'anchor' : ''}}" id="c-{{item.id}}" wx:for="{{commentList}}" wx:key="id">
-      <view class="c-avatar">
+      <view class="c-avatar" data-id="{{item.authorId}}" catchtap="openUserProfile">
         <text class="c-ph">{{item.authorNickname[0]}}</text>
       </view>
       <view class="c-main">
         <view class="c-head">
-          <text class="c-nick">{{item.authorNickname}}</text>
+          <text class="c-nick" data-id="{{item.authorId}}" catchtap="openUserProfile">{{item.authorNickname}}</text>
           <text class="c-pin" wx:if="{{item.pinned}}">置顶</text>
           <text class="c-time">{{item.timeText}}</text>
         </view>
@@ -71,7 +79,7 @@
         <view class="replies" wx:if="{{item.replies.length}}">
           <view class="reply {{anchorId === r.id ? 'anchor' : ''}}" id="c-{{r.id}}" wx:for="{{item.replies}}" wx:for-item="r" wx:key="id">
             <view class="reply-main">
-              <text class="r-nick">{{r.authorNickname}}</text>
+              <text class="r-nick" data-id="{{r.authorId}}" catchtap="openUserProfile">{{r.authorNickname}}</text>
               <text class="r-reply-to" wx:if="{{r.replyToNickname}}"> 回复 {{r.replyToNickname}}</text>
               <text class="r-content">：{{r.content}}</text>
             </view>

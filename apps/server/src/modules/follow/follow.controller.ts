@@ -25,6 +25,17 @@ export class FollowController {
   }
 
   // ===== 动态段路由 =====
+  // P2-55 表白墙实名用户主页
+  @Get(':id/profile')
+  async profile(
+    @Param('id') id: string,
+    @Query() q: FollowListQueryDto,
+    @Req() req: Request,
+  ) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.follow.getProfile(uid, id, q.page ?? 1, q.pageSize ?? 20));
+  }
+
   // 关注/取关 toggle
   @Post(':id/follow')
   async toggle(@Param('id') id: string, @Req() req: Request) {

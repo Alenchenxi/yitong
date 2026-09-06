@@ -103,4 +103,12 @@ Page({
       wx.showToast({ title: '操作失败', icon: 'none' });
     }
   },
+
+  openUserProfile(e: WechatMiniprogram.TouchEvent) {
+    const userId = e.currentTarget.dataset.id as string;
+    if (!userId) return;
+    wx.navigateTo({
+      url: `/pages/user-profile/index?id=${encodeURIComponent(userId)}`,
+    });
+  },
 });

@@ -5,6 +5,7 @@ import {
   hasAnonToken,
   listAnonAuthorPosts,
   startAnonAuthorChat,
+  toggleAnonAuthorFollow,
   toggleAnonPostLike,
   type AnonAuthorVo,
   type AnonPostVo,
@@ -29,6 +30,7 @@ Page({
     loading: true,
     loadingMore: false,
     chatting: false,
+    followLoading: false,
     loadFailed: false,
   },
 
@@ -147,6 +149,24 @@ Page({
     } finally {
       wx.hideLoading();
       this.setData({ chatting: false });
+    }
+  },
+
+  async toggleFollow() {
+    if (this.data.followLoading || this.data.author?.isSelf || !this.data.author) return;
+    const previous = this.data.author;
+    this.setData({ followLoading: true });
+    try {
+      const result = await toggleAnonAuthorFollow(this.data.anonId);
+      this.setData({
+        'author.following': result.following,
+        'author.followerCount': result.followerCount,
+      });
+      wx.showToast({ title: result.following ? '已关注' : '已取消关注', icon: 'none' });
+    } catch {
+      this.setData({ author: previous });
+    } finally {
+      this.setData({ followLoading: false });
     }
   },
 });

@@ -35,6 +35,7 @@
   color: var(--yt-text-sub, #4E5969);
   font-size: 24rpx;
 }
+.item-next { color: #C9CDD4; font-size: 36rpx; }
 .empty { text-align: center; padding-top: 200rpx; color: #999; }
 .empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
 .empty-text { font-size: 28rpx; }

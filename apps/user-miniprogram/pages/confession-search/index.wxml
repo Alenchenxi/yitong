@@ -43,10 +43,11 @@
   </block>
 
   <block wx:elif="{{tab === 'user'}}">
-    <view class="user" wx:for="{{userResults}}" wx:key="id">
+    <view class="user" wx:for="{{userResults}}" wx:key="id" data-id="{{item.id}}" bindtap="openUserProfile">
       <image wx:if="{{item.avatarUrl}}" class="u-avatar" src="{{item.avatarUrl}}" mode="aspectFill"></image>
       <view wx:else class="u-avatar u-ph">{{item.nickname[0]}}</view>
       <view class="u-nick">{{item.nickname}}</view>
+      <text class="user-next">›</text>
     </view>
     <view class="empty" wx:if="{{!loading && userResults.length === 0}}">无结果</view>
   </block>

@@ -12,9 +12,24 @@
       <view class="author-avatar">{{author.avatar || '🌙'}}</view>
       <view class="author-main">
         <view class="author-name">{{author.nickname}}</view>
-        <view class="author-meta">匿名身份 · {{author.postCount}} 条动态</view>
+        <view class="author-meta">匿名身份</view>
       </view>
-      <view class="anon-badge">匿名</view>
+      <view class="author-actions">
+        <view class="anon-badge">匿名</view>
+        <button
+          wx:if="{{!author.isSelf}}"
+          class="follow-btn {{author.following ? 'followed' : ''}}"
+          bindtap="toggleFollow"
+          loading="{{followLoading}}"
+          disabled="{{followLoading}}"
+        >{{author.following ? '已关注' : '关注'}}</button>
+      </view>
+    </view>
+
+    <view class="author-stats">
+      <view class="stat"><text class="stat-value">{{author.postCount}}</text><text class="stat-label">动态</text></view>
+      <view class="stat"><text class="stat-value">{{author.followerCount}}</text><text class="stat-label">粉丝</text></view>
+      <view class="stat"><text class="stat-value">{{author.followingCount}}</text><text class="stat-label">关注</text></view>
     </view>
 
     <view class="mood" wx:if="{{author.moodState}}">最近心情：{{author.moodState}}</view>

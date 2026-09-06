@@ -13,6 +13,7 @@
   align-items: center;
   margin-bottom: 16rpx;
 }
+.author-hit { display: flex; align-items: center; flex: 1; min-width: 0; }
 
 .avatar {
   width: 72rpx;
@@ -26,7 +27,7 @@
   background: linear-gradient(135deg, #ffb3c1, #ff8fa3);
   color: #fff; font-size: 28rpx; font-weight: 600;
 }
-.meta { flex: 1; }
+.meta { flex: 1; min-width: 0; }
 .nickname { font-size: 28rpx; font-weight: 600; color: #222; }
 .anon-badge {
   display: inline-block;

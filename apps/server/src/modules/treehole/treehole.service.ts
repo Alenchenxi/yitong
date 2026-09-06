@@ -460,15 +460,30 @@ export class TreeholeService {
       this.getVisibleAnonProfile(anonId, targetAnonId),
       this.resolveListCommunity(anonId),
     ]);
-    const postCount = await this.prisma.anonymousPost.count({
-      where: {
-        anonId: targetAnonId,
-        status: PostStatus.APPROVED,
-        AND: [
-          this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
-        ],
-      },
-    });
+    const [postCount, following, followerCount, followingCount] = await Promise.all([
+      this.prisma.anonymousPost.count({
+        where: {
+          anonId: targetAnonId,
+          status: PostStatus.APPROVED,
+          AND: [
+            this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+          ],
+        },
+      }),
+      anonId === targetAnonId
+        ? Promise.resolve(null)
+        : this.prisma.anonFollow.findUnique({
+            where: {
+              followerAnonId_followeeAnonId: {
+                followerAnonId: anonId,
+                followeeAnonId: targetAnonId,
+              },
+            },
+            select: { id: true },
+          }),
+      this.prisma.anonFollow.count({ where: { followeeAnonId: targetAnonId } }),
+      this.prisma.anonFollow.count({ where: { followerAnonId: targetAnonId } }),
+    ]);
     return {
       anonId: targetAnonId,
       nickname: profile.nickname,
@@ -478,6 +493,39 @@ export class TreeholeService {
       moodState: profile.moodState,
       postCount,
       isSelf: anonId === targetAnonId,
+      following: !!following,
+      followerCount,
+      followingCount,
+    };
+  }
+
+  // P2-55 匿名关注只使用 anonId，关注前复用屏蔽与资料可见性校验。
+  async toggleAnonFollow(anonId: string, targetAnonId: string) {
+    if (!targetAnonId || anonId === targetAnonId) {
+      throw new BizException(30004, '不能关注自己', HttpStatus.BAD_REQUEST);
+    }
+    await this.getVisibleAnonProfile(anonId, targetAnonId);
+    const existing = await this.prisma.anonFollow.findUnique({
+      where: {
+        followerAnonId_followeeAnonId: {
+          followerAnonId: anonId,
+          followeeAnonId: targetAnonId,
+        },
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      await this.prisma.anonFollow.delete({ where: { id: existing.id } });
+    } else {
+      await this.prisma.anonFollow.create({
+        data: { followerAnonId: anonId, followeeAnonId: targetAnonId },
+      });
+    }
+    return {
+      following: !existing,
+      followerCount: await this.prisma.anonFollow.count({
+        where: { followeeAnonId: targetAnonId },
+      }),
     };
   }
 

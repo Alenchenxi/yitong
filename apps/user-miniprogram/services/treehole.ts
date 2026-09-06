@@ -73,6 +73,9 @@ export interface AnonAuthorVo {
   moodState: string | null;
   postCount: number;
   isSelf: boolean;
+  following: boolean;
+  followerCount: number;
+  followingCount: number;
 }
 
 export interface PartyResp {
@@ -193,6 +196,15 @@ export function getPost(id: string): Promise<AnonPostVo> {
 
 export function getAnonAuthor(targetAnonId: string): Promise<AnonAuthorVo> {
   return anonRequest({ url: `/treehole/authors/${encodeURIComponent(targetAnonId)}`, method: 'GET' });
+}
+
+export function toggleAnonAuthorFollow(
+  targetAnonId: string,
+): Promise<{ following: boolean; followerCount: number }> {
+  return anonRequest({
+    url: `/treehole/authors/${encodeURIComponent(targetAnonId)}/follow`,
+    method: 'POST',
+  });
 }
 
 export function listAnonAuthorPosts(

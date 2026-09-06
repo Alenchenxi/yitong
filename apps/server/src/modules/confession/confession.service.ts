@@ -978,6 +978,40 @@ export class ConfessionService {
     return { list: list.map((p) => this.toPostVo(p)), total, page, pageSize };
   }
 
+  // P2-55 实名用户主页动态：匿名内容不可用于反查作者身份。
+  async listPublicAuthorPosts(
+    viewerUid: string,
+    authorId: string,
+    page = 1,
+    pageSize = 20,
+  ): Promise<PageResult<PostVo>> {
+    const communityId = await this.community.resolveFeedCommunityId(viewerUid);
+    const where: Prisma.PostWhereInput = {
+      authorId,
+      isAnonymous: false,
+      status: PostStatus.APPROVED,
+      visibility: 'PUBLIC',
+      deletedAt: null,
+      AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
+    };
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: postInclude(viewerUid),
+      }),
+      this.prisma.post.count({ where }),
+    ]);
+    return {
+      list: posts.map((post) => this.toPostVo(post)),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
   // 关注流：只看关注作者的最新帖
   private async queryFollowPosts(uid: string, query: FeedQueryDto): Promise<FeedResult> {
     const limit = query.limit ?? 20;

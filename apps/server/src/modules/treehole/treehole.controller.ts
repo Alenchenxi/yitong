@@ -144,6 +144,15 @@ export class TreeholeController {
 
   @Public()
   @UseGuards(AnonGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @Post('authors/:anonId/follow')
+  async toggleAuthorFollow(@Param('anonId') targetAnonId: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.toggleAnonFollow(anonId, targetAnonId));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('authors/:anonId/chat')
   async directChat(@Param('anonId') targetAnonId: string, @Req() req: Request) {

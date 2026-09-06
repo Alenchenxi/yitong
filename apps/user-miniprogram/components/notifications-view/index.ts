@@ -216,7 +216,9 @@ Component({
         const anchor = extraId ? `&commentId=${extraId}` : '';
         wx.navigateTo({ url: `/pages/post-detail/index?id=${targetId}${anchor}` });
       } else if (targetType === 'user') {
-        wx.navigateTo({ url: '/pages/account-security/index' });
+        wx.navigateTo({
+          url: `/pages/user-profile/index?id=${encodeURIComponent(targetId)}`,
+        });
       } else if (
         (targetType === 'anon_post' || targetType === 'anon-post')
         && this.data.anonymousContentEnabled

@@ -1,4 +1,5 @@
 import { request } from './request';
+import type { PageResult, PostVo } from './confession';
 
 export function toggleFollow(userId: string) {
   return request<{ following: boolean }>({ url: `/users/${userId}/follow`, method: 'POST' });
@@ -6,6 +7,24 @@ export function toggleFollow(userId: string) {
 
 export function checkFollowing(userId: string) {
   return request<{ following: boolean }>({ url: `/users/${userId}/following` });
+}
+
+export interface UserProfileVo {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  isSelf: boolean;
+  following: boolean;
+  followerCount: number;
+  followingCount: number;
+  postCount: number;
+  posts: PageResult<PostVo>;
+}
+
+export function getUserProfile(userId: string, page = 1, pageSize = 20) {
+  return request<UserProfileVo>({
+    url: `/users/${encodeURIComponent(userId)}/profile?page=${page}&pageSize=${pageSize}`,
+  });
 }
 
 // P1-09 关注/粉丝列表项

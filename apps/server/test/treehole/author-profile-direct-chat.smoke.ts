@@ -51,6 +51,16 @@ function createService(options: { blocked?: boolean; profile?: any; posts?: any[
         return options.blocked ? { id: 'block-1' } : null;
       },
     },
+    anonFollow: {
+      findUnique: async (args: any) => {
+        calls.push({ name: 'follow.findUnique', args });
+        return null;
+      },
+      count: async (args: any) => {
+        calls.push({ name: 'follow.count', args });
+        return 0;
+      },
+    },
     chatMatch: {
       upsert: async (args: any) => {
         calls.push({ name: 'match.upsert', args });
@@ -76,6 +86,12 @@ function createService(options: { blocked?: boolean; profile?: any; posts?: any[
   };
   subject.community = {
     resolveFeedCommunityId: async () => 'community-1',
+  };
+  subject.publicationPolicy = {
+    anonymousPostVisibilityFilter: () => ({
+      communityId: 'community-1',
+      community: { is: { status: CommunityStatus.ACTIVE } },
+    }),
   };
   subject.im = {
     getImCredential: async (anonId: string) => ({
@@ -113,15 +129,24 @@ async function main(): Promise<void> {
     const result = await service.getAuthor('anon-viewer', 'anon-author');
     assert(result.nickname === '月光信箱', '作者主页返回匿名昵称');
     assert(result.postCount === 2, '作者主页返回当前圈子动态数');
+    assert(result.following === false, '作者主页返回当前匿名身份关注状态');
+    assert(result.followerCount === 0, '作者主页返回匿名粉丝数');
+    assert(result.followingCount === 0, '作者主页返回匿名关注数');
     assert(!('userId' in result), '作者主页不返回 userId');
     assert(!('uid' in result), '作者主页不返回 uid');
     assert(!('openid' in result), '作者主页不返回 openid');
     const profileCall = calls.find((call) => call.name === 'profile.findUnique' && call.args.select?.nickname);
     assert(profileCall?.args.select.userId === undefined, '作者资料查询不选择真实 userId');
     const countCall = calls.find((call) => call.name === 'post.count');
-    assert(countCall?.args.where.communityId === 'community-1', '动态数限定当前圈子');
+    assert(
+      JSON.stringify(countCall?.args.where.AND).includes('"communityId":"community-1"'),
+      '动态数使用当前圈子可见范围',
+    );
     assert(countCall?.args.where.status === PostStatus.APPROVED, '动态数只统计审核通过帖子');
-    assert(countCall?.args.where.community.is.status === CommunityStatus.ACTIVE, '动态数只统计有效圈子');
+    assert(
+      JSON.stringify(countCall?.args.where.AND).includes('"status":"ACTIVE"'),
+      '动态数只统计有效圈子',
+    );
   }
 
   {
@@ -147,7 +172,10 @@ async function main(): Promise<void> {
     assert(!('userId' in (result.list[0] ?? {})), '作者动态不返回真实 userId');
     const listCall = calls.find((call) => call.name === 'post.findMany');
     assert(listCall?.args.where.anonId === 'anon-author', '作者动态限定目标匿名身份');
-    assert(listCall?.args.where.communityId === 'community-1', '作者动态限定当前圈子');
+    assert(
+      JSON.stringify(listCall?.args.where.AND).includes('"communityId":"community-1"'),
+      '作者动态限定当前圈子可见范围',
+    );
     assert(listCall?.args.include.likes.where.anonId === 'anon-viewer', '点赞态使用浏览者 anonId');
   }
 

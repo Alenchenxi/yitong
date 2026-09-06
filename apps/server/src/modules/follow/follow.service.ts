@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ConfessionService } from '../confession/confession.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 
 // 错误码 70004 关注段（70001-70003 收藏段占用）
@@ -11,6 +12,7 @@ export class FollowService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notification: NotificationService,
+    private readonly confession: ConfessionService,
   ) {}
 
   // toggle 关注：已关注则取关，未关注则关注
@@ -57,6 +59,48 @@ export class FollowService {
       select: { id: true },
     });
     return { following: !!f };
+  }
+
+  // P2-55 表白墙实名用户主页：公开资料、关系统计和当前圈可见的非匿名动态。
+  async getProfile(viewerId: string, targetId: string, page: number, pageSize: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: targetId, deletedAt: null },
+      select: { id: true, nickname: true, avatarUrl: true },
+    });
+    if (!user) {
+      throw new BizException(10001, '用户不存在', HttpStatus.NOT_FOUND);
+    }
+    const [following, followerCount, followingCount, posts] = await Promise.all([
+      viewerId === targetId
+        ? Promise.resolve(null)
+        : this.prisma.follow.findUnique({
+            where: {
+              followerId_followeeId: {
+                followerId: viewerId,
+                followeeId: targetId,
+              },
+            },
+            select: { id: true },
+          }),
+      this.prisma.follow.count({
+        where: { followeeId: targetId, follower: { deletedAt: null } },
+      }),
+      this.prisma.follow.count({
+        where: { followerId: targetId, followee: { deletedAt: null } },
+      }),
+      this.confession.listPublicAuthorPosts(viewerId, targetId, page, pageSize),
+    ]);
+    return {
+      userId: user.id,
+      nickname: user.nickname,
+      avatarUrl: user.avatarUrl,
+      isSelf: viewerId === targetId,
+      following: !!following,
+      followerCount,
+      followingCount,
+      postCount: posts.total,
+      posts,
+    };
   }
 
   // P1-09 关注列表：我（followerId）关注的人

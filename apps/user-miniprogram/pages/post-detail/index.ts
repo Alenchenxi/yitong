@@ -471,6 +471,14 @@ Page({
     }
   },
 
+  openUserProfile(e: WechatMiniprogram.TouchEvent) {
+    const userId = e.currentTarget.dataset.id as string;
+    if (!userId) return;
+    wx.navigateTo({
+      url: `/pages/user-profile/index?id=${encodeURIComponent(userId)}`,
+    });
+  },
+
   onReport() {
     wx.showModal({
       title: '举报',

@@ -146,4 +146,10 @@ Page({
     const id = e.currentTarget.dataset.id as string;
     wx.navigateTo({ url: `/pages/post-detail/index?id=${id}` });
   },
+
+  openUserProfile(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/user-profile/index?id=${encodeURIComponent(id)}` });
+  },
 });

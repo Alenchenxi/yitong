@@ -1,0 +1,72 @@
+.page {
+  min-height: 100vh;
+  padding: 30rpx 24rpx 80rpx;
+  box-sizing: border-box;
+}
+.profile-head { display: flex; align-items: center; gap: 20rpx; }
+.avatar {
+  width: 112rpx;
+  height: 112rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #F2F3F5;
+}
+.avatar-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFF7D1;
+  color: #1D2129;
+  font-size: 40rpx;
+  font-weight: 700;
+}
+.identity { flex: 1; min-width: 0; }
+.nickname { color: #1D2129; font-size: 36rpx; font-weight: 700; word-break: break-all; }
+.identity-label { margin-top: 8rpx; color: #86909C; font-size: 23rpx; }
+.follow-btn {
+  min-width: 132rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  border-radius: 12rpx;
+  background: #F9C801;
+  color: #1D2129;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.follow-btn::after { border: none; }
+.follow-btn.followed { background: #F2F3F5; color: #4E5969; font-weight: 400; }
+.profile-stats {
+  display: flex;
+  align-items: center;
+  gap: 56rpx;
+  margin-top: 32rpx;
+  padding: 24rpx 0;
+  border-top: 1rpx solid #E5E6EB;
+  border-bottom: 1rpx solid #E5E6EB;
+}
+.stat { display: flex; align-items: baseline; gap: 8rpx; }
+.stat-value { color: #1D2129; font-size: 32rpx; font-weight: 700; }
+.stat-label { color: #86909C; font-size: 23rpx; }
+.section-title { margin: 38rpx 0 18rpx; color: #1D2129; font-size: 30rpx; font-weight: 700; }
+.post-list { display: flex; flex-direction: column; gap: 18rpx; }
+.loading-state, .error-state, .empty-posts, .list-tip {
+  color: #86909C;
+  font-size: 26rpx;
+  text-align: center;
+}
+.loading-state { padding-top: 280rpx; }
+.error-state { padding-top: 220rpx; }
+.error-title { color: #1D2129; font-size: 30rpx; font-weight: 600; }
+.error-desc { margin-top: 14rpx; }
+.retry-btn {
+  width: 280rpx;
+  margin-top: 36rpx;
+  border-radius: 12rpx;
+  background: #F9C801;
+  color: #1D2129;
+  font-size: 26rpx;
+}
+.empty-posts { padding: 100rpx 0; }
+.list-tip { padding: 24rpx 0; }

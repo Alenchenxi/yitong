@@ -94,9 +94,19 @@ Component({
       wx.navigateTo({ url: `/pages/post-detail/index?id=${p.id}&focus=1` });
     },
     onAuthor() {
-      const post = this.data.post as { anonId?: string } | null;
-      if (!this.data.anonymous || !post?.anonId) return;
-      this.triggerEvent('author', { anonId: post.anonId });
+      const post = this.data.post as { anonId?: string; authorId?: string; isAnonymous?: boolean } | null;
+      if (this.data.anonymous) {
+        if (post?.anonId) this.triggerEvent('author', { anonId: post.anonId });
+        return;
+      }
+      if (post?.isAnonymous) {
+        this.onTap();
+        return;
+      }
+      if (!post?.authorId) return;
+      wx.navigateTo({
+        url: `/pages/user-profile/index?id=${encodeURIComponent(post.authorId)}`,
+      });
     },
     // 转发按钮 catchtap 吞冒泡：open-type=share 交给宿主页 onShareAppMessage，阻止冒泡到卡片 onTap 跳详情
     onShareTap() {

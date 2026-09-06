@@ -17,6 +17,7 @@
     "pages/confession/topic/index",
     "pages/confession/topic-detail/index",
     "pages/follow-list/index",
+    "pages/user-profile/index",
     "pages/merchant/index",
     "pages/merchant/post-edit/index",
     "pages/merchant/job-detail/index",

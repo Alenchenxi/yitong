@@ -21,14 +21,16 @@
       </view>
     </block>
     <block wx:else>
-      <image wx:if="{{hasAvatar}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
-      <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
-      <view class="meta">
-        <view class="nickname">
-          {{post.authorNickname}}
-          <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
+      <view class="anon-author-hit" catchtap="onAuthor">
+        <image wx:if="{{hasAvatar}}" class="avatar" src="{{post.authorAvatarUrl}}" mode="aspectFill"></image>
+        <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
+        <view class="meta">
+          <view class="nickname">
+            {{post.authorNickname}}
+            <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
+          </view>
+          <view class="time">{{timeText}}</view>
         </view>
-        <view class="time">{{timeText}}</view>
       </view>
     </block>
   </view>
