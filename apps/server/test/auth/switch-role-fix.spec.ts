@@ -4,7 +4,7 @@
  * 覆盖以下场景：
  *  A) USER+MERCHANT+ADMIN 三角色 + AdminUser openid 绑定 -> switchRole('admin') 成功，issueTokens 调一次
  *  B) [核心 bug 修复] USER+MERCHANT + UserRole.ADMIN 残留 + AdminUser 无 openid -> 抛 10003
- *  C) USER+MERCHANT + Merchant.status='PENDING' -> switchRole('merchant') 抛 60002
+ *  C) USER+MERCHANT + Merchant 未审核/被驳回/资料缺失 -> switchRole('merchant') 成功
  *  D) 只有 USER -> switchRole('merchant') 抛 10003「未拥有该角色...」
  *
  * 全部 mock，不连真实 DB，不动 docker。
@@ -244,43 +244,33 @@ describe('AuthService.switchRole 场景 B [核心]: UserRole.ADMIN 残留 + 无 
 });
 
 // ============================================================================
-// 场景 C: Merchant.status=PENDING -> merchant 切换被拒 60002
+// 场景 C: 已有 MERCHANT 角色 -> merchant 切换不受商家审核状态限制
 // ============================================================================
-describe('AuthService.switchRole 场景 C: Merchant.status=PENDING', () => {
-  it('switchRole(\'merchant\') 应抛 BizException(60002, FORBIDDEN)', async () => {
+describe('AuthService.switchRole 场景 C: MERCHANT 角色切换不校验审核状态', () => {
+  it.each([
+    ['PENDING', { id: 'm_z', userId: 'u_z', status: 'PENDING' }],
+    ['REJECTED', { id: 'm_z', userId: 'u_z', status: 'REJECTED' }],
+    ['尚无商家资料', null],
+  ])('Merchant %s 时 switchRole(\'merchant\') 应成功签发 token', async (_label, merchantByUserId) => {
     const prismaMock = buildPrismaMock({
       user: USER_Z,
       userRoleByUserRole: {
         'u_z::USER': { id: 'ur1', userId: 'u_z', role: Role.USER },
         'u_z::MERCHANT': { id: 'ur2', userId: 'u_z', role: Role.MERCHANT },
       },
-      merchantByUserId: { id: 'm_z', userId: 'u_z', status: 'PENDING' },
+      merchantByUserId,
+      userRoleList: [{ role: Role.USER }, { role: Role.MERCHANT }],
     });
     const { service, jwtSignMock, prisma } = await buildModule(prismaMock);
 
-    let caught: unknown;
-    try {
-      await service.switchRole('u_z', 'merchant');
-    } catch (e) {
-      caught = e;
-    }
+    const result = await service.switchRole('u_z', 'merchant');
 
-    // 1) 抛 60002 FORBIDDEN
-    expect(caught).toBeInstanceOf(BizException);
-    const biz = caught as BizException;
-    expect(biz.bizCode).toBe(60002);
-    expect(biz.getStatus()).toBe(HttpStatus.FORBIDDEN);
-    expect(String(biz.message)).toContain('未通过审核');
-
-    // 2) merchant.findUnique 应被调用一次
-    expect(prisma.merchant.findUnique).toHaveBeenCalledTimes(1);
-    expect(prisma.merchant.findUnique).toHaveBeenCalledWith({ where: { userId: 'u_z' } });
-
-    // 3) adminUser.findFirst 不应被调用（未走到 admin 分支）
+    expect(result.accessToken).toBe('signed.jwt.token');
+    expect(result.refreshToken).toBe('signed.jwt.token');
+    expect(result.role).toBe(Role.MERCHANT);
+    expect(jwtSignMock).toHaveBeenCalledTimes(2);
+    expect(prisma.merchant.findUnique).not.toHaveBeenCalled();
     expect(prisma.adminUser.findFirst).not.toHaveBeenCalled();
-
-    // 4) signAsync 不应被调用
-    expect(jwtSignMock).not.toHaveBeenCalled();
   });
 });
 

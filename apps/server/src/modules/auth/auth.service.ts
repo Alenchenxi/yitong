@@ -84,15 +84,6 @@ export class AuthService {
       throw new BizException(10003, '未拥有该角色，无法切换', HttpStatus.FORBIDDEN);
     }
 
-    // MERCHANT 角色额外校验：商家必须处于 APPROVED 状态
-    // 驳回/未通过审批的用户切回商家端被拒（与商家接口 60002 一致语义）
-    if (role === Role.MERCHANT) {
-      const m = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-      if (!m || m.status !== 'APPROVED') {
-        throw new BizException(60002, '商家未通过审核，无法进入商家端', HttpStatus.FORBIDDEN);
-      }
-    }
-
     // ADMIN 角色额外校验：openid 必须绑定 AdminUser（后台管理员表）
     // 修复 dev 模式 wx-login ensureRole 跳过 admin 校验 + 历史 AdminUser 删除未同步
     // UserRole 行残留导致的"非管理员可切到管理端"鉴权漏洞。与 ensureRole prod 路径对齐。
