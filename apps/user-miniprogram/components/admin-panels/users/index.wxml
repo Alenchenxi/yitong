@@ -156,11 +156,11 @@
         <input class="adm-search-input" placeholder="搜昵称（已绑微信）" value="{{candidateKeyword}}" bindinput="onCandidateKeywordInput" bindconfirm="searchCandidates" />
         <button size="mini" bindtap="searchCandidates">搜索</button>
       </view>
-      <scroll-view wx:if="{{!editingManagerId}}" class="adm-dialog-list" scroll-y>
-        <view class="adm-item" wx:for="{{candidates}}" wx:key="id">
+      <scroll-view wx:if="{{!editingManagerId}}" class="adm-dialog-list" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="adm-item adm-candidate-item" wx:for="{{candidates}}" wx:key="id">
           <view class="adm-item-main">
             <text class="adm-item-title">{{item.nickname}}</text>
-            <text class="adm-item-sub">id: {{item.id}}</text>
+            <text class="adm-item-sub adm-candidate-id">id: {{item.id}}</text>
           </view>
           <view class="adm-item-actions">
             <button
