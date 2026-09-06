@@ -12,6 +12,7 @@ const anonAuthorWxml = read('pages/treehole/author/index.wxml');
 const postCardTs = read('components/post-card/post-card.ts');
 const postDetailWxml = read('pages/post-detail/index.wxml');
 const searchWxml = read('pages/confession-search/index.wxml');
+const followListTs = read('pages/follow-list/index.ts');
 const followListWxml = read('pages/follow-list/index.wxml');
 const notifications = read('components/notifications-view/index.ts');
 
@@ -46,7 +47,10 @@ assert.match(postDetailWxml, /data-id="\{\{post\.authorId\}\}"/, '详情页作�
 assert.match(postDetailWxml, /data-id="\{\{item\.authorId\}\}"/, '顶级评论作者必须进入用户主页');
 assert.match(postDetailWxml, /data-id="\{\{r\.authorId\}\}"/, '回复作者必须进入用户主页');
 assert.match(searchWxml, /bindtap="openUserProfile"/, '用户搜索结果必须进入用户主页');
-assert.match(followListWxml, /bindtap="openUserProfile"/, '关注和粉丝列表必须进入用户主页');
+assert.match(followListWxml, /bindtap="openProfile"/, '关注和粉丝列表必须进入对应用户主页');
+assert.match(followListWxml, /data-mode="anon-following"/, '关注页必须提供树洞关注分类');
+assert.match(followListTs, /listAnonFollowing/, '树洞关注分类必须调用匿名关注列表接口');
+assert.match(followListTs, /pages\/treehole\/author\/index\?anonId=/, '树洞关注项必须进入匿名作者主页');
 assert.match(
   notifications,
   /targetType === 'user'[\s\S]*pages\/user-profile\/index\?id=/,

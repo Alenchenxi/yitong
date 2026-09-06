@@ -78,6 +78,20 @@ export interface AnonAuthorVo {
   followingCount: number;
 }
 
+export interface AnonFollowItem {
+  anonId: string;
+  nickname: string;
+  avatar: string | null;
+  followedAt: string;
+}
+
+export interface AnonFollowListResult {
+  list: AnonFollowItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface PartyResp {
   roomId: string;
   imCredential: ImCredential;
@@ -204,6 +218,13 @@ export function toggleAnonAuthorFollow(
   return anonRequest({
     url: `/treehole/authors/${encodeURIComponent(targetAnonId)}/follow`,
     method: 'POST',
+  });
+}
+
+export function listAnonFollowing(page = 1, pageSize = 30): Promise<AnonFollowListResult> {
+  return anonRequest({
+    url: `/treehole/authors/me/following?page=${page}&pageSize=${pageSize}`,
+    method: 'GET',
   });
 }
 

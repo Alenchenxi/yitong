@@ -529,6 +529,58 @@ export class TreeholeService {
     };
   }
 
+  // P2-56 我的树洞关注：仅返回匿名公开资料，并排除任一方向已屏蔽的关系。
+  async listAnonFollowing(anonId: string, page: number, pageSize: number) {
+    const blocks = await this.prisma.anonBlock.findMany({
+      where: {
+        OR: [
+          { blockerAnonId: anonId },
+          { blockedAnonId: anonId },
+        ],
+      },
+      select: { blockerAnonId: true, blockedAnonId: true },
+    });
+    const blockedAnonIds = Array.from(new Set(blocks.map((block) => (
+      block.blockerAnonId === anonId ? block.blockedAnonId : block.blockerAnonId
+    ))));
+    const where: Prisma.AnonFollowWhereInput = {
+      followerAnonId: anonId,
+      ...(blockedAnonIds.length > 0
+        ? { followeeAnonId: { notIn: blockedAnonIds } }
+        : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.anonFollow.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          followeeAnonId: true,
+          createdAt: true,
+          followee: {
+            select: {
+              nickname: true,
+              avatar: true,
+            },
+          },
+        },
+      }),
+      this.prisma.anonFollow.count({ where }),
+    ]);
+    return {
+      list: items.map((item) => ({
+        anonId: item.followeeAnonId,
+        nickname: item.followee.nickname,
+        avatar: item.followee.avatar,
+        followedAt: item.createdAt.toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
   // P1-34 匿名作者动态：只展示当前圈子内已审核通过的帖子。
   async listAuthorPosts(anonId: string, targetAnonId: string, cursor?: string, limit = 20) {
     await this.getVisibleAnonProfile(anonId, targetAnonId);

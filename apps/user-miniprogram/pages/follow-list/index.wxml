@@ -1,23 +1,26 @@
 <view class="page">
   <view class="tabs">
     <text class="tab {{mode === 'following' ? 'active' : ''}}" data-mode="following" catchtap="switchMode">我的关注</text>
+    <text wx:if="{{anonymousContentEnabled}}" class="tab {{mode === 'anon-following' ? 'active' : ''}}" data-mode="anon-following" catchtap="switchMode">树洞关注</text>
     <text class="tab {{mode === 'followers' ? 'active' : ''}}" data-mode="followers" catchtap="switchMode">我的粉丝</text>
   </view>
   <view class="list" wx:if="{{list.length > 0}}">
-    <view class="item" wx:for="{{list}}" wx:key="userId" data-id="{{item.userId}}" bindtap="openUserProfile">
-      <image wx:if="{{item.avatarUrl}}" class="avatar" src="{{item.avatarUrl}}" mode="aspectFill"></image>
-      <view wx:else class="avatar ph">{{item.nickname[0]}}</view>
+    <view class="item" wx:for="{{list}}" wx:key="key" data-key="{{item.key}}" bindtap="openProfile">
+      <view wx:if="{{item.anonId}}" class="avatar anon-avatar">{{item.avatarText}}</view>
+      <image wx:elif="{{item.avatarUrl}}" class="avatar" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+      <view wx:else class="avatar ph">{{item.avatarText}}</view>
       <view class="meta">
         <view class="nickname">{{item.nickname}}</view>
-        <view class="time">{{mode === 'following' ? '关注于' : '关注我于'}} {{item.timeText}}</view>
+        <view class="identity" wx:if="{{item.anonId}}">树洞匿名身份</view>
+        <view class="time">{{mode === 'followers' ? '关注我于' : '关注于'}} {{item.timeText}}</view>
       </view>
-      <text wx:if="{{mode === 'following'}}" class="action-btn" data-id="{{item.userId}}" catchtap="unfollow">取关</text>
+      <text wx:if="{{mode !== 'followers'}}" class="action-btn" data-key="{{item.key}}" catchtap="unfollow">取关</text>
       <text wx:else class="item-next">›</text>
     </view>
   </view>
   <view class="empty" wx:elif="{{!loading}}">
     <view class="empty-emoji">🌱</view>
-    <view class="empty-text">{{mode === 'following' ? '还没关注任何人' : '还没有粉丝'}}</view>
+    <view class="empty-text">{{emptyText}}</view>
   </view>
   <view class="loading" wx:if="{{loading}}">加载中...</view>
   <view class="tip" wx:elif="{{!hasMore && list.length > 0}}">没有更多了</view>

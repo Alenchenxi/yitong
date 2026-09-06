@@ -106,6 +106,54 @@ describe('用户主页与匿名关注', () => {
     expect(subject.prisma.anonFollow.create).not.toHaveBeenCalled();
   });
 
+  it('匿名关注列表分页返回匿名资料，并过滤双向屏蔽关系', async () => {
+    const service = Object.create(TreeholeService.prototype) as TreeholeService;
+    const subject = service as any;
+    const findMany = jest.fn().mockResolvedValue([
+      {
+        followeeAnonId: 'anon-author',
+        createdAt: new Date('2026-09-06T04:00:00.000Z'),
+        followee: {
+          nickname: '月光信箱',
+          avatar: '🌙',
+        },
+      },
+    ]);
+    const count = jest.fn().mockResolvedValue(1);
+    subject.prisma = {
+      anonBlock: {
+        findMany: jest.fn().mockResolvedValue([
+          { blockerAnonId: 'anon-viewer', blockedAnonId: 'anon-blocked-by-me' },
+          { blockerAnonId: 'anon-blocked-me', blockedAnonId: 'anon-viewer' },
+        ]),
+      },
+      anonFollow: { findMany, count },
+    };
+
+    const result = await service.listAnonFollowing('anon-viewer', 2, 10);
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        followerAnonId: 'anon-viewer',
+        followeeAnonId: { notIn: ['anon-blocked-by-me', 'anon-blocked-me'] },
+      },
+      skip: 10,
+      take: 10,
+    }));
+    expect(result).toEqual({
+      list: [{
+        anonId: 'anon-author',
+        nickname: '月光信箱',
+        avatar: '🌙',
+        followedAt: '2026-09-06T04:00:00.000Z',
+      }],
+      total: 1,
+      page: 2,
+      pageSize: 10,
+    });
+    expect(JSON.stringify(result)).not.toMatch(/userId|uid|openid/);
+  });
+
   it('实名主页返回公开资料、关注状态和当前圈公开动态', async () => {
     const service = Object.create(FollowService.prototype) as FollowService;
     const subject = service as any;

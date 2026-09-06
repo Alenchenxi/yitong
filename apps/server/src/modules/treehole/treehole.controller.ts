@@ -116,6 +116,22 @@ export class TreeholeController {
   // P1-34 匿名作者主页与动态列表（仅匿名资料，不返回真实用户字段）
   @Public()
   @UseGuards(AnonGuard)
+  @Get('authors/me/following')
+  async listMyAnonFollowing(
+    @Query('page') page: string | undefined,
+    @Query('pageSize') pageSize: string | undefined,
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.listAnonFollowing(
+      anonId,
+      parsePositiveInt(page, 1, 1, 10_000),
+      parsePositiveInt(pageSize, 30, 1, 50),
+    ));
+  }
+
+  @Public()
+  @UseGuards(AnonGuard)
   @Get('authors/:anonId/posts')
   async listAuthorPosts(
     @Param('anonId') targetAnonId: string,
