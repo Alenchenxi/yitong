@@ -41,7 +41,7 @@
 /* 主 tab */
 .main-tabs {
   display: flex;
-  justify-content: space-between;
+  gap: 32rpx;
   padding: 16rpx 24rpx;
   background: var(--yt-card);
 }

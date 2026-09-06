@@ -33,7 +33,7 @@
 /* tab */
 .main-tabs {
   display: flex;
-  justify-content: space-between;
+  gap: 32rpx;
   padding: 24rpx 0 16rpx;
   background: var(--yt-bg);
 }

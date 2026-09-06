@@ -13,8 +13,12 @@ const treeholeWxml = read('pages/treehole/index.wxml');
 const treeholeTs = read('pages/treehole/index.ts');
 const nearbyTs = read('components/nearby-people/index.ts');
 const nearbyWxml = read('components/nearby-people/index.wxml');
-const nearbyWxss = read('components/nearby-people/index.wxss');
+const confessionWxss = read('pages/confession/index.wxss');
+const treeholeWxss = read('pages/treehole/index.wxss');
+const squareWxss = read('pages/square/index.wxss');
 const nearbyService = read('services/nearby.ts');
+
+const mainTabsBlock = (styles) => styles.match(/\.main-tabs\s*\{([^}]*)\}/)?.[1] ?? '';
 
 assert.match(appJson, /附近的人/, '定位用途必须包含附近的人');
 assert.match(confessionWxml, /data-tab="nearby"[^>]*>附近的人</, '表白墙必须有附近的人分类');
@@ -45,17 +49,16 @@ assert.match(nearbyTs, /pages\/treehole\/author\/index/, '树洞查看必须进�
 assert.match(nearbyWxml, /distanceLabel/, '列表必须展示模糊距离');
 assert.match(nearbyWxml, /查看/, '列表必须提供查看按钮');
 assert.match(nearbyWxml, /附近可见/, '列表必须提供附近可见控制');
-assert.doesNotMatch(nearbyWxss, /justify-content:\s*space-between/, '附近的人组件不应使用分散对齐');
-assert.match(
-  nearbyWxss,
-  /\.person-actions\s*\{[^}]*justify-content:\s*flex-start/,
-  '人员操作区必须左对齐',
-);
-assert.match(
-  nearbyWxss,
-  /\.person-actions\s*\{[^}]*flex-wrap:\s*wrap/,
-  '人员操作区在窄屏必须允许换行',
-);
+
+for (const [name, styles] of [
+  ['圈子动态', squareWxss],
+  ['表白墙', confessionWxss],
+  ['树洞', treeholeWxss],
+]) {
+  const tabs = mainTabsBlock(styles);
+  assert.match(tabs, /gap:\s*32rpx/, `${name}分类栏必须使用统一紧凑间距`);
+  assert.doesNotMatch(tabs, /justify-content:\s*space-between/, `${name}分类栏不得分散对齐`);
+}
 
 assert.match(nearbyService, /users\/me\/nearby-presence/, '实名可见性接口缺失');
 assert.match(nearbyService, /users\/nearby/, '实名附近列表接口缺失');
