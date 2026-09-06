@@ -89,7 +89,7 @@
   "sitemapLocation": "sitemap.json",
   "permission": {
     "scope.userFuzzyLocation": {
-      "desc": "用于显示附近岗位和工作地点占位"
+      "desc": "用于查找附近的人、附近岗位和填写工作地点"
     }
   },
   "requiredPrivateInfos": ["getFuzzyLocation"]

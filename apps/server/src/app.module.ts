@@ -23,6 +23,7 @@ import { AnnouncementModule } from './modules/announcement/announcement.module';
 import { BoostModule } from './modules/boost/boost.module';
 import { FavoriteModule } from './modules/favorite/favorite.module';
 import { FollowModule } from './modules/follow/follow.module';
+import { NearbyModule } from './modules/nearby/nearby.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { SupportModule } from './modules/support/support.module';
@@ -58,6 +59,7 @@ import { PublicationModule } from './modules/publication/publication.module';
     BoostModule,
     FavoriteModule,
     FollowModule,
+    NearbyModule,
     NotificationModule,
     ReferralModule,
     ConfessionModule,

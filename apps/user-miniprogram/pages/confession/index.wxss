@@ -41,11 +41,12 @@
 /* 主 tab */
 .main-tabs {
   display: flex;
-  gap: 40rpx;
+  justify-content: space-between;
   padding: 16rpx 24rpx;
   background: var(--yt-card);
 }
 .main-tab {
+  flex: 0 0 auto;
   font-size: 28rpx;
   color: var(--yt-text-sub);
   padding: 8rpx 0;

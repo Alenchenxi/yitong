@@ -10,7 +10,12 @@ import {
 import { formatTime } from '../../utils/auth';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
 
-type Tab = 'recommend' | 'latest' | 'mood';
+type Tab = 'recommend' | 'latest' | 'mood' | 'nearby';
+
+interface NearbyPeopleComponent {
+  refresh(): void;
+  loadMore(): void;
+}
 
 Page({
   data: {
@@ -28,7 +33,7 @@ Page({
     syncCustomTabBar(this, '/pages/treehole/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
-    if (!await app.getAnonymousContentVisibility()) {
+    if (!(await app.getAnonymousContentVisibility())) {
       wx.switchTab({ url: '/pages/square/index' });
       return;
     }
@@ -45,7 +50,11 @@ Page({
         .catch(() => {});
     }
     if (this.data.moods.length === 0) this.loadMoods();
-    if (this.data.posts.length === 0) this.reload();
+    if (this.data.activeTab === 'nearby') {
+      wx.nextTick(() => this.getNearbyComponent()?.refresh());
+    } else if (this.data.posts.length === 0) {
+      this.reload();
+    }
   },
 
   // E3 从标签库拉取 mood chips（与 profile/post 同源，后台配置新增 mood 时首页同步）
@@ -67,8 +76,12 @@ Page({
     if (this.data.loading || !this.data.hasMore) return;
     this.setData({ loading: true });
     try {
-      const sort: 'latest' | 'recommend' = this.data.activeTab === 'recommend' ? 'recommend' : 'latest';
-      const mood = this.data.activeTab === 'mood' && this.data.selectedMood ? this.data.selectedMood : undefined;
+      const sort: 'latest' | 'recommend' =
+        this.data.activeTab === 'recommend' ? 'recommend' : 'latest';
+      const mood =
+        this.data.activeTab === 'mood' && this.data.selectedMood
+          ? this.data.selectedMood
+          : undefined;
       const resp = await listPosts(this.data.nextCursor ?? undefined, sort, mood);
       this.setData({
         posts: [
@@ -91,9 +104,17 @@ Page({
   },
 
   onPullDownRefresh() {
+    if (this.data.activeTab === 'nearby') {
+      this.getNearbyComponent()?.refresh();
+      return;
+    }
     this.reload();
   },
   onReachBottom() {
+    if (this.data.activeTab === 'nearby') {
+      this.getNearbyComponent()?.loadMore();
+      return;
+    }
     this.loadMore();
   },
 
@@ -101,7 +122,11 @@ Page({
     const tab = (e.currentTarget.dataset.tab as Tab) ?? 'recommend';
     if (tab === this.data.activeTab) return;
     this.setData({ activeTab: tab });
-    this.reload();
+    if (tab !== 'nearby') this.reload();
+  },
+
+  getNearbyComponent() {
+    return this.selectComponent('#treehole-nearby') as unknown as NearbyPeopleComponent | null;
   },
 
   // P0-13 情绪分类筛选（mood tab 下选情绪）

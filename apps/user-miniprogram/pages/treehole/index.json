@@ -2,6 +2,7 @@
   "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "usingComponents": {
-    "tab-page-header": "/components/tab-page-header/index"
+    "tab-page-header": "/components/tab-page-header/index",
+    "nearby-people": "/components/nearby-people/index"
   }
 }

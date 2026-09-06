@@ -33,11 +33,11 @@
 /* tab */
 .main-tabs {
   display: flex;
-  gap: 40rpx;
+  justify-content: space-between;
   padding: 24rpx 0 16rpx;
   background: var(--yt-bg);
 }
-.main-tab { font-size: 28rpx; color: var(--yt-text-sub); padding: 8rpx 0; position: relative; }
+.main-tab { flex: 0 0 auto; font-size: 28rpx; color: var(--yt-text-sub); padding: 8rpx 0; position: relative; }
 .main-tab.active { color: var(--yt-text-main); font-weight: 600; }
 .main-tab.active::after {
   content: '';

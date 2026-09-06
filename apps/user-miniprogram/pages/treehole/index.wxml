@@ -35,12 +35,15 @@
     </view>
   </view>
 
-  <!-- tab：推荐/最新/情绪 -->
+  <!-- tab：推荐/最新/情绪/附近的人 -->
   <view class="main-tabs">
     <view class="main-tab {{activeTab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchTab">推荐</view>
     <view class="main-tab {{activeTab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchTab">最新</view>
     <view class="main-tab {{activeTab === 'mood' ? 'active' : ''}}" data-tab="mood" bindtap="switchTab">情绪</view>
+    <view class="main-tab {{activeTab === 'nearby' ? 'active' : ''}}" data-tab="nearby" bindtap="switchTab">附近的人</view>
   </view>
+
+  <nearby-people wx:if="{{activeTab === 'nearby'}}" id="treehole-nearby" channel="treehole" />
 
   <!-- 情绪分类筛选 -->
   <scroll-view scroll-x class="mood-bar" wx:if="{{activeTab === 'mood'}}">
@@ -48,7 +51,7 @@
   </scroll-view>
 
   <!-- 广场列表 -->
-  <view class="list" wx:if="{{posts.length > 0}}">
+  <view class="list" wx:if="{{activeTab !== 'nearby' && posts.length > 0}}">
     <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view class="anon" data-anon-id="{{item.anonId}}" catchtap="goAuthor">🌙 {{item.anonShort}}<text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text><text wx:if="{{item.mood}}" class="post-mood">{{item.mood}}</text><text wx:if="{{item.boosted}}" class="post-boost">推广</text></view>
       <view class="content">{{item.content}}</view>
@@ -82,13 +85,13 @@
     <view class="tip" wx:elif="{{!hasMore}}">没有更多了</view>
   </view>
 
-  <view class="yt-empty" wx:elif="{{!loading}}">
+  <view class="yt-empty" wx:elif="{{activeTab !== 'nearby' && !loading}}">
     <view class="yt-empty-emoji">🌙</view>
     <view class="yt-empty-text">树洞空空的，说点什么吧</view>
   </view>
 
   <!-- 发动态 FAB -->
-  <view class="fab" bindtap="goPost">
+  <view wx:if="{{activeTab !== 'nearby'}}" class="fab" bindtap="goPost">
     <text class="fab-plus">＋</text>
   </view>
 </view>

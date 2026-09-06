@@ -7,7 +7,12 @@ import {
   unbindAnonymousContentVisibility,
 } from '../../utils/anonymous-content';
 
-type MainTab = 'recommend' | 'latest' | 'hot' | 'follow';
+type MainTab = 'recommend' | 'latest' | 'hot' | 'follow' | 'nearby';
+
+interface NearbyPeopleComponent {
+  refresh(): void;
+  loadMore(): void;
+}
 
 interface PageData {
   posts: PostVo[];
@@ -56,8 +61,14 @@ Page({
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
     const visibilityChanged = anonymousContentEnabled !== this.data.anonymousContentEnabled;
     this.updateAnonymousContentVisibility(anonymousContentEnabled);
-    if (visibilityChanged || this.data.posts.length === 0) this.reloadFeed();
-    listAnnouncements().then((a) => this.setData({ announcements: a })).catch(() => {});
+    if (this.data.activeMainTab === 'nearby') {
+      wx.nextTick(() => this.getNearbyComponent()?.refresh());
+    } else if (visibilityChanged || this.data.posts.length === 0) {
+      this.reloadFeed();
+    }
+    listAnnouncements()
+      .then((a) => this.setData({ announcements: a }))
+      .catch(() => {});
   },
 
   async reloadFeed() {
@@ -66,7 +77,7 @@ Page({
   },
 
   async loadMore() {
-    if (this.data.loading || !this.data.hasMore) return;
+    if (this.data.loading || !this.data.hasMore || this.data.activeMainTab === 'nearby') return;
     this.setData({ loading: true });
     try {
       const resp = await feed(this.data.nextCursor ?? undefined, 20, this.data.activeMainTab);
@@ -87,10 +98,18 @@ Page({
   },
 
   onPullDownRefresh() {
+    if (this.data.activeMainTab === 'nearby') {
+      this.getNearbyComponent()?.refresh();
+      return;
+    }
     this.reloadFeed();
   },
 
   onReachBottom() {
+    if (this.data.activeMainTab === 'nearby') {
+      this.getNearbyComponent()?.loadMore();
+      return;
+    }
     this.loadMore();
   },
 
@@ -98,7 +117,11 @@ Page({
     const tab = (e.currentTarget.dataset.tab as MainTab) ?? 'recommend';
     if (tab === this.data.activeMainTab) return;
     this.setData({ activeMainTab: tab });
-    this.reloadFeed();
+    if (tab !== 'nearby') this.reloadFeed();
+  },
+
+  getNearbyComponent() {
+    return this.selectComponent('#confession-nearby') as unknown as NearbyPeopleComponent | null;
   },
 
   goSearch() {

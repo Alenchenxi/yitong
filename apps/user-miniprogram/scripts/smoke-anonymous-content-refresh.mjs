@@ -53,6 +53,7 @@ const sandbox = {
   clearTimeout,
   wx: {
     getAccountInfoSync: () => ({ miniProgram: { envVersion: 'release' } }),
+    getStorageSync: () => '',
     reLaunch: () => {},
   },
   require(id) {
@@ -90,6 +91,9 @@ const sandbox = {
           return remoteEnabled;
         },
       };
+    }
+    if (id === './services/admin') {
+      return { getAdminAccess: async () => null };
     }
     throw new Error(`Unexpected module: ${id}`);
   },

@@ -8,6 +8,6 @@ import { AnonGuard } from './anon.guard';
 @Module({
   controllers: [TreeholeController],
   providers: [TreeholeService, AnonGuard, TreeholeScheduler],
-  exports: [TreeholeService],
+  exports: [TreeholeService, AnonGuard],
 })
 export class TreeholeModule {}

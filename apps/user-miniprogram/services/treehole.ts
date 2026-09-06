@@ -162,7 +162,7 @@ export function getAnonymousToken(): Promise<AnonTokenResp> {
   });
 }
 
-function anonRequest<T>(opts: { url: string; method: 'GET' | 'POST' | 'DELETE'; data?: unknown }): Promise<T> {
+export function anonRequest<T>(opts: { url: string; method: 'GET' | 'POST' | 'PUT' | 'DELETE'; data?: unknown }): Promise<T> {
   return new Promise((resolve, reject) => {
     const app = getApp<AppLike>();
     const requestAnonToken = app.globalData.anonToken || anonToken;

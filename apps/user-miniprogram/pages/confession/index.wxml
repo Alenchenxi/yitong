@@ -19,28 +19,31 @@
     </swiper>
   </view>
 
-  <!-- 主 tab：推荐/最新/热门/关注 -->
+  <!-- 主 tab：推荐/最新/热门/关注/附近的人 -->
   <view class="main-tabs">
     <view class="main-tab {{activeMainTab === 'recommend' ? 'active' : ''}}" data-tab="recommend" bindtap="switchMainTab">推荐</view>
     <view class="main-tab {{activeMainTab === 'latest' ? 'active' : ''}}" data-tab="latest" bindtap="switchMainTab">最新</view>
     <view class="main-tab {{activeMainTab === 'hot' ? 'active' : ''}}" data-tab="hot" bindtap="switchMainTab">热门</view>
     <view class="main-tab {{activeMainTab === 'follow' ? 'active' : ''}}" data-tab="follow" bindtap="switchMainTab">关注</view>
+    <view class="main-tab {{activeMainTab === 'nearby' ? 'active' : ''}}" data-tab="nearby" bindtap="switchMainTab">附近的人</view>
   </view>
 
+  <nearby-people wx:if="{{activeMainTab === 'nearby'}}" id="confession-nearby" channel="confession" />
+
   <!-- 帖子流 -->
-  <view class="list" wx:if="{{posts.length > 0}}">
+  <view class="list" wx:if="{{activeMainTab !== 'nearby' && posts.length > 0}}">
     <post-card wx:for="{{posts}}" wx:key="id" post="{{item}}" bind:like="onLike" shareable="{{true}}"></post-card>
     <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
     <view class="loading-tip" wx:elif="{{!hasMore}}">没有更多了</view>
   </view>
 
-  <view class="yt-empty" wx:elif="{{!loading}}">
+  <view class="yt-empty" wx:elif="{{activeMainTab !== 'nearby' && !loading}}">
     <view class="yt-empty-emoji">📭</view>
     <view class="yt-empty-text">还没有内容，去发第一条吧</view>
   </view>
 
   <!-- 悬浮发帖 -->
-  <view class="fab" bindtap="goCreate">
+  <view wx:if="{{activeMainTab !== 'nearby'}}" class="fab" bindtap="goCreate">
     <text class="fab-plus">＋</text>
   </view>
 </view>
