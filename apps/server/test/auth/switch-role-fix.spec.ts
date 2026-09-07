@@ -4,7 +4,7 @@
  * 覆盖以下场景：
  *  A) USER+MERCHANT+ADMIN 三角色 + AdminUser openid 绑定 -> switchRole('admin') 成功，issueTokens 调一次
  *  B) [核心 bug 修复] USER+MERCHANT + UserRole.ADMIN 残留 + AdminUser 无 openid -> 抛 10003
- *  C) USER+MERCHANT + Merchant 未审核/被驳回/资料缺失 -> switchRole('merchant') 成功
+ *  C) USER+MERCHANT + Merchant 未审核/被驳回 -> switchRole('merchant') 拒绝；无资料仍保留注册入口
  *  D) 只有 USER -> switchRole('merchant') 抛 10003「未拥有该角色...」
  *
  * 全部 mock，不连真实 DB，不动 docker。
@@ -127,9 +127,11 @@ function buildPrismaMock(opts: {
 async function buildModule(prismaMock: PrismaMock): Promise<{
   service: AuthService;
   jwtSignMock: jest.Mock;
+  jwtVerifyMock: jest.Mock;
   prisma: PrismaMock;
 }> {
   const jwtSignMock = jest.fn().mockResolvedValue('signed.jwt.token');
+  const jwtVerifyMock = jest.fn();
   const configGetMock = jest.fn().mockImplementation((key: string) => {
     if (key === 'MODE') return 'prod';
     return undefined;
@@ -141,7 +143,7 @@ async function buildModule(prismaMock: PrismaMock): Promise<{
       { provide: PrismaService, useValue: prismaMock },
       {
         provide: JwtService,
-        useValue: { signAsync: jwtSignMock, verifyAsync: jest.fn() },
+        useValue: { signAsync: jwtSignMock, verifyAsync: jwtVerifyMock },
       },
       { provide: ConfigService, useValue: { get: configGetMock } },
       {
@@ -154,6 +156,7 @@ async function buildModule(prismaMock: PrismaMock): Promise<{
   return {
     service: moduleRef.get(AuthService),
     jwtSignMock,
+    jwtVerifyMock,
     prisma: prismaMock,
   };
 }
@@ -244,14 +247,13 @@ describe('AuthService.switchRole 场景 B [核心]: UserRole.ADMIN 残留 + 无 
 });
 
 // ============================================================================
-// 场景 C: 已有 MERCHANT 角色 -> merchant 切换不受商家审核状态限制
+// 场景 C: 商家审核状态限制 merchant 角色切换
 // ============================================================================
-describe('AuthService.switchRole 场景 C: MERCHANT 角色切换不校验审核状态', () => {
+describe('AuthService.switchRole 场景 C: 商家审核状态限制', () => {
   it.each([
     ['PENDING', { id: 'm_z', userId: 'u_z', status: 'PENDING' }],
     ['REJECTED', { id: 'm_z', userId: 'u_z', status: 'REJECTED' }],
-    ['尚无商家资料', null],
-  ])('Merchant %s 时 switchRole(\'merchant\') 应成功签发 token', async (_label, merchantByUserId) => {
+  ])('Merchant %s 时 switchRole(\'merchant\') 应拒绝 60003', async (_label, merchantByUserId) => {
     const prismaMock = buildPrismaMock({
       user: USER_Z,
       userRoleByUserRole: {
@@ -263,17 +265,30 @@ describe('AuthService.switchRole 场景 C: MERCHANT 角色切换不校验审核�
     });
     const { service, jwtSignMock, prisma } = await buildModule(prismaMock);
 
+    await expect(service.switchRole('u_z', 'merchant')).rejects.toMatchObject({ bizCode: 60003 });
+    expect(jwtSignMock).not.toHaveBeenCalled();
+    expect(prisma.merchant.findUnique).toHaveBeenCalledWith({ where: { userId: 'u_z' } });
+  });
+
+  it('尚无商家资料时保留商家注册入口并允许签发 token', async () => {
+    const prismaMock = buildPrismaMock({
+      user: USER_Z,
+      userRoleByUserRole: {
+        'u_z::USER': { id: 'ur1', userId: 'u_z', role: Role.USER },
+        'u_z::MERCHANT': { id: 'ur2', userId: 'u_z', role: Role.MERCHANT },
+      },
+      merchantByUserId: null,
+      userRoleList: [{ role: Role.USER }, { role: Role.MERCHANT }],
+    });
+    const { service, jwtSignMock, prisma } = await buildModule(prismaMock);
+
     const result = await service.switchRole('u_z', 'merchant');
 
-    expect(result.accessToken).toBe('signed.jwt.token');
-    expect(result.refreshToken).toBe('signed.jwt.token');
     expect(result.role).toBe(Role.MERCHANT);
     expect(jwtSignMock).toHaveBeenCalledTimes(2);
-    expect(prisma.merchant.findUnique).not.toHaveBeenCalled();
-    expect(prisma.adminUser.findFirst).not.toHaveBeenCalled();
+    expect(prisma.merchant.findUnique).toHaveBeenCalledWith({ where: { userId: 'u_z' } });
   });
 });
-
 // ============================================================================
 // 场景 D: 只有 USER 角色 -> merchant 切换被拒 10003「未拥有该角色...」
 // ============================================================================
@@ -313,6 +328,31 @@ describe('AuthService.switchRole 场景 D: 只有 USER 角色', () => {
     expect(prisma.adminUser.findFirst).not.toHaveBeenCalled();
 
     // 4) signAsync 不应被调用
+    expect(jwtSignMock).not.toHaveBeenCalled();
+  });
+});
+
+// ============================================================================
+// 场景 E: merchant refreshToken 必须实时校验商家审核状态
+// ============================================================================
+describe('AuthService.refresh 场景 E: 商家审核状态限制', () => {
+  it.each([
+    ['PENDING', { id: 'm_z', userId: 'u_z', status: 'PENDING' }],
+    ['REJECTED', { id: 'm_z', userId: 'u_z', status: 'REJECTED' }],
+  ])('Merchant %s 时 refresh 应拒绝 60003', async (_label, merchantByUserId) => {
+    const prismaMock = buildPrismaMock({
+      user: USER_Z,
+      userRoleByUserRole: {
+        'u_z::USER': { id: 'ur1', userId: 'u_z', role: Role.USER },
+        'u_z::MERCHANT': { id: 'ur2', userId: 'u_z', role: Role.MERCHANT },
+      },
+      merchantByUserId,
+      userRoleList: [{ role: Role.USER }, { role: Role.MERCHANT }],
+    });
+    const { service, jwtSignMock, jwtVerifyMock } = await buildModule(prismaMock);
+    jwtVerifyMock.mockResolvedValue({ uid: 'u_z', role: Role.MERCHANT, type: 'refresh' });
+
+    await expect(service.refresh('refresh.token')).rejects.toMatchObject({ bizCode: 60003 });
     expect(jwtSignMock).not.toHaveBeenCalled();
   });
 });

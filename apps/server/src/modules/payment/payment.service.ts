@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import {
   JobDuration,
+  MerchantStatus,
   JobPostStatus,
   PayScene,
   PayStatus,
@@ -50,6 +51,7 @@ export class PaymentService {
   async createJobPublishOrder(merchantUid: string, dto: PublishJobDto) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    if (merchant.status !== MerchantStatus.APPROVED) throw new BizException(60003, '商家资质未审核通过', HttpStatus.FORBIDDEN);
 
     const post = await this.prisma.jobPost.findUnique({ where: { id: dto.jobPostId } });
     if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
@@ -824,7 +826,7 @@ export class PaymentService {
   private async assertOrderOwner(callerUid: string, order: PaymentOrder): Promise<void> {
     if (order.scene === PayScene.JOB_PUBLISH) {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: callerUid } });
-      if (!merchant || order.merchantId !== merchant.id) {
+      if (!merchant || merchant.status !== MerchantStatus.APPROVED || order.merchantId !== merchant.id) {
         throw new BizException(10003, '无权操作该订单', HttpStatus.FORBIDDEN);
       }
       return;

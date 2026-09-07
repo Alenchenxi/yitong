@@ -84,12 +84,19 @@ Page({
     this.setData({ submitting: true });
     try {
       if (mode === 'resubmit') {
-        // 重新提交：不需要切角色 / reLaunch，只是回到 shell 等复审
-        await reapplyMerchant({
+        const m = await reapplyMerchant({
           shopName: shopName.trim(),
           licenseNo: licenseNo.trim(),
           contactPhone: contactPhone.trim(),
         });
+        if (m.status === 'APPROVED') {
+          wx.showToast({ title: '重新入驻成功', icon: 'success' });
+          await app.switchRole('merchant').catch(() => {
+            /* 角色切换失败仍进入商家端，下次登录会纠正角色 */
+          });
+          setTimeout(() => wx.reLaunch({ url: '/pages/merchant/index' }), 800);
+          return;
+        }
         wx.showToast({ title: '已提交，等待审核', icon: 'success' });
         setTimeout(() => backOrShell(), 800);
         return;
@@ -100,7 +107,7 @@ Page({
         contactPhone: contactPhone.trim(),
       });
       if (m.status === 'APPROVED') {
-        // 审核直通（dev 自动过审）：切商家角色 + 进商家 shell
+        // 平台关闭审核时直通：切商家角色 + 进商家 shell
         // switchRole 失败不阻断跳转（此前 await 抛错会被 catch 吞掉、页面原地卡死）：
         // 商家接口只校验 merchants 行存在，不校验 JWT role，原 token 也能正常用 shell。
         wx.showToast({ title: '入驻成功', icon: 'success' });

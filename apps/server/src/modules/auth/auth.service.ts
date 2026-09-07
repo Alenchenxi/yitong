@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Role, type User } from '@prisma/client';
+import { MerchantStatus, Role, type User } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReferralService } from '../referral/referral.service';
@@ -84,6 +84,10 @@ export class AuthService {
       throw new BizException(10003, '未拥有该角色，无法切换', HttpStatus.FORBIDDEN);
     }
 
+    if (role === Role.MERCHANT) {
+      await this.assertMerchantRoleAllowed(uid);
+    }
+
     // ADMIN 角色额外校验：openid 必须绑定 AdminUser（后台管理员表）
     // 修复 dev 模式 wx-login ensureRole 跳过 admin 校验 + 历史 AdminUser 删除未同步
     // UserRole 行残留导致的"非管理员可切到管理端"鉴权漏洞。与 ensureRole prod 路径对齐。
@@ -129,6 +133,9 @@ export class AuthService {
         throw new BizException(10003, '管理员账号或管理员类型已停用', HttpStatus.FORBIDDEN);
       }
     }
+    if (payload.role === Role.MERCHANT) {
+      await this.assertMerchantRoleAllowed(user.id);
+    }
     // 刷新时沿用原 role，但管理员资格必须以数据库当前状态为准。
     return this.issueTokens(user, payload.role as Role);
   }
@@ -169,7 +176,7 @@ export class AuthService {
     await this.prisma.user.update({ where: { id: uid }, data: { deletedAt: new Date() } });
   }
 
-  // 校验并确保用户拥有目标角色：管理员需 openid 预设绑定；user/merchant 默认放宽（merchant 生产由 feat/merchant 收紧）
+  // 校验并确保用户拥有目标角色：管理员需 openid 预设绑定；商家仅在无入驻记录时允许进入注册入口。
   private async ensureRole(
     uid: string,
     roleKey: RoleKey,
@@ -178,9 +185,12 @@ export class AuthService {
     const role = ROLE_MAP[roleKey];
     if (!role) throw new BizException(10004, '角色不合法');
 
-    // 管理员在所有环境都必须绑定有效 AdminUser/管理员类型。merchant 登录不校验入驻：
-    // 未入驻也可进商家端，
-    // 由前端商家首页探测 getMerchantProfile 跳入驻页 + 各商家接口校验 Merchant 存在性（60002）兜底。
+    // 管理员在所有环境都必须绑定有效 AdminUser/管理员类型。未入驻用户仍可进入商家注册页，
+    // 但已有 PENDING/REJECTED 资质不得取得商家 token。
+    if (role === Role.MERCHANT) {
+      await this.assertMerchantRoleAllowed(uid);
+    }
+
     if (role === Role.ADMIN) {
       const admin = await this.prisma.adminUser.findFirst({
         where: {
@@ -204,6 +214,14 @@ export class AuthService {
       create: { userId: uid, role },
     });
     return role;
+  }
+
+  /** 商家资质未通过时，禁止取得商家 token；未入驻用户仍可进入注册页。 */
+  private async assertMerchantRoleAllowed(uid: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
+    if (merchant && merchant.status !== MerchantStatus.APPROVED) {
+      throw new BizException(60003, '商家资质尚未审核通过', HttpStatus.FORBIDDEN);
+    }
   }
 
   private async issueTokens(user: User, role: Role) {

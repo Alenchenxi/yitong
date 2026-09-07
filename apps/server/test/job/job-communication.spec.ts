@@ -4,6 +4,7 @@
 import {
   AppStatus,
   InterviewInvitationStatus,
+  MerchantStatus,
   JobDuration,
   JobPostStatus,
   PayScene,
@@ -1132,7 +1133,7 @@ describe('MerchantService 待面试候选人', () => {
   it('仅按已接受邀约和有效报名筛选，并返回最新邀约摘要', async () => {
     const respondedAt = new Date('2026-09-04T08:00:00.000Z');
     const prisma = {
-      merchant: { findUnique: jest.fn().mockResolvedValue({ id: 'merchant_a' }) },
+      merchant: { findUnique: jest.fn().mockResolvedValue({ id: 'merchant_a', status: MerchantStatus.APPROVED }) },
       jobApplication: {
         count: jest.fn().mockResolvedValue(1),
         findMany: jest.fn().mockResolvedValue([{
@@ -1159,7 +1160,7 @@ describe('MerchantService 待面试候选人', () => {
       },
       resume: { findMany: jest.fn().mockResolvedValue([]) },
     };
-    const service = new MerchantService(prisma as never, {} as never);
+    const service = new MerchantService(prisma as never, {} as never, {} as never);
 
     await expect(
       service.listCandidates('merchant_user_a', {
@@ -1242,7 +1243,7 @@ describe('MerchantService 候选人基本信息', () => {
         }),
       },
       merchant: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'merchant_a' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 'merchant_a', status: MerchantStatus.APPROVED }),
       },
       resume: {
         findUnique: jest.fn(),
@@ -1251,7 +1252,7 @@ describe('MerchantService 候选人基本信息', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
     };
-    const service = new MerchantService(prisma as never, {} as never);
+    const service = new MerchantService(prisma as never, {} as never, {} as never);
 
     await expect(service.getCandidateDetail('merchant_user_a', 'application_without_resume')).resolves.toMatchObject({
       user: {

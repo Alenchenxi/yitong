@@ -7,6 +7,7 @@ import { AppStatus, FitMark, InterviewInvitationStatus, MerchantStatus, Prisma, 
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import { AppConfigService } from '../app-config/app-config.service';
 import type {
   BatchMarkDto,
   ListCandidatesDto,
@@ -32,7 +33,16 @@ export class MerchantService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notification: NotificationService,
+    private readonly appConfig: AppConfigService,
   ) {}
+
+  /** Only approved merchants may access operational data and actions. */
+  private requireApprovedMerchant(merchant: { id: string; status: MerchantStatus } | null): asserts merchant is { id: string; status: MerchantStatus } {
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    if (merchant.status !== MerchantStatus.APPROVED) {
+      throw new BizException(60003, '商家资质尚未审核通过', HttpStatus.FORBIDDEN);
+    }
+  }
 
   // M4-02 报名处理提醒（懒检查）：商家进消息页时前端调用。扫超时未联系 PENDING 报名，
   // 若存在且冷却窗内未提醒过，创建一条站内提醒通知（type=job_apply_reminder，归 M4-01 apply 分类）。
@@ -77,31 +87,29 @@ export class MerchantService {
     return { created: true, count };
   }
 
-  // 入驻：创建 Merchant(PENDING)。dev 模式自动审核通过 + 加 MERCHANT 角色（方便测试）；
-  // 生产等 feat/admin 审核（approveInternal 由 admin 调用）。
+  // 入驻：由平台开关决定是否需要审核。关闭审核时直接 APPROVED 并授予商家角色。
   async register(uid: string, dto: RegisterMerchantDto) {
     const existing = await this.prisma.merchant.findUnique({ where: { userId: uid } });
     if (existing) throw new BizException(60001, '已入驻，不能重复申请');
+    const needReview = await this.appConfig.isMerchantReviewEnabled();
     const m = await this.prisma.merchant.create({
       data: {
         userId: uid,
         shopName: dto.shopName,
         licenseNo: dto.licenseNo,
         contactPhone: dto.contactPhone,
-        status: MerchantStatus.PENDING,
+        status: needReview ? MerchantStatus.PENDING : MerchantStatus.APPROVED,
       },
     });
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.warn('dev mode: auto-approve merchant + grant MERCHANT role');
+    if (!needReview) {
+      this.logger.log('merchant review disabled: auto-approve merchant + grant MERCHANT role');
       await this.approveInternal(uid);
     }
     const refreshed = await this.prisma.merchant.findUnique({ where: { id: m.id } });
     return this.toVo(refreshed!);
   }
 
-  // 商家驳回后重新提交资质：要求 status===REJECTED，写回三字段并置回 PENDING，写一条 ModerationRecord。
-  // 注意：与 register() 不同，**不**调 approveInternal——dev 模式也不自动过审，否则绕过 60005 守卫
-  // 让管理员永远看不到 PENDING 状态。MERCHANT 角色仅在 admin 审批通过时恢复。
+  // 商家驳回后重新提交资质：审核开关关闭时重新提交直接通过，否则回到 PENDING。
   // 不重置 createdAt：语义是「首次入驻时间」，重新提交只是 ModerationRecord 上的事件。
   async reapply(uid: string, dto: ReapplyMerchantDto) {
     const m = await this.prisma.merchant.findUnique({ where: { userId: uid } });
@@ -109,25 +117,29 @@ export class MerchantService {
     if (m.status !== MerchantStatus.REJECTED) {
       throw new BizException(60005, '当前状态非 REJECTED，无法重新申请', HttpStatus.BAD_REQUEST);
     }
+    const needReview = await this.appConfig.isMerchantReviewEnabled();
     const updated = await this.prisma.merchant.update({
       where: { id: m.id },
       data: {
         shopName: dto.shopName,
         licenseNo: dto.licenseNo,
         contactPhone: dto.contactPhone,
-        status: MerchantStatus.PENDING,
+        status: needReview ? MerchantStatus.PENDING : MerchantStatus.APPROVED,
       },
     });
     await this.prisma.moderationRecord.create({
       data: {
         targetType: 'merchant',
         targetId: m.id,
-        reason: '商家重新提交审核',
-        status: 'PENDING',
+        reason: needReview ? '商家重新提交审核' : '商家重新提交，审核开关关闭自动通过',
+        status: needReview ? 'PENDING' : 'APPROVED',
         // reviewerId 留空：商家自提交非审核动作
       },
     });
-    this.logger.log(`merchant reapply uid=${uid} merchantId=${m.id} -> PENDING`);
+    if (!needReview) {
+      await this.approveInternal(uid);
+    }
+    this.logger.log(`merchant reapply uid=${uid} merchantId=${m.id} -> ${updated.status}`);
     return this.toVo(updated);
   }
 
@@ -159,7 +171,7 @@ export class MerchantService {
   // 商家评价列表（跨所有岗位）
   async getMerchantReviews(uid: string) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    this.requireApprovedMerchant(merchant);
 
     const posts = await this.prisma.jobPost.findMany({
       where: { merchantId: merchant.id },
@@ -190,7 +202,7 @@ export class MerchantService {
   // M2-01 跨岗位候选人聚合：商家按岗位 / 状态 / 关键词分页查询自己所有岗位的报名候选人
   async listCandidates(uid: string, dto: ListCandidatesDto) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    this.requireApprovedMerchant(merchant);
 
     const keyword = dto.keyword?.trim();
     const where: Prisma.JobApplicationWhereInput = {
@@ -300,7 +312,7 @@ export class MerchantService {
   // 同一用户对同一岗位多次浏览只取最近一次，按最近浏览时间倒序
   async listViewers(uid: string, dto: ListViewersDto) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    this.requireApprovedMerchant(merchant);
 
     const postWhere: Prisma.JobPostWhereInput = { merchantId: merchant.id };
     if (dto.jobPostId) postWhere.id = dto.jobPostId;
@@ -399,7 +411,7 @@ export class MerchantService {
     }
 
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    this.requireApprovedMerchant(merchant);
 
     const apps = await this.prisma.jobApplication.findMany({
       where: { id: { in: dto.ids } },
@@ -426,7 +438,7 @@ export class MerchantService {
   // 校验报名归属当前商家，返回带岗位标题的报名
   private async assertOwnsApplication(uid: string, appId: string) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    this.requireApprovedMerchant(merchant);
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: appId },
       include: { jobPost: { select: { merchantId: true, title: true } } },
@@ -480,7 +492,7 @@ export class MerchantService {
     if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
 
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    this.requireApprovedMerchant(merchant);
     if (app.jobPost.merchantId !== merchant.id) {
       throw new BizException(10003, '无权查看此报名', HttpStatus.FORBIDDEN);
     }
@@ -626,7 +638,7 @@ export class MerchantService {
   // 商家订单记录（付费发布历史）
   async getMerchantOrders(uid: string) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
-    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    this.requireApprovedMerchant(merchant);
 
     const [orders, posts] = await Promise.all([
       this.prisma.paymentOrder.findMany({

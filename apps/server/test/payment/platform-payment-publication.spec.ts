@@ -1,5 +1,6 @@
 import {
   JobDuration,
+  MerchantStatus,
   JobPostStatus,
   PayScene,
   PayStatus,
@@ -47,7 +48,7 @@ function createService(
 describe('PaymentService 平台内容延迟生效资格复核', () => {
   it('平台管理员身份撤销后不能为待发布平台岗位创建订单', async () => {
     const prisma = {
-      merchant: { findUnique: jest.fn().mockResolvedValue({ id: 'merchant_1' }) },
+      merchant: { findUnique: jest.fn().mockResolvedValue({ id: 'merchant_1', status: MerchantStatus.APPROVED }) },
       jobPost: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'job_1',
@@ -72,7 +73,7 @@ describe('PaymentService 平台内容延迟生效资格复核', () => {
 
   it('已被圈子封禁的商家不能创建岗位发布订单', async () => {
     const prisma = {
-      merchant: { findUnique: jest.fn().mockResolvedValue({ id: 'merchant_1' }) },
+      merchant: { findUnique: jest.fn().mockResolvedValue({ id: 'merchant_1', status: MerchantStatus.APPROVED }) },
       jobPost: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'job_1',

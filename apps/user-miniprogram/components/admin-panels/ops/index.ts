@@ -166,6 +166,8 @@ Component({
     togglingAnonymousContent: false,
     needReviewEnabled: false,
     togglingNeedReview: false,
+    merchantReviewEnabled: true,
+    togglingMerchantReview: false,
     tutorSyncEnabled: false,
     togglingTutorSync: false,
     tutorSyncBatchSize: '100',
@@ -231,6 +233,8 @@ Component({
         sub === 'settings'
         && (
           this.data.togglingAnonymousContent
+          || this.data.togglingNeedReview
+          || this.data.togglingMerchantReview
           || this.data.togglingTutorSync
           || this.data.savingTutorSync
         )
@@ -284,6 +288,7 @@ Component({
           const cfgList = await getAppSettings();
           const anonymousContent = cfgList.find((item) => item.key === 'content.anonymous_enabled');
           const needReview = cfgList.find((item) => item.key === 'community.need_review');
+          const merchantReview = cfgList.find((item) => item.key === 'merchant.need_review');
           const tutorSyncEnabled = cfgList.find((item) => item.key === 'tutor_sync.enabled');
           const batchSizeSetting = cfgList.find((item) => item.key === 'tutor_sync.max_demands');
           const normalizedBatchSize =
@@ -291,6 +296,7 @@ Component({
           commit({
             anonymousContentEnabled: anonymousContent?.value === true,
             needReviewEnabled: needReview?.value === true,
+            merchantReviewEnabled: merchantReview?.value !== false,
             tutorSyncEnabled: tutorSyncEnabled?.value === true,
             tutorSyncBatchSize: normalizedBatchSize,
             tutorSyncConfirmedBatchSize: normalizedBatchSize,
@@ -742,6 +748,7 @@ Component({
         || !this.data.appSettingsLoaded
         || this.data.togglingAnonymousContent
         || this.data.togglingNeedReview
+        || this.data.togglingMerchantReview
         || this.data.togglingTutorSync
         || this.data.savingTutorSync
       ) return;
@@ -766,6 +773,7 @@ Component({
         !this.data.appSettingsLoaded ||
         this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
+        this.data.togglingMerchantReview ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
       )
@@ -781,6 +789,29 @@ Component({
         this.setData({ togglingNeedReview: false });
       }
     },
+    // 全局设置 - 商家入驻审核开关
+    async toggleMerchantReview(e: WechatMiniprogram.SwitchChange) {
+      const next = e.detail.value;
+      if (
+        this.data.loading ||
+        !this.data.appSettingsLoaded ||
+        this.data.togglingAnonymousContent ||
+        this.data.togglingNeedReview ||
+        this.data.togglingMerchantReview ||
+        this.data.togglingTutorSync ||
+        this.data.savingTutorSync
+      ) return;
+      const previous = this.data.merchantReviewEnabled;
+      this.setData({ merchantReviewEnabled: next, togglingMerchantReview: true });
+      try {
+        await updateAppSetting('merchant.need_review', next);
+        wx.showToast({ title: next ? '商家注册需审核' : '商家注册自动通过', icon: 'success' });
+      } catch {
+        this.setData({ merchantReviewEnabled: previous });
+      } finally {
+        this.setData({ togglingMerchantReview: false });
+      }
+    },
     onTutorSyncBatchSizeInput(e: WechatMiniprogram.Input) {
       this.setData({ tutorSyncBatchSize: e.detail.value });
     },
@@ -790,6 +821,7 @@ Component({
         !this.data.appSettingsLoaded ||
         this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
+        this.data.togglingMerchantReview ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
       )
@@ -812,6 +844,7 @@ Component({
         !this.data.appSettingsLoaded ||
         this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
+        this.data.togglingMerchantReview ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
       )

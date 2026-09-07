@@ -554,6 +554,7 @@ export class JobService {
     if (q.mine === 1) {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
       if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+      if (merchant.status !== MerchantStatus.APPROVED) throw new BizException(60003, '商家资质未审核通过', HttpStatus.FORBIDDEN);
       where.merchantId = merchant.id;
       // M3-03 商家岗位状态筛选（仅 mine 模式生效；公开列表硬约束 PUBLISHED+未过期）
       if (q.status) where.status = q.status as JobPostStatus;
@@ -911,6 +912,7 @@ export class JobService {
   async getMerchantDashboard(merchantUid: string, range: 'day' | 'week' | 'month' | 'all' = 'all') {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    if (merchant.status !== MerchantStatus.APPROVED) throw new BizException(60003, '商家资质未审核通过', HttpStatus.FORBIDDEN);
     const since = rangeToSince(range);
     const baseWhere = since
       ? { jobPost: { merchantId: merchant.id }, createdAt: { gte: since } }

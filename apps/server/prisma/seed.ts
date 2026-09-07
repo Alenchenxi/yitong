@@ -233,6 +233,7 @@ async function main() {
   const configUpserts = [
     { key: 'community.need_review', value: false, updatedBy: 'seed' },
     { key: 'content.anonymous_enabled', value: false, updatedBy: 'seed' },
+    { key: 'merchant.need_review', value: true, updatedBy: 'seed' },
   ];
   let configCreated = 0;
   for (const c of configUpserts) {
