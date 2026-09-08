@@ -525,6 +525,12 @@ export function disableCommunityAdmin(id: string) {
 export function enableCommunityAdmin(id: string) {
   return request<AdminCommunityVo>({ url: `/admin/communities/${id}/enable`, method: 'POST' });
 }
+export function deleteCommunityAdmin(id: string) {
+  return request<{ id: string; deleted: boolean; deletedAt: string }>({
+    url: `/admin/communities/${id}`,
+    method: 'DELETE',
+  });
+}
 export function updateCommunityAdmin(
   id: string,
   data: Partial<{ name: string; logo: string; backgroundImage: string; description: string }>,

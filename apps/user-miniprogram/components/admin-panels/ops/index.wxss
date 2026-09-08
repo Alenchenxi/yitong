@@ -16,3 +16,5 @@
 .adm-sync-field { display: flex; align-items: center; gap: 20rpx; }
 .adm-sync-field .adm-item-main { min-width: 0; flex: 1; }
 .adm-sync-limit { width: 152rpx; flex: 0 0 152rpx; text-align: center; margin-bottom: 0; }
+
+.adm-community-list { max-height: 720rpx; box-sizing: border-box; }

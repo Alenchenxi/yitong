@@ -503,6 +503,11 @@ export class AdminController {
     return ok(await this.admin.enableCommunity(id, (req as AuthenticatedRequest).adminAccess!));
   }
 
+  @Delete('communities/:id')
+  @RequireAdminPermission(ADMIN_PERMISSIONS.COMMUNITY_EDIT)
+  async deleteCommunity(@Param('id') id: string, @Req() req: Request) {
+    return ok(await this.admin.deleteCommunity(id, (req as AuthenticatedRequest).adminAccess!));
+  }
   // ===== P2-26 圈子审核 =====
   @Post('communities/:id/approve')
   @RequireAdminPermission(ADMIN_PERMISSIONS.COMMUNITY_REVIEW)

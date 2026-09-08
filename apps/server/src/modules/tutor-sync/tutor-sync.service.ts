@@ -18,7 +18,6 @@ import { TutorSnapshotClient } from './tutor-snapshot.client';
 import { acquireTutorSyncLock } from './tutor-sync.lock';
 import { TutorSyncSettingsService } from './tutor-sync.settings';
 import {
-  TUTOR_SYNC_CONTACT,
   TUTOR_SYNC_PUBLISHER,
   TUTOR_SYNC_SOURCE,
   type AdaptedTutorJob,
@@ -444,8 +443,8 @@ export class TutorSyncService {
       title: item.title,
       description: item.description,
       requirements: item.requirements,
-      contactPhoneSnapshot: TUTOR_SYNC_CONTACT,
-      contactWechatSnapshot: TUTOR_SYNC_CONTACT,
+      contactPhoneSnapshot: null,
+      contactWechatSnapshot: null,
       salary: item.salary,
       salaryAmount: item.salaryAmount,
       location: item.location,

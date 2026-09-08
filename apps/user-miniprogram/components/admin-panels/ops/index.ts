@@ -27,6 +27,7 @@ import {
   listCommunitiesAdmin,
   disableCommunityAdmin,
   enableCommunityAdmin,
+  deleteCommunityAdmin,
   approveCommunityAdmin,
   rejectCommunityAdmin,
   updateCommunityAdmin,
@@ -653,6 +654,24 @@ Component({
       if (disabled) await enableCommunityAdmin(id);
       else await disableCommunityAdmin(id);
       wx.showToast({ title: disabled ? '已启用' : '已禁用', icon: 'success' });
+      this.load();
+    },
+    async deleteCommunity(e: WechatMiniprogram.TouchEvent) {
+      const { id, name } = e.currentTarget.dataset as { id: string; name: string };
+      const confirmed = await new Promise<boolean>((resolve) => {
+        wx.showModal({
+          title: '删除圈子',
+          content: `确认删除已禁用圈子“${name}”吗？删除后不再展示。`,
+          confirmText: '删除',
+          confirmColor: '#e34d59',
+          success: (res) => resolve(res.confirm),
+          fail: () => resolve(false),
+        });
+      });
+      if (!confirmed) return;
+      await deleteCommunityAdmin(id);
+      if (this.data.editingCommunityId === id) this.setData({ editingCommunityId: '' });
+      wx.showToast({ title: '已删除', icon: 'success' });
       this.load();
     },
     startEditCommunity(e: WechatMiniprogram.TouchEvent) {

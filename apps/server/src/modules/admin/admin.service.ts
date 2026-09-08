@@ -74,7 +74,7 @@ export class AdminService {
 
   async getModerationContexts(access: AdminAccessContext) {
     const communities = await this.prisma.community.findMany({
-      where: this.accessService.communityWhere(access),
+      where: { ...this.accessService.communityWhere(access), deletedAt: null },
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
     });
@@ -1723,7 +1723,7 @@ export class AdminService {
     const communities = effectiveAll || !normalizedIds.length
       ? []
       : await this.prisma.community.findMany({
-          where: { id: { in: normalizedIds } },
+          where: { id: { in: normalizedIds }, deletedAt: null },
           select: { id: true, name: true },
         });
     if (!effectiveAll && !normalizedIds.length) {
@@ -1925,6 +1925,7 @@ export class AdminService {
     const scopedCommunityId = this.accessService.communityIdWhere(access);
     return this.prisma.banner.findMany({
       where: {
+        community: { deletedAt: null },
         ...(communityId ? { communityId } : scopedCommunityId ? { communityId: scopedCommunityId } : {}),
         ...(keyword ? { title: { contains: keyword, mode: 'insensitive' } } : {}),
       },
@@ -1943,7 +1944,7 @@ export class AdminService {
       throw new BizException(40013, '广告位必须选择所属圈子', HttpStatus.BAD_REQUEST);
     }
     await this.accessService.assertCommunity(access, dto.communityId);
-    const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } });
+    const community = await this.prisma.community.findFirst({ where: { id: dto.communityId, deletedAt: null }, select: { id: true } });
     if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     const created = await this.prisma.banner.create({
       data: {
@@ -1973,6 +1974,8 @@ export class AdminService {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
     await this.accessService.assertCommunity(access, existing.communityId);
+    const currentCommunity = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
+    if (!currentCommunity) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     const data: Prisma.BannerUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.imageUrl !== undefined) data.imageUrl = dto.imageUrl;
@@ -1982,6 +1985,8 @@ export class AdminService {
         throw new BizException(40013, '广告位必须选择所属圈子', HttpStatus.BAD_REQUEST);
       }
       await this.accessService.assertCommunity(access, dto.communityId);
+      const targetCommunity = await this.prisma.community.findFirst({ where: { id: dto.communityId, deletedAt: null }, select: { id: true } });
+      if (!targetCommunity) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
       data.community = { connect: { id: dto.communityId } };
     }
     if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
@@ -1994,6 +1999,8 @@ export class AdminService {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
     await this.accessService.assertCommunity(access, existing.communityId);
+    const community = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
+    if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     await this.prisma.banner.delete({ where: { id } });
     await this.accessService.audit(access, 'banner.delete', 'banner', id, { communityId: existing.communityId });
     return { id, deleted: true };
@@ -2002,6 +2009,8 @@ export class AdminService {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
     await this.accessService.assertCommunity(access, existing.communityId);
+    const community = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
+    if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     const updated = await this.prisma.banner.update({
       where: { id },
       data: { status: enabled ? BannerStatus.ENABLED : BannerStatus.DISABLED },
@@ -2024,6 +2033,7 @@ export class AdminService {
     return this.prisma.community.findMany({
       where: {
         ...this.accessService.communityWhere(access),
+        deletedAt: null,
         ...(statusEnum ? { status: statusEnum } : {}),
         ...(keyword ? { name: { contains: keyword, mode: 'insensitive' } } : {}),
       },
@@ -2033,7 +2043,7 @@ export class AdminService {
   async updateCommunity(id: string, dto: UpdateCommunityDto, access: AdminAccessContext) {
     await this.accessService.assertCommunity(access, id);
     const existing = await this.prisma.community.findUnique({ where: { id } });
-    if (!existing) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (!existing || existing.deletedAt) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     const updated = await this.prisma.community.update({
       where: { id },
       data: {
@@ -2050,7 +2060,7 @@ export class AdminService {
   async disableCommunity(id: string, access: AdminAccessContext) {
     await this.accessService.assertCommunity(access, id);
     const existing = await this.prisma.community.findUnique({ where: { id } });
-    if (!existing) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (!existing || existing.deletedAt) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     const updated = await this.prisma.community.update({ where: { id }, data: { status: CommunityStatus.DISABLED } });
     this.confession.invalidateFeedCache(); // 圈子禁用 → 清表白墙 feed 缓存（communityId 作用域内容即时隐藏）
     await this.accessService.audit(access, 'community.disable', 'community', id);
@@ -2059,18 +2069,59 @@ export class AdminService {
   async enableCommunity(id: string, access: AdminAccessContext) {
     await this.accessService.assertCommunity(access, id);
     const existing = await this.prisma.community.findUnique({ where: { id } });
-    if (!existing) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
-    const updated = await this.prisma.community.update({ where: { id }, data: { status: CommunityStatus.ACTIVE } });
+    if (!existing || existing.deletedAt) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    const result = await this.prisma.community.updateMany({
+      where: { id, status: CommunityStatus.DISABLED, deletedAt: null },
+      data: { status: CommunityStatus.ACTIVE },
+    });
+    if (result.count !== 1) {
+      throw new BizException(40004, '圈子状态已变化，请刷新后重试', HttpStatus.CONFLICT);
+    }
+    const updated = await this.prisma.community.findUnique({ where: { id } });
     this.confession.invalidateFeedCache();
     await this.accessService.audit(access, 'community.enable', 'community', id);
     return updated;
+  }
+  async deleteCommunity(id: string, access: AdminAccessContext) {
+    await this.accessService.assertCommunity(access, id);
+    const existing = await this.prisma.community.findUnique({ where: { id } });
+    if (!existing || existing.deletedAt) {
+      throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    }
+    if (id === 'cm_default') {
+      throw new BizException(10003, '默认圈子不可删除', HttpStatus.FORBIDDEN);
+    }
+    if (existing.status !== CommunityStatus.DISABLED) {
+      throw new BizException(40004, '仅已禁用圈子可删除', HttpStatus.CONFLICT);
+    }
+    const deletedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const result = await tx.community.updateMany({
+        where: { id, status: CommunityStatus.DISABLED, deletedAt: null },
+        data: { deletedAt },
+      });
+      if (result.count !== 1) {
+        throw new BizException(40004, '圈子状态已变化，请刷新后重试', HttpStatus.CONFLICT);
+      }
+      await tx.adminAuditLog.create({
+        data: {
+          actorAdminId: access.adminId,
+          actorOpenid: access.openid,
+          action: 'community.delete',
+          targetType: 'community',
+          targetId: id,
+        },
+      });
+    });
+    this.confession.invalidateFeedCache();
+    return { id, deleted: true, deletedAt };
   }
 
   // ===== P2-26 圈子审核 approve / reject =====
   async approveCommunity(id: string, reviewerId: string, access: AdminAccessContext) {
     await this.accessService.assertCommunity(access, id);
     const c = await this.prisma.community.findUnique({ where: { id } });
-    if (!c) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (!c || c.deletedAt) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     if (c.status !== CommunityStatus.PENDING) {
       throw new BizException(40004, '仅待审核圈子可通过', HttpStatus.BAD_REQUEST);
     }
@@ -2114,7 +2165,7 @@ export class AdminService {
   async rejectCommunity(id: string, reviewerId: string, reason: string, access: AdminAccessContext) {
     await this.accessService.assertCommunity(access, id);
     const c = await this.prisma.community.findUnique({ where: { id } });
-    if (!c) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (!c || c.deletedAt) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
     if (c.status !== CommunityStatus.PENDING) {
       throw new BizException(40004, '仅待审核圈子可拒绝', HttpStatus.BAD_REQUEST);
     }

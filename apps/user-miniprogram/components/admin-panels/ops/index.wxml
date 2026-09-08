@@ -221,6 +221,7 @@
       <view class="adm-filter-btn {{cmStatus === 'ACTIVE' ? 'on' : ''}}" data-s="ACTIVE" bindtap="switchCmStatus">已通过</view>
       <view class="adm-filter-btn {{cmStatus === 'DISABLED' ? 'on' : ''}}" data-s="DISABLED" bindtap="switchCmStatus">已禁用</view>
     </view>
+    <scroll-view class="adm-community-list" scroll-y enhanced show-scrollbar>
     <view class="adm-item" wx:for="{{communities}}" wx:key="id">
       <view class="adm-item-main">
         <view class="adm-item-title-row">
@@ -239,8 +240,10 @@
           <button size="mini" type="warn" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="rejectCommunity">拒绝</button>
         </block>
         <button wx:if="{{canCommunityEdit && item.id !== 'cm_default' && item.status !== 'PENDING'}}" size="mini" data-id="{{item.id}}" data-disabled="{{item.status === 'DISABLED'}}" bindtap="toggleCommunity">{{item.status === 'DISABLED' ? '启用' : '禁用'}}</button>
+        <button wx:if="{{canCommunityEdit && item.id !== 'cm_default' && item.status === 'DISABLED'}}" size="mini" type="warn" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="deleteCommunity">删除</button>
       </view>
     </view>
+    </scroll-view>
     <view class="adm-form" wx:if="{{canCommunityEdit && editingCommunityId}}">
       <view class="adm-section-title">编辑圈子资料</view>
       <input class="adm-input" placeholder="圈子名称" value="{{editingCommunityName}}" data-field="editingCommunityName" bindinput="onCommunityEditInput" />

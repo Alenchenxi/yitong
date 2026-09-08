@@ -40,6 +40,10 @@ const MERCHANT_CONTACT_SELECT = {
   contactPhone: true,
   contactWechat: true,
 } as const;
+type CommunityOwnerContact = {
+  phone: string | null;
+  wechat: string | null;
+};
 
 interface JobListCursorPayload {
   v: 1;
@@ -218,6 +222,22 @@ export class JobService {
 
   private get publicationPolicy(): PublicationPolicyService {
     return this.publication ?? new PublicationPolicyService(this.prisma);
+  }
+  private async resolveCommunityOwnerContact(
+    posts: Array<{ applyMode?: JobApplyMode; publisherName?: string | null }>,
+    communityId: string | null,
+  ): Promise<CommunityOwnerContact | null> {
+    if (!communityId || !posts.some((post) => this.tutorJobPolicy.isExternalTutorPost(post))) {
+      return null;
+    }
+    const community = await this.prisma.community.findFirst({
+      where: { id: communityId, status: CommunityStatus.ACTIVE, deletedAt: null },
+      select: { owner: { select: { phone: true, wechat: true } } },
+    });
+    return {
+      phone: community?.owner?.phone?.trim() || null,
+      wechat: community?.owner?.wechat?.trim() || null,
+    };
   }
 
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
@@ -644,9 +664,11 @@ export class JobService {
       pendingMap = new Map(groups.map((g) => [g.jobPostId, g._count._all]));
     }
 
+    const tutorContact = await this.resolveCommunityOwnerContact(slice, visibleCommunityId);
+
     return {
       list: slice.map((p) => ({
-        ...this.toPostVo(p),
+        ...this.toPostVo(p, false, tutorContact),
         pendingApplicationCount: q.mine === 1 ? pendingMap.get(p.id) ?? 0 : undefined,
       })),
       nextCursor,
@@ -820,12 +842,13 @@ export class JobService {
       })
       : [];
     const postById = new Map(posts.map((post) => [post.id, post]));
+    const tutorContact = await this.resolveCommunityOwnerContact(posts, communityId);
     const list: Array<JobPostVo & { distance: number }> = [];
     for (const candidate of slice) {
       const post = postById.get(candidate.id);
       if (!post) continue;
       list.push({
-        ...this.toPostVo(post),
+        ...this.toPostVo(post, false, tutorContact),
         distance: candidate._distance,
       });
     }
@@ -850,8 +873,10 @@ export class JobService {
     if (isExternalTutorPost && isUnavailable && !isOwner) {
       throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     }
+    let visibleCommunityId: string | null = null;
     if (!isOwner) {
       const communityId = await this.community.resolveFeedCommunityId(actorId);
+      visibleCommunityId = communityId;
       const visiblePost = await this.prisma.jobPost.findFirst({
         where: {
           id,
@@ -868,8 +893,9 @@ export class JobService {
         select: { id: true, status: true, conversation: { select: { id: true } } },
       })
       : null;
+    const tutorContact = await this.resolveCommunityOwnerContact([post], visibleCommunityId);
     return {
-      ...this.toPostVo(post, isOwner || !!application),
+      ...this.toPostVo(post, isOwner || !!application, tutorContact),
       myApplication: application
         ? {
             id: application.id,
@@ -905,7 +931,8 @@ export class JobService {
       take: Math.min(50, Math.max(1, limit)),
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
-    return posts.map((p) => this.toPostVo(p));
+    const tutorContact = await this.resolveCommunityOwnerContact(posts, communityId);
+    return posts.map((p) => this.toPostVo(p, false, tutorContact));
   }
 
   // P2-16 商家招聘数据看板：浏览 / 报名 / 录用 / 完成 / 转化率 + 时间范围筛选
@@ -1344,9 +1371,11 @@ export class JobService {
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
 
+    const tutorContact = await this.resolveCommunityOwnerContact(candidates, communityId);
+
     // 3) 无报名历史 → 退回按时间倒序 top RESULT_LIMIT
     if (recentApps.length === 0) {
-      return candidates.slice(0, RESULT_LIMIT).map((p) => this.toPostVo(p));
+      return candidates.slice(0, RESULT_LIMIT).map((p) => this.toPostVo(p, false, tutorContact));
     }
 
     // 4) 打分
@@ -1376,7 +1405,7 @@ export class JobService {
       if (b.score !== a.score) return b.score - a.score;
       return b.post.createdAt.getTime() - a.post.createdAt.getTime();
     });
-    return scored.slice(0, RESULT_LIMIT).map((s) => this.toPostVo(s.post));
+    return scored.slice(0, RESULT_LIMIT).map((s) => this.toPostVo(s.post, false, tutorContact));
   }
 
   private async assertOwnsPost(uid: string, postId: string) {
@@ -1439,8 +1468,18 @@ export class JobService {
     deletedAt?: Date | null; // M3-07 软删字段
     createdAt: Date;
     merchant?: { userId?: string; shopName: string; contactPhone?: string; contactWechat?: string | null };
-  }, exposeContact = false): JobPostVo {
+  }, exposeContact = false, communityOwnerContact: CommunityOwnerContact | null = null): JobPostVo {
     const isExternalTutorPost = this.tutorJobPolicy.isExternalTutorPost(p);
+    const contactPhone = isExternalTutorPost
+      ? communityOwnerContact?.phone ?? null
+      : exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
+        ? (p.contactPhoneSnapshot ?? p.merchant?.contactPhone ?? null)
+        : null;
+    const contactWechat = isExternalTutorPost
+      ? communityOwnerContact?.wechat ?? null
+      : exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
+        ? (p.contactWechatSnapshot ?? p.merchant?.contactWechat ?? null)
+        : null;
 
     return {
       id: p.id,
@@ -1450,13 +1489,9 @@ export class JobService {
       title: p.title,
       description: p.description,
       requirements: p.requirements,
-      contactPhone: exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
-        ? (p.contactPhoneSnapshot ?? p.merchant?.contactPhone ?? null)
-        : null,
-      contactWechat: exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
-        ? (p.contactWechatSnapshot ?? p.merchant?.contactWechat ?? null)
-        : null,
-      contactInstruction: this.tutorJobPolicy.contactInstruction(p),
+      contactPhone,
+      contactWechat,
+      contactInstruction: this.tutorJobPolicy.contactInstruction(p, communityOwnerContact ?? undefined),
       salary: p.salary,
       salaryAmount: p.salaryAmount,
       location: p.location,

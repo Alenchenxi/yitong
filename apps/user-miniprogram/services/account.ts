@@ -6,13 +6,15 @@ export interface AccountVo {
   avatarUrl: string | null;
   gender: string | null;
   birthday: string | null;
+  phone: string | null;
+  wechat: string | null;
 }
 
 export function getAccount() {
   return request<AccountVo>({ url: '/auth/account' });
 }
 
-export function updateAccount(data: { nickname?: string; gender?: string; birthday?: string }) {
+export function updateAccount(data: { nickname?: string; gender?: string; birthday?: string; phone?: string; wechat?: string }) {
   return request<AccountVo>({ url: '/auth/account', method: 'PUT', data });
 }
 

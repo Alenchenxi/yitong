@@ -3,7 +3,6 @@ import { JobApplyMode, JobPostStatus, type Prisma } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { tryAcquireTutorSyncLock } from './tutor-sync.lock';
 import {
-  TUTOR_SYNC_CONTACT_INSTRUCTION,
   TUTOR_SYNC_LEGACY_PUBLISHERS,
   TUTOR_SYNC_PUBLISHER,
 } from './tutor-sync.types';
@@ -23,8 +22,18 @@ export class TutorJobPolicyService {
       );
   }
 
-  contactInstruction(post: TutorJobIdentity): string | null {
-    return this.isExternalTutorPost(post) ? TUTOR_SYNC_CONTACT_INSTRUCTION : null;
+  contactInstruction(
+    post: TutorJobIdentity,
+    contact?: { phone: string | null; wechat: string | null },
+  ): string | null {
+    if (!this.isExternalTutorPost(post)) return null;
+    const parts = [
+      contact?.phone ? `手机号 ${contact.phone}` : null,
+      contact?.wechat ? `微信号 ${contact.wechat}` : null,
+    ].filter((value): value is string => !!value);
+    return parts.length > 0
+      ? `请联系当前圈子圈主：${parts.join(' · ')}`
+      : '当前圈子圈主暂未填写联系方式';
   }
 
   async takeDownJobPostWithGuard(

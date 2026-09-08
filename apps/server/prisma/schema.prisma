@@ -16,6 +16,8 @@ model User {
   avatarUrl                   String?                  @map("avatar_url")
   gender                      String? // 性别：male / female / other
   birthday                    String? // 生日：YYYY-MM-DD
+  phone                       String?                  @db.VarChar(20)
+  wechat                      String?                  @db.VarChar(50)
   createdAt                   DateTime                 @default(now()) @map("created_at")
   updatedAt                   DateTime                 @updatedAt @map("updated_at")
   banAuthority                ModerationAuthority?     @map("ban_authority")
@@ -1237,6 +1239,7 @@ model Community {
   reviewedBy      String?               @map("reviewed_by") // AdminUser.openid
   reviewedAt      DateTime?             @map("reviewed_at")
   rejectReason    String?               @map("reject_reason") @db.VarChar(200)
+  deletedAt       DateTime?             @map("deleted_at")
   owner           User?                 @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   activeUsers     User[]                @relation("CommunityActiveUser")
   members         CommunityMember[]
@@ -1250,6 +1253,7 @@ model Community {
   @@index([status, createdAt])
   @@index([status, memberCount])
   @@index([ownerId, status]) // P2-26 creator 视角查"我的全部圈子"
+  @@index([deletedAt, status, createdAt])
   @@map("communities")
 }
 

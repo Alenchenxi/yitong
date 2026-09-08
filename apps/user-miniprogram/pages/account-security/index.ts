@@ -9,6 +9,8 @@ Page({
     genderLabels: ['男', '女', '其他'],
     genderIndex: -1,
     birthday: '',
+    phone: '',
+    wechat: '',
     saving: false,
     showCancel: false,
   },
@@ -19,7 +21,7 @@ Page({
     try {
       const a = await getAccount();
       const gi = a.gender ? GENDERS.indexOf(a.gender) : -1;
-      this.setData({ nickname: a.nickname, genderIndex: gi, birthday: a.birthday ?? '' });
+      this.setData({ nickname: a.nickname, genderIndex: gi, birthday: a.birthday ?? '', phone: a.phone ?? '', wechat: a.wechat ?? '' });
     } catch {
       /* toast */
     }
@@ -27,6 +29,12 @@ Page({
 
   onNickname(e: WechatMiniprogram.Input) {
     this.setData({ nickname: e.detail.value });
+  },
+  onPhone(e: WechatMiniprogram.Input) {
+    this.setData({ phone: e.detail.value });
+  },
+  onWechat(e: WechatMiniprogram.Input) {
+    this.setData({ wechat: e.detail.value });
   },
   onGenderChange(e: WechatMiniprogram.PickerChange) {
     this.setData({ genderIndex: Number(e.detail.value) });
@@ -47,6 +55,8 @@ Page({
         nickname: this.data.nickname.trim(),
         gender: this.data.genderIndex >= 0 ? GENDERS[this.data.genderIndex] : undefined,
         birthday: this.data.birthday || undefined,
+        phone: this.data.phone.trim(),
+        wechat: this.data.wechat.trim(),
       });
       wx.showToast({ title: '已保存', icon: 'success' });
     } catch {

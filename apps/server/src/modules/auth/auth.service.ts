@@ -153,7 +153,7 @@ export class AuthService {
   async getAccount(uid: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: uid },
-      select: { id: true, nickname: true, avatarUrl: true, gender: true, birthday: true },
+      select: { id: true, nickname: true, avatarUrl: true, gender: true, birthday: true, phone: true, wechat: true },
     });
     if (!user) throw new BizException(10001, '用户不存在', HttpStatus.UNAUTHORIZED);
     return user;
@@ -166,8 +166,10 @@ export class AuthService {
         ...(dto.nickname !== undefined ? { nickname: dto.nickname } : {}),
         ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
         ...(dto.birthday !== undefined ? { birthday: dto.birthday } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}),
+        ...(dto.wechat !== undefined ? { wechat: dto.wechat.trim() || null } : {}),
       },
-      select: { id: true, nickname: true, avatarUrl: true, gender: true, birthday: true },
+      select: { id: true, nickname: true, avatarUrl: true, gender: true, birthday: true, phone: true, wechat: true },
     });
   }
 

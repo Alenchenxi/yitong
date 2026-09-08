@@ -74,9 +74,9 @@ export class CommunityService {
     if (activeId) {
       const active = await this.prisma.community.findUnique({
         where: { id: activeId },
-        select: { status: true },
+        select: { status: true, deletedAt: true },
       });
-      if (active && active.status === CommunityStatus.ACTIVE) return activeId;
+      if (active && !active.deletedAt && active.status === CommunityStatus.ACTIVE) return activeId;
     }
     throw new BizException(ERR_NOT_JOINED, '请先加入圈子', HttpStatus.FORBIDDEN);
   }
@@ -91,9 +91,9 @@ export class CommunityService {
     if (requested) {
       const community = await this.prisma.community.findUnique({
         where: { id: requested },
-        select: { status: true },
+        select: { status: true, deletedAt: true },
       });
-      if (community?.status !== CommunityStatus.ACTIVE) {
+      if (!community || community.deletedAt || community.status !== CommunityStatus.ACTIVE) {
         throw new BizException(80010, '圈子不存在或不可用', HttpStatus.NOT_FOUND);
       }
       return requested;
@@ -106,9 +106,9 @@ export class CommunityService {
     if (activeId) {
       const active = await this.prisma.community.findUnique({
         where: { id: activeId },
-        select: { status: true },
+        select: { status: true, deletedAt: true },
       });
-      if (active && active.status === CommunityStatus.ACTIVE) return activeId;
+      if (active && !active.deletedAt && active.status === CommunityStatus.ACTIVE) return activeId;
     }
     return DEFAULT_COMMUNITY_ID;
   }
@@ -136,6 +136,7 @@ export class CommunityService {
       this.prisma.community.findMany({
         where: {
           status: CommunityStatus.ACTIVE,
+          deletedAt: null,
           ...(category ? { category } : {}),
         },
         orderBy: [{ memberCount: 'desc' }, { createdAt: 'asc' }],
@@ -165,6 +166,7 @@ export class CommunityService {
       this.prisma.community.findMany({
         where: {
           status: CommunityStatus.ACTIVE,
+          deletedAt: null,
           name: { contains: kw, mode: 'insensitive' },
         },
         orderBy: [{ memberCount: 'desc' }, { createdAt: 'asc' }],
@@ -184,7 +186,7 @@ export class CommunityService {
     const [user, memberships] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: uid }, select: { activeCommunityId: true } }),
       this.prisma.communityMember.findMany({
-        where: { userId: uid },
+        where: { userId: uid, community: { deletedAt: null } },
         include: { community: true },
         orderBy: { joinedAt: 'desc' },
       }),
@@ -205,7 +207,7 @@ export class CommunityService {
     const activeId = user?.activeCommunityId;
     if (!activeId) return null;
     const community = await this.prisma.community.findUnique({ where: { id: activeId } });
-    if (!community || community.status !== CommunityStatus.ACTIVE) return null;
+    if (!community || community.deletedAt || community.status !== CommunityStatus.ACTIVE) return null;
     const [member, memberCount, postCount] = await Promise.all([
       this.prisma.communityMember.findUnique({
         where: { communityId_userId: { communityId: activeId, userId: uid } },
@@ -223,7 +225,7 @@ export class CommunityService {
   /** 圈子详情（DISABLED 视为不存在） */
   async detail(uid: string, id: string): Promise<CommunityVo> {
     const community = await this.prisma.community.findUnique({ where: { id } });
-    if (!community || community.status !== CommunityStatus.ACTIVE) {
+    if (!community || community.deletedAt || community.status !== CommunityStatus.ACTIVE) {
       throw new BizException(ERR_COMMUNITY_NOT_FOUND, '圈子不存在', HttpStatus.NOT_FOUND);
     }
     const [member, memberCount, postCount] = await Promise.all([
@@ -297,7 +299,7 @@ export class CommunityService {
     const [user, communities] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: uid }, select: { activeCommunityId: true } }),
       this.prisma.community.findMany({
-        where: { ownerId: uid },
+        where: { ownerId: uid, deletedAt: null },
         orderBy: { createdAt: 'desc' },
       }),
     ]);
@@ -332,7 +334,7 @@ export class CommunityService {
    */
   async resubmit(id: string, uid: string): Promise<CreateCommunityResult> {
     const c = await this.prisma.community.findUnique({ where: { id } });
-    if (!c) throw new BizException(ERR_COMMUNITY_NOT_FOUND, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (!c || c.deletedAt) throw new BizException(ERR_COMMUNITY_NOT_FOUND, '圈子不存在', HttpStatus.NOT_FOUND);
     if (c.ownerId !== uid) {
       throw new BizException(ERR_RESUBMIT_FORBIDDEN, '仅创建者可重提', HttpStatus.FORBIDDEN);
     }
@@ -387,7 +389,7 @@ export class CommunityService {
     return this.prisma.$transaction(async (tx) => {
       // 条件 no-op update 同时完成 ACTIVE 校验和行级写锁；与管理员禁用并发时不会使用事务外旧状态。
       const active = await tx.community.updateMany({
-        where: { id, status: CommunityStatus.ACTIVE },
+        where: { id, status: CommunityStatus.ACTIVE, deletedAt: null },
         data: { status: CommunityStatus.ACTIVE },
       });
       if (active.count === 0) {
@@ -429,7 +431,7 @@ export class CommunityService {
   /** 切换当前圈子（须已是成员 + ACTIVE） */
   async switchActive(uid: string, communityId: string): Promise<{ id: string }> {
     const community = await this.prisma.community.findUnique({ where: { id: communityId } });
-    if (!community || community.status !== CommunityStatus.ACTIVE) {
+    if (!community || community.deletedAt || community.status !== CommunityStatus.ACTIVE) {
       throw new BizException(ERR_COMMUNITY_NOT_FOUND, '圈子不存在', HttpStatus.NOT_FOUND);
     }
     const member = await this.prisma.communityMember.findUnique({

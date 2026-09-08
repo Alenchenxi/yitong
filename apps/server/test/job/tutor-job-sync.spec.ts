@@ -34,7 +34,6 @@ import {
 import { TutorSyncService } from '../../src/modules/tutor-sync/tutor-sync.service';
 import {
   TUTOR_SYNC_CONTACT,
-  TUTOR_SYNC_CONTACT_INSTRUCTION,
   TUTOR_SYNC_PUBLISHER,
   type TutorDemandSnapshot,
   type TutorDemandSnapshotItem,
@@ -959,8 +958,8 @@ describe('TutorSyncService 全量快照分批对账', () => {
       data: [
         expect.objectContaining({
           merchantId: 'merchant_a',
-          contactPhoneSnapshot: TUTOR_SYNC_CONTACT,
-          contactWechatSnapshot: TUTOR_SYNC_CONTACT,
+          contactPhoneSnapshot: null,
+          contactWechatSnapshot: null,
           category: JobCategory.TUTORING,
           settlement: Settlement.COMPLETION,
           duration: JobDuration.D90,
@@ -1589,7 +1588,11 @@ describe('小程序同步岗位静态契约', () => {
       '<button class="apply-btn" disabled="{{true}}">请联系发布方报名</button>',
     );
     expect(style).toContain('color: #F53F3F');
-    expect(TUTOR_SYNC_CONTACT_INSTRUCTION).toBe('此岗位需联系13057867818（同微信）');
+    const policy = new TutorJobPolicyService();
+    expect(policy.contactInstruction(
+      { applyMode: JobApplyMode.CONTACT_ONLY, publisherName: TUTOR_SYNC_PUBLISHER },
+      { phone: '13800138000', wechat: 'circle-owner' },
+    )).toBe('请联系当前圈子圈主：手机号 13800138000 · 微信号 circle-owner');
   });
 
   it('服务端岗位VO固定展示燚桐家教并禁止站内报名', () => {
@@ -1598,7 +1601,7 @@ describe('小程序同步岗位静态契约', () => {
       'utf8',
     );
     expect(jobService).toContain('applyMode === JobApplyMode.CONTACT_ONLY');
-    expect(jobService).toContain('tutorJobPolicy.contactInstruction(p)');
+    expect(jobService).toContain('tutorJobPolicy.contactInstruction(p, communityOwnerContact ?? undefined)');
     expect(jobService).toContain('validityText: p.expireAt === null');
   });
 });

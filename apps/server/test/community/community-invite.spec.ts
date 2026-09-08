@@ -40,7 +40,7 @@ describe('CommunityService.acceptInvite', () => {
       joined: true,
     });
     expect(tx.community.updateMany).toHaveBeenCalledWith({
-      where: { id: 'community_a', status: CommunityStatus.ACTIVE },
+      where: { id: 'community_a', status: CommunityStatus.ACTIVE, deletedAt: null },
       data: { status: CommunityStatus.ACTIVE },
     });
     expect(tx.communityMember.createMany).toHaveBeenCalledWith({
@@ -87,7 +87,7 @@ describe('CommunityService.acceptInvite', () => {
     expect(biz.getStatus()).toBe(HttpStatus.BAD_REQUEST);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(tx.community.updateMany).toHaveBeenCalledWith({
-      where: { id: 'community_a', status: CommunityStatus.ACTIVE },
+      where: { id: 'community_a', status: CommunityStatus.ACTIVE, deletedAt: null },
       data: { status: CommunityStatus.ACTIVE },
     });
     expect(tx.communityMember.createMany).not.toHaveBeenCalled();
