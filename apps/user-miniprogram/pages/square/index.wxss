@@ -265,7 +265,9 @@
 }
 .menu-sheet {
   width: 100%;
-  overflow: hidden;
+  max-height: 86vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   border-radius: 32rpx 32rpx 0 0;
   background: var(--yt-card);
   animation: sheet-in 180ms ease-out;

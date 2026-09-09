@@ -14,3 +14,4 @@
 .secondary, .share { color: var(--yt-text-main); background: #fff; border: 1rpx solid #e5e6eb; }
 .loading, .error { margin-top: 120rpx; text-align: center; font-size: 27rpx; color: var(--yt-text-sub); }
 .error { color: #e34d59; }
+.poster-canvas { position: fixed; left: -2000rpx; top: -2000rpx; width: 750rpx; height: 1060rpx; opacity: 0; pointer-events: none; }

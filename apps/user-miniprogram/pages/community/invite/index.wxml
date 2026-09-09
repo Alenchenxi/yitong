@@ -1,4 +1,5 @@
 <view class="page">
+  <canvas canvas-id="invitePoster" class="poster-canvas" width="750" height="1060"></canvas>
   <view class="header" wx:if="{{community}}">
     <image wx:if="{{community.logo}}" class="logo" src="{{community.logo}}" mode="aspectFill" />
     <view wx:else class="logo logo-fallback">{{community.name[0]}}</view>
@@ -17,6 +18,6 @@
   <view class="actions" wx:if="{{imagePath}}">
     <button class="primary" bindtap="saveImage" loading="{{saving}}">保存邀请图片</button>
     <button class="secondary" bindtap="shareImage">分享到朋友圈</button>
-    <button class="share" open-type="share">转发给好友</button>
+    <button class="share" bindtap="shareToFriend">转发二维码给好友</button>
   </view>
 </view>
