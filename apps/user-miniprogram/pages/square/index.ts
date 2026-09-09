@@ -18,7 +18,7 @@ import {
   type BannerVo,
 } from '../../services/community';
 import { listAnnouncements, type AnnouncementVo } from '../../services/announcement';
-import { syncCustomTabBar } from '../../utils/custom-tabbar';
+import { setCustomTabBarHidden, syncCustomTabBar } from '../../utils/custom-tabbar';
 import { getNavigationLayout } from '../../utils/navigation';
 import {
   bindAnonymousContentVisibility,
@@ -132,6 +132,7 @@ Page({
   },
 
   async onShow() {
+    setCustomTabBarHidden(this, false);
     syncCustomTabBar(this, '/pages/square/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
@@ -171,6 +172,7 @@ Page({
   onHide() {
     // 离开页面时废弃未完成的详情请求，避免返回后展开旧圈子的菜单。
     this._communityMenuRequestSeq += 1;
+    setCustomTabBarHidden(this, false);
     this.setData({ menuVisible: false });
   },
 
@@ -373,6 +375,7 @@ Page({
   },
 
   goCommunityList() {
+    setCustomTabBarHidden(this, false);
     this.setData({ menuVisible: false });
     wx.navigateTo({ url: '/pages/community/list/index' });
   },
@@ -405,16 +408,19 @@ Page({
       requestSeq !== this._communityMenuRequestSeq ||
       this.data.community?.id !== current.id
     ) return;
+    setCustomTabBarHidden(this, true);
     this.setData({ menuVisible: true });
   },
 
   hideCommunityMenu() {
+    setCustomTabBarHidden(this, false);
     this.setData({ menuVisible: false });
   },
 
   openInviteCode() {
     const community = this.data.community;
     if (!community) return;
+    setCustomTabBarHidden(this, false);
     this.setData({ menuVisible: false });
     wx.navigateTo({ url: `/pages/community/invite/index?id=${encodeURIComponent(community.id)}` });
   },

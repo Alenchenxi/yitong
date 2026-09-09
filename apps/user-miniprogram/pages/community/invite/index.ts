@@ -58,56 +58,56 @@ Page({
     const logoPath = community.logo ? await this.resolveImagePath(community.logo) : '';
     const title = `燚桐-${community.name}`;
     const canvasId = 'invitePoster';
-    const width = 750;
-    const height = 1060;
+    const width = 375;
+    const height = 530;
     const ctx = wx.createCanvasContext(canvasId, this);
 
     ctx.setFillStyle('#FFFFFF');
     ctx.fillRect(0, 0, width, height);
     ctx.setFillStyle('#F9C801');
-    ctx.fillRect(0, 0, width, 250);
+    ctx.fillRect(0, 0, width, 125);
 
     ctx.setFillStyle('#FFFFFF');
     ctx.beginPath();
-    ctx.arc(375, 125, 72, 0, Math.PI * 2);
+    ctx.arc(187.5, 62.5, 36, 0, Math.PI * 2);
     ctx.fill();
     if (logoPath) {
       ctx.save();
       ctx.beginPath();
-      ctx.arc(375, 125, 62, 0, Math.PI * 2);
+      ctx.arc(187.5, 62.5, 31, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(logoPath, 313, 63, 124, 124);
+      ctx.drawImage(logoPath, 156.5, 31.5, 62, 62);
       ctx.restore();
     } else {
       ctx.setFillStyle('#1D2129');
-      ctx.setFontSize(58);
+      ctx.setFontSize(29);
       ctx.setTextAlign('center');
       ctx.setTextBaseline('middle');
-      ctx.fillText(community.name.slice(0, 1), 375, 127);
+      ctx.fillText(community.name.slice(0, 1), 187.5, 63.5);
     }
 
     ctx.setFillStyle('#1D2129');
     ctx.setTextAlign('center');
     ctx.setTextBaseline('normal');
-    let fontSize = 40;
+    let fontSize = 20;
     ctx.setFontSize(fontSize);
-    while (fontSize > 26 && ctx.measureText(title).width > 640) {
-      fontSize -= 2;
+    while (fontSize > 13 && ctx.measureText(title).width > 320) {
+      fontSize -= 1;
       ctx.setFontSize(fontSize);
     }
-    const displayTitle = ctx.measureText(title).width > 640 ? `${title.slice(0, 16)}...` : title;
-    ctx.fillText(displayTitle, 375, 310);
+    const displayTitle = ctx.measureText(title).width > 320 ? `${title.slice(0, 16)}...` : title;
+    ctx.fillText(displayTitle, 187.5, 155);
 
     ctx.setFillStyle('#F5F6F8');
-    ctx.fillRect(110, 350, 530, 530);
-    ctx.drawImage(codePath, 135, 375, 480, 480);
+    ctx.fillRect(55, 175, 265, 265);
+    ctx.drawImage(codePath, 67.5, 187.5, 240, 240);
 
     ctx.setFillStyle('#4E5969');
-    ctx.setFontSize(30);
-    ctx.fillText('微信扫一扫，加入这个圈子', 375, 950);
+    ctx.setFontSize(15);
+    ctx.fillText('微信扫一扫，加入这个圈子', 187.5, 475);
     ctx.setFillStyle('#86909C');
-    ctx.setFontSize(24);
-    ctx.fillText('燚桐校园生活', 375, 1000);
+    ctx.setFontSize(12);
+    ctx.fillText('燚桐校园生活', 187.5, 500);
 
     return new Promise((resolve, reject) => {
       ctx.draw(false, () => {
@@ -117,8 +117,8 @@ Page({
           y: 0,
           width,
           height,
-          destWidth: width * 2,
-          destHeight: height * 2,
+          destWidth: 750,
+          destHeight: 1060,
           fileType: 'png',
           success: (result) => resolve(result.tempFilePath),
           fail: reject,

@@ -46,6 +46,7 @@ const visibilityUnsubscribers = new WeakMap<object, () => void>();
 Component({
   data: {
     selectedPath: '',
+    hidden: false,
     items: TAB_ITEMS.filter((item) => !item.anonymousOnly),
   },
 

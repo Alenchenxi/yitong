@@ -1,5 +1,5 @@
 <view class="page">
-  <canvas canvas-id="invitePoster" class="poster-canvas" width="750" height="1060"></canvas>
+  <canvas canvas-id="invitePoster" class="poster-canvas" width="375" height="530"></canvas>
   <view class="header" wx:if="{{community}}">
     <image wx:if="{{community.logo}}" class="logo" src="{{community.logo}}" mode="aspectFill" />
     <view wx:else class="logo logo-fallback">{{community.name[0]}}</view>
