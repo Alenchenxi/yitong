@@ -162,33 +162,6 @@ Page({
     this.openImageShareMenu();
   },
 
-  shareToFriend() {
-    const path = this.data.imagePath;
-    if (!path) return;
-    const wxApi = wx as typeof wx & {
-      shareImageToGroup?: (options: {
-        imagePath: string;
-        needShowEntrance?: boolean;
-        entrancePath?: string;
-        success?: () => void;
-        fail?: (error: { errMsg?: string }) => void;
-      }) => void;
-    };
-    // 3.7.8+ 直接打开好友选择页发送图片，避免 open-type=share 发送小程序卡片。
-    if (typeof wxApi.shareImageToGroup !== 'function') {
-      wx.showModal({
-        title: '暂不支持直接转发',
-        content: '当前微信版本无法直接打开好友列表，请先保存二维码图片后发送。',
-        showCancel: false,
-      });
-      return;
-    }
-    wxApi.shareImageToGroup({
-      imagePath: path,
-      needShowEntrance: false,
-      fail: (error) => this.handleShareFailure(error),
-    });
-  },
 
   openImageShareMenu() {
     const path = this.data.imagePath;
@@ -225,7 +198,7 @@ Page({
       return;
     }
     if (/(invalid|path|image|图片|参数)/i.test(errMsg)) {
-      wx.showToast({ title: '二维码图片无效，请重新生成', icon: 'none' });
+      wx.showToast({ title: '转发失败，请重试', icon: 'none' });
       return;
     }
     wx.showToast({ title: '分享失败，请稍后重试或先保存图片', icon: 'none' });
