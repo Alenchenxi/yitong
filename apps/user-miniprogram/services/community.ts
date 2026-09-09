@@ -68,6 +68,15 @@ export function getActiveCommunity(): Promise<CommunityVo | null> {
 export function getCommunity(id: string): Promise<CommunityVo> {
   return request<CommunityVo>({ url: `/community/${id}` });
 }
+/** 生成圈子邀请小程序码（仅圈友可用） */
+export interface CommunityInviteCodeVo {
+  communityId: string;
+  imageBase64: string;
+  mimeType: 'image/png';
+}
+export function getCommunityInviteCode(id: string): Promise<CommunityInviteCodeVo> {
+  return request<CommunityInviteCodeVo>({ url: `/community/${id}/invite-code` });
+}
 
 /** 创建圈子（creator → OWNER + 成员 + 置当前；category/region/location 必填）
  *  P2-26 返回 CreateCommunityResult 含 pending 标记，按此切 toast 文案 */

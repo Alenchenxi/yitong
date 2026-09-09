@@ -1,0 +1,16 @@
+.page { min-height: 100vh; box-sizing: border-box; padding: 48rpx 40rpx; background: #f6f7f9; }
+.header { text-align: center; }
+.logo { width: 112rpx; height: 112rpx; margin: 0 auto 20rpx; border-radius: 28rpx; }
+.logo-fallback { display: flex; align-items: center; justify-content: center; background: var(--yt-primary); color: var(--yt-text-main); font-size: 48rpx; font-weight: 600; }
+.name { font-size: 38rpx; font-weight: 600; color: var(--yt-text-main); }
+.sub { margin-top: 10rpx; font-size: 25rpx; color: var(--yt-text-sub); }
+.code-panel { margin: 44rpx auto 0; padding: 32rpx; width: 520rpx; max-width: 100%; box-sizing: border-box; border-radius: 20rpx; background: #fff; text-align: center; box-shadow: 0 8rpx 28rpx rgba(31, 35, 41, 0.08); }
+.code { display: block; width: 430rpx; height: 430rpx; max-width: 100%; margin: 0 auto; }
+.hint { margin-top: 18rpx; font-size: 25rpx; color: var(--yt-text-sub); }
+.actions { margin-top: 36rpx; }
+.actions button { width: 100%; margin: 16rpx 0; border-radius: 12rpx; font-size: 29rpx; line-height: 84rpx; height: 84rpx; }
+.actions button::after { border: none; }
+.primary { color: #fff; background: var(--yt-primary); }
+.secondary, .share { color: var(--yt-text-main); background: #fff; border: 1rpx solid #e5e6eb; }
+.loading, .error { margin-top: 120rpx; text-align: center; font-size: 27rpx; color: var(--yt-text-sub); }
+.error { color: #e34d59; }

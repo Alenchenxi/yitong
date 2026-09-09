@@ -42,6 +42,14 @@ function inviteErrorCode(error: unknown): number | null {
   return Number.isFinite(code) ? code : null;
 }
 
+function parseCommunityInviteId(options: Record<string, string | undefined>): string {
+  const direct = options.inviteCommunityId;
+  if (direct) return direct;
+  const scene = options.scene;
+  if (!scene) return '';
+  const decoded = decodeURIComponent(scene);
+  return decoded.startsWith('communityId=') ? decoded.slice('communityId='.length) : decoded;
+}
 interface PageData {
   community: CommunityVo | null;
   banners: BannerVo[];
@@ -91,7 +99,7 @@ Page({
         void this.reloadFeed();
       }
     });
-    const inviteCommunityId = options.inviteCommunityId;
+    const inviteCommunityId = parseCommunityInviteId(options);
     if (inviteCommunityId) {
       this._inviteCommunityId = inviteCommunityId;
       app.globalData.pendingCommunityInviteId = inviteCommunityId;
@@ -402,6 +410,13 @@ Page({
 
   hideCommunityMenu() {
     this.setData({ menuVisible: false });
+  },
+
+  openInviteCode() {
+    const community = this.data.community;
+    if (!community) return;
+    this.setData({ menuVisible: false });
+    wx.navigateTo({ url: `/pages/community/invite/index?id=${encodeURIComponent(community.id)}` });
   },
 
   stopMenuTap() {},

@@ -45,6 +45,14 @@ async function fetchAnonymousContentVisibilityWithRetry(): Promise<boolean> {
   }
 }
 
+function parseCommunityInviteId(options: { query?: Record<string, string | undefined> }): string {
+  const direct = options.query?.inviteCommunityId;
+  if (direct) return direct;
+  const scene = options.query?.scene;
+  if (!scene) return '';
+  const decoded = decodeURIComponent(scene);
+  return decoded.startsWith('communityId=') ? decoded.slice('communityId='.length) : decoded;
+}
 function responseErrorCode(error: unknown): number | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
   const code = Number((error as { code?: unknown }).code);
@@ -70,7 +78,7 @@ App({
   },
 
   onLaunch(options) {
-    const inviteCommunityId = options.query?.inviteCommunityId;
+    const inviteCommunityId = parseCommunityInviteId(options);
     if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
       this.globalData.pendingCommunityInviteId = inviteCommunityId;
     }
@@ -101,7 +109,7 @@ App({
     if (this.globalData.currentRole === 'admin' && this.globalData.token) {
       void this.refreshAdminAccess();
     }
-    const inviteCommunityId = options.query?.inviteCommunityId;
+    const inviteCommunityId = parseCommunityInviteId(options);
     if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
       this.globalData.pendingCommunityInviteId = inviteCommunityId;
     }

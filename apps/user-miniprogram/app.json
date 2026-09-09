@@ -53,6 +53,7 @@
     "pages/community/search/index",
     "pages/community/create/index",
     "pages/community/mine/index",
+    "pages/community/invite/index",
     "pages/content-search/index",
     "pages/notifications/index",
     "pages/favorites/index",

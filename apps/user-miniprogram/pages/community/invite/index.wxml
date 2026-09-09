@@ -1,0 +1,22 @@
+<view class="page">
+  <view class="header" wx:if="{{community}}">
+    <image wx:if="{{community.logo}}" class="logo" src="{{community.logo}}" mode="aspectFill" />
+    <view wx:else class="logo logo-fallback">{{community.name[0]}}</view>
+    <view class="name">{{community.name}}</view>
+    <view class="sub">扫码加入圈子 · {{community.memberCount}} 位圈友</view>
+  </view>
+
+  <view class="code-panel" wx:if="{{imagePath}}">
+    <image class="code" src="{{imagePath}}" mode="aspectFit" />
+    <view class="hint">微信扫一扫，加入这个圈子</view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">正在生成邀请二维码...</view>
+  <view class="error" wx:elif="{{error}}">{{error}}</view>
+
+  <view class="actions" wx:if="{{imagePath}}">
+    <button class="primary" bindtap="saveImage" loading="{{saving}}">保存邀请图片</button>
+    <button class="secondary" bindtap="shareImage">分享到朋友圈</button>
+    <button class="share" open-type="share">转发给好友</button>
+  </view>
+</view>

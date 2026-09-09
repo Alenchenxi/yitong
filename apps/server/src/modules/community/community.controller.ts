@@ -3,13 +3,17 @@ import { Throttle } from '@nestjs/throttler';
 import { ok } from '../../common/dto/api-response';
 import type { AuthenticatedRequest } from '../auth/types';
 import { CommunityService } from './community.service';
+import { CommunityInviteCodeService } from './community-invite-code.service';
 import { CreateCommunityDto, SwitchCommunityDto } from './dto/community.dto';
 
 // 圈子（Community）CRUD / 加入/切换
 // 鉴权：全局 JwtAuthGuard（access token）；静态路由（list/mine/active/switch）先于 :id 注册
 @Controller('community')
 export class CommunityController {
-  constructor(private readonly community: CommunityService) {}
+  constructor(
+    private readonly community: CommunityService,
+    private readonly inviteCode: CommunityInviteCodeService,
+  ) {}
 
   @Get('list')
   async list(@Req() req: AuthenticatedRequest, @Query('category') category?: string) {
@@ -48,6 +52,12 @@ export class CommunityController {
   @Throttle({ default: { ttl: 60_000, limit: 3 } }) // 建圈 3/min（API 规范 §8）
   async create(@Req() req: AuthenticatedRequest, @Body() dto: CreateCommunityDto) {
     return ok(await this.community.create(req.user!.uid, dto, req.user!.openid));
+  }
+
+  @Get(':id/invite-code')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  async inviteCodeImage(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return ok(await this.inviteCode.generate(req.user!.uid, id));
   }
 
   @Post(':id/join')
