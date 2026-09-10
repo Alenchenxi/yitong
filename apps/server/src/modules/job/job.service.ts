@@ -230,16 +230,51 @@ export class JobService {
     if (!communityId || !posts.some((post) => this.tutorJobPolicy.isExternalTutorPost(post))) {
       return null;
     }
+    const targetCommunityId = communityId;
     const community = await this.prisma.community.findFirst({
-      where: { id: communityId, status: CommunityStatus.ACTIVE, deletedAt: null },
-      select: { owner: { select: { phone: true, wechat: true } } },
+      where: { id: targetCommunityId, status: CommunityStatus.ACTIVE, deletedAt: null },
+      select: { ownerId: true },
+    });
+    if (!community) return null;
+
+    // 圈子联系方式优先绑定该圈子的有效圈子管理员。管理员授权既可能是
+    // 显式绑定当前圈子，也可能是“全部圈子”范围；平台管理员不参与此选择。
+    // 按创建时间和 id 稳定取第一位，避免多个管理员时联系方式随机变化。
+    const scopedAdmin = await this.prisma.adminUser.findFirst({
+      where: {
+        openid: { not: null },
+        adminType: { active: true, deletedAt: null, isPlatform: false },
+        OR: [
+          { allCommunities: true },
+          { communityScopes: { some: { communityId: targetCommunityId } } },
+        ],
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: { openid: true },
+    });
+    if (scopedAdmin?.openid) {
+      const adminContact = await this.prisma.user.findUnique({
+        where: { openid: scopedAdmin.openid },
+        select: { phone: true, wechat: true },
+      });
+      if (adminContact && (adminContact.phone?.trim() || adminContact.wechat?.trim())) {
+        return {
+          phone: adminContact.phone?.trim() || null,
+          wechat: adminContact.wechat?.trim() || null,
+        };
+      }
+    }
+
+    if (!community.ownerId) return { phone: null, wechat: null };
+    const owner = await this.prisma.user.findUnique({
+      where: { id: community.ownerId },
+      select: { phone: true, wechat: true },
     });
     return {
-      phone: community?.owner?.phone?.trim() || null,
-      wechat: community?.owner?.wechat?.trim() || null,
+      phone: owner?.phone?.trim() || null,
+      wechat: owner?.wechat?.trim() || null,
     };
   }
-
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
   // 智能生成流程(2026-08-10):工作地点强制地图选点,4 字段必填,缺一抛 40003
   async createPost(merchantUid: string, dto: CreateJobPostDto, openid?: string) {

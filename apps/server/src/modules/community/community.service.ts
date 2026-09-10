@@ -260,7 +260,8 @@ export class CommunityService {
 
     // P2-26 读审核开关（缺/为 false → 旧行为）
     const cfg = await this.prisma.appConfig.findUnique({ where: { key: CFG_COMMUNITY_NEED_REVIEW } });
-    const needReview = cfg?.value === true; // JSON: true → boolean; 其他（false/string/缺）→ false
+    const needReview = cfg?.value === true
+      && !(await this.publicationPolicy.isPlatformUser(uid));
 
     return this.prisma.$transaction(async (tx) => {
       const community = await tx.community.create({

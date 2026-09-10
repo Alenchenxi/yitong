@@ -82,3 +82,76 @@ describe('同步家教使用当前圈子创建人联系方式', () => {
     expect(vo.contactInstruction).toBe('当前圈子圈主暂未填写联系方式');
   });
 });
+
+describe('同步家教圈子联系人解析', () => {
+  const tutorIdentity = {
+    applyMode: JobApplyMode.CONTACT_ONLY,
+    publisherName: TUTOR_SYNC_PUBLISHER,
+  };
+
+  function resolveContact(prisma: Record<string, unknown>) {
+    const service = new JobService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      new TutorJobPolicyService(),
+    );
+    return (service as unknown as {
+      resolveCommunityOwnerContact(
+        posts: Array<{ applyMode?: JobApplyMode; publisherName?: string | null }>,
+        communityId: string | null,
+      ): Promise<{ phone: string | null; wechat: string | null } | null>;
+    }).resolveCommunityOwnerContact([tutorIdentity], 'community_a');
+  }
+
+  it('优先返回授权圈子管理员当前填写的联系方式', async () => {
+    const prisma = {
+      community: { findFirst: jest.fn().mockResolvedValue({ ownerId: 'owner_a' }) },
+      adminUser: { findFirst: jest.fn().mockResolvedValue({ openid: 'admin-openid' }) },
+      user: { findUnique: jest.fn().mockResolvedValue({ phone: '13800138000', wechat: 'circle-admin' }) },
+    };
+
+    await expect(resolveContact(prisma)).resolves.toEqual({
+      phone: '13800138000',
+      wechat: 'circle-admin',
+    });
+    expect(prisma.adminUser.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        adminType: { active: true, deletedAt: null, isPlatform: false },
+        OR: expect.arrayContaining([
+          { allCommunities: true },
+          { communityScopes: { some: { communityId: 'community_a' } } },
+        ]),
+      }),
+    }));
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { openid: 'admin-openid' },
+      select: { phone: true, wechat: true },
+    });
+  });
+
+  it('无可用圈子管理员联系方式时回退到圈主当前联系方式', async () => {
+    const prisma = {
+      community: { findFirst: jest.fn().mockResolvedValue({ ownerId: 'owner_a' }) },
+      adminUser: { findFirst: jest.fn().mockResolvedValue({ openid: 'admin-openid' }) },
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce({ phone: null, wechat: null })
+          .mockResolvedValueOnce({ phone: '13900139000', wechat: 'circle-owner' }),
+      },
+    };
+
+    await expect(resolveContact(prisma)).resolves.toEqual({
+      phone: '13900139000',
+      wechat: 'circle-owner',
+    });
+    expect(prisma.user.findUnique).toHaveBeenLastCalledWith({
+      where: { id: 'owner_a' },
+      select: { phone: true, wechat: true },
+    });
+  });
+});

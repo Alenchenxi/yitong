@@ -265,3 +265,73 @@ describe('CommunityService 圈子图片内容安全', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
+
+describe('CommunityService 平台管理员建圈审核', () => {
+  const dto = {
+    name: '平台圈子',
+    category: '校园',
+    region: '浙江',
+    location: '温州',
+  };
+
+  function buildCreateService(isPlatform: boolean) {
+    const community = {
+      id: 'community_platform',
+      name: dto.name,
+      logo: null,
+      backgroundImage: null,
+      description: null,
+      category: dto.category,
+      region: dto.region,
+      location: dto.location,
+      ownerId: 'user_a',
+      memberCount: 1,
+      postCount: 0,
+      status: CommunityStatus.ACTIVE,
+      rejectReason: null,
+      createdAt: new Date('2026-09-10T00:00:00.000Z'),
+    };
+    const tx = {
+      community: { create: jest.fn().mockResolvedValue(community) },
+      communityMember: { create: jest.fn().mockResolvedValue({}) },
+      user: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const prisma = {
+      appConfig: { findUnique: jest.fn().mockResolvedValue({ value: true }) },
+      $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    const publication = { isPlatformUser: jest.fn().mockResolvedValue(isPlatform) };
+    const moderation = {
+      checkText: jest.fn().mockResolvedValue(undefined),
+      checkImage: jest.fn().mockResolvedValue(undefined),
+    };
+    return {
+      service: new CommunityService(prisma as never, moderation as never, publication as never),
+      prisma,
+      tx,
+    };
+  }
+
+  it('平台管理员创建圈子直接 ACTIVE 并切换当前圈子', async () => {
+    const { service, tx } = buildCreateService(true);
+
+    await expect(service.create('user_a', dto, 'openid_a')).resolves.toMatchObject({ pending: false });
+    expect(tx.community.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: CommunityStatus.ACTIVE }),
+    }));
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: 'user_a' },
+      data: { activeCommunityId: 'community_platform' },
+    });
+  });
+
+  it('普通用户仍遵循开启后的待审核流程', async () => {
+    const { service, tx } = buildCreateService(false);
+
+    await expect(service.create('user_a', dto, 'openid_a')).resolves.toMatchObject({ pending: true });
+    expect(tx.community.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: CommunityStatus.PENDING }),
+    }));
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
+});
