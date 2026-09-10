@@ -342,3 +342,13 @@
   z-index: 20;
 }
 .fab-plus { font-size: 48rpx; color: var(--yt-text-main); font-weight: 300; line-height: 1; }
+
+.timeline-invite-poster {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 375px;
+  height: 375px;
+  opacity: 0;
+  pointer-events: none;
+}

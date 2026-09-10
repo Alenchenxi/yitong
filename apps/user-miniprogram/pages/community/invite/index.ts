@@ -18,6 +18,9 @@ Page({
   } as InvitePageData,
 
   onLoad(options: Record<string, string | undefined>) {
+    wx.showShareMenu({
+      menus: ['shareAppMessage', 'shareTimeline'],
+    });
     const id = options.id;
     if (!id) {
       this.setData({ loading: false, error: '圈子参数无效' });
@@ -185,7 +188,10 @@ Page({
     }
     wxApi.showShareImageMenu({
       path,
-      needShowEntrance: false,
+      needShowEntrance: true,
+      entrancePath: this.data.community
+        ? '/pages/square/index?inviteCommunityId=' + encodeURIComponent(this.data.community.id)
+        : '/pages/square/index',
       fail: (error) => this.handleShareFailure(error),
     });
   },
@@ -210,6 +216,14 @@ Page({
     return {
       title: community ? `邀请你加入「${community.name}」圈子` : '邀请你加入圈子',
       path: community ? `/pages/square/index?inviteCommunityId=${encodeURIComponent(community.id)}` : '/pages/square/index',
+      imageUrl: community?.backgroundImage || community?.logo || undefined,
+    };
+  },
+  onShareTimeline() {
+    const community = this.data.community;
+    return {
+      title: community ? '邀请你加入「' + community.name + '」圈子' : '邀请你加入圈子',
+      query: community ? 'id=' + encodeURIComponent(community.id) : '',
       imageUrl: community?.backgroundImage || community?.logo || undefined,
     };
   },

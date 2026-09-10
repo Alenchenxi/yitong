@@ -177,4 +177,5 @@
   <view class="fab" bindtap="goCreate">
     <text class="fab-plus">＋</text>
   </view>
+  <canvas canvas-id="squareInvitePoster" class="timeline-invite-poster" width="375" height="375"></canvas>
 </view>

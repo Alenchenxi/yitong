@@ -9,6 +9,12 @@ Page({
     loading: true,
   },
 
+  onLoad() {
+    wx.showShareMenu({
+      menus: ['shareAppMessage', 'shareTimeline'],
+    });
+  },
+
   async onShow() {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;

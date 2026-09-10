@@ -12,6 +12,7 @@ import {
   acceptCommunityInvite,
   getActiveCommunity,
   getCommunity,
+  getCommunityInviteCode,
   leaveCommunity,
   listBanners,
   type CommunityVo,
@@ -67,6 +68,7 @@ interface PageData {
   navTop: number;
   navHeight: number;
   navRight: number;
+  sharePosterPath: string;
 }
 
 Page({
@@ -87,9 +89,13 @@ Page({
     navTop: 0,
     navHeight: 44,
     navRight: 12,
+    sharePosterPath: '',
   } as PageData,
 
   onLoad(options: Record<string, string | undefined>) {
+    wx.showShareMenu({
+      menus: ['shareAppMessage', 'shareTimeline'],
+    });
     const app = getApp<AppInstance>();
     bindAnonymousContentVisibility(this, (enabled) => {
       const changed = enabled !== this.data.anonymousContentEnabled;
@@ -249,6 +255,7 @@ Page({
       if (c) {
         app.globalData.activeCommunityId = c.id;
         this.setData({ community: c });
+        void this.prepareTimelinePoster(c);
       } else {
         app.globalData.activeCommunityId = '';
         this.setData({ community: null });
@@ -260,6 +267,71 @@ Page({
     }
   },
 
+  /**
+   * 朋友圈回调只能同步返回图片；因此在当前圈子加载后提前生成一张本地邀请海报。
+   * 海报内嵌官方小程序码，供朋友圈展示与扫码加入。
+   */
+  async prepareTimelinePoster(community: CommunityVo) {
+    if (this._sharePosterCommunityId === community.id && this.data.sharePosterPath) return;
+    this._sharePosterCommunityId = community.id;
+    try {
+      const code = await getCommunityInviteCode(community.id);
+      const codePath = await new Promise<string>((resolve, reject) => {
+        const filePath = wx.env.USER_DATA_PATH + '/square-invite-' + community.id + '.png';
+        wx.getFileSystemManager().writeFile({
+          filePath,
+          data: code.imageBase64,
+          encoding: 'base64',
+          success: () => resolve(filePath),
+          fail: reject,
+        });
+      });
+      const width = 375;
+      const height = 375;
+      const ctx = wx.createCanvasContext('squareInvitePoster', this);
+      ctx.setFillStyle('#F9C801');
+      ctx.fillRect(0, 0, width, height);
+      ctx.setFillStyle('#FFFFFF');
+      ctx.fillRect(18, 18, width - 36, height - 36);
+      ctx.setFillStyle('#1D2129');
+      ctx.setTextAlign('center');
+      ctx.setTextBaseline('middle');
+      ctx.setFontSize(21);
+      const title = '燚桐-' + community.name;
+      ctx.fillText(title.length > 18 ? title.slice(0, 18) + '…' : title, width / 2, 62);
+      ctx.setFillStyle('#F5F6F8');
+      ctx.fillRect(94, 90, 187, 187);
+      ctx.drawImage(codePath, 102, 98, 171, 171);
+      ctx.setFillStyle('#4E5969');
+      ctx.setFontSize(14);
+      ctx.fillText('扫码加入这个圈子', width / 2, 315);
+      ctx.setFillStyle('#86909C');
+      ctx.setFontSize(11);
+      ctx.fillText('燚桐校园生活', width / 2, 340);
+      const posterPath = await new Promise<string>((resolve, reject) => {
+        ctx.draw(false, () => {
+          wx.canvasToTempFilePath({
+            canvasId: 'squareInvitePoster',
+            x: 0,
+            y: 0,
+            width,
+            height,
+            destWidth: 750,
+            destHeight: 750,
+            fileType: 'png',
+            success: (result) => resolve(result.tempFilePath),
+            fail: reject,
+          }, this);
+        });
+      });
+      if (this.data.community?.id === community.id) {
+        this.setData({ sharePosterPath: posterPath });
+      }
+    } catch {
+      // 海报预生成失败时，朋友圈分享仍回退使用圈子背景图。
+      if (this.data.community?.id === community.id) this.setData({ sharePosterPath: '' });
+    }
+  },
   // 广告轮播 + 今日上头：随圈子刷新
   async refreshOps() {
     const communityId = this.data.community?.id;
@@ -471,6 +543,17 @@ Page({
     };
   },
 
+  onShareTimeline() {
+    const community = this.data.community;
+    if (!community) {
+      return { title: '来燚桐发现校园生活', query: '' };
+    }
+    return {
+      title: '邀请你加入「' + community.name + '」圈子',
+      query: 'inviteCommunityId=' + encodeURIComponent(community.id),
+      imageUrl: this.data.sharePosterPath || community.backgroundImage || community.logo || undefined,
+    };
+  },
   // FAB：匿名内容开启时允许选择树洞发布，否则直接进入表白墙发布。
   goCreate() {
     if (!this.data.anonymousContentEnabled) {
@@ -540,6 +623,7 @@ Page({
   },
 
   _inviteCommunityId: '',
+  _sharePosterCommunityId: '',
   _inviteConsumePromise: null as Promise<void> | null,
   _communityMenuRequestSeq: 0,
 });
