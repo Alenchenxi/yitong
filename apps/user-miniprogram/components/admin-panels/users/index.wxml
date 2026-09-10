@@ -129,8 +129,8 @@
   </block>
 
   <!-- 添加管理员弹窗 -->
-  <view wx:if="{{showAddDialog}}" class="adm-dialog" catchtouchmove="noop">
-    <view class="adm-dialog-mask" bindtap="closeAddDialog" />
+  <view wx:if="{{showAddDialog}}" class="adm-dialog">
+    <view class="adm-dialog-mask" catchtouchmove="noop" bindtap="closeAddDialog" />
     <view class="adm-dialog-panel">
       <view class="adm-dialog-title">{{editingManagerId ? '调整管理员权限' : '添加管理员'}}</view>
       <view class="adm-scope-form">
@@ -145,12 +145,14 @@
           </view>
           <switch checked="{{allCommunities}}" disabled="{{adminTypes[selectedAdminTypeIndex].isPlatform}}" color="#F9C801" bindchange="onAllCommunitiesChange" />
         </view>
-        <checkbox-group wx:if="{{!allCommunities}}" class="adm-community-grid" bindchange="onCommunityScopeChange">
-          <label class="adm-community-option" wx:for="{{scopeCommunityOptions}}" wx:key="id">
-            <checkbox value="{{item.id}}" checked="{{item.selected}}" color="#F9C801" />
-            <text>{{item.name}}</text>
-          </label>
-        </checkbox-group>
+        <scroll-view wx:if="{{!allCommunities}}" class="adm-community-grid" scroll-y enhanced show-scrollbar="{{true}}">
+          <checkbox-group class="adm-community-grid-inner" bindchange="onCommunityScopeChange">
+            <label class="adm-community-option" wx:for="{{scopeCommunityOptions}}" wx:key="id">
+              <checkbox value="{{item.id}}" checked="{{item.selected}}" color="#F9C801" />
+              <text>{{item.name}}</text>
+            </label>
+          </checkbox-group>
+        </scroll-view>
       </view>
       <view wx:if="{{!editingManagerId}}" class="adm-search">
         <input class="adm-search-input" placeholder="搜昵称（已绑微信）" value="{{candidateKeyword}}" bindinput="onCandidateKeywordInput" bindconfirm="searchCandidates" />
