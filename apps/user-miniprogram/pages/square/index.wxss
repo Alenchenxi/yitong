@@ -89,7 +89,16 @@
   font-size: 24rpx;
   color: var(--yt-text-main);
 }
-.cs-arrow { flex-shrink: 0; font-size: 20rpx; color: var(--yt-text-sub); }
+.cs-arrow {
+  flex-shrink: 0;
+  width: 22rpx;
+  height: 22rpx;
+  margin: 0 4rpx 6rpx 2rpx;
+  box-sizing: border-box;
+  border-right: 4rpx solid var(--yt-text-sub);
+  border-bottom: 4rpx solid var(--yt-text-sub);
+  transform: rotate(45deg);
+}
 .search-icon { font-size: 30rpx; line-height: 1; color: var(--yt-text-sub); transform: rotate(-15deg); }
 .search-ph { overflow: hidden; white-space: nowrap; font-size: 24rpx; color: var(--yt-text-sub); }
 

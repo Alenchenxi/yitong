@@ -11,7 +11,7 @@
             <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
             <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
             <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
-            <text class="cs-arrow">▾</text>
+            <view class="cs-arrow" aria-label="切换圈子"></view>
           </view>
           <view class="search-box" bindtap="goSearch">
             <text class="search-icon">⌕</text>
