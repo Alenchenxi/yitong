@@ -263,7 +263,6 @@ export class TreeholeService {
       communityId,
     );
     const publisherScope = await this.publicationPolicy.resolveForAnon(anonId);
-    const platformPublished = publisherScope === PublicationScope.PLATFORM;
     const ownerProfile = await this.prisma.anonymousProfile.findUnique({
       where: { anonId },
       select: { userId: true },
@@ -300,9 +299,8 @@ export class TreeholeService {
           mood: dto.mood ?? null,
           status: PostStatus.APPROVED,
           publisherScope,
-          visibilityScope: platformPublished
-            ? ContentVisibilityScope.ALL_COMMUNITIES
-            : ContentVisibilityScope.COMMUNITY,
+          // 树洞内容在所有圈子共用一条记录，避免复制后点赞、评论和审核状态漂移。
+          visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
         },
         include: { _count: { select: { comments: true } } },
       });

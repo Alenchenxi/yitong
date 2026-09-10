@@ -179,7 +179,7 @@ export class PublicationPolicyService {
   }
 
   anonymousPostVisibilityFilter(
-    communityId: string,
+    _communityId: string,
   ): Prisma.AnonymousPostWhereInput {
     return {
       OR: [
@@ -189,8 +189,8 @@ export class PublicationPolicyService {
         },
         {
           publisherScope: PublicationScope.COMMUNITY,
-          visibilityScope: ContentVisibilityScope.COMMUNITY,
-          communityId,
+          // 树洞是全圈共享频道：保留归属圈子供审核/封禁追溯，但任何有效圈子的
+          // 匿名帖均向所有圈子展示。这里不依赖 visibilityScope，兼容改造前的存量帖。
           community: { is: { status: CommunityStatus.ACTIVE } },
         },
       ],

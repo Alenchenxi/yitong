@@ -391,8 +391,17 @@ describe('广场平台内容可见性', () => {
         },
       ],
     };
+    const expectedAnonymousVisibility = {
+      OR: [
+        expectedContentVisibility.OR[0],
+        {
+          publisherScope: PublicationScope.COMMUNITY,
+          community: { is: { status: CommunityStatus.ACTIVE } },
+        },
+      ],
+    };
     expect(prisma.post.findMany.mock.calls[0][0].where.AND[0]).toEqual(expectedContentVisibility);
-    expect(prisma.anonymousPost.findMany.mock.calls[0][0].where.AND[0]).toEqual(expectedContentVisibility);
+    expect(prisma.anonymousPost.findMany.mock.calls[0][0].where.AND[0]).toEqual(expectedAnonymousVisibility);
     expect(prisma.jobPost.findMany).not.toHaveBeenCalled();
     expect(result.list).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: 'post', data: expect.objectContaining({ platformPublished: true }) }),
@@ -517,7 +526,7 @@ describe('圈子批量动态统计', () => {
 
     expect(result).toEqual([
       expect.objectContaining({ id: 'community_b', memberCount: 2, postCount: 15 }),
-      expect.objectContaining({ id: 'community_a', memberCount: 1, postCount: 14 }),
+      expect.objectContaining({ id: 'community_a', memberCount: 1, postCount: 17 }),
     ]);
     expect(prisma.communityMember.groupBy).toHaveBeenCalledTimes(1);
     expect(prisma.post.groupBy).toHaveBeenCalledTimes(1);

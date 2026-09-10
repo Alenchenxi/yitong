@@ -1,3 +1,8 @@
+import {
+  CommunityStatus,
+  ContentVisibilityScope,
+  PublicationScope,
+} from '@prisma/client';
 import { PublicationPolicyService } from '../../src/modules/publication/publication-policy.service';
 import { BizException } from '../../src/common/exceptions/biz.exception';
 
@@ -32,6 +37,22 @@ function buildService(options: {
 }
 
 describe('PublicationPolicyService 圈子封禁', () => {
+  it('树洞可见范围应同步所有有效圈子的帖子并兼容存量圈子范围', () => {
+    const { service } = buildService();
+
+    expect(service.anonymousPostVisibilityFilter('community_b')).toEqual({
+      OR: [
+        {
+          publisherScope: PublicationScope.PLATFORM,
+          visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
+        },
+        {
+          publisherScope: PublicationScope.COMMUNITY,
+          community: { is: { status: CommunityStatus.ACTIVE } },
+        },
+      ],
+    });
+  });
   it('有效圈子封禁应拒绝实名内容互动', async () => {
     const { service, prisma } = buildService({ banned: true });
 

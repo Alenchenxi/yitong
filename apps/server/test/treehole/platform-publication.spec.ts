@@ -62,8 +62,7 @@ function buildService(interactionError?: Error, transactionError?: Error) {
       },
       {
         publisherScope: PublicationScope.COMMUNITY,
-        visibilityScope: ContentVisibilityScope.COMMUNITY,
-        communityId: 'community_a',
+        community: { is: { status: 'ACTIVE' } },
       },
     ],
   };
@@ -99,6 +98,22 @@ function buildService(interactionError?: Error, transactionError?: Error) {
 }
 
 describe('TreeholeService 平台发布治理', () => {
+  it('圈子匿名身份发帖也应标记为全圈可见且不复制真实身份', async () => {
+    const { service, create, publicationPolicy } = buildService();
+    publicationPolicy.resolveForAnon.mockResolvedValue(PublicationScope.COMMUNITY);
+
+    const result = await service.createPost('anon_1', { content: '全圈树洞' });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          publisherScope: PublicationScope.COMMUNITY,
+          visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
+        }),
+      }),
+    );
+    expect(result).not.toHaveProperty('userId');
+  });
   it('平台匿名身份发帖应写入平台上下文且响应不泄露真实身份', async () => {
     const { service, create } = buildService();
 
@@ -121,7 +136,7 @@ describe('TreeholeService 平台发布治理', () => {
     expect(result).not.toHaveProperty('adminId');
   });
 
-  it('树洞列表应同时使用当前圈和全圈平台内容过滤条件', async () => {
+  it('树洞列表应使用全圈共享内容过滤条件', async () => {
     const { service, findMany, visibilityFilter } = buildService();
 
     await service.listPosts('anon_1');

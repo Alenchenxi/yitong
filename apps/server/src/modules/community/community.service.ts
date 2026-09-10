@@ -570,7 +570,6 @@ export class CommunityService {
           OR: [
             {
               publisherScope: PublicationScope.COMMUNITY,
-              visibilityScope: ContentVisibilityScope.COMMUNITY,
               communityId: { in: activeCommunityIds },
               community: { is: { status: CommunityStatus.ACTIVE } },
             },
@@ -588,9 +587,13 @@ export class CommunityService {
       .filter((row) => row.publisherScope === PublicationScope.PLATFORM
         && row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES)
       .reduce((sum, row) => sum + row._count._all, 0);
+    // 树洞是全圈共享频道：平台帖和有效圈子帖都应计入每个有效圈子的动态数。
+    // 不按 visibilityScope 过滤以兼容本次改造前的存量圈子树洞帖。
     const globalAnonymousPostCount = anonymousPostRows
-      .filter((row) => row.publisherScope === PublicationScope.PLATFORM
-        && row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES)
+      .filter((row) => (
+        row.publisherScope === PublicationScope.PLATFORM
+        || activeCommunityIds.includes(row.communityId)
+      ))
       .reduce((sum, row) => sum + row._count._all, 0);
     const globalContentCount = globalPostCount + globalAnonymousPostCount;
 
@@ -608,12 +611,10 @@ export class CommunityService {
       const current = stats.get(row.communityId);
       if (current) current.memberCount = row._count._all;
     }
-    for (const rows of [postRows, anonymousPostRows]) {
-      for (const row of rows) {
-        if ('publisherScope' in row && row.publisherScope === PublicationScope.PLATFORM) continue;
-        const current = stats.get(row.communityId);
-        if (current) current.postCount += row._count._all;
-      }
+    for (const row of postRows) {
+      if (row.publisherScope === PublicationScope.PLATFORM) continue;
+      const current = stats.get(row.communityId);
+      if (current) current.postCount += row._count._all;
     }
 
     return stats;

@@ -181,8 +181,6 @@ describe('CommunityService 圈子广场动态数', () => {
             { publisherScope: 'PLATFORM', visibilityScope: 'ALL_COMMUNITIES' },
             {
               publisherScope: 'COMMUNITY',
-              visibilityScope: 'COMMUNITY',
-              communityId: community.id,
               community: { is: { status: 'ACTIVE' } },
             },
           ],
