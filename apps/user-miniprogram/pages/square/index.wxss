@@ -91,12 +91,12 @@
 }
 .cs-arrow {
   flex-shrink: 0;
-  width: 22rpx;
-  height: 22rpx;
-  margin: 0 4rpx 6rpx 2rpx;
+  width: 14rpx;
+  height: 14rpx;
+  margin: 0 2rpx 2rpx 2rpx;
   box-sizing: border-box;
-  border-right: 4rpx solid var(--yt-text-sub);
-  border-bottom: 4rpx solid var(--yt-text-sub);
+  border-right: 3rpx solid var(--yt-text-sub);
+  border-bottom: 3rpx solid var(--yt-text-sub);
   transform: rotate(45deg);
 }
 .search-icon { font-size: 30rpx; line-height: 1; color: var(--yt-text-sub); transform: rotate(-15deg); }
