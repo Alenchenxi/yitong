@@ -22,4 +22,6 @@ const searchRadius = styles.match(/\.search-box\s*\{[\s\S]*?border-radius\s*:\s*
 assert.ok(circleRadius, '切换按钮必须定义圆角');
 assert.ok(searchRadius, '搜索栏必须定义圆角');
 assert.equal(circleRadius, searchRadius, '切换按钮圆角必须与搜索栏一致');
+assert.match(styles, /\.cs-switch-icon\s*\{[^}]*width\s*:\s*24rpx[^}]*height\s*:\s*24rpx/u, '切换图标尺寸必须与文字 24rpx 视觉基准一致');
+assert.match(styles, /\.cs-switch-label\s*\{[^}]*font-size\s*:\s*24rpx/u, '切换文字字号必须为 24rpx');
 console.log('square switch button smoke: ok');

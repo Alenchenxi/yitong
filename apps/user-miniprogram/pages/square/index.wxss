@@ -73,13 +73,13 @@
   color: var(--yt-text-main);
   font-weight: 600;
 }
-.cs-switch-icon { position: relative; width: 32rpx; height: 28rpx; flex-shrink: 0; }
-.cs-switch-line { position: absolute; width: 28rpx; height: 2rpx; border-radius: 2rpx; background: var(--yt-text-main); }
-.cs-switch-line-forward { top: 5rpx; left: 0; }
-.cs-switch-line-backward { right: 0; bottom: 5rpx; }
-.cs-switch-head { position: absolute; width: 10rpx; height: 10rpx; box-sizing: border-box; }
-.cs-switch-head-forward { top: -4rpx; right: 0; border-top: 2rpx solid var(--yt-text-main); border-right: 2rpx solid var(--yt-text-main); transform: rotate(45deg); }
-.cs-switch-head-backward { top: -4rpx; left: 0; border-bottom: 2rpx solid var(--yt-text-main); border-left: 2rpx solid var(--yt-text-main); transform: rotate(45deg); }
+.cs-switch-icon { position: relative; width: 24rpx; height: 24rpx; flex-shrink: 0; }
+.cs-switch-line { position: absolute; width: 22rpx; height: 2rpx; border-radius: 2rpx; background: var(--yt-text-main); }
+.cs-switch-line-forward { top: 4rpx; left: 0; }
+.cs-switch-line-backward { right: 0; bottom: 4rpx; }
+.cs-switch-head { position: absolute; width: 8rpx; height: 8rpx; box-sizing: border-box; }
+.cs-switch-head-forward { top: -3rpx; right: 0; border-top: 2rpx solid var(--yt-text-main); border-right: 2rpx solid var(--yt-text-main); transform: rotate(45deg); }
+.cs-switch-head-backward { top: -3rpx; left: 0; border-bottom: 2rpx solid var(--yt-text-main); border-left: 2rpx solid var(--yt-text-main); transform: rotate(45deg); }
 .cs-switch-label { font-size: 24rpx; line-height: 1; font-weight: 600; color: var(--yt-text-main); }
 .search-icon { font-size: 30rpx; line-height: 1; color: var(--yt-text-sub); transform: rotate(-15deg); }
 .search-ph { overflow: hidden; white-space: nowrap; font-size: 24rpx; color: var(--yt-text-sub); }
