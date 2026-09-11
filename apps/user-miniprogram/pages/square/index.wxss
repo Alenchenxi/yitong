@@ -51,11 +51,12 @@
   backdrop-filter: blur(16rpx);
 }
 .circle-switch {
-  gap: 8rpx;
-  border-radius: 999rpx;
-  padding: 6rpx 14rpx 6rpx 8rpx;
-  max-width: 232rpx;
-  flex-shrink: 1;
+  justify-content: center;
+  gap: 10rpx;
+  width: 136rpx;
+  flex: 0 0 136rpx;
+  border-radius: 14rpx;
+  padding: 0 16rpx;
 }
 .search-box {
   flex: 1;
@@ -63,13 +64,6 @@
   border-radius: 999rpx;
   padding: 0 18rpx;
 }
-.cs-logo {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.cs-logo-fallback,
 .c-logo-fallback,
 .sheet-logo-fallback {
   display: flex;
@@ -79,26 +73,14 @@
   color: var(--yt-text-main);
   font-weight: 600;
 }
-.cs-logo-fallback { font-size: 24rpx; }
-.cs-name {
-  min-width: 0;
-  max-width: 122rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 24rpx;
-  color: var(--yt-text-main);
-}
-.cs-arrow {
-  flex-shrink: 0;
-  width: 14rpx;
-  height: 14rpx;
-  margin: 0 2rpx 2rpx 2rpx;
-  box-sizing: border-box;
-  border-right: 3rpx solid var(--yt-text-sub);
-  border-bottom: 3rpx solid var(--yt-text-sub);
-  transform: rotate(45deg);
-}
+.cs-switch-icon { position: relative; width: 32rpx; height: 28rpx; flex-shrink: 0; }
+.cs-switch-line { position: absolute; width: 28rpx; height: 2rpx; border-radius: 2rpx; background: var(--yt-text-main); }
+.cs-switch-line-forward { top: 5rpx; left: 0; }
+.cs-switch-line-backward { right: 0; bottom: 5rpx; }
+.cs-switch-head { position: absolute; width: 10rpx; height: 10rpx; box-sizing: border-box; }
+.cs-switch-head-forward { top: -4rpx; right: 0; border-top: 2rpx solid var(--yt-text-main); border-right: 2rpx solid var(--yt-text-main); transform: rotate(45deg); }
+.cs-switch-head-backward { top: -4rpx; left: 0; border-bottom: 2rpx solid var(--yt-text-main); border-left: 2rpx solid var(--yt-text-main); transform: rotate(45deg); }
+.cs-switch-label { font-size: 24rpx; line-height: 1; font-weight: 600; color: var(--yt-text-main); }
 .search-icon { font-size: 30rpx; line-height: 1; color: var(--yt-text-sub); transform: rotate(-15deg); }
 .search-ph { overflow: hidden; white-space: nowrap; font-size: 24rpx; color: var(--yt-text-sub); }
 

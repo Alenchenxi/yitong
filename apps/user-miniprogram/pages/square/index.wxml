@@ -7,11 +7,16 @@
     <view class="topbar" style="padding-top: {{navTop}}px;">
       <view class="topbar-actions" style="height: {{navHeight}}px; padding-right: {{navRight}}px;">
         <view class="header-actions">
-          <view class="circle-switch" bindtap="goSwitch">
-            <image wx:if="{{community.logo}}" class="cs-logo" src="{{community.logo}}" mode="aspectFill" />
-            <text wx:else class="cs-logo cs-logo-fallback">{{community ? community.name[0] : '圈'}}</text>
-            <text class="cs-name" wx:if="{{community}}">{{community.name}}</text>
-            <view class="cs-arrow" aria-label="切换圈子"></view>
+          <view class="circle-switch" bindtap="goSwitch" aria-role="button" aria-label="切换圈子">
+            <view class="cs-switch-icon" aria-hidden="true">
+              <view class="cs-switch-line cs-switch-line-forward">
+                <view class="cs-switch-head cs-switch-head-forward"></view>
+              </view>
+              <view class="cs-switch-line cs-switch-line-backward">
+                <view class="cs-switch-head cs-switch-head-backward"></view>
+              </view>
+            </view>
+            <text class="cs-switch-label">切换</text>
           </view>
           <view class="search-box" bindtap="goSearch">
             <text class="search-icon">⌕</text>
