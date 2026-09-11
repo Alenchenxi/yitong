@@ -34,10 +34,13 @@
 }
 
 /* 右侧圈子列表 */
-.right { flex: 1; height: 100%; padding: 20rpx; box-sizing: border-box; }
+.right { flex: 1; min-width: 0; width: 0; height: 100%; padding: 20rpx; box-sizing: border-box; }
 .card {
   display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   gap: 20rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -58,7 +61,7 @@
   font-size: 36rpx;
   font-weight: 600;
 }
-.info { flex: 1; min-width: 0; }
+.info { flex: 1; min-width: 0; width: 0; }
 .name-row { display: flex; align-items: center; gap: 12rpx; min-width: 0; }
 .name {
   flex: 1;
