@@ -17,4 +17,9 @@ assert.match(styles, /\.circle-switch\s*\{[\s\S]*?width\s*:\s*136rpx/u, '切换�
 assert.match(styles, /\.cs-switch-icon\s*\{/u, '切换按钮必须定义图标容器样式');
 assert.match(styles, /\.cs-switch-label\s*\{/u, '切换按钮必须定义文字样式');
 
+const circleRadius = styles.match(/\.circle-switch\s*\{[\s\S]*?border-radius\s*:\s*([^;]+)/u)?.[1].trim();
+const searchRadius = styles.match(/\.search-box\s*\{[\s\S]*?border-radius\s*:\s*([^;]+)/u)?.[1].trim();
+assert.ok(circleRadius, '切换按钮必须定义圆角');
+assert.ok(searchRadius, '搜索栏必须定义圆角');
+assert.equal(circleRadius, searchRadius, '切换按钮圆角必须与搜索栏一致');
 console.log('square switch button smoke: ok');
