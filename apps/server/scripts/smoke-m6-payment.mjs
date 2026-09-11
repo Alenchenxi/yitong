@@ -249,6 +249,28 @@ async function createTestUser(prisma, openid, nickname, role) {
     created.userIds.push(merchantUser.id);
     console.log(`  创建测试商家用户 uid=${merchantUser.id} openid=${merchantOpenid}`);
 
+    // 2026-08-10 起发岗写路径要求用户 activeCommunityId 指向 ACTIVE 圈子（80014，不再惰性进默认圈）。
+    // 夹具：加入 seed 默认圈 cm_default 并设为活跃圈；成员表随用户级联删除，无需单独清理。
+    const defaultCommunity = await prismaRef.community.findUnique({
+      where: { id: 'cm_default' },
+      select: { id: true, status: true, deletedAt: true },
+    });
+    assert(
+      defaultCommunity && defaultCommunity.status === 'ACTIVE' && !defaultCommunity.deletedAt,
+      'seed 默认圈 cm_default 存在且 ACTIVE',
+      JSON.stringify(defaultCommunity),
+    );
+    await prismaRef.communityMember.upsert({
+      where: { communityId_userId: { communityId: defaultCommunity.id, userId: merchantUser.id } },
+      update: {},
+      create: { communityId: defaultCommunity.id, userId: merchantUser.id },
+    });
+    await prismaRef.user.update({
+      where: { id: merchantUser.id },
+      data: { activeCommunityId: defaultCommunity.id },
+    });
+    console.log(`  商家用户已加入默认圈 cm_default 并设为活跃圈`);
+
     const { user: studentUser, token: studentToken } = await createTestUser(
       prismaRef, studentOpenid, `M6学生_${marker}`, 'USER',
     );
@@ -259,7 +281,7 @@ async function createTestUser(prisma, openid, nickname, role) {
     const meResp = await call('GET', '/auth/me', merchantToken);
     assert(meResp.status === 200 && meResp.body?.code === 0, 'JWT 签发可用：GET /auth/me 成功', JSON.stringify(meResp.body));
 
-    // 商家入驻（dev 自动 APPROVED）
+    // 商家入驻（seed 默认 merchant.need_review=true，注册落 PENDING；夹具直接置 APPROVED，等价旧 dev 自动过审）
     const registration = await call('POST', '/merchant/register', merchantToken, {
       shopName: `M6店铺_${marker}`,
       licenseNo: `M6LIC_${marker}`,
@@ -270,7 +292,9 @@ async function createTestUser(prisma, openid, nickname, role) {
     assert(profile.body?.code === 0, '读取测试商家 profile 成功');
     const merchantId = profile.body.data.id;
     created.merchantIds.push(merchantId);
-    assertEq(profile.body.data.status, 'APPROVED', '测试商家 dev 状态为 APPROVED');
+    await prismaRef.merchant.update({ where: { id: merchantId }, data: { status: 'APPROVED' } });
+    const profileApproved = await call('GET', '/merchant/profile', merchantToken);
+    assertEq(profileApproved.body?.data?.status, 'APPROVED', '测试商家 dev 状态为 APPROVED');
 
     // 确保 PricingConfig.D30 存在（seed 应已建；缺则自建，测完删除）
     let pricingD30 = await prismaRef.pricingConfig.findUnique({ where: { duration: 'D30' } });
@@ -282,12 +306,16 @@ async function createTestUser(prisma, openid, nickname, role) {
       console.log(`  (PricingConfig.D30 已存在 price=${pricingD30.price.toString()}，不改动)`);
     }
 
-    // 创建 PENDING 岗位
+    // 创建 PENDING 岗位（2026-08-10 起工作地点强制地图选点四件套）
     const createdPost = await call('POST', '/job-posts', merchantToken, {
       title: `M6_测试岗位_${marker}`,
       description: 'M6 smoke 测试岗位描述',
       salary: '100/天',
       location: 'M6 测试地点',
+      locationPoiId: `B0FFG9M6SMK_${marker}`,
+      locationLng: 116.397428,
+      locationLat: 39.90923,
+      locationCity: '北京',
       category: 'CATERING',
       settlement: 'DAILY',
       workDates: ['周六'],
@@ -312,6 +340,7 @@ async function createTestUser(prisma, openid, nickname, role) {
     const pd = publishResp.body.data;
     assertEq(pd.status, 'PAID', '契约点1：返回 status=PAID');
     assertEq(pd.wxPayParams, null, '契约点1：返回 wxPayParams=null（mock 路径，未调真实微信）');
+    assertEq(pd.virtualPayParams, null, '契约点1：返回 virtualPayParams=null（mock 路径，未调真实虚拟支付）');
     assertEq(pd.jobPostStatus, 'PUBLISHED', '契约点1：返回 jobPostStatus=PUBLISHED');
     const orderId = pd.orderId;
     assert(typeof orderId === 'string' && orderId.length > 0, '契约点1：返回 orderId 非空');
@@ -319,8 +348,9 @@ async function createTestUser(prisma, openid, nickname, role) {
     // DB 复查
     const orderAfterPublish = await prismaRef.paymentOrder.findUnique({
       where: { id: orderId },
-      select: { status: true, amount: true, duration: true },
+      select: { status: true, amount: true, duration: true, channel: true },
     });
+    assertEq(orderAfterPublish?.channel, 'XPAY', '契约点1：DB paymentOrder.channel=XPAY（岗位发布走虚拟支付通道）');
     const postAfterPublish = await prismaRef.jobPost.findUnique({
       where: { id: postId },
       select: { status: true, expireAt: true },
@@ -332,6 +362,7 @@ async function createTestUser(prisma, openid, nickname, role) {
     // ===== 契约点7：isReady=false 间接证明 =====
     console.log('\n[契约点7] isReady=false 间接证明');
     assert(pd.wxPayParams === null, '契约点7：wxPayParams=null 证明走 dev mock 路径（isReady=false）');
+    assert(pd.virtualPayParams === null, '契约点7：virtualPayParams=null 证明虚拟支付同样走 mock（WX_XPAY 凭证未配置）');
 
     // ===== 契约点2：refund mock =====
     console.log('\n[契约点2] refund dev mock');

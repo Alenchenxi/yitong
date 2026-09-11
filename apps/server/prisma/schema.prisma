@@ -12,6 +12,8 @@ model User {
   id                          String                   @id @default(cuid())
   openid                      String                   @unique
   unionid                     String?
+  // 微信 session_key（code2session 返回，登录时刷新）：虚拟支付用户态签名必需，仅服务端持有
+  sessionKey                  String?                  @map("session_key")
   nickname                    String
   avatarUrl                   String?                  @map("avatar_url")
   gender                      String? // 性别：male / female / other
@@ -1131,6 +1133,8 @@ model PaymentOrder {
   id                 String       @id @default(cuid())
   // 订单场景：JOB_PUBLISH 兼职付费发布 / POST_BOOST 表白墙推广 / ANON_POST_BOOST 树洞推广
   scene              PayScene     @default(JOB_PUBLISH)
+  // 支付通道：WXPAY_V3 微信支付 V3 商户 API（boost 沿用）/ XPAY 小程序虚拟支付（岗位发布，2026 管理规范）
+  channel            PayChannel   @default(WXPAY_V3)
   // job 场景：商家/岗位/档期；boost 场景为空
   merchantId         String?      @map("merchant_id")
   jobPostId          String?      @map("job_post_id")
@@ -1171,6 +1175,12 @@ enum PayScene {
   JOB_PUBLISH
   POST_BOOST
   ANON_POST_BOOST
+}
+
+// 支付通道：V3 = wx.requestPayment（实物/服务费）；XPAY = wx.requestVirtualPayment（虚拟支付道具直购）
+enum PayChannel {
+  WXPAY_V3
+  XPAY
 }
 
 // ===== 内容推广（付费置顶曝光）=====

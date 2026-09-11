@@ -5,6 +5,7 @@ import {
   JobDuration,
   MerchantStatus,
   JobPostStatus,
+  PayChannel,
   PayScene,
   PayStatus,
   PostStatus,
@@ -16,6 +17,7 @@ import { Prisma } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WxPayService } from '../../common/wx/wx-pay.service';
+import { WxXPayService } from '../../common/wx/wx-xpay.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { BoostService, type BoostTargetType } from '../boost/boost.service';
 import { ConfessionService } from '../confession/confession.service';
@@ -24,6 +26,14 @@ import type { CreateBoostOrderDto } from './dto/boost.dto';
 import type { PublishJobDto } from './dto/payment.dto';
 
 // 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用 / 50006 推广档位不存在或已下架 / 50007 内容不可推广
+
+// 岗位付费发布道具 ID：与 MP 后台「虚拟支付 -> 道具管理」配置一致，道具价格须与 PricingConfig 同步改。
+// 开发版本与现网版本都需上传发布，新建道具约 10~15 分钟后才可在支付网关使用。
+const JOB_PUBLISH_PRODUCT_ID: Record<JobDuration, string> = {
+  D30: 'job_publish_d30',
+  D90: 'job_publish_d90',
+};
+
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
@@ -32,6 +42,7 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly wxPay: WxPayService,
+    private readonly wxXPay: WxXPayService,
     private readonly notification: NotificationService,
     private readonly boost: BoostService,
     private readonly confession: ConfessionService,
@@ -45,7 +56,8 @@ export class PaymentService {
   // ===== 兼职付费发布（JOB_PUBLISH）=====
 
   // 付费发布：按 PricingConfig 计价下单。金额服务端算，不信前端。
-  // - 凭证齐全（isReady）：V3 JSAPI 下单，返回 wxPayParams 供前端 wx.requestPayment；订单留 PENDING，等回调置 PAID。
+  // - 凭证齐全（isReady）：虚拟支付道具直购下单，返回 virtualPayParams 供前端 wx.requestVirtualPayment；
+  //   订单留 PENDING，等消息推送发货回调（xpay_goods_deliver_notify）或前端支付成功后的 sync 兜底对账置 PAID。
   // - 凭证缺失 + dev：mock 支付自动完成（置 PAID）。
   // - 凭证缺失 + prod：抛 90003。
   async createJobPublishOrder(merchantUid: string, dto: PublishJobDto) {
@@ -70,6 +82,8 @@ export class PaymentService {
     const order = await this.prisma.paymentOrder.create({
       data: {
         scene: PayScene.JOB_PUBLISH,
+        // 2026 虚拟支付管理规范：付费发布属虚拟商品，走虚拟支付道具通道（boost 仍走 WXPAY_V3）
+        channel: PayChannel.XPAY,
         merchantId: merchant.id,
         jobPostId: post.id,
         duration: dto.duration,
@@ -78,12 +92,12 @@ export class PaymentService {
       },
     });
 
-    // dev mock：直接完成
-    if (!this.wxPay.isReady()) {
+    // dev mock：直接完成（是否 mock 只看虚拟支付凭证，与 V3 凭证无关）
+    if (!this.wxXPay.isReady()) {
       if (process.env.NODE_ENV === 'production') {
-        throw new BizException(90003, '微信支付凭证未配置，无法发起支付', HttpStatus.SERVICE_UNAVAILABLE);
+        throw new BizException(90003, '微信虚拟支付凭证未配置，无法发起支付', HttpStatus.SERVICE_UNAVAILABLE);
       }
-      this.logger.warn('dev mode: mock pay & publish');
+      this.logger.warn('dev mode: mock pay & publish (xpay)');
       await this.fulfillOrder(order.id);
       const refreshed = await this.prisma.paymentOrder.findUnique({ where: { id: order.id } });
       return {
@@ -92,35 +106,38 @@ export class PaymentService {
         status: refreshed!.status,
         jobPostId: post.id,
         jobPostStatus: JobPostStatus.PUBLISHED,
+        virtualPayParams: null,
         wxPayParams: null,
       };
     }
 
-    // 真实 V3 JSAPI 下单（V3 不再需要 spbill_create_ip）
+    // 真实虚拟支付（道具直购）：三要素由后端算好，前端原样透传 wx.requestVirtualPayment（禁止重新序列化 signData）
     const user = await this.prisma.user.findUnique({
       where: { id: merchantUid },
-      select: { openid: true },
+      select: { openid: true, sessionKey: true },
     });
     if (!user?.openid) {
       throw new BizException(90003, '商家 openid 缺失，无法发起微信支付', HttpStatus.SERVICE_UNAVAILABLE);
     }
+    if (!user.sessionKey) {
+      // session_key 过期/缺失：用户态签名会验签失败，引导用户重新进入小程序刷新登录态
+      throw new BizException(90003, '微信登录态已过期，请退出小程序重新进入后再支付', HttpStatus.SERVICE_UNAVAILABLE);
+    }
     const amountInFen = Math.round(Number(order.amount.toString()) * 100);
-    const notifyUrl = this.config.get<string>('WX_PAY_NOTIFY_URL')!;
-    const { prepayId, wxPayParams } = await this.wxPay.createJsapiOrder({
+    const virtualPayParams = this.wxXPay.buildGoodsPayParams({
       outTradeNo: order.id,
-      amountInFen,
-      description: post.title || '岗位付费发布',
-      openid: user.openid,
-      notifyUrl,
+      goodsPriceFen: amountInFen,
+      productId: JOB_PUBLISH_PRODUCT_ID[dto.duration],
+      sessionKey: user.sessionKey,
     });
-    await this.prisma.paymentOrder.update({ where: { id: order.id }, data: { wxPrepayId: prepayId } });
     return {
       orderId: order.id,
       amount: order.amount.toString(),
       status: PayStatus.PENDING,
       jobPostId: post.id,
       jobPostStatus: JobPostStatus.PENDING,
-      wxPayParams,
+      virtualPayParams,
+      wxPayParams: null,
     };
   }
 
@@ -172,6 +189,7 @@ export class PaymentService {
     const order = await this.prisma.paymentOrder.create({
       data: {
         scene: dto.targetType === 'post' ? PayScene.POST_BOOST : PayScene.ANON_POST_BOOST,
+        channel: PayChannel.WXPAY_V3, // 内容推广不在虚拟支付试点范围，仍走 V3
         userId: uid,
         postId,
         anonPostId,
@@ -463,17 +481,13 @@ export class PaymentService {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
     if (!order || order.status !== PayStatus.PAID || order.refundStatus !== 'REQUIRED') return null;
 
-    const amountInFen = Math.round(Number(order.amount.toString()) * 100);
-    const refundNotifyUrl = this.config.get<string>('WX_PAY_REFUND_NOTIFY_URL') ?? undefined;
     let refundResult: { refundId: string; status: string };
     try {
-      refundResult = await this.wxPay.refund({
-        outTradeNo: order.id,
-        outRefundNo: `${order.id}_R${Math.max(1, order.refundAttempt)}`,
-        reason: order.refundReason ?? '支付成功但内容未生效，自动退款',
-        amountInFen,
-        notifyUrl: refundNotifyUrl,
-      });
+      refundResult = await this.startChannelRefund(
+        order,
+        `${order.id}_R${Math.max(1, order.refundAttempt)}`,
+        order.refundReason ?? '支付成功但内容未生效，自动退款',
+      );
     } catch (error) {
       await this.prisma.paymentOrder.updateMany({
         where: {
@@ -541,7 +555,7 @@ export class PaymentService {
 
   @Cron('0 */5 * * * *')
   async retryRequiredFulfillmentRefunds(): Promise<void> {
-    if (!this.wxPay.isReady()) return;
+    if (!this.wxPay.isReady() && !this.wxXPay.isReady()) return;
     const orders = await this.prisma.paymentOrder.findMany({
       where: {
         status: PayStatus.PAID,
@@ -666,10 +680,14 @@ export class PaymentService {
       return this.toOrderVo(refreshed);
     }
 
-    // dev mock
-    if (!this.wxPay.isReady()) {
+    // dev mock（是否 mock 只看所属通道凭证）
+    if (!this.isChannelReady(order)) {
       if (process.env.NODE_ENV === 'production') {
-        throw new BizException(90003, '微信支付凭证未配置', HttpStatus.SERVICE_UNAVAILABLE);
+        throw new BizException(
+          90003,
+          order.channel === PayChannel.XPAY ? '微信虚拟支付凭证未配置' : '微信支付凭证未配置',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
       }
       const refundedAt = new Date();
       const refundReason = reason ?? '申请退款';
@@ -689,16 +707,8 @@ export class PaymentService {
       return this.toOrderVo(updated);
     }
 
-    // 真实 V3 退款：out_refund_no 用订单 ID 加 R 后缀避免同订单复用冲突
-    const amountInFen = Math.round(Number(order.amount.toString()) * 100);
-    const refundNotifyUrl = this.config.get<string>('WX_PAY_REFUND_NOTIFY_URL') ?? undefined;
-    const { refundId, status } = await this.wxPay.refund({
-      outTradeNo: order.id,
-      outRefundNo: `${order.id}_R1`,
-      reason: reason ?? '申请退款',
-      amountInFen,
-      notifyUrl: refundNotifyUrl,
-    });
+    // 真实退款：按通道发起（V3 同步返回最终态；XPAY 启动退款任务固定 PROCESSING，等推送/轮询收敛）
+    const { refundId, status } = await this.startChannelRefund(order, `${order.id}_R1`, reason ?? '申请退款');
     if (status === 'SUCCESS') {
       const refundedAt = new Date();
       const refundReason = reason ?? '申请退款';
@@ -776,48 +786,238 @@ export class PaymentService {
     return this.toOrderVo(order);
   }
 
-  // 订单状态兜底查询：用户可主动刷新，按微信真实状态对账本地。
-  // - PENDING + 微信 SUCCESS -> 补完成；PENDING + 微信 CLOSED/REVOKED/PAYERROR -> 置 CLOSED。
+  // 订单状态兜底查询：用户可主动刷新，按微信真实状态对账本地（按通道分发）。
+  // - V3：PENDING + SUCCESS -> 补完成；CLOSED/REVOKED/PAYERROR -> 置 CLOSED。
+  // - XPAY：PENDING + 查单 status 2/3/4 -> 补完成 + 补发货；6 -> 置 CLOSED（沙箱无发货回调，全靠此兜底）。
   // - 凭证缺失：仅返回本地状态。
   async syncOrderStatus(callerUid: string, orderId: string) {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new BizException(50001, '订单不存在', HttpStatus.NOT_FOUND);
     await this.assertOrderOwner(callerUid, order);
 
-    let message = '';
+    const message =
+      order.channel === PayChannel.XPAY ? await this.syncXpayOrder(order) : await this.syncV3Order(order);
+
+    const refreshed = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
+    return { ...this.toOrderVo(refreshed!), message };
+  }
+
+  // V3 通道对账（boost 及存量订单）
+  private async syncV3Order(order: PaymentOrder): Promise<string> {
     if (this.wxPay.isReady() && order.status === PayStatus.PAID && order.refundStatus === 'REQUIRED') {
       const refundStatus = await this.retryRequiredFulfillmentRefund(order.id);
-      message = refundStatus
-        ? `自动退款状态：${refundStatus}`
-        : '订单状态已由其他流程更新';
-    } else if (this.wxPay.isReady() && order.status === PayStatus.PENDING) {
+      return refundStatus ? `自动退款状态：${refundStatus}` : '订单状态已由其他流程更新';
+    }
+    if (this.wxPay.isReady() && order.status === PayStatus.PENDING) {
       const { transactionId, tradeState } = await this.wxPay.queryOrder(order.id);
       if (tradeState === 'SUCCESS') {
         try {
           await this.fulfillOrder(order.id, transactionId);
-          message = '微信已确认支付，订单已补完成';
+          return '微信已确认支付，订单已补完成';
         } catch (e) {
           if (!(e instanceof BizException)) throw e;
           await this.recordPaidFulfillmentFailure(order.id, transactionId, e);
-          message = '微信已确认支付，但履约失败，订单待退款';
+          return '微信已确认支付，但履约失败，订单待退款';
         }
-      } else if (['CLOSED', 'REVOKED', 'PAYERROR'].includes(tradeState)) {
+      }
+      if (['CLOSED', 'REVOKED', 'PAYERROR'].includes(tradeState)) {
         const closed = await this.prisma.paymentOrder.updateMany({
-          where: { id: orderId, status: PayStatus.PENDING },
+          where: { id: order.id, status: PayStatus.PENDING },
           data: { status: PayStatus.CLOSED },
         });
-        message = closed.count === 1
+        return closed.count === 1
           ? `微信订单状态 ${tradeState}，本地已置关闭`
           : '订单状态已由其他流程更新';
-      } else {
-        message = `微信订单状态：${tradeState}，待支付`;
       }
-    } else {
-      message = 'dev 模式仅返回本地状态';
+      return `微信订单状态：${tradeState}，待支付`;
     }
+    return 'dev 模式仅返回本地状态';
+  }
 
-    const refreshed = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
-    return { ...this.toOrderVo(refreshed!), message };
+  // XPAY 通道对账（岗位发布）：query_order status 2=已支付待发货 / 3=发货中 / 4=已发货 -> 补完成；6=已关闭。
+  // 停在 2/3 时顺带 notify_provide_goods 把微信侧推到已发货（失败不阻断，仅日志）。
+  private async syncXpayOrder(order: PaymentOrder): Promise<string> {
+    if (!this.wxXPay.isReady()) return 'dev 模式仅返回本地状态';
+    if (order.status === PayStatus.PAID && order.refundStatus === 'REQUIRED') {
+      const refundStatus = await this.retryRequiredFulfillmentRefund(order.id);
+      return refundStatus ? `自动退款状态：${refundStatus}` : '订单状态已由其他流程更新';
+    }
+    if (order.status !== PayStatus.PENDING) return '订单状态已由其他流程更新';
+    const openid = await this.getXpayUserOpenid(order);
+    const info = await this.wxXPay.queryOrder({ outTradeNo: order.id, openid });
+    const status = typeof info.status === 'number' ? info.status : 0;
+    if (status >= 2 && status <= 4) {
+      const transactionId = this.str(info.wx_order_id);
+      try {
+        await this.fulfillOrder(order.id, transactionId);
+        if (status === 2 || status === 3) {
+          await this.wxXPay.notifyProvideGoods({ outTradeNo: order.id, openid }).catch(() => undefined);
+        }
+        return '微信已确认支付，订单已补完成';
+      } catch (e) {
+        if (!(e instanceof BizException)) throw e;
+        await this.recordPaidFulfillmentFailure(order.id, transactionId, e);
+        return '微信已确认支付，但履约失败，订单待退款';
+      }
+    }
+    if (status === 6) {
+      const closed = await this.prisma.paymentOrder.updateMany({
+        where: { id: order.id, status: PayStatus.PENDING },
+        data: { status: PayStatus.CLOSED },
+      });
+      return closed.count === 1 ? '微信订单已关闭，本地已同步' : '订单状态已由其他流程更新';
+    }
+    return `微信订单状态 ${status}，待支付`;
+  }
+
+  // ===== XPAY 虚拟支付通道（岗位发布试点）=====
+
+  // 该订单所属通道的凭证是否齐备（mock 分支判定用）
+  private isChannelReady(order: PaymentOrder): boolean {
+    return order.channel === PayChannel.XPAY ? this.wxXPay.isReady() : this.wxPay.isReady();
+  }
+
+  private str(v: unknown): string | undefined {
+    return typeof v === 'string' && v.length > 0 ? v : undefined;
+  }
+
+  // XPAY 订单反查用户 openid（JOB_PUBLISH：order.merchantId -> merchant.userId -> user.openid）
+  private async getXpayUserOpenid(order: PaymentOrder): Promise<string> {
+    if (!order.merchantId) throw new BizException(90003, '订单缺少商家信息，无法操作微信虚拟支付');
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { id: order.merchantId },
+      select: { userId: true },
+    });
+    if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
+    const user = await this.prisma.user.findUnique({
+      where: { id: merchant.userId },
+      select: { openid: true },
+    });
+    const openid = user?.openid;
+    if (!openid) throw new BizException(90003, '用户 openid 缺失，无法操作微信虚拟支付');
+    return openid;
+  }
+
+  // 按通道发起退款。V3：同步返回最终态（SUCCESS/PROCESSING/CLOSED/ABNORMAL）。
+  // XPAY：仅启动退款任务（left_fee 必须查单取得，不一致报 268490016），固定返回 PROCESSING，
+  // 最终态靠 xpay_refund_notify 推送或 syncXpayRefundingOrders 轮询收敛。
+  private async startChannelRefund(
+    order: PaymentOrder,
+    outRefundNo: string,
+    reason: string,
+  ): Promise<{ refundId: string; status: string }> {
+    if (order.channel === PayChannel.XPAY) {
+      const openid = await this.getXpayUserOpenid(order);
+      const amountInFen = Math.round(Number(order.amount.toString()) * 100);
+      const info = await this.wxXPay.queryOrder({ outTradeNo: order.id, openid });
+      const leftFeeFen = typeof info.left_fee === 'number' ? info.left_fee : amountInFen;
+      const { refundOrderId } = await this.wxXPay.refundOrder({
+        outTradeNo: order.id,
+        openid,
+        leftFeeFen,
+        refundFeeFen: amountInFen,
+        refundOrderNo: outRefundNo.slice(0, 32),
+        reasonCode: '3', // 意愿问题（用户主动退款）
+        reqFrom: '3', // 其它（含自动退款）
+      });
+      return { refundId: refundOrderId, status: 'PROCESSING' };
+    }
+    const amountInFen = Math.round(Number(order.amount.toString()) * 100);
+    const refundNotifyUrl = this.config.get<string>('WX_PAY_REFUND_NOTIFY_URL') ?? undefined;
+    return this.wxPay.refund({
+      outTradeNo: order.id,
+      outRefundNo,
+      reason,
+      amountInFen,
+      notifyUrl: refundNotifyUrl,
+    });
+  }
+
+  // 退款成功落库（幂等）：PAID/REFUNDING -> REFUNDED + 按场景回滚；推送与轮询共用。
+  // 幂等靠 status 声明式领取（in [PAID, REFUNDING]），重复推送第二次 count=0 直接跳过。
+  private async settleRefundSuccess(order: PaymentOrder, wxRefundId?: string): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockJobPostBeforeOrderMutation(tx, order);
+      const claimed = await tx.paymentOrder.updateMany({
+        where: { id: order.id, status: { in: [PayStatus.PAID, PayStatus.REFUNDING] } },
+        data: {
+          status: PayStatus.REFUNDED,
+          refundedAt: new Date(),
+          refundStatus: 'SUCCESS',
+          ...(wxRefundId ? { wxRefundId } : {}),
+        },
+      });
+      if (claimed.count !== 1) return false;
+      if (order.fulfillmentApplied) await this.applyRefundSideEffects(order, tx);
+      return true;
+    });
+  }
+
+  // 消息推送：虚拟支付发货通知（xpay_goods_deliver_notify）。支付成功 -> fulfillOrder。
+  // 订单不存在属永久失败，仍应答 ErrCode=0 阻止微信 15 次无意义重试。
+  async xpayDeliverNotify(payload: Record<string, unknown>): Promise<{ ErrCode: number; ErrMsg?: string }> {
+    const orderId = this.str(payload.OutTradeNo);
+    if (!orderId) return { ErrCode: 0, ErrMsg: 'no OutTradeNo, ignored' };
+    const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
+    if (!order) {
+      this.logger.warn(`xpay deliver notify: order ${orderId} not found, ack to stop retries`);
+      return { ErrCode: 0, ErrMsg: 'order not found' };
+    }
+    const transactionId = this.str((payload.WeChatPayInfo as Record<string, unknown> | undefined)?.TransactionId);
+    try {
+      await this.fulfillOrder(orderId, transactionId);
+    } catch (e) {
+      if (!(e instanceof BizException)) throw e;
+      // 支付成功但履约失败：走自动退款机制；应答成功避免微信重试重复触发
+      await this.recordPaidFulfillmentFailure(orderId, transactionId, e);
+    }
+    return { ErrCode: 0, ErrMsg: 'OK' };
+  }
+
+  // 消息推送：虚拟支付退款结果（xpay_refund_notify）。RetCode=0 -> REFUNDED + 回滚；非 0 保留 REFUNDING 等轮询。
+  async xpayRefundNotify(payload: Record<string, unknown>): Promise<{ ErrCode: number; ErrMsg?: string }> {
+    const orderId = this.str(payload.MchOrderId);
+    if (!orderId) return { ErrCode: 0, ErrMsg: 'no MchOrderId, ignored' };
+    const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
+    if (!order) return { ErrCode: 0, ErrMsg: 'order not found' };
+    const retCode = typeof payload.RetCode === 'number' ? payload.RetCode : -1;
+    if (retCode !== 0) {
+      this.logger.error(`xpay refund notify failed for ${orderId}: ${String(payload.RetMsg ?? retCode)}`);
+      return { ErrCode: 0, ErrMsg: 'refund not successful, kept REFUNDING' };
+    }
+    await this.settleRefundSuccess(order, this.str(payload.WxRefundId));
+    return { ErrCode: 0, ErrMsg: 'OK' };
+  }
+
+  // XPAY 退款最终态兜底轮询：沙箱不发退款回调，REFUNDING 订单定时查单收敛（5=已退款 / 8=用户退款完成）。
+  // 7=退款任务失败：回退 PAID + ABNORMAL，订单仍有效可重试/人工处理。
+  @Cron('30 */5 * * * *')
+  async syncXpayRefundingOrders(): Promise<void> {
+    if (!this.wxXPay.isReady()) return;
+    const orders = await this.prisma.paymentOrder.findMany({
+      where: { channel: PayChannel.XPAY, status: PayStatus.REFUNDING },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+    });
+    for (const order of orders) {
+      try {
+        const openid = await this.getXpayUserOpenid(order);
+        const info = await this.wxXPay.queryOrder({ outTradeNo: order.id, openid });
+        const status = typeof info.status === 'number' ? info.status : 0;
+        if (status === 5 || status === 8) {
+          await this.settleRefundSuccess(order, this.str(info.wx_order_id));
+        } else if (status === 7) {
+          await this.prisma.paymentOrder.updateMany({
+            where: { id: order.id, status: PayStatus.REFUNDING },
+            data: { status: PayStatus.PAID, refundStatus: 'ABNORMAL', refundRetryAt: new Date() },
+          });
+        }
+      } catch (e) {
+        this.logger.error(
+          `xpay refund sync failed for ${order.id}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
   }
 
   // ===== 私有辅助 =====
@@ -939,6 +1139,7 @@ export class PaymentService {
     return {
       orderId: order.id,
       scene: order.scene,
+      channel: order.channel,
       jobPostId: order.jobPostId,
       duration: order.duration,
       userId: order.userId,

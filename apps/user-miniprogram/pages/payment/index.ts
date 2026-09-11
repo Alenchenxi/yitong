@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../app';
-import { getJobPublishPricing, publishJob, syncOrderStatus, type PublishOrderVo, type JobPublishPriceVo } from '../../services/payment';
+import { getJobPublishPricing, publishJob, syncOrderStatus, type PublishOrderVo, type VirtualPayParams, type JobPublishPriceVo } from '../../services/payment';
 
 Page({
   data: {
@@ -71,17 +71,17 @@ Page({
         jobPostId: this.data.jobPostId,
         duration: this.data.selectedDuration,
       });
-      // dev mock:直接完成,无 wxPayParams
-      if (!result.wxPayParams) {
+      // dev mock:直接完成,无 virtualPayParams
+      if (!result.virtualPayParams) {
         this.setData({ result });
         wx.showToast({ title: '支付成功', icon: 'success' });
         setTimeout(() => wx.reLaunch({ url: '/pages/merchant/index?tab=jobs' }), 1200);
         return;
       }
-      // 生产:拉起微信支付
+      // 生产:拉起微信虚拟支付(道具直购,仅真机支持)
       this.setData({ result });
       try {
-        await this.requestPay(result.wxPayParams);
+        await this.requestVirtualPay(result.virtualPayParams);
       } catch {
         this.setData({ failed: true, message: '支付未完成,可稍后在订单页刷新状态' });
         wx.showToast({ title: '支付未完成', icon: 'none' });
@@ -117,14 +117,14 @@ Page({
     return this.onPay();
   },
 
-  requestPay(params: NonNullable<PublishOrderVo['wxPayParams']>): Promise<void> {
+  // 虚拟支付拉起：三要素原样透传（signData 禁止重新序列化），发货确认由后端消息推送或下方 sync 兜底
+  requestVirtualPay(params: VirtualPayParams): Promise<void> {
     return new Promise((resolve, reject) => {
-      wx.requestPayment({
-        timeStamp: params.timeStamp,
-        nonceStr: params.nonceStr,
-        package: params.package,
-        signType: params.signType,
-        paySign: params.paySign,
+      wx.requestVirtualPayment({
+        signData: params.signData,
+        paySig: params.paySig,
+        signature: params.signature,
+        mode: params.mode,
         success: () => resolve(),
         fail: (e) => reject(e),
       });

@@ -45,10 +45,13 @@ export class AuthService {
       create: {
         openid: wx.openid,
         unionid: wx.unionid ?? null,
+        // session_key 每次登录刷新：虚拟支付用户态签名必需，不可暴露给前端
+        sessionKey: wx.session_key || null,
         nickname: dto.nickname ?? `用户${wx.openid.slice(-6)}`,
         avatarUrl: dto.avatarUrl ?? null,
       },
       update: {
+        sessionKey: wx.session_key || null,
         ...(dto.nickname ? { nickname: dto.nickname } : {}),
         ...(dto.avatarUrl ? { avatarUrl: dto.avatarUrl } : {}),
       },
