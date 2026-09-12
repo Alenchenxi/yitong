@@ -1156,14 +1156,27 @@ export class AdminService {
       durationHours: p.durationHours,
       price: p.price.toString(),
       enabled: p.enabled,
+      // XPAY 道具同步状态（API 排查用，无 UI）
+      xpayProductId: p.xpayProductId,
+      xpayPropStatus: p.xpayPropStatus,
+      xpaySyncError: p.xpaySyncError,
     }));
   }
 
   async updateBoostPlanPrice(code: string, dto: UpdateBoostPlanPriceDto) {
     const plan = await this.prisma.boostPlan.findUnique({ where: { code } });
     if (!plan) throw new BizException(50006, '推广档位不存在', HttpStatus.NOT_FOUND);
-    if (dto.price < 0) throw new BizException(60004, '推广价不能为负');
-    await this.prisma.boostPlan.update({ where: { code }, data: { price: dto.price } });
+    // 拒绝非正数：<=0 无法生成可支付道具，与 updatePricing 对齐
+    if (dto.price <= 0) throw new BizException(60004, '推广价必须大于 0');
+    const saved = await this.prisma.boostPlan.update({ where: { code }, data: { price: dto.price } });
+    // 改价 => 新道具 ID（bt_xxx_p{分}），立即启动上传+发布同步（失败不阻塞改价响应，与 updatePricing 对齐）
+    if (this.xpayPropSync) {
+      try {
+        await this.xpayPropSync.beginSyncBoostPlan(saved);
+      } catch {
+        // 同步服务内部已落 FAILED/留 SYNCING，这里不向管理端抛错
+      }
+    }
     return { code, price: dto.price.toString() };
   }
 

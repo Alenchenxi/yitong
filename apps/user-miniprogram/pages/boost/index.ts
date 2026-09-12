@@ -1,8 +1,8 @@
 import type { AppInstance } from '../../app';
 import { listBoostPlans, createBoostOrder, type BoostPlanVo, type BoostOrderVo } from '../../services/boost';
-import type { WxPayParams } from '../../services/payment';
+import { syncOrderStatus, type VirtualPayParams } from '../../services/payment';
 
-// 内容推广（付费置顶曝光）页：选档 -> 下单 ->（dev mock 直成 / 生产 wx.requestPayment）
+// 内容推广（付费置顶曝光）页：选档 -> 下单 ->（dev mock 直成 / 生产 wx.requestVirtualPayment）
 Page({
   data: {
     targetType: 'post',
@@ -52,19 +52,21 @@ Page({
         planCode: this.data.selectedCode,
       });
       this.setData({ result });
-      // dev mock：直接完成，无 wxPayParams
-      if (!result.wxPayParams) {
+      // dev mock：直接完成，无 virtualPayParams
+      if (!result.virtualPayParams) {
         wx.showToast({ title: '推广成功', icon: 'success' });
         setTimeout(() => wx.navigateBack(), 600);
         return;
       }
-      // 生产：拉起微信支付
+      // 生产：拉起虚拟支付（道具直购）
       try {
-        await this.requestPay(result.wxPayParams);
+        await this.requestVirtualPay(result.virtualPayParams);
+        // 微信侧成功即视为支付成功；syncOrderStatus 兜底对账（发货确认由后端推送/轮询收敛）
+        await syncOrderStatus(result.orderId).catch(() => undefined);
         wx.showToast({ title: '推广成功', icon: 'success' });
         setTimeout(() => wx.navigateBack(), 600);
       } catch {
-        this.setData({ failed: true, message: '支付未完成，可稍后重试' });
+        this.setData({ failed: true, message: '支付未完成，可稍后重试（持续失败请重进小程序）' });
         wx.showToast({ title: '支付未完成', icon: 'none' });
       }
     } catch {
@@ -74,14 +76,14 @@ Page({
     }
   },
 
-  requestPay(params: WxPayParams): Promise<void> {
+  // 虚拟支付拉起：三要素原样透传（signData 禁止重新序列化），发货确认由后端消息推送或上方 sync 兜底
+  requestVirtualPay(params: VirtualPayParams): Promise<void> {
     return new Promise((resolve, reject) => {
-      wx.requestPayment({
-        timeStamp: params.timeStamp,
-        nonceStr: params.nonceStr,
-        package: params.package,
-        signType: params.signType,
-        paySign: params.paySign,
+      wx.requestVirtualPayment({
+        signData: params.signData,
+        paySig: params.paySig,
+        signature: params.signature,
+        mode: params.mode,
         success: () => resolve(),
         fail: (e) => reject(e),
       });

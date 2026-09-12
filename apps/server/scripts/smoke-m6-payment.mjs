@@ -96,6 +96,7 @@ const created = {
   userIds: [],
   merchantIds: [],
   jobPostIds: [],
+  confessionPostIds: [], // 契约点9-11：表白墙帖子（posts 表，带 M6_BOOST_ marker）
   paymentOrderIds: [],
 };
 let prismaRef = null;
@@ -133,10 +134,20 @@ async function cleanup(prisma) {
   });
   const postIds = [...new Set([...created.jobPostIds, ...markerPosts.map((row) => row.id)])];
 
+  // 契约点9-11：表白墙帖子按 content marker 重新发现
+  const markerConfessionPosts = await prisma.post.findMany({
+    where: { content: { startsWith: `M6_BOOST_${marker}` } },
+    select: { id: true },
+  });
+  const confessionPostIds = [
+    ...new Set([...created.confessionPostIds, ...markerConfessionPosts.map((row) => row.id)]),
+  ];
+
   const markerOrders = await prisma.paymentOrder.findMany({
     where: {
       OR: [
         ...(postIds.length > 0 ? [{ jobPostId: { in: postIds } }] : []),
+        ...(confessionPostIds.length > 0 ? [{ postId: { in: confessionPostIds } }] : []),
         ...(created.paymentOrderIds.length > 0 ? [{ id: { in: created.paymentOrderIds } }] : []),
       ],
     },
@@ -176,6 +187,19 @@ async function cleanup(prisma) {
       ? prisma.jobPost.deleteMany({ where: { id: { in: postIds } } })
       : prisma.jobPost.deleteMany({ where: { id: { in: [] } } }),
   );
+  // 契约点9-11：表白墙帖子。发帖时服务端对 cm_default 做了 postCount++，删帖前先归还。
+  if (confessionPostIds.length > 0) {
+    const dec = await prisma.community.updateMany({
+      where: { id: 'cm_default', postCount: { gte: confessionPostIds.length } },
+      data: { postCount: { decrement: confessionPostIds.length } },
+    });
+    console.log(`  community postCount 归还 (cm_default): 归还次数=${dec.count}，应归还=${confessionPostIds.length}`);
+  }
+  await deleteMany('posts', () =>
+    confessionPostIds.length > 0
+      ? prisma.post.deleteMany({ where: { id: { in: confessionPostIds } } })
+      : prisma.post.deleteMany({ where: { id: { in: [] } } }),
+  );
   await deleteMany('merchants', () =>
     userIds.length > 0
       ? prisma.merchant.deleteMany({ where: { userId: { in: userIds } } })
@@ -205,6 +229,9 @@ async function cleanup(prisma) {
       : 0,
     merchants: await prisma.merchant.count({ where: { userId: { in: userIds } } }),
     posts: await prisma.jobPost.count({ where: postIds.length > 0 ? { id: { in: postIds } } : { id: { in: [] } } }),
+    confessionPosts: await prisma.post.count({
+      where: confessionPostIds.length > 0 ? { id: { in: confessionPostIds } } : { id: { in: [] } },
+    }),
     orders: await prisma.paymentOrder.count({ where: orderIds.length > 0 ? { id: { in: orderIds } } : { id: { in: [] } } }),
     roles: await prisma.userRole.count({ where: { userId: { in: userIds } } }),
   };
@@ -500,6 +527,109 @@ async function createTestUser(prisma, openid, nickname, role) {
     assert(Array.isArray(enumArr) && enumArr.length >= 1, '契约点6：DB pg_enum 含 enumlabel=REFUNDING', JSON.stringify(enumArr));
     const payStatusRow = enumArr.find((r) => String(r.typname).toLowerCase().includes('paystatus'));
     assert(payStatusRow !== undefined, '契约点6：REFUNDING 属于 PayStatus 类型', JSON.stringify(enumArr.map((r) => ({ typname: r.typname, enumlabel: r.enumlabel }))));
+
+    // ===== 契约点9：boost mock 下单（表白墙帖付费置顶）=====
+    console.log('\n[契约点9] post-boost dev mock（表白墙帖）');
+    // 夹具：merchant 用户已加入 cm_default 并设为活跃圈；circle 用 seed 表白圈（id 为 cuid，运行时查）
+    const boostCircle = await prismaRef.circle.findFirst({ where: { name: '表白' }, select: { id: true } });
+    assert(boostCircle !== null, '契约点9：seed 表白圈存在', JSON.stringify(boostCircle));
+    const boostPostResp = await call('POST', `/circles/${boostCircle.id}/posts`, merchantToken, {
+      content: `M6_BOOST_${marker} 内容推广 smoke 测试帖子`,
+      visibility: 'PUBLIC',
+    });
+    assert(boostPostResp.body?.code === 0, '契约点9：创建 APPROVED/PUBLIC 测试帖子成功', JSON.stringify(boostPostResp.body));
+    const boostPostId = boostPostResp.body.data.id;
+    created.confessionPostIds.push(boostPostId);
+    const boostPostDb = await prismaRef.post.findUnique({
+      where: { id: boostPostId },
+      select: { status: true, visibility: true, communityId: true },
+    });
+    assertEq(boostPostDb?.status, 'APPROVED', '契约点9：夹具帖子 status=APPROVED');
+    assertEq(boostPostDb?.visibility, 'PUBLIC', '契约点9：夹具帖子 visibility=PUBLIC');
+
+    const boostResp = await call('POST', '/payments/post-boost', merchantToken, {
+      targetType: 'post',
+      targetId: boostPostId,
+      planCode: 'BOOST_1D',
+    });
+    assert(boostResp.body?.code === 0, '契约点9：post-boost 下单成功', JSON.stringify(boostResp.body));
+    const bd = boostResp.body.data;
+    assertEq(bd.status, 'PAID', '契约点9：返回 status=PAID（dev mock 直接完成）');
+    assertEq(bd.virtualPayParams, null, '契约点9：返回 virtualPayParams=null（mock 路径，未调真实虚拟支付）');
+    assert(
+      !JSON.stringify(boostResp.body).includes('"wxPayParams"'),
+      '契约点9：响应体 JSON 不含 "wxPayParams" 键（XPAY 通道不再返回 V3 下单参数）',
+    );
+    assert(typeof bd.boostUntil === 'string' && bd.boostUntil.length > 0, '契约点9：返回 boostUntil 非空', JSON.stringify(bd.boostUntil));
+    assertEq(bd.targetType, 'post', '契约点9：返回 targetType=post');
+    assertEq(bd.targetId, boostPostId, '契约点9：返回 targetId 一致');
+    const boostOrderId = bd.orderId;
+    assert(typeof boostOrderId === 'string' && boostOrderId.length > 0, '契约点9：返回 orderId 非空');
+    created.paymentOrderIds.push(boostOrderId);
+    // DB 复查：订单通道/场景/状态 + 帖子置顶到期时间
+    const boostOrderDb = await prismaRef.paymentOrder.findUnique({
+      where: { id: boostOrderId },
+      select: { channel: true, scene: true, status: true, amount: true },
+    });
+    assertEq(boostOrderDb?.channel, 'XPAY', '契约点9：DB paymentOrder.channel=XPAY（推广走虚拟支付通道）');
+    assertEq(boostOrderDb?.scene, 'POST_BOOST', '契约点9：DB paymentOrder.scene=POST_BOOST');
+    assertEq(boostOrderDb?.status, 'PAID', '契约点9：DB paymentOrder.status=PAID');
+    const boostedPostDb = await prismaRef.post.findUnique({
+      where: { id: boostPostId },
+      select: { boostUntil: true },
+    });
+    assert(
+      boostedPostDb?.boostUntil instanceof Date && boostedPostDb.boostUntil.getTime() >= Date.now(),
+      '契约点9：DB post.boost_until 已置位且 >= 当前时间（applyBoost 生效）',
+      String(boostedPostDb?.boostUntil),
+    );
+
+    // ===== 契约点10：boost 订单 sync dev 本地 =====
+    console.log('\n[契约点10] boost 订单 sync dev 本地');
+    const boostSyncResp = await call('POST', `/payments/${boostOrderId}/sync`, merchantToken);
+    assert(boostSyncResp.status === 200 || boostSyncResp.status === 201, '契约点10：POST /payments/:orderId/sync HTTP 2xx', `HTTP ${boostSyncResp.status}`);
+    assertEq(boostSyncResp.body?.code, 0, '契约点10：sync code=0');
+    assert(
+      typeof boostSyncResp.body?.data?.message === 'string' && boostSyncResp.body.data.message.length > 0,
+      '契约点10：返回含 message 字段', JSON.stringify(boostSyncResp.body?.data?.message));
+    assert(
+      boostSyncResp.body.data.message.includes('dev'),
+      '契约点10：message 含 "dev"（dev 模式仅返回本地状态，未调真实微信）', boostSyncResp.body.data.message);
+    assertEq(boostSyncResp.body?.data?.status, 'PAID', '契约点10：sync 后 status=PAID');
+
+    // ===== 契约点11：boost 订单退款裁剪 =====
+    console.log('\n[契约点11] boost 订单退款 + boost_until 裁剪');
+    const boostRefundResp = await call('POST', `/payments/${boostOrderId}/refund`, merchantToken, {
+      reason: `M6测试推广退款_${marker}`,
+    });
+    assert(boostRefundResp.body?.code === 0, '契约点11：退款接口成功', JSON.stringify(boostRefundResp.body));
+    // 代码语义（payment.service refundOrder）：mock 下 XPAY 订单同步收敛 REFUNDED（非两态）；
+    // 真实 XPAY 通道才是 PROCESSING -> REFUNDING ->（推送/轮询）REFUNDED。此处保留短轮询兼容两态实现。
+    let refundFinal = boostRefundResp.body?.data?.status;
+    let refundPolls = 0;
+    for (let i = 0; i < 10 && refundFinal === 'REFUNDING'; i++) {
+      refundPolls++;
+      await sleep(500);
+      refundFinal = (await call('GET', `/payments/${boostOrderId}`, merchantToken)).body?.data?.status;
+    }
+    assertEq(refundFinal, 'REFUNDED', `契约点11：订单最终 REFUNDED（mock 同步收敛，轮询次数=${refundPolls}）`);
+    const boostOrderAfterRefund = await prismaRef.paymentOrder.findUnique({
+      where: { id: boostOrderId },
+      select: { status: true, refundStatus: true, refundedAt: true },
+    });
+    assertEq(boostOrderAfterRefund?.status, 'REFUNDED', '契约点11：DB paymentOrder.status=REFUNDED');
+    assertEq(boostOrderAfterRefund?.refundStatus, 'SUCCESS', '契约点11：DB paymentOrder.refundStatus=SUCCESS');
+    assert(boostOrderAfterRefund?.refundedAt !== null, '契约点11：DB refundedAt 已置位');
+    // applyBoostRefund 语义（boost.service.ts）：仍处推广期则 boostUntil 置为退款时刻（非 null，立即结束推广）
+    const boostedPostAfterRefund = await prismaRef.post.findUnique({
+      where: { id: boostPostId },
+      select: { boostUntil: true },
+    });
+    assert(
+      boostedPostAfterRefund?.boostUntil instanceof Date && boostedPostAfterRefund.boostUntil.getTime() <= Date.now(),
+      '契约点11：DB post.boost_until 已裁剪为退款时刻（非 null 且 <= 当前时间）',
+      String(boostedPostAfterRefund?.boostUntil),
+    );
 
     console.log('\n[m6 payment smoke] ALL ASSERTIONS PASSED');
   } finally {

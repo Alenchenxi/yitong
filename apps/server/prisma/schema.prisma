@@ -1202,6 +1202,14 @@ model BoostPlan {
   durationHours Int      @map("duration_hours") // 24 / 72 / 168
   price         Decimal  @db.Decimal(10, 2)
   enabled       Boolean  @default(true)
+  // XPAY 道具自动同步状态：改价后自动上传+发布编码价格的新道具（bt_1d_p500），
+  // 发布确认后约 10~15 分钟微信侧生效，生效前下单抛 50008「价格切换中」（与 PricingConfig 同构）
+  xpayProductId     String?   @map("xpay_product_id")
+  xpayPropStatus    String?   @map("xpay_prop_status") // SYNCING / READY / FAILED
+  xpaySyncStep      String?   @map("xpay_sync_step") // UPLOAD / PUBLISH
+  xpaySyncStartedAt DateTime? @map("xpay_sync_started_at")
+  xpayPublishedAt   DateTime? @map("xpay_published_at")
+  xpaySyncError     String?   @map("xpay_sync_error")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 

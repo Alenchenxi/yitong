@@ -117,7 +117,7 @@ export class PaymentService {
     const order = await this.prisma.paymentOrder.create({
       data: {
         scene: PayScene.JOB_PUBLISH,
-        // 2026 虚拟支付管理规范：付费发布属虚拟商品，走虚拟支付道具通道（boost 仍走 WXPAY_V3）
+        // 2026 虚拟支付管理规范：付费发布属虚拟商品，走虚拟支付道具通道
         channel: PayChannel.XPAY,
         merchantId: merchant.id,
         jobPostId: post.id,
@@ -193,7 +193,6 @@ export class PaymentService {
     // 归属 + 可推广校验
     let postId: string | null = null;
     let anonPostId: string | null = null;
-    let description = '内容推广';
     if (dto.targetType === 'post') {
       const post = await this.prisma.post.findUnique({ where: { id: dto.targetId } });
       if (!post || post.authorId !== uid) {
@@ -205,7 +204,6 @@ export class PaymentService {
         throw new BizException(50007, '该内容当前不可推广', HttpStatus.CONFLICT);
       }
       postId = post.id;
-      description = (post.content || '表白墙内容').slice(0, 30);
     } else {
       const profile = await this.prisma.anonymousProfile.findFirst({ where: { userId: uid } });
       const anonPost = await this.prisma.anonymousPost.findUnique({ where: { id: dto.targetId } });
@@ -218,13 +216,16 @@ export class PaymentService {
         throw new BizException(50007, '该内容当前不可推广', HttpStatus.CONFLICT);
       }
       anonPostId = anonPost.id;
-      description = anonPost.content.slice(0, 30);
     }
+
+    // 道具守卫：改价后新道具未在微信支付网关生效（约10~15分钟）时抛 50008（提示「当前支付人数过多，请稍后重试」），顺带触发同步重试
+    const propId = this.wxXPay.isReady() ? this.xpayPropSync.assertBoostPropReadyOrThrow(plan) : '';
 
     const order = await this.prisma.paymentOrder.create({
       data: {
         scene: dto.targetType === 'post' ? PayScene.POST_BOOST : PayScene.ANON_POST_BOOST,
-        channel: PayChannel.WXPAY_V3, // 内容推广不在虚拟支付试点范围，仍走 V3
+        // 2026 虚拟支付管理规范：付费推广属虚拟商品，走虚拟支付道具通道
+        channel: PayChannel.XPAY,
         userId: uid,
         postId,
         anonPostId,
@@ -234,10 +235,10 @@ export class PaymentService {
       },
     });
 
-    // dev mock：直接完成
-    if (!this.wxPay.isReady()) {
+    // dev mock：直接完成（是否 mock 只看虚拟支付凭证，与 V3 凭证无关）
+    if (!this.wxXPay.isReady()) {
       if (process.env.NODE_ENV === 'production') {
-        throw new BizException(90003, '微信支付凭证未配置，无法发起支付', HttpStatus.SERVICE_UNAVAILABLE);
+        throw new BizException(90003, '微信虚拟支付凭证未配置，无法发起支付', HttpStatus.SERVICE_UNAVAILABLE);
       }
       this.logger.warn('dev mode: mock pay & boost');
       await this.fulfillOrder(order.id);
@@ -250,25 +251,29 @@ export class PaymentService {
         targetType: dto.targetType,
         targetId: dto.targetId,
         boostUntil: target?.boostUntil?.toISOString() ?? null,
-        wxPayParams: null,
+        virtualPayParams: null,
       };
     }
 
-    // 真实 V3 JSAPI 下单
-    const user = await this.prisma.user.findUnique({ where: { id: uid }, select: { openid: true } });
+    // 真实虚拟支付（道具直购）：三要素由后端算好，前端原样透传 wx.requestVirtualPayment（禁止重新序列化 signData）
+    const user = await this.prisma.user.findUnique({
+      where: { id: uid },
+      select: { openid: true, sessionKey: true },
+    });
     if (!user?.openid) {
       throw new BizException(90003, '用户 openid 缺失，无法发起微信支付', HttpStatus.SERVICE_UNAVAILABLE);
     }
+    if (!user.sessionKey) {
+      // session_key 过期/缺失：用户态签名会验签失败，引导用户重新进入小程序刷新登录态
+      throw new BizException(90003, '微信登录态已过期，请退出小程序重新进入后再支付', HttpStatus.SERVICE_UNAVAILABLE);
+    }
     const amountInFen = Math.round(Number(order.amount.toString()) * 100);
-    const notifyUrl = this.config.get<string>('WX_PAY_NOTIFY_URL')!;
-    const { prepayId, wxPayParams } = await this.wxPay.createJsapiOrder({
+    const virtualPayParams = this.wxXPay.buildGoodsPayParams({
       outTradeNo: order.id,
-      amountInFen,
-      description,
-      openid: user.openid,
-      notifyUrl,
+      goodsPriceFen: amountInFen,
+      productId: propId,
+      sessionKey: user.sessionKey,
     });
-    await this.prisma.paymentOrder.update({ where: { id: order.id }, data: { wxPrepayId: prepayId } });
     return {
       orderId: order.id,
       amount: order.amount.toString(),
@@ -276,7 +281,7 @@ export class PaymentService {
       targetType: dto.targetType,
       targetId: dto.targetId,
       boostUntil: null,
-      wxPayParams,
+      virtualPayParams,
     };
   }
 
@@ -909,7 +914,7 @@ export class PaymentService {
     return `微信订单状态 ${status}，待支付`;
   }
 
-  // ===== XPAY 虚拟支付通道（岗位发布试点）=====
+  // ===== XPAY 虚拟支付通道（岗位发布 + 内容推广）=====
 
   // 该订单所属通道的凭证是否齐备（mock 分支判定用）
   private isChannelReady(order: PaymentOrder): boolean {
@@ -920,8 +925,18 @@ export class PaymentService {
     return typeof v === 'string' && v.length > 0 ? v : undefined;
   }
 
-  // XPAY 订单反查用户 openid（JOB_PUBLISH：order.merchantId -> merchant.userId -> user.openid）
+  // XPAY 订单反查用户 openid（JOB_PUBLISH：order.merchantId -> merchant.userId；boost：order.userId）
   private async getXpayUserOpenid(order: PaymentOrder): Promise<string> {
+    if (order.scene === PayScene.POST_BOOST || order.scene === PayScene.ANON_POST_BOOST) {
+      if (!order.userId) throw new BizException(90003, '订单缺少用户信息，无法操作微信虚拟支付');
+      const user = await this.prisma.user.findUnique({
+        where: { id: order.userId },
+        select: { openid: true },
+      });
+      const openid = user?.openid;
+      if (!openid) throw new BizException(90003, '用户 openid 缺失，无法操作微信虚拟支付');
+      return openid;
+    }
     if (!order.merchantId) throw new BizException(90003, '订单缺少商家信息，无法操作微信虚拟支付');
     const merchant = await this.prisma.merchant.findUnique({
       where: { id: order.merchantId },

@@ -1,5 +1,5 @@
 import { request } from './request';
-import type { WxPayParams } from './payment';
+import type { VirtualPayParams } from './payment';
 
 // 内容推广（付费置顶曝光）：档位 + 下单
 export interface BoostPlanVo {
@@ -16,8 +16,8 @@ export interface BoostOrderVo {
   targetType: 'post' | 'anon_post';
   targetId: string;
   boostUntil: string | null;
-  // 生产环境拉起微信支付所需参数；dev mock 直接完成时为 null
-  wxPayParams: WxPayParams | null;
+  // 生产环境拉起虚拟支付（道具直购）所需参数；dev mock 直接完成时为 null
+  virtualPayParams: VirtualPayParams | null;
 }
 
 export function listBoostPlans() {
