@@ -1125,6 +1125,15 @@ model PricingConfig {
   price     Decimal     @db.Decimal(10, 2)
   updatedAt DateTime    @updatedAt @map("updated_at")
 
+  // XPAY 道具自动同步状态：改价后自动上传+发布编码价格的新道具（jp_d30_p9000），
+  // 发布确认后约 10~15 分钟微信侧生效，生效前下单抛 50008「价格切换中」
+  xpayProductId     String?   @map("xpay_product_id") // 当前生效/同步中的道具 ID（null=从未同步）
+  xpayPropStatus    String?   @map("xpay_prop_status") // SYNCING / READY / FAILED
+  xpaySyncStep      String?   @map("xpay_sync_step") // SYNCING 时进度：UPLOAD / PUBLISH
+  xpaySyncStartedAt DateTime? @map("xpay_sync_started_at")
+  xpayPublishedAt   DateTime? @map("xpay_published_at") // 发布任务确认成功时间（生效期起点）
+  xpaySyncError     String?   @map("xpay_sync_error") // 最近一次失败原因（排查用）
+
   @@unique([duration])
   @@map("pricing_config")
 }
@@ -1155,6 +1164,8 @@ model PaymentOrder {
   wxRefundId         String?      @map("wx_refund_id")
   refundStatus       String?      @map("refund_status")
   fulfillmentApplied Boolean      @default(false) @map("fulfillment_applied")
+  // 平台管理员（user_roles.role=ADMIN）发岗免支付标记：订单直接置 PAID、岗位直发
+  waived             Boolean      @default(false) @map("waived")
   refundAttempt      Int          @default(0) @map("refund_attempt")
   refundRetryAt      DateTime     @default(now()) @map("refund_retry_at")
   createdAt          DateTime     @default(now()) @map("created_at")

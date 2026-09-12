@@ -1,10 +1,11 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
 import { BannerStatus, CommunityStatus, JobPostStatus, MerchantStatus, ModerationAuthority, ModerationStatus, PayScene, PayStatus, PostStatus, Prisma, PublicationScope, Role } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfessionService } from '../confession/confession.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { TutorJobPolicyService } from '../tutor-sync/tutor-job-policy.service';
+import { XpayPropSyncService } from '../payment/xpay-prop-sync.service';
 import {
   TUTOR_SYNC_DEFAULT_ENABLED,
   TUTOR_SYNC_DEFAULT_BATCH_SIZE,
@@ -44,6 +45,8 @@ export class AdminService {
     private readonly notification: NotificationService,
     private readonly tutorJobPolicy: TutorJobPolicyService,
     private readonly accessService: AdminAccessService,
+    // PaymentModule 导入后注入；@Optional 兜底模块装配异常时管理端其余功能不受影响
+    @Optional() private readonly xpayPropSync?: XpayPropSyncService,
   ) {}
 
   // 商家审核队列。举报数据使用独立 report.manage 接口，避免跨权限泄露。
@@ -1113,19 +1116,34 @@ export class AdminService {
     return { processed, total: ids.length };
   }
 
-  // 单价配置
+  // 单价配置（含 XPAY 道具同步状态透出，便于后台观察改价后的道具发布进度）
   async getPricing() {
     const list = await this.prisma.pricingConfig.findMany({ orderBy: { duration: 'asc' } });
-    return list.map((p) => ({ duration: p.duration, price: p.price.toString(), updatedAt: p.updatedAt.toISOString() }));
+    return list.map((p) => ({
+      duration: p.duration,
+      price: p.price.toString(),
+      updatedAt: p.updatedAt.toISOString(),
+      xpayProductId: p.xpayProductId,
+      xpayPropStatus: p.xpayPropStatus,
+      xpaySyncError: p.xpaySyncError,
+    }));
   }
 
   async updatePricing(dto: UpdatePricingDto) {
     if (dto.price <= 0) throw new BizException(60004, '单价必须大于 0');
-    await this.prisma.pricingConfig.upsert({
+    const saved = await this.prisma.pricingConfig.upsert({
       where: { duration: dto.duration },
       update: { price: dto.price },
       create: { duration: dto.duration, price: dto.price },
     });
+    // 改价即触发 XPAY 道具自动同步（上传+发布编码价格的新道具）；任务冲突/失败由同步服务记录，不阻塞改价响应
+    if (this.xpayPropSync) {
+      try {
+        await this.xpayPropSync.beginSync(saved);
+      } catch {
+        // 同步服务内部已落 FAILED/留 SYNCING，这里不向管理端抛错
+      }
+    }
     return { duration: dto.duration, price: dto.price.toString() };
   }
 

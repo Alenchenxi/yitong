@@ -186,4 +186,80 @@ export class WxXPayService {
       refundOrderId: typeof data.refund_order_id === 'string' ? data.refund_order_id : '',
     };
   }
+
+  // ===== 道具批量上传/发布（改价自动同步用，官方无道具读取/修改/删除 API，只能新增+发布）=====
+
+  // 启动上传道具任务（一次仅支持一个道具）。item_url 必填（jpg/png 公网图片，微信会转存）。
+  async startUploadGoods(item: {
+    id: string;
+    name: string;
+    priceFen: number;
+    remark: string;
+    itemUrl: string;
+  }): Promise<void> {
+    const body = JSON.stringify({
+      upload_item: [
+        {
+          id: item.id,
+          name: item.name,
+          price: item.priceFen,
+          remark: item.remark,
+          item_url: item.itemUrl,
+        },
+      ],
+      env: this.env,
+    });
+    await this.request('/xpay/start_upload_goods', body);
+  }
+
+  // 查询上传任务：status 0-无任务 1-运行中 2-失败或部分失败 3-成功；
+  // upload_status 0-上传中 1-id已存在 2-上传成功 3-上传失败
+  async queryUploadGoods(): Promise<{
+    status: number;
+    items: Array<{ id: string; uploadStatus: number; errmsg?: string }>;
+  }> {
+    const data = await this.request('/xpay/query_upload_goods', JSON.stringify({ env: this.env }));
+    const items = Array.isArray(data.upload_item) ? data.upload_item : [];
+    return {
+      status: typeof data.status === 'number' ? data.status : 0,
+      items: items.map((it) => {
+        const o = it as Record<string, unknown>;
+        return {
+          id: typeof o.id === 'string' ? o.id : '',
+          uploadStatus: typeof o.upload_status === 'number' ? o.upload_status : -1,
+          errmsg: typeof o.errmsg === 'string' ? o.errmsg : undefined,
+        };
+      }),
+    };
+  }
+
+  // 启动发布道具任务（上传成功/id已存在后调用，一次一个）
+  async startPublishGoods(id: string): Promise<void> {
+    const body = JSON.stringify({
+      publish_item: [{ id }],
+      env: this.env,
+    });
+    await this.request('/xpay/start_publish_goods', body);
+  }
+
+  // 查询发布任务：status 0-无任务 1-运行中 2-失败或部分失败 3-成功；
+  // publish_status 0-发布中 1-id已存在 2-发布成功 3-发布失败
+  async queryPublishGoods(): Promise<{
+    status: number;
+    items: Array<{ id: string; publishStatus: number; errmsg?: string }>;
+  }> {
+    const data = await this.request('/xpay/query_publish_goods', JSON.stringify({ env: this.env }));
+    const items = Array.isArray(data.publish_item) ? data.publish_item : [];
+    return {
+      status: typeof data.status === 'number' ? data.status : 0,
+      items: items.map((it) => {
+        const o = it as Record<string, unknown>;
+        return {
+          id: typeof o.id === 'string' ? o.id : '',
+          publishStatus: typeof o.publish_status === 'number' ? o.publish_status : -1,
+          errmsg: typeof o.errmsg === 'string' ? o.errmsg : undefined,
+        };
+      }),
+    };
+  }
 }

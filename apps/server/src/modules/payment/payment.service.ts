@@ -18,6 +18,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WxPayService } from '../../common/wx/wx-pay.service';
 import { WxXPayService } from '../../common/wx/wx-xpay.service';
+import { XpayPropSyncService, xpayPropIdFor } from './xpay-prop-sync.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { BoostService, type BoostTargetType } from '../boost/boost.service';
 import { ConfessionService } from '../confession/confession.service';
@@ -25,14 +26,11 @@ import { PublicationPolicyService } from '../publication/publication-policy.serv
 import type { CreateBoostOrderDto } from './dto/boost.dto';
 import type { PublishJobDto } from './dto/payment.dto';
 
-// 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用 / 50006 推广档位不存在或已下架 / 50007 内容不可推广
+// 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用 / 50006 推广档位不存在或已下架 / 50007 内容不可推广 / 50008 价格切换中（新道具未生效）
 
-// 岗位付费发布道具 ID：与 MP 后台「虚拟支付 -> 道具管理」配置一致，道具价格须与 PricingConfig 同步改。
-// 开发版本与现网版本都需上传发布，新建道具约 10~15 分钟后才可在支付网关使用。
-const JOB_PUBLISH_PRODUCT_ID: Record<JobDuration, string> = {
-  D30: 'job_publish_d30',
-  D90: 'job_publish_d90',
-};
+// 岗位付费发布道具 ID 不再静态映射，由 XpayPropSyncService 按价格动态生成（jp_d30_p9000，价格编码进 ID）。
+// 管理端改价后自动上传+发布新道具；微信侧约 10~15 分钟生效，期间下单抛 50008「价格切换中」。
+// 详见 xpay-prop-sync.service.ts。
 
 @Injectable()
 export class PaymentService {
@@ -43,6 +41,7 @@ export class PaymentService {
     private readonly config: ConfigService,
     private readonly wxPay: WxPayService,
     private readonly wxXPay: WxXPayService,
+    private readonly xpayPropSync: XpayPropSyncService,
     private readonly notification: NotificationService,
     private readonly boost: BoostService,
     private readonly confession: ConfessionService,
@@ -78,6 +77,42 @@ export class PaymentService {
 
     const pricing = await this.prisma.pricingConfig.findUnique({ where: { duration: dto.duration } });
     if (!pricing) throw new BizException(50004, '该档位单价未配置', HttpStatus.CONFLICT);
+
+    // 平台管理员（user_roles.role=ADMIN）发岗免支付：校验流程照走，不进支付页，订单直接 PAID + 岗位直发。
+    // 前端发布页检测 ADMIN 角色后不下跳支付页，凭本响应的 jobPostStatus=PUBLISHED 直接提示发布成功。
+    const adminRole = await this.prisma.userRole.findUnique({
+      where: { userId_role: { userId: merchantUid, role: 'ADMIN' } },
+    });
+    if (adminRole) {
+      const order = await this.prisma.paymentOrder.create({
+        data: {
+          scene: PayScene.JOB_PUBLISH,
+          channel: PayChannel.XPAY,
+          merchantId: merchant.id,
+          jobPostId: post.id,
+          duration: dto.duration,
+          amount: pricing.price,
+          status: PayStatus.PENDING,
+          waived: true,
+        },
+      });
+      await this.fulfillOrder(order.id);
+      const done = await this.prisma.paymentOrder.findUniqueOrThrow({ where: { id: order.id } });
+      this.logger.log(`平台管理员免支付发岗: order=${order.id} job=${post.id}`);
+      return {
+        orderId: order.id,
+        amount: done.amount.toString(),
+        status: done.status,
+        jobPostId: post.id,
+        jobPostStatus: JobPostStatus.PUBLISHED,
+        virtualPayParams: null,
+        wxPayParams: null,
+        waived: true,
+      };
+    }
+
+    // 道具守卫：改价后新道具未在微信支付网关生效（约10~15分钟）时抛 50008「价格切换中」，顺带触发同步重试
+    const propId = this.wxXPay.isReady() ? this.xpayPropSync.assertPropReadyOrThrow(pricing) : '';
 
     const order = await this.prisma.paymentOrder.create({
       data: {
@@ -127,7 +162,7 @@ export class PaymentService {
     const virtualPayParams = this.wxXPay.buildGoodsPayParams({
       outTradeNo: order.id,
       goodsPriceFen: amountInFen,
-      productId: JOB_PUBLISH_PRODUCT_ID[dto.duration],
+      productId: propId,
       sessionKey: user.sessionKey,
     });
     return {
@@ -667,6 +702,10 @@ export class PaymentService {
     const order = await this.prisma.paymentOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new BizException(50001, '订单不存在', HttpStatus.NOT_FOUND);
     await this.assertOrderOwner(callerUid, order);
+    // 免支付订单（平台管理员发岗）微信侧无真实支付单，退款会失败，直接拦截
+    if (order.waived) {
+      throw new BizException(50005, '免支付订单无需退款', HttpStatus.CONFLICT);
+    }
     if (order.status === PayStatus.REFUNDED || order.status === PayStatus.REFUNDING) {
       return this.toOrderVo(order);
     }

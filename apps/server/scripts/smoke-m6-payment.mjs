@@ -364,6 +364,81 @@ async function createTestUser(prisma, openid, nickname, role) {
     assert(pd.wxPayParams === null, '契约点7：wxPayParams=null 证明走 dev mock 路径（isReady=false）');
     assert(pd.virtualPayParams === null, '契约点7：virtualPayParams=null 证明虚拟支付同样走 mock（WX_XPAY 凭证未配置）');
 
+    // ===== 契约点8：平台管理员（ADMIN 角色）免支付发岗 =====
+    console.log('\n[契约点8] 平台管理员免支付发岗');
+    // 夹具：ADMIN 角色用户 + APPROVED 商家（与商家用户同一套注册/过审流程，证明"正常走流程"）
+    const adminOpenid = `mock_m6a_${marker}`;
+    mockOpenidPrefixes.push(adminOpenid);
+    const { user: adminUser, token: adminToken } = await createTestUser(
+      prismaRef, adminOpenid, `M6平台管理员_${marker}`, 'ADMIN',
+    );
+    created.userIds.push(adminUser.id);
+    await prismaRef.communityMember.upsert({
+      where: { communityId_userId: { communityId: defaultCommunity.id, userId: adminUser.id } },
+      update: {},
+      create: { communityId: defaultCommunity.id, userId: adminUser.id },
+    });
+    await prismaRef.user.update({
+      where: { id: adminUser.id },
+      data: { activeCommunityId: defaultCommunity.id },
+    });
+    const adminRegister = await call('POST', '/merchant/register', adminToken, {
+      shopName: `M6管理员店铺_${marker}`,
+      licenseNo: `M6LICA_${marker}`,
+      contactPhone: '13800000008',
+    });
+    assert(adminRegister.body?.code === 0, '契约点8：管理员商家注册成功', JSON.stringify(adminRegister.body));
+    const adminProfile = await call('GET', '/merchant/profile', adminToken);
+    const adminMerchantId = adminProfile.body?.data?.id;
+    created.merchantIds.push(adminMerchantId);
+    await prismaRef.merchant.update({ where: { id: adminMerchantId }, data: { status: 'APPROVED' } });
+    // 管理员建 PENDING 岗位（同商家必填四件套）
+    const adminPost = await call('POST', '/job-posts', adminToken, {
+      title: `M6_管理员岗位_${marker}`,
+      description: 'M6 smoke 管理员免付测试岗位',
+      salary: '88/天',
+      location: 'M6 管理员测试地点',
+      locationPoiId: `B0FFG9M6ADM_${marker}`,
+      locationLng: 116.397428,
+      locationLat: 39.90923,
+      locationCity: '北京',
+      category: 'RETAIL',
+      settlement: 'DAILY',
+      workDates: ['周日'],
+      workPeriods: ['全天'],
+      headcount: 1,
+      questions: [],
+      duration: 'D30',
+    });
+    assert(adminPost.body?.code === 0, '契约点8：管理员创建 PENDING 岗位成功', JSON.stringify(adminPost.body));
+    const adminPostId = adminPost.body.data.id;
+    created.jobPostIds.push(adminPostId);
+    // 免支付发布：同一下单接口，响应直接 PAID + PUBLISHED + waived，前端凭此跳过支付页
+    const adminPublish = await call('POST', '/payments/job-publish', adminToken, {
+      jobPostId: adminPostId,
+      duration: 'D30',
+    });
+    assert(adminPublish.body?.code === 0, '契约点8：管理员付费发布接口成功', JSON.stringify(adminPublish.body));
+    const ad = adminPublish.body.data;
+    assertEq(ad.status, 'PAID', '契约点8：返回 status=PAID（未付直发）');
+    assertEq(ad.waived, true, '契约点8：返回 waived=true（免支付标记）');
+    assertEq(ad.jobPostStatus, 'PUBLISHED', '契约点8：返回 jobPostStatus=PUBLISHED');
+    assertEq(ad.virtualPayParams, null, '契约点8：返回 virtualPayParams=null（无需拉起支付）');
+    created.paymentOrderIds.push(ad.orderId);
+    const adminOrderDb = await prismaRef.paymentOrder.findUnique({
+      where: { id: ad.orderId },
+      select: { status: true, waived: true, amount: true, channel: true },
+    });
+    assertEq(adminOrderDb?.waived, true, '契约点8：DB paymentOrder.waived=true');
+    assertEq(adminOrderDb?.status, 'PAID', '契约点8：DB paymentOrder.status=PAID');
+    assertEq(adminOrderDb?.channel, 'XPAY', '契约点8：DB paymentOrder.channel=XPAY');
+    const adminPostDb = await prismaRef.jobPost.findUnique({
+      where: { id: adminPostId },
+      select: { status: true },
+    });
+    assertEq(adminPostDb?.status, 'PUBLISHED', '契约点8：DB jobPost.status=PUBLISHED（免付直发）');
+    // 非 ADMIN 商家不受影响：已由契约点1 走正常 mock 支付路径覆盖
+
     // ===== 契约点2：refund mock =====
     console.log('\n[契约点2] refund dev mock');
     const refundResp = await call('POST', `/payments/${orderId}/refund`, merchantToken, {

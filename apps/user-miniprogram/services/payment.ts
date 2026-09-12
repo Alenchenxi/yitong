@@ -26,6 +26,8 @@ export interface PublishOrderVo {
   jobPostStatus: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
   // 2026 虚拟支付管理规范：岗位付费发布走虚拟支付道具直购；dev mock 直接完成时为 null
   virtualPayParams: VirtualPayParams | null;
+  // 平台管理员（ADMIN 角色）发岗免支付标记：true 时订单已 PAID、岗位已直发，无需进支付页
+  waived?: boolean;
 }
 
 export interface PaymentOrderVo {

@@ -5,6 +5,7 @@ import {
   type JobTemplateVo,
 } from '../../../services/job';
 import { listCommunities, type CommunityVo } from '../../../services/community';
+import { publishJob } from '../../../services/payment';
 import type { AppInstance } from '../../../app';
 
 interface PeriodOpt {
@@ -227,6 +228,15 @@ Page({
         duration: f.duration,
         communityId: this.data.selectedCommunityId || undefined,
       });
+      // 平台管理员发岗免支付：直接下单（服务端校验 ADMIN 角色，免支付岗位直发），不进支付页
+      if (getApp<AppInstance>().globalData.user?.roles?.includes('ADMIN')) {
+        const order = await publishJob({ jobPostId: post.id, duration: f.duration });
+        if (order.jobPostStatus === 'PUBLISHED') {
+          wx.showToast({ title: '发布成功', icon: 'success' });
+          setTimeout(() => wx.reLaunch({ url: '/pages/merchant/index?tab=jobs' }), 1200);
+          return;
+        }
+      }
       wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${f.duration}` });
     } catch (e) {
       console.error('createJobPost failed:', e);
