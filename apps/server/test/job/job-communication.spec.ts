@@ -1319,6 +1319,8 @@ describe('PaymentService 岗位发布联系方式快照', () => {
       prisma as never,
       {} as never,
       {} as never,
+      {} as never,
+      {} as never,
       { create: jest.fn() } as never,
       {} as never,
       {} as never,

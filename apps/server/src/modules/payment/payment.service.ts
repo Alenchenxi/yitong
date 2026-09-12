@@ -26,10 +26,10 @@ import { PublicationPolicyService } from '../publication/publication-policy.serv
 import type { CreateBoostOrderDto } from './dto/boost.dto';
 import type { PublishJobDto } from './dto/payment.dto';
 
-// 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用 / 50006 推广档位不存在或已下架 / 50007 内容不可推广 / 50008 价格切换中（新道具未生效）
+// 错误码 5xxxx 支付段（API §3）：50001 订单不存在 / 50002 订单已完成或无效 / 50003 金额不匹配 / 50004 单价未配置 / 50005 退款不可用 / 50006 推广档位不存在或已下架 / 50007 内容不可推广 / 50008 新道具未生效（对用户提示「当前支付人数过多，请稍后重试」）
 
 // 岗位付费发布道具 ID 不再静态映射，由 XpayPropSyncService 按价格动态生成（jp_d30_p9000，价格编码进 ID）。
-// 管理端改价后自动上传+发布新道具；微信侧约 10~15 分钟生效，期间下单抛 50008「价格切换中」。
+// 管理端改价后自动上传+发布新道具；微信侧约 10~15 分钟生效，期间下单抛 50008（提示「当前支付人数过多，请稍后重试」）。
 // 详见 xpay-prop-sync.service.ts。
 
 @Injectable()
@@ -111,7 +111,7 @@ export class PaymentService {
       };
     }
 
-    // 道具守卫：改价后新道具未在微信支付网关生效（约10~15分钟）时抛 50008「价格切换中」，顺带触发同步重试
+    // 道具守卫：改价后新道具未在微信支付网关生效（约10~15分钟）时抛 50008（提示「当前支付人数过多，请稍后重试」），顺带触发同步重试
     const propId = this.wxXPay.isReady() ? this.xpayPropSync.assertPropReadyOrThrow(pricing) : '';
 
     const order = await this.prisma.paymentOrder.create({

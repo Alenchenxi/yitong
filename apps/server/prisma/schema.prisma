@@ -1126,7 +1126,7 @@ model PricingConfig {
   updatedAt DateTime    @updatedAt @map("updated_at")
 
   // XPAY 道具自动同步状态：改价后自动上传+发布编码价格的新道具（jp_d30_p9000），
-  // 发布确认后约 10~15 分钟微信侧生效，生效前下单抛 50008「价格切换中」
+  // 发布确认后约 10~15 分钟微信侧生效，生效前下单抛 50008（提示「当前支付人数过多，请稍后重试」）
   xpayProductId     String?   @map("xpay_product_id") // 当前生效/同步中的道具 ID（null=从未同步）
   xpayPropStatus    String?   @map("xpay_prop_status") // SYNCING / READY / FAILED
   xpaySyncStep      String?   @map("xpay_sync_step") // SYNCING 时进度：UPLOAD / PUBLISH

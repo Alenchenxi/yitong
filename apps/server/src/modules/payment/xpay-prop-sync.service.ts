@@ -6,7 +6,7 @@ import { BizException } from '../../common/exceptions/biz.exception';
 import { WxXPayService } from '../../common/wx/wx-xpay.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
-// 错误码 50008（支付段 5xxxx）：改价后新道具尚未在微信支付网关生效
+// 错误码 50008（支付段 5xxxx）：改价后新道具尚未在微信支付网关生效（对用户提示「当前支付人数过多」）
 export const XPAY_PRICE_SWITCHING_CODE = 50008;
 
 // 道具 ID 编码价格（价格变更 => 新 ID），长度须 ≤20 且仅字母/数字/_/-（官方限制）。
@@ -65,7 +65,8 @@ export class XpayPropSyncService implements OnModuleInit {
     }
   }
 
-  // 确保某档位价格对应的道具处于可支付状态；未生效则抛 50008（前端 toast「价格切换中」），
+  // 确保某档位价格对应的道具处于可支付状态；未生效则抛 50008（前端 toast「当前支付人数过多，请稍后重试」，
+  // 不向用户暴露道具同步内部状态），
   // 同时顺带触发一次同步重试（FAILED/未同步场景的自愈入口之一）。
   assertPropReadyOrThrow(pricing: PricingConfig): string {
     const target = xpayPropIdFor(pricing.duration, yuanToFen(pricing.price));
@@ -80,7 +81,7 @@ export class XpayPropSyncService implements OnModuleInit {
     }
     throw new BizException(
       XPAY_PRICE_SWITCHING_CODE,
-      '价格切换中，新道具发布约需10~15分钟生效，请稍后再试',
+      '当前支付人数过多，请稍后重试',
       HttpStatus.CONFLICT,
     );
   }
