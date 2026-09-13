@@ -1,5 +1,12 @@
 import type { AppInstance } from '../../app';
-import { getJobPublishPricing, publishJob, syncOrderStatus, type PublishOrderVo, type VirtualPayParams, type JobPublishPriceVo } from '../../services/payment';
+import {
+  getJobPublishPricing,
+  publishJob,
+  syncOrderStatus,
+  type PublishOrderVo,
+  type VirtualPayParams,
+  type JobPublishPriceVo,
+} from '../../services/payment';
 
 Page({
   data: {
@@ -32,7 +39,8 @@ Page({
       const list: JobPublishPriceVo[] = await getJobPublishPricing();
       const out = { D30: 0, D90: 0 } as Record<'D30' | 'D90', number>;
       list.forEach((p) => {
-        if (p && (p.duration === 'D30' || p.duration === 'D90')) out[p.duration] = Number(p.price) || 0;
+        if (p && (p.duration === 'D30' || p.duration === 'D90'))
+          out[p.duration] = Number(p.price) || 0;
       });
       const perDay = {
         D30: out.D30 > 0 ? (out.D30 / 30).toFixed(2) : '0.00',
@@ -83,7 +91,21 @@ Page({
       try {
         await this.requestVirtualPay(result.virtualPayParams);
       } catch {
-        this.setData({ failed: true, message: '支付未完成,可稍后在订单页刷新状态' });
+        let message = '支付未完成,可稍后在订单页刷新状态';
+        try {
+          const synced = await syncOrderStatus(result.orderId);
+          message = synced.message || message;
+          this.setData({
+            result: {
+              ...result,
+              status: synced.status,
+              jobPostStatus: synced.status === 'PAID' ? 'PUBLISHED' : result.jobPostStatus,
+            },
+          });
+        } catch {
+          // 微信取消后可能暂未返回最终状态，保留订单供后续重试复用。
+        }
+        this.setData({ failed: true, message });
         wx.showToast({ title: '支付未完成', icon: 'none' });
         return;
       }
@@ -91,7 +113,11 @@ Page({
       try {
         const synced = await syncOrderStatus(result.orderId);
         this.setData({
-          result: { ...result, status: synced.status, jobPostStatus: synced.status === 'PAID' ? 'PUBLISHED' : result.jobPostStatus },
+          result: {
+            ...result,
+            status: synced.status,
+            jobPostStatus: synced.status === 'PAID' ? 'PUBLISHED' : result.jobPostStatus,
+          },
           message: synced.message,
         });
         if (synced.status === 'PAID') {

@@ -76,14 +76,10 @@ const NEAREST_SEARCH_RADII_KM = [
 export const JOB_LIST_CURSOR_EXPIRED_CODE = 40007;
 
 function normalizeLongitude(longitude: number): number {
-  return ((longitude + 180) % 360 + 360) % 360 - 180;
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
 }
 
-function buildNearestBoundingConditions(
-  lng: number,
-  lat: number,
-  radiusKm: number,
-): Prisma.Sql[] {
+function buildNearestBoundingConditions(lng: number, lat: number, radiusKm: number): Prisma.Sql[] {
   const angularRadius = radiusKm / EARTH_RADIUS_KM;
   if (angularRadius >= Math.PI) {
     return [
@@ -92,11 +88,11 @@ function buildNearestBoundingConditions(
     ];
   }
 
-  const latRadians = lat * Math.PI / 180;
+  const latRadians = (lat * Math.PI) / 180;
   const minLatRadians = Math.max(-Math.PI / 2, latRadians - angularRadius);
   const maxLatRadians = Math.min(Math.PI / 2, latRadians + angularRadius);
   const conditions = [
-    Prisma.sql`"jp"."location_lat" BETWEEN ${minLatRadians * 180 / Math.PI} AND ${maxLatRadians * 180 / Math.PI}`,
+    Prisma.sql`"jp"."location_lat" BETWEEN ${(minLatRadians * 180) / Math.PI} AND ${(maxLatRadians * 180) / Math.PI}`,
   ];
   if (minLatRadians <= -Math.PI / 2 || maxLatRadians >= Math.PI / 2) {
     return conditions;
@@ -104,13 +100,11 @@ function buildNearestBoundingConditions(
 
   const ratio = Math.sin(angularRadius) / Math.cos(latRadians);
   if (Math.abs(ratio) >= 1) return conditions;
-  const longitudeDelta = Math.asin(Math.abs(ratio)) * 180 / Math.PI;
+  const longitudeDelta = (Math.asin(Math.abs(ratio)) * 180) / Math.PI;
   const minLng = normalizeLongitude(lng - longitudeDelta);
   const maxLng = normalizeLongitude(lng + longitudeDelta);
   if (minLng <= maxLng) {
-    conditions.push(
-      Prisma.sql`"jp"."location_lng" BETWEEN ${minLng} AND ${maxLng}`,
-    );
+    conditions.push(Prisma.sql`"jp"."location_lng" BETWEEN ${minLng} AND ${maxLng}`);
   } else {
     conditions.push(Prisma.sql`(
       "jp"."location_lng" BETWEEN ${minLng} AND 180
@@ -121,15 +115,17 @@ function buildNearestBoundingConditions(
 }
 
 function isJobListCursorPayload(value: unknown): value is JobListCursorPayload {
-  return typeof value === 'object'
-    && value !== null
-    && 'v' in value
-    && value.v === 1
-    && 'createdAt' in value
-    && typeof value.createdAt === 'string'
-    && 'id' in value
-    && typeof value.id === 'string'
-    && value.id.length > 0;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'v' in value &&
+    value.v === 1 &&
+    'createdAt' in value &&
+    typeof value.createdAt === 'string' &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    value.id.length > 0
+  );
 }
 
 function encodeJobListCursor(post: { createdAt: Date; id: string }): string {
@@ -159,27 +155,27 @@ function encodeNearestJobListCursor(post: { _distance: number; id: string }): st
     distance: post._distance,
     id: post.id,
   };
-  return NEAREST_JOB_LIST_CURSOR_PREFIX
-    + Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  return (
+    NEAREST_JOB_LIST_CURSOR_PREFIX +
+    Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url')
+  );
 }
 
-function decodeNearestJobListCursor(
-  cursor: string,
-): NearestJobListCursorPayload | null {
+function decodeNearestJobListCursor(cursor: string): NearestJobListCursorPayload | null {
   if (!cursor.startsWith(NEAREST_JOB_LIST_CURSOR_PREFIX)) return null;
   try {
     const encoded = cursor.slice(NEAREST_JOB_LIST_CURSOR_PREFIX.length);
     const payload: unknown = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
     if (
-      typeof payload === 'object'
-      && payload !== null
-      && 'distance' in payload
-      && typeof payload.distance === 'number'
-      && Number.isFinite(payload.distance)
-      && payload.distance >= 0
-      && 'id' in payload
-      && typeof payload.id === 'string'
-      && payload.id.length > 0
+      typeof payload === 'object' &&
+      payload !== null &&
+      'distance' in payload &&
+      typeof payload.distance === 'number' &&
+      Number.isFinite(payload.distance) &&
+      payload.distance >= 0 &&
+      'id' in payload &&
+      typeof payload.id === 'string' &&
+      payload.id.length > 0
     ) {
       return { distance: payload.distance, id: payload.id };
     }
@@ -283,8 +279,17 @@ export class JobService {
       throw new BizException(60003, '商家资质未审核通过，不能发岗', HttpStatus.FORBIDDEN);
     }
     // 强制必填 4 个 location 字段:locationPoiId / locationLng / locationLat / locationCity
-    if (!dto.locationPoiId || dto.locationLng === undefined || dto.locationLat === undefined || !dto.locationCity) {
-      throw new BizException(40003, '工作地点必须通过地图选点获得,请补全 poiId/经度/纬度/城市', HttpStatus.BAD_REQUEST);
+    if (
+      !dto.locationPoiId ||
+      dto.locationLng === undefined ||
+      dto.locationLat === undefined ||
+      !dto.locationCity
+    ) {
+      throw new BizException(
+        40003,
+        '工作地点必须通过地图选点获得,请补全 poiId/经度/纬度/城市',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const customCategory = dto.customCategory?.trim() || null;
     if (dto.isCustomCategory) {
@@ -314,13 +319,88 @@ export class JobService {
         where: { id: dto.communityId },
         select: { status: true },
       });
-      if (!c || c.status !== 'ACTIVE') throw new BizException(40006, '圈子不存在或不可用', HttpStatus.BAD_REQUEST);
+      if (!c || c.status !== 'ACTIVE')
+        throw new BizException(40006, '圈子不存在或不可用', HttpStatus.BAD_REQUEST);
       communityId = dto.communityId;
     } else {
       communityId = await this.community.getActiveCommunityId(merchantUid);
     }
     await this.community.assertUserCanParticipate(merchantUid, communityId);
     const publisherScope = await this.publicationPolicy.resolveForUser(merchantUid);
+    const expectedHeadcount = dto.headcount ?? 1;
+    // 取消支付后重新提交同一岗位：仅复用已经生成过待支付订单的完全一致草稿。
+    // 没有支付记录的同名岗位仍允许正常创建，避免误合并商家主动发布的重复岗位。
+    const paymentOrderStore = (
+      this.prisma as unknown as {
+        paymentOrder?: {
+          findMany?: (args: unknown) => Promise<Array<{ jobPostId: string | null }>>;
+        };
+      }
+    ).paymentOrder;
+    const paymentOrderFindMany = paymentOrderStore?.findMany;
+    const jobPostFindMany = (
+      this.prisma.jobPost as unknown as {
+        findMany?: (args: unknown) => Promise<Array<Record<string, unknown>>>;
+      }
+    ).findMany;
+    if (paymentOrderFindMany && jobPostFindMany) {
+      const pendingOrders = await paymentOrderFindMany.call(paymentOrderStore, {
+        where: {
+          scene: 'JOB_PUBLISH',
+          merchantId: merchant.id,
+          status: 'PENDING',
+          jobPostId: { not: null },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { jobPostId: true },
+      });
+      const candidateIds = pendingOrders
+        .map((order) => order.jobPostId)
+        .filter((id): id is string => !!id);
+      if (candidateIds.length > 0) {
+        const candidates = await jobPostFindMany.call(this.prisma.jobPost, {
+          where: {
+            id: { in: candidateIds },
+            merchantId: merchant.id,
+            status: JobPostStatus.PENDING,
+            deletedAt: null,
+          },
+        });
+        const sameArray = (a: unknown, b: unknown) =>
+          JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
+        const expectedRequirements = dto.requirements?.trim() || null;
+        const expectedCustomCategory = customCategory;
+        const expectedQuestions = dto.questions ?? [];
+        const existing = candidates.find(
+          (candidate) =>
+            String(candidate.title ?? '').trim() === dto.title.trim() &&
+            String(candidate.description ?? '').trim() === dto.description.trim() &&
+            (candidate.requirements ?? null) === expectedRequirements &&
+            String(candidate.salary ?? '').trim() === dto.salary.trim() &&
+            String(candidate.location ?? '').trim() === dto.location.trim() &&
+            (candidate.locationPoiId ?? null) === (dto.locationPoiId ?? null) &&
+            Number(candidate.locationLng ?? NaN) === Number(dto.locationLng ?? NaN) &&
+            Number(candidate.locationLat ?? NaN) === Number(dto.locationLat ?? NaN) &&
+            (candidate.locationCity ?? null) === (dto.locationCity ?? null) &&
+            candidate.category === dto.category &&
+            (candidate.customCategory ?? null) === expectedCustomCategory &&
+            candidate.settlement === dto.settlement &&
+            sameArray(candidate.workDates, this.filterWhitelist(dto.workDates, WORK_DATE_VALUES)) &&
+            sameArray(
+              candidate.workPeriods,
+              this.filterWhitelist(dto.workPeriods, WORK_PERIOD_VALUES),
+            ) &&
+            Number(candidate.headcount ?? 1) === expectedHeadcount &&
+            Boolean(candidate.urgent) === Boolean(dto.urgent ?? false) &&
+            Boolean(candidate.online) === Boolean(dto.online ?? false) &&
+            sameArray(candidate.questions, expectedQuestions) &&
+            candidate.duration === dto.duration &&
+            candidate.communityId === communityId &&
+            candidate.publisherScope === publisherScope,
+        );
+        if (existing?.id) return this.toPostVo(await this.refreshPost(String(existing.id)), true);
+      }
+    }
     const post = await this.prisma.jobPost.create({
       data: {
         merchantId: merchant.id,
@@ -349,9 +429,10 @@ export class JobService {
         duration: dto.duration,
         expireAt,
         publisherScope,
-        visibilityScope: publisherScope === PublicationScope.PLATFORM
-          ? JobVisibilityScope.ALL_COMMUNITIES
-          : JobVisibilityScope.COMMUNITY,
+        visibilityScope:
+          publisherScope === PublicationScope.PLATFORM
+            ? JobVisibilityScope.ALL_COMMUNITIES
+            : JobVisibilityScope.COMMUNITY,
         status: JobPostStatus.PENDING,
       },
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
@@ -415,8 +496,17 @@ export class JobService {
       dto.locationLat !== undefined ||
       dto.locationCity !== undefined;
     if (hasLocExt) {
-      if (!dto.locationPoiId || dto.locationLng === undefined || dto.locationLat === undefined || !dto.locationCity) {
-        throw new BizException(40003, '编辑位置信息必须传齐 poiId/经度/纬度/城市', HttpStatus.BAD_REQUEST);
+      if (
+        !dto.locationPoiId ||
+        dto.locationLng === undefined ||
+        dto.locationLat === undefined ||
+        !dto.locationCity
+      ) {
+        throw new BizException(
+          40003,
+          '编辑位置信息必须传齐 poiId/经度/纬度/城市',
+          HttpStatus.BAD_REQUEST,
+        );
       }
       data.locationPoiId = dto.locationPoiId;
       data.locationLng = dto.locationLng;
@@ -435,8 +525,10 @@ export class JobService {
       data.customCategory = customCategory;
     }
     if (dto.settlement !== undefined) data.settlement = dto.settlement;
-    if (dto.workDates !== undefined) data.workDates = this.filterWhitelist(dto.workDates, WORK_DATE_VALUES);
-    if (dto.workPeriods !== undefined) data.workPeriods = this.filterWhitelist(dto.workPeriods, WORK_PERIOD_VALUES);
+    if (dto.workDates !== undefined)
+      data.workDates = this.filterWhitelist(dto.workDates, WORK_DATE_VALUES);
+    if (dto.workPeriods !== undefined)
+      data.workPeriods = this.filterWhitelist(dto.workPeriods, WORK_PERIOD_VALUES);
     if (dto.headcount !== undefined) data.headcount = dto.headcount;
     if (dto.urgent !== undefined) data.urgent = dto.urgent;
     if (dto.online !== undefined) data.online = dto.online;
@@ -473,7 +565,11 @@ export class JobService {
     await this.publicationPolicy.assertOwnerCanManage(merchantUid, post.publisherScope);
     await this.community.assertUserCanParticipate(merchantUid, post.communityId);
     if (post.status !== JobPostStatus.PUBLISHED) {
-      throw new BizException(40004, `状态非法流转：${post.status} -> TAKEN_DOWN`, HttpStatus.CONFLICT);
+      throw new BizException(
+        40004,
+        `状态非法流转：${post.status} -> TAKEN_DOWN`,
+        HttpStatus.CONFLICT,
+      );
     }
     const now = new Date();
     const updated = await this.prisma.jobPost.update({
@@ -497,7 +593,11 @@ export class JobService {
     await this.publicationPolicy.assertOwnerCanManage(merchantUid, post.publisherScope);
     await this.community.assertUserCanParticipate(merchantUid, post.communityId);
     if (post.status !== JobPostStatus.PENDING) {
-      throw new BizException(40004, `状态非法流转：${post.status} -> DELETED（非 PENDING 草稿请走下架）`, HttpStatus.CONFLICT);
+      throw new BizException(
+        40004,
+        `状态非法流转：${post.status} -> DELETED（非 PENDING 草稿请走下架）`,
+        HttpStatus.CONFLICT,
+      );
     }
     await this.prisma.jobPost.update({
       where: { id: postId },
@@ -590,7 +690,11 @@ export class JobService {
       throw new BizException(40004, '管理员下架的岗位不可由商家重新发布', HttpStatus.CONFLICT);
     }
     if (!['PUBLISHED', 'TAKEN_DOWN', 'EXPIRED'].includes(post.status)) {
-      throw new BizException(40004, '状态非法流转：仅已发布/已下架/已过期可重新发布', HttpStatus.CONFLICT);
+      throw new BizException(
+        40004,
+        '状态非法流转：仅已发布/已下架/已过期可重新发布',
+        HttpStatus.CONFLICT,
+      );
     }
     await this.prisma.jobPost.update({
       where: { id: postId },
@@ -609,7 +713,8 @@ export class JobService {
     if (q.mine === 1) {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: uid } });
       if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
-      if (merchant.status !== MerchantStatus.APPROVED) throw new BizException(60003, '商家资质未审核通过', HttpStatus.FORBIDDEN);
+      if (merchant.status !== MerchantStatus.APPROVED)
+        throw new BizException(60003, '商家资质未审核通过', HttpStatus.FORBIDDEN);
       where.merchantId = merchant.id;
       // M3-03 商家岗位状态筛选（仅 mine 模式生效；公开列表硬约束 PUBLISHED+未过期）
       if (q.status) where.status = q.status as JobPostStatus;
@@ -660,21 +765,15 @@ export class JobService {
 
     // "最近"tab：Haversine 距离排序（仅公开列表，非 mine 模式）
     if (
-      q.sort === 'nearest'
-      && q.mine !== 1
-      && q.userLng !== undefined
-      && q.userLat !== undefined
+      q.sort === 'nearest' &&
+      q.mine !== 1 &&
+      q.userLng !== undefined &&
+      q.userLat !== undefined
     ) {
       if (!visibleCommunityId) {
         throw new BizException(40003, '最近岗位仅支持公开列表', HttpStatus.BAD_REQUEST);
       }
-      return this.listPostsNearest(
-        q,
-        where,
-        limit,
-        visibleCommunityId,
-        discoveryNow,
-      );
+      return this.listPostsNearest(q, where, limit, visibleCommunityId, discoveryNow);
     }
 
     const posts = await this.prisma.jobPost.findMany({
@@ -704,7 +803,7 @@ export class JobService {
     return {
       list: slice.map((p) => ({
         ...this.toPostVo(p, false, tutorContact),
-        pendingApplicationCount: q.mine === 1 ? pendingMap.get(p.id) ?? 0 : undefined,
+        pendingApplicationCount: q.mine === 1 ? (pendingMap.get(p.id) ?? 0) : undefined,
       })),
       nextCursor,
       hasMore,
@@ -767,25 +866,17 @@ export class JobService {
       )`);
     }
     if (q.category) {
-      baseConditions.push(
-        Prisma.sql`"jp"."category" = CAST(${q.category} AS "JobCategory")`,
-      );
+      baseConditions.push(Prisma.sql`"jp"."category" = CAST(${q.category} AS "JobCategory")`);
     }
     if (q.settlement) {
-      baseConditions.push(
-        Prisma.sql`"jp"."settlement" = CAST(${q.settlement} AS "Settlement")`,
-      );
+      baseConditions.push(Prisma.sql`"jp"."settlement" = CAST(${q.settlement} AS "Settlement")`);
     }
     if (q.location?.trim()) {
-      baseConditions.push(
-        Prisma.sql`"jp"."location" ILIKE ${`%${q.location.trim()}%`}`,
-      );
+      baseConditions.push(Prisma.sql`"jp"."location" ILIKE ${`%${q.location.trim()}%`}`);
     }
     if (q.city?.trim()) {
       const city = this.location.normalizeAdministrativeName(q.city);
-      baseConditions.push(
-        Prisma.sql`"jp"."location_city" ILIKE ${`%${city}%`}`,
-      );
+      baseConditions.push(Prisma.sql`"jp"."location_city" ILIKE ${`%${city}%`}`);
     }
     if (q.salaryMin !== undefined) {
       baseConditions.push(Prisma.sql`"jp"."salary_amount" >= ${q.salaryMin}`);
@@ -831,9 +922,8 @@ export class JobService {
     const matchingRadiusIndex = NEAREST_SEARCH_RADII_KM.findIndex(
       (radius) => radius > minimumRadius,
     );
-    const startIndex = matchingRadiusIndex >= 0
-      ? matchingRadiusIndex
-      : NEAREST_SEARCH_RADII_KM.length - 1;
+    const startIndex =
+      matchingRadiusIndex >= 0 ? matchingRadiusIndex : NEAREST_SEARCH_RADII_KM.length - 1;
     let rankedRows: NearestJobRow[] = [];
     for (let index = startIndex; index < NEAREST_SEARCH_RADII_KM.length; index += 1) {
       const radius = NEAREST_SEARCH_RADII_KM[index];
@@ -855,8 +945,8 @@ export class JobService {
         LIMIT ${limit + 1}
       `);
       const boundary = rankedRows[limit];
-      const safelyFilled = boundary !== undefined
-        && Number(boundary.distance) <= radius - DISTANCE_ROUNDING_MARGIN_KM;
+      const safelyFilled =
+        boundary !== undefined && Number(boundary.distance) <= radius - DISTANCE_ROUNDING_MARGIN_KM;
       if (safelyFilled || index === NEAREST_SEARCH_RADII_KM.length - 1) break;
     }
     const available = rankedRows.map((row) => ({
@@ -866,16 +956,15 @@ export class JobService {
     const hasMore = available.length > limit;
     const slice = available.slice(0, limit);
     const cursorPost = slice.at(-1);
-    const nextCursor = hasMore && cursorPost
-      ? encodeNearestJobListCursor(cursorPost)
-      : null;
+    const nextCursor = hasMore && cursorPost ? encodeNearestJobListCursor(cursorPost) : null;
     const pageIds = slice.map((post) => post.id);
-    const posts = pageIds.length > 0
-      ? await this.prisma.jobPost.findMany({
-        where: { ...where, id: { in: pageIds } },
-        include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
-      })
-      : [];
+    const posts =
+      pageIds.length > 0
+        ? await this.prisma.jobPost.findMany({
+            where: { ...where, id: { in: pageIds } },
+            include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
+          })
+        : [];
     const postById = new Map(posts.map((post) => [post.id, post]));
     const tutorContact = await this.resolveCommunityOwnerContact(posts, communityId);
     const list: Array<JobPostVo & { distance: number }> = [];
@@ -903,8 +992,9 @@ export class JobService {
     if (!post || post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND); // M3-07 软删过滤
     const isOwner = !!actorId && post.merchant.userId === actorId;
     const isExternalTutorPost = this.tutorJobPolicy.isExternalTutorPost(post);
-    const isUnavailable = post.status !== JobPostStatus.PUBLISHED
-      || (post.expireAt !== null && post.expireAt <= new Date());
+    const isUnavailable =
+      post.status !== JobPostStatus.PUBLISHED ||
+      (post.expireAt !== null && post.expireAt <= new Date());
     if (isExternalTutorPost && isUnavailable && !isOwner) {
       throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     }
@@ -922,12 +1012,13 @@ export class JobService {
       });
       if (!visiblePost) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
     }
-    const application = actorId && !isOwner
-      ? await this.prisma.jobApplication.findUnique({
-        where: { jobPostId_userId: { jobPostId: id, userId: actorId } },
-        select: { id: true, status: true, conversation: { select: { id: true } } },
-      })
-      : null;
+    const application =
+      actorId && !isOwner
+        ? await this.prisma.jobApplication.findUnique({
+            where: { jobPostId_userId: { jobPostId: id, userId: actorId } },
+            select: { id: true, status: true, conversation: { select: { id: true } } },
+          })
+        : null;
     const tutorContact = await this.resolveCommunityOwnerContact([post], visibleCommunityId);
     return {
       ...this.toPostVo(post, isOwner || !!application, tutorContact),
@@ -974,20 +1065,23 @@ export class JobService {
   async getMerchantDashboard(merchantUid: string, range: 'day' | 'week' | 'month' | 'all' = 'all') {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant) throw new BizException(60002, '未入驻商家', HttpStatus.NOT_FOUND);
-    if (merchant.status !== MerchantStatus.APPROVED) throw new BizException(60003, '商家资质未审核通过', HttpStatus.FORBIDDEN);
+    if (merchant.status !== MerchantStatus.APPROVED)
+      throw new BizException(60003, '商家资质未审核通过', HttpStatus.FORBIDDEN);
     const since = rangeToSince(range);
     const baseWhere = since
       ? { jobPost: { merchantId: merchant.id }, createdAt: { gte: since } }
       : { jobPost: { merchantId: merchant.id } };
-    const [viewCount, total, pending, accepted, completed, rejected, cancelled] = await Promise.all([
-      this.prisma.jobView.count({ where: baseWhere }),
-      this.prisma.jobApplication.count({ where: baseWhere }),
-      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'PENDING' } }),
-      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'ACCEPTED' } }),
-      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'DONE' } }),
-      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'REJECTED' } }),
-      this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'CANCELLED' } }),
-    ]);
+    const [viewCount, total, pending, accepted, completed, rejected, cancelled] = await Promise.all(
+      [
+        this.prisma.jobView.count({ where: baseWhere }),
+        this.prisma.jobApplication.count({ where: baseWhere }),
+        this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'PENDING' } }),
+        this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'ACCEPTED' } }),
+        this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'DONE' } }),
+        this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'REJECTED' } }),
+        this.prisma.jobApplication.count({ where: { ...baseWhere, status: 'CANCELLED' } }),
+      ],
+    );
     return {
       viewCount,
       applicationCount: total,
@@ -1023,7 +1117,10 @@ export class JobService {
 
   // P1-27 举报商家（targetType=merchant）
   async reportMerchant(uid: string, merchantId: string, reason?: string) {
-    const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId }, select: { id: true } });
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { id: merchantId },
+      select: { id: true },
+    });
     if (!merchant) throw new BizException(60002, '商家不存在', HttpStatus.NOT_FOUND);
     await this.prisma.moderationRecord.create({
       data: {
@@ -1082,7 +1179,8 @@ export class JobService {
     if (post.applyMode === JobApplyMode.CONTACT_ONLY) {
       throw new BizException(40003, '该岗位仅支持联系发布方报名', HttpStatus.BAD_REQUEST);
     }
-    if (post.expireAt && post.expireAt.getTime() < Date.now()) throw new BizException(40003, '岗位已过期');
+    if (post.expireAt && post.expireAt.getTime() < Date.now())
+      throw new BizException(40003, '岗位已过期');
     const communityId = await this.community.getActiveCommunityId(uid);
     await this.community.assertUserCanParticipate(uid, communityId);
     const visiblePost = await this.prisma.jobPost.findFirst({
@@ -1177,7 +1275,9 @@ export class JobService {
           })
         : [];
     const resumeMap = new Map(resumes.map((r) => [r.id, r]));
-    return apps.map((a) => this.toAppVo(a, a.resumeId ? (resumeMap.get(a.resumeId) ?? null) : null));
+    return apps.map((a) =>
+      this.toAppVo(a, a.resumeId ? (resumeMap.get(a.resumeId) ?? null) : null),
+    );
   }
 
   // 用户自己的报名
@@ -1194,16 +1294,32 @@ export class JobService {
   async cancel(uid: string, appId: string) {
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: appId },
-      include: { jobPost: { select: { id: true, title: true, merchantId: true, merchant: { select: { userId: true } } } } },
+      include: {
+        jobPost: {
+          select: {
+            id: true,
+            title: true,
+            merchantId: true,
+            merchant: { select: { userId: true } },
+          },
+        },
+      },
     });
     if (!app) throw new BizException(40001, '报名记录不存在', HttpStatus.NOT_FOUND);
     if (app.userId !== uid) {
       throw new BizException(10003, '无权操作此报名', HttpStatus.FORBIDDEN);
     }
     if (app.status !== AppStatus.PENDING) {
-      throw new BizException(40004, `状态非法流转：${app.status} -> CANCELLED`, HttpStatus.CONFLICT);
+      throw new BizException(
+        40004,
+        `状态非法流转：${app.status} -> CANCELLED`,
+        HttpStatus.CONFLICT,
+      );
     }
-    await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.CANCELLED } });
+    await this.prisma.jobApplication.update({
+      where: { id: appId },
+      data: { status: AppStatus.CANCELLED },
+    });
     if (app.jobPost.merchant) {
       await this.notification.create({
         userId: app.jobPost.merchant.userId,
@@ -1234,10 +1350,17 @@ export class JobService {
       await this.assertOwnsPost(uid, app.jobPost.id);
       if (app.status !== AppStatus.PENDING) {
         const next = action === 'accept' ? 'ACCEPTED' : 'REJECTED';
-        throw new BizException(40004, `状态非法流转：${app.status} -> ${next}`, HttpStatus.CONFLICT);
+        throw new BizException(
+          40004,
+          `状态非法流转：${app.status} -> ${next}`,
+          HttpStatus.CONFLICT,
+        );
       }
       if (action === 'accept') {
-        await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.ACCEPTED } });
+        await this.prisma.jobApplication.update({
+          where: { id: appId },
+          data: { status: AppStatus.ACCEPTED },
+        });
         await this.notification.create({
           userId: app.userId,
           type: NotificationType.JOB_ACCEPT,
@@ -1248,7 +1371,10 @@ export class JobService {
         });
       } else {
         // P1-24 未录用通知：站内通知 + 订阅消息模板路由已通
-        await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.REJECTED } });
+        await this.prisma.jobApplication.update({
+          where: { id: appId },
+          data: { status: AppStatus.REJECTED },
+        });
         await this.notification.create({
           userId: app.userId,
           type: NotificationType.JOB_REJECT,
@@ -1267,7 +1393,10 @@ export class JobService {
       if (app.status !== AppStatus.ACCEPTED) {
         throw new BizException(40004, `状态非法流转：${app.status} -> DONE`, HttpStatus.CONFLICT);
       }
-      await this.prisma.jobApplication.update({ where: { id: appId }, data: { status: AppStatus.DONE } });
+      await this.prisma.jobApplication.update({
+        where: { id: appId },
+        data: { status: AppStatus.DONE },
+      });
       await this.notification.create({
         userId: app.userId,
         type: NotificationType.JOB_COMPLETE,
@@ -1300,7 +1429,13 @@ export class JobService {
   }
 
   // 评价：direction=stu_to_merchant 走原学生评商家路径（P1-25）；direction=merchant_to_stu 为商家评学生（P1-26）
-  async review(uid: string, appId: string, dto: CreateReviewDto, openid?: string, direction = 'stu_to_merchant') {
+  async review(
+    uid: string,
+    appId: string,
+    dto: CreateReviewDto,
+    openid?: string,
+    direction = 'stu_to_merchant',
+  ) {
     const isMerchantReview = direction === 'merchant_to_stu';
     const app = await this.prisma.jobApplication.findUnique({
       where: { id: appId },
@@ -1467,51 +1602,60 @@ export class JobService {
     return p;
   }
 
-  toPostVo(p: {
-    id: string;
-    merchantId: string;
-    title: string;
-    description: string;
-    requirements: string | null;
-    contactPhoneSnapshot?: string | null;
-    contactWechatSnapshot?: string | null;
-    salary: string;
-    salaryAmount: number | null;
-    location: string;
-    locationPoiId?: string | null;
-    locationLng?: { toString(): string } | null;
-    locationLat?: { toString(): string } | null;
-    locationCity?: string | null;
-    category: JobCategory | null;
-    customCategory?: string | null;
-    settlement: Settlement | null;
-    workDates: string[];
-    workPeriods: string[];
-    headcount: number;
-    urgent: boolean;
-    featured?: boolean;
-    online: boolean;
-    questions: string[];
-    duration: JobDuration;
-    expireAt: Date | null;
-    visibilityScope?: JobVisibilityScope;
-    publisherScope?: PublicationScope;
-    applyMode?: JobApplyMode;
-    publisherName?: string | null;
-    status: JobPostStatus;
-    takenDownAt?: Date | null;
-    deletedAt?: Date | null; // M3-07 软删字段
-    createdAt: Date;
-    merchant?: { userId?: string; shopName: string; contactPhone?: string; contactWechat?: string | null };
-  }, exposeContact = false, communityOwnerContact: CommunityOwnerContact | null = null): JobPostVo {
+  toPostVo(
+    p: {
+      id: string;
+      merchantId: string;
+      title: string;
+      description: string;
+      requirements: string | null;
+      contactPhoneSnapshot?: string | null;
+      contactWechatSnapshot?: string | null;
+      salary: string;
+      salaryAmount: number | null;
+      location: string;
+      locationPoiId?: string | null;
+      locationLng?: { toString(): string } | null;
+      locationLat?: { toString(): string } | null;
+      locationCity?: string | null;
+      category: JobCategory | null;
+      customCategory?: string | null;
+      settlement: Settlement | null;
+      workDates: string[];
+      workPeriods: string[];
+      headcount: number;
+      urgent: boolean;
+      featured?: boolean;
+      online: boolean;
+      questions: string[];
+      duration: JobDuration;
+      expireAt: Date | null;
+      visibilityScope?: JobVisibilityScope;
+      publisherScope?: PublicationScope;
+      applyMode?: JobApplyMode;
+      publisherName?: string | null;
+      status: JobPostStatus;
+      takenDownAt?: Date | null;
+      deletedAt?: Date | null; // M3-07 软删字段
+      createdAt: Date;
+      merchant?: {
+        userId?: string;
+        shopName: string;
+        contactPhone?: string;
+        contactWechat?: string | null;
+      };
+    },
+    exposeContact = false,
+    communityOwnerContact: CommunityOwnerContact | null = null,
+  ): JobPostVo {
     const isExternalTutorPost = this.tutorJobPolicy.isExternalTutorPost(p);
     const contactPhone = isExternalTutorPost
-      ? communityOwnerContact?.phone ?? null
+      ? (communityOwnerContact?.phone ?? null)
       : exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
         ? (p.contactPhoneSnapshot ?? p.merchant?.contactPhone ?? null)
         : null;
     const contactWechat = isExternalTutorPost
-      ? communityOwnerContact?.wechat ?? null
+      ? (communityOwnerContact?.wechat ?? null)
       : exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
         ? (p.contactWechatSnapshot ?? p.merchant?.contactWechat ?? null)
         : null;
@@ -1526,7 +1670,10 @@ export class JobService {
       requirements: p.requirements,
       contactPhone,
       contactWechat,
-      contactInstruction: this.tutorJobPolicy.contactInstruction(p, communityOwnerContact ?? undefined),
+      contactInstruction: this.tutorJobPolicy.contactInstruction(
+        p,
+        communityOwnerContact ?? undefined,
+      ),
       salary: p.salary,
       salaryAmount: p.salaryAmount,
       location: p.location,
@@ -1547,11 +1694,8 @@ export class JobService {
       questions: p.questions,
       duration: p.duration,
       expireAt: p.expireAt ? p.expireAt.toISOString() : null,
-      validityText: p.expireAt === null
-        ? '长期有效'
-        : p.duration === JobDuration.D90
-          ? '90天'
-          : '30天',
+      validityText:
+        p.expireAt === null ? '长期有效' : p.duration === JobDuration.D90 ? '90天' : '30天',
       visibilityScope: p.visibilityScope ?? JobVisibilityScope.COMMUNITY,
       applyMode: p.applyMode ?? JobApplyMode.IN_APP,
       isExternalSource: isExternalTutorPost,
@@ -1586,7 +1730,12 @@ export class JobService {
       user?: { nickname: string };
       jobPost?: { title: string };
     },
-    resume: { name: string; phone: string; selfIntro: string | null; skills: string[] } | null = null,
+    resume: {
+      name: string;
+      phone: string;
+      selfIntro: string | null;
+      skills: string[];
+    } | null = null,
   ) {
     return {
       id: a.id,
@@ -1597,7 +1746,16 @@ export class JobService {
       resumeId: a.resumeId,
       answers: a.answers,
       // P0-21 简历快照（商家查看报名时展示）
-      resume: this.resumeSummaryFromSnapshot(a.resumeSnapshot) ?? (resume ? { name: resume.name, phone: resume.phone, selfIntro: resume.selfIntro, skills: resume.skills } : null),
+      resume:
+        this.resumeSummaryFromSnapshot(a.resumeSnapshot) ??
+        (resume
+          ? {
+              name: resume.name,
+              phone: resume.phone,
+              selfIntro: resume.selfIntro,
+              skills: resume.skills,
+            }
+          : null),
       status: a.status,
       createdAt: a.createdAt.toISOString(),
     };
@@ -1611,7 +1769,9 @@ export class JobService {
       name: v.name,
       phone: v.phone,
       selfIntro: typeof v.selfIntro === 'string' ? v.selfIntro : null,
-      skills: Array.isArray(v.skills) ? v.skills.filter((item): item is string => typeof item === 'string') : [],
+      skills: Array.isArray(v.skills)
+        ? v.skills.filter((item): item is string => typeof item === 'string')
+        : [],
     };
   }
 
@@ -1644,7 +1804,9 @@ export class JobService {
     const apps = await this.prisma.jobApplication.findMany({
       where: { userId: uid },
       orderBy: { createdAt: 'desc' },
-      include: { jobPost: { select: { id: true, title: true, merchant: { select: { shopName: true } } } } },
+      include: {
+        jobPost: { select: { id: true, title: true, merchant: { select: { shopName: true } } } },
+      },
     });
     return apps.map((a) => ({
       id: a.id,
@@ -1695,7 +1857,17 @@ export class JobService {
     };
   }
 
-  private toReviewVo(r: { id: string; applicationId: string; rating: number; content: string; createdAt: Date; direction?: string }, reviewerId: string) {
+  private toReviewVo(
+    r: {
+      id: string;
+      applicationId: string;
+      rating: number;
+      content: string;
+      createdAt: Date;
+      direction?: string;
+    },
+    reviewerId: string,
+  ) {
     return {
       id: r.id,
       applicationId: r.applicationId,

@@ -66,7 +66,15 @@ Page({
         wx.showToast({ title: '推广成功', icon: 'success' });
         setTimeout(() => wx.navigateBack(), 600);
       } catch {
-        this.setData({ failed: true, message: '支付未完成，可稍后重试（持续失败请重进小程序）' });
+        let message = '支付未完成，可稍后重试（持续失败请重进小程序）';
+        try {
+          const synced = await syncOrderStatus(result.orderId);
+          message = synced.message || message;
+          this.setData({ result: { ...result, status: synced.status } });
+        } catch {
+          // 微信取消后可能暂未返回最终状态，保留订单供后续重试复用。
+        }
+        this.setData({ failed: true, message });
         wx.showToast({ title: '支付未完成', icon: 'none' });
       }
     } catch {

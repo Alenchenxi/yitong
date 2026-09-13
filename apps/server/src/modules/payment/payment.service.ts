@@ -114,19 +114,39 @@ export class PaymentService {
     // 道具守卫：改价后新道具未在微信支付网关生效（约10~15分钟）时抛 50008（提示「当前支付人数过多，请稍后重试」），顺带触发同步重试
     const propId = this.wxXPay.isReady() ? this.xpayPropSync.assertPropReadyOrThrow(pricing) : '';
 
-    const order = await this.prisma.paymentOrder.create({
-      data: {
-        scene: PayScene.JOB_PUBLISH,
-        // 2026 虚拟支付管理规范：付费发布属虚拟商品，走虚拟支付道具通道
-        channel: PayChannel.XPAY,
-        merchantId: merchant.id,
-        jobPostId: post.id,
-        duration: dto.duration,
-        amount: pricing.price,
-        status: PayStatus.PENDING,
-      },
+    const pendingWhere = {
+      scene: PayScene.JOB_PUBLISH,
+      merchantId: merchant.id,
+      jobPostId: post.id,
+      duration: dto.duration,
+      status: PayStatus.PENDING,
+    } as const;
+    let order = await this.prisma.paymentOrder.findFirst({
+      where: pendingWhere,
+      orderBy: { createdAt: 'desc' },
     });
-
+    if (!order) {
+      try {
+        order = await this.prisma.paymentOrder.create({
+          data: {
+            scene: PayScene.JOB_PUBLISH,
+            channel: PayChannel.XPAY,
+            merchantId: merchant.id,
+            jobPostId: post.id,
+            duration: dto.duration,
+            amount: pricing.price,
+            status: PayStatus.PENDING,
+          },
+        });
+      } catch (error) {
+        if (!this.isUniqueConstraintError(error)) throw error;
+        order = await this.prisma.paymentOrder.findFirst({
+          where: pendingWhere,
+          orderBy: { createdAt: 'desc' },
+        });
+        if (!order) throw error;
+      }
+    }
     // dev mock：直接完成（是否 mock 只看虚拟支付凭证，与 V3 凭证无关）
     if (!this.wxXPay.isReady()) {
       if (process.env.NODE_ENV === 'production') {
@@ -221,20 +241,41 @@ export class PaymentService {
     // 道具守卫：改价后新道具未在微信支付网关生效（约10~15分钟）时抛 50008（提示「当前支付人数过多，请稍后重试」），顺带触发同步重试
     const propId = this.wxXPay.isReady() ? this.xpayPropSync.assertBoostPropReadyOrThrow(plan) : '';
 
-    const order = await this.prisma.paymentOrder.create({
-      data: {
-        scene: dto.targetType === 'post' ? PayScene.POST_BOOST : PayScene.ANON_POST_BOOST,
-        // 2026 虚拟支付管理规范：付费推广属虚拟商品，走虚拟支付道具通道
-        channel: PayChannel.XPAY,
-        userId: uid,
-        postId,
-        anonPostId,
-        boostPlanId: plan.id,
-        amount: plan.price,
-        status: PayStatus.PENDING,
-      },
+    const pendingWhere = {
+      scene: dto.targetType === 'post' ? PayScene.POST_BOOST : PayScene.ANON_POST_BOOST,
+      userId: uid,
+      postId,
+      anonPostId,
+      boostPlanId: plan.id,
+      status: PayStatus.PENDING,
+    } as const;
+    let order = await this.prisma.paymentOrder.findFirst({
+      where: pendingWhere,
+      orderBy: { createdAt: 'desc' },
     });
-
+    if (!order) {
+      try {
+        order = await this.prisma.paymentOrder.create({
+          data: {
+            scene: dto.targetType === 'post' ? PayScene.POST_BOOST : PayScene.ANON_POST_BOOST,
+            channel: PayChannel.XPAY,
+            userId: uid,
+            postId,
+            anonPostId,
+            boostPlanId: plan.id,
+            amount: plan.price,
+            status: PayStatus.PENDING,
+          },
+        });
+      } catch (error) {
+        if (!this.isUniqueConstraintError(error)) throw error;
+        order = await this.prisma.paymentOrder.findFirst({
+          where: pendingWhere,
+          orderBy: { createdAt: 'desc' },
+        });
+        if (!order) throw error;
+      }
+    }
     // dev mock：直接完成（是否 mock 只看虚拟支付凭证，与 V3 凭证无关）
     if (!this.wxXPay.isReady()) {
       if (process.env.NODE_ENV === 'production') {
@@ -923,6 +964,10 @@ export class PaymentService {
 
   private str(v: unknown): string | undefined {
     return typeof v === 'string' && v.length > 0 ? v : undefined;
+  }
+
+  private isUniqueConstraintError(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
   }
 
   // XPAY 订单反查用户 openid（JOB_PUBLISH：order.merchantId -> merchant.userId；boost：order.userId）
