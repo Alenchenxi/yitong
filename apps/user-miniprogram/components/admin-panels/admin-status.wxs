@@ -30,4 +30,17 @@ function text(status) {
   return MAP[s] || status || '';
 }
 
-module.exports = { cls: cls, text: text };
+// 岗位状态专用文案：JobPostStatus.PENDING 是「未付费草稿」，展示「待支付」而非通用「待处理」
+var JOB_MAP = {
+  PENDING: '待支付',
+  PUBLISHED: '已发布',
+  TAKEN_DOWN: '已下架',
+  EXPIRED: '已过期'
+};
+
+function jobText(status) {
+  var s = (status || '').toUpperCase();
+  return JOB_MAP[s] || MAP[s] || status || '';
+}
+
+module.exports = { cls: cls, text: text, jobText: jobText };

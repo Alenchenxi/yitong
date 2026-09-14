@@ -200,6 +200,14 @@ Page({
     }
   },
 
+  // 联系方式复制：每个联系方式行一个独立复制按钮，data-field 指向 post 上的字段
+  copyContact(e: WechatMiniprogram.TouchEvent) {
+    const field = e.currentTarget.dataset.field as 'contactPhone' | 'contactWechat';
+    const value = this.data.post?.[field];
+    if (!value) return;
+    wx.setClipboardData({ data: value });
+  },
+
   // P0-19 分享
   onShareAppMessage() {
     const post = this.data.post;

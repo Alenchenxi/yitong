@@ -146,7 +146,7 @@
     <view class="adm-item" wx:for="{{jobs}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title"><text wx:if="{{item.publisherScope === 'PLATFORM'}}" class="adm-platform-badge">平台发布</text>{{item.title}}</text>
-        <text class="adm-item-sub">{{item.merchantShopName}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text>{{item.urgent ? ' · 急招' : ''}}{{item.featured ? ' · 精' : ''}}</text>
+        <text class="adm-item-sub">{{item.merchantShopName}} · <text class="adm-status {{st.cls(item.status)}}">{{st.jobText(item.status)}}</text>{{item.urgent ? ' · 急招' : ''}}{{item.featured ? ' · 精' : ''}}</text>
       </view>
       <view class="adm-item-actions">
         <button wx:if="{{item.status === 'PUBLISHED'}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="takedownJob">下架</button>

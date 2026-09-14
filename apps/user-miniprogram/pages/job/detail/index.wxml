@@ -41,8 +41,8 @@
 
   <view class="section contact-section" wx:if="{{post.contactPhone || post.contactWechat}}">
     <view class="section-title">联系方式</view>
-    <view class="contact-row" wx:if="{{post.contactPhone}}"><text class="contact-label">电话</text><text class="contact-value">{{post.contactPhone}}</text></view>
-    <view class="contact-row" wx:if="{{post.contactWechat}}"><text class="contact-label">微信</text><text class="contact-value">{{post.contactWechat}}</text></view>
+    <view class="contact-row" wx:if="{{post.contactPhone}}"><text class="contact-label">电话</text><text class="contact-value">{{post.contactPhone}}</text><text class="contact-copy" data-field="contactPhone" catchtap="copyContact">复制</text></view>
+    <view class="contact-row" wx:if="{{post.contactWechat}}"><text class="contact-label">微信</text><text class="contact-value">{{post.contactWechat}}</text><text class="contact-copy" data-field="contactWechat" catchtap="copyContact">复制</text></view>
     <view class="contact-instruction" wx:if="{{post.contactInstruction}}">{{post.contactInstruction}}</view>
   </view>
   <!-- P0-19 操作栏：收藏 / 分享 / 举报 -->

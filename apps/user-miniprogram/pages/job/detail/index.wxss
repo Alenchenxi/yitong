@@ -12,9 +12,10 @@
 .section { margin: 24rpx 0; }
 .section-body { font-size: 30rpx; line-height: 1.6; color: #333; white-space: pre-wrap; }
 .contact-section { padding-top: 4rpx; }
-.contact-row { display: flex; gap: 24rpx; padding: 8rpx 0; font-size: 28rpx; }
+.contact-row { display: flex; align-items: center; gap: 24rpx; padding: 8rpx 0; font-size: 28rpx; }
 .contact-label { width: 72rpx; color: #86909C; }
-.contact-value { color: #1D2129; }
+.contact-value { color: #1D2129; word-break: break-all; }
+.contact-copy { margin-left: auto; flex-shrink: 0; font-size: 22rpx; color: #1D2129; background: #F2F3F5; border: 1rpx solid #E5E6EB; border-radius: 999rpx; padding: 4rpx 20rpx; }
 .contact-instruction { margin-top: 10rpx; color: #F53F3F; font-size: 26rpx; line-height: 1.5; }
 
 .actions { display: flex; justify-content: space-around; align-items: center; margin: 24rpx 0; padding: 16rpx 0; border-top: 1rpx solid #f0f0f0; border-bottom: 1rpx solid #f0f0f0; }
