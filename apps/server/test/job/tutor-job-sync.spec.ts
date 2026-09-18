@@ -1421,7 +1421,7 @@ describe('小程序同步岗位静态契约', () => {
     expect(template).toContain('全量总数不限');
     expect(template).toContain('checked="{{tutorSyncEnabled}}"');
     expect(template).toContain(
-      'disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingMerchantReview || togglingTutorSync || savingTutorSync}}"',
+      'disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingMerchantReview || togglingJobModule || togglingTutorSync || savingTutorSync}}"',
     );
     expect(logic).toContain("item.key === 'tutor_sync.enabled'");
     expect(logic).toContain("updateAppSetting('tutor_sync.enabled', next)");
@@ -1601,8 +1601,12 @@ describe('小程序同步岗位静态契约', () => {
       'utf8',
     );
     expect(jobService).toContain('applyMode === JobApplyMode.CONTACT_ONLY');
-    expect(jobService).toContain('tutorJobPolicy.contactInstruction(p, communityOwnerContact ?? undefined)');
-    expect(jobService).toContain('validityText: p.expireAt === null');
+    // 接口文案调用统一走 tutorJobPolicy，参数锁定为圈子主联系方式兜底（不锁排版）
+    expect(jobService).toMatch(
+      /contactInstruction: this\.tutorJobPolicy\.contactInstruction\(\s*p,\s*communityOwnerContact \?\? undefined,\s*\)/,
+    );
+    // 长期同步岗位无过期时间（不锁排版）
+    expect(jobService).toMatch(/validityText:\s*\n?\s*p\.expireAt === null \? '长期有效'/);
   });
 });
 

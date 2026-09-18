@@ -13,8 +13,13 @@ assert.match(schema, /model AdminType {/);
 assert.match(schema, /model AdminPermission {/);
 assert.match(schema, /model AdminCommunityScope {/);
 assert.match(schema, /model AdminAuditLog {/);
+// P2-63 后 Banner 增加多圈投放字段，communityId 变为兜底归属圈；这里只锁「非空 String」不变量，不锁排版/注释
+const bannerModelBlock = schema.slice(
+  schema.indexOf('model Banner {'),
+  schema.indexOf('model BannerCommunity {'),
+);
 assert.ok(
-  schema.includes('communityId String       @map("community_id") // 所有广告位必须归属具体圈子'),
+  /communityId\s+String\s+@map\("community_id"\)/.test(bannerModelBlock),
   'Banner.communityId 必须为非空 String',
 );
 assert.doesNotMatch(schema, /communityId String\?/);
@@ -83,7 +88,11 @@ assert.match(opsTemplate, /wx:if="\{\{canCommunityEdit\}\}"/);
 assert.match(opsTemplate, /wx:if="\{\{canCommunityReview && item\.id/);
 
 const publicCommunity = readServer('src/modules/community/community.service.ts');
-assert.match(publicCommunity, /where: \{ status: 'ENABLED', communityId \}/);
+// P2-63 后用户端 Banner 可见口径扩为 全圈 / 指定圈含当前圈 / 存量单圈兜底
+assert.match(
+  publicCommunity,
+  /OR: \[\s*\{ allCommunities: true \},\s*\{ targets: \{ some: \{ communityId \} \} \},\s*\{ targets: \{ none: \{\} \}, communityId \},\s*\]/,
+);
 assert.doesNotMatch(publicCommunity, /communityId: null/);
 
 console.log('admin RBAC smoke: ok');

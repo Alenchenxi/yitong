@@ -458,6 +458,11 @@ export function deleteAdminType(id: string) {
 }
 
 // ===== 广告位 Banner 管理 =====
+export interface AdminBannerTargetVo {
+  id: string;
+  communityId: string;
+  community: { name: string };
+}
 export interface AdminBannerVo {
   id: string;
   title: string;
@@ -465,6 +470,8 @@ export interface AdminBannerVo {
   linkUrl: string | null;
   communityId: string;
   community: { name: string };
+  allCommunities: boolean;
+  targets: AdminBannerTargetVo[];
   sortOrder: number;
   status: 'ENABLED' | 'DISABLED';
   createdAt: string;
@@ -479,14 +486,16 @@ export function createBannerAdmin(data: {
   title: string;
   imageUrl: string;
   linkUrl?: string | null;
-  communityId: string;
+  communityId?: string;
+  communityIds?: string[];
+  allCommunities?: boolean;
   sortOrder?: number;
 }) {
   return request<AdminBannerVo>({ url: '/admin/banners', method: 'POST', data });
 }
 export function updateBannerAdmin(
   id: string,
-  data: Partial<{ title: string; imageUrl: string; linkUrl: string | null; communityId: string; sortOrder: number; status: string }>,
+  data: Partial<{ title: string; imageUrl: string; linkUrl: string | null; communityId: string; communityIds: string[]; allCommunities: boolean; sortOrder: number; status: string }>,
 ) {
   return request<AdminBannerVo>({ url: `/admin/banners/${id}`, method: 'PUT', data });
 }

@@ -1276,6 +1276,7 @@ model Community {
   anonPosts       AnonymousPost[]
   jobPosts        JobPost[]
   banners         Banner[]
+  bannerTargets   BannerCommunity[]
   adminScopes     AdminCommunityScope[]
   userBans        CommunityUserBan[]
 
@@ -1345,18 +1346,35 @@ enum BannerStatus {
 }
 
 model Banner {
-  id          String       @id @default(cuid())
-  title       String
-  imageUrl    String       @map("image_url")
-  linkUrl     String?      @map("link_url") // 可空：广告跳转链接
-  communityId String       @map("community_id") // 所有广告位必须归属具体圈子
-  sortOrder   Int          @default(0) @map("sort_order")
-  status      BannerStatus @default(ENABLED)
-  createdAt   DateTime     @default(now()) @map("created_at")
-  community   Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
+  title           String
+  imageUrl        String       @map("image_url")
+  linkUrl         String?      @map("link_url") // 可空：广告跳转链接
+  communityId     String       @map("community_id") // 兜底归属圈子（多圈/全圈投放时为首个目标圈，兼容存量单圈数据）
+  allCommunities  Boolean      @default(false) @map("all_communities") // true = 投放全部圈子（含后续新建圈子）
+  sortOrder       Int          @default(0) @map("sort_order")
+  status          BannerStatus @default(ENABLED)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  community       Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  targets         BannerCommunity[]
 
   @@index([communityId, status, sortOrder])
+  @@index([allCommunities, status, sortOrder])
   @@map("banners")
+}
+
+// ===== 广告位定向圈子（指定圈子投放，多对多）=====
+model BannerCommunity {
+  id          String    @id @default(cuid())
+  bannerId    String    @map("banner_id")
+  communityId String    @map("community_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  banner      Banner    @relation(fields: [bannerId], references: [id], onDelete: Cascade)
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([bannerId, communityId])
+  @@index([communityId])
+  @@map("banner_communities")
 }
 
 // ===== 浏览量（ContentView，去重记录）=====

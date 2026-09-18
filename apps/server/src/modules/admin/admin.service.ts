@@ -1952,43 +1952,86 @@ export class AdminService {
   }
 
   // ===== Banner 广告位管理 =====
+  // 投放范围归一：communityIds 优先，兼容旧 communityId 单圈字段；去重去空
+  private normalizeBannerTargetIds(dto: { communityId?: string; communityIds?: string[] }): string[] {
+    const raw = dto.communityIds ?? (dto.communityId ? [dto.communityId] : []);
+    return [...new Set(raw.filter((id): id is string => typeof id === 'string' && id.trim() !== ''))];
+  }
+  // 指定圈子必须全部存在且未删除，且逐个校验管理员圈子范围
+  private async assertBannerTargets(access: AdminAccessContext, ids: string[]): Promise<void> {
+    for (const id of ids) await this.accessService.assertCommunity(access, id);
+    const rows = await this.prisma.community.findMany({ where: { id: { in: ids }, deletedAt: null }, select: { id: true } });
+    if (rows.length !== ids.length) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+  }
   async listBanners(communityId: string | undefined, keyword: string | undefined, access: AdminAccessContext) {
     if (communityId) await this.accessService.assertCommunity(access, communityId);
     const scopedCommunityId = this.accessService.communityIdWhere(access);
     return this.prisma.banner.findMany({
       where: {
-        community: { deletedAt: null },
-        ...(communityId ? { communityId } : scopedCommunityId ? { communityId: scopedCommunityId } : {}),
-        ...(keyword ? { title: { contains: keyword, mode: 'insensitive' } } : {}),
+        // 全圈广告不依赖兜底圈存活；单圈/指定圈广告仍要求归属圈未删除
+        OR: [{ allCommunities: true }, { community: { deletedAt: null } }],
+        AND: [
+          ...(communityId ? [{ communityId }] : scopedCommunityId ? [{ communityId: scopedCommunityId }] : []),
+          ...(keyword ? [{ title: { contains: keyword, mode: 'insensitive' as const } }] : []),
+        ],
       },
       orderBy: [{ communityId: 'asc' }, { sortOrder: 'asc' }],
-      include: { community: { select: { name: true } } },
+      include: {
+        community: { select: { name: true } },
+        targets: { include: { community: { select: { name: true } } }, orderBy: { createdAt: 'asc' } },
+      },
     });
   }
   async createBanner(dto: {
     title: string;
     imageUrl: string;
     linkUrl?: string | null;
-    communityId: string;
+    communityId?: string;
+    communityIds?: string[];
+    allCommunities?: boolean;
     sortOrder?: number;
   }, access: AdminAccessContext) {
-    if (!dto.communityId) {
-      throw new BizException(40013, '广告位必须选择所属圈子', HttpStatus.BAD_REQUEST);
+    const allCommunities = dto.allCommunities === true;
+    let targetIds: string[] = [];
+    if (allCommunities) {
+      // 全圈投放是平台级能力，仅平台管理员可用
+      this.accessService.assertPlatform(access);
+    } else {
+      targetIds = this.normalizeBannerTargetIds(dto);
+      if (targetIds.length === 0) {
+        throw new BizException(40013, '广告位必须选择所属圈子', HttpStatus.BAD_REQUEST);
+      }
+      await this.assertBannerTargets(access, targetIds);
     }
-    await this.accessService.assertCommunity(access, dto.communityId);
-    const community = await this.prisma.community.findFirst({ where: { id: dto.communityId, deletedAt: null }, select: { id: true } });
-    if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    // communityId 兜底归属圈：指定圈子时取第一个目标圈；全圈时取最早创建的圈子
+    let communityId = targetIds[0];
+    if (!communityId) {
+      const firstCommunity = await this.prisma.community.findFirst({
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (!firstCommunity) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+      communityId = firstCommunity.id;
+    }
     const created = await this.prisma.banner.create({
       data: {
         title: dto.title,
         imageUrl: dto.imageUrl,
         linkUrl: dto.linkUrl ?? null,
-        communityId: dto.communityId,
+        communityId,
+        allCommunities,
         sortOrder: dto.sortOrder ?? 0,
         status: BannerStatus.ENABLED,
+        ...(targetIds.length > 0 ? { targets: { create: targetIds.map((id) => ({ communityId: id })) } } : {}),
       },
+      include: { targets: true },
     });
-    await this.accessService.audit(access, 'banner.create', 'banner', created.id, { communityId: created.communityId });
+    await this.accessService.audit(access, 'banner.create', 'banner', created.id, {
+      communityId: created.communityId,
+      allCommunities,
+      communityIds: targetIds,
+    });
     return created;
   }
   async updateBanner(
@@ -1998,6 +2041,8 @@ export class AdminService {
       imageUrl: string;
       linkUrl: string | null;
       communityId: string;
+      communityIds: string[];
+      allCommunities: boolean;
       sortOrder: number;
       status: string;
     }>,
@@ -2005,49 +2050,99 @@ export class AdminService {
   ) {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
-    await this.accessService.assertCommunity(access, existing.communityId);
-    const currentCommunity = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
-    if (!currentCommunity) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (existing.allCommunities) {
+      // 全圈广告仅平台管理员可管理
+      this.accessService.assertPlatform(access);
+    } else {
+      await this.accessService.assertCommunity(access, existing.communityId);
+      const currentCommunity = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
+      if (!currentCommunity) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    }
     const data: Prisma.BannerUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.imageUrl !== undefined) data.imageUrl = dto.imageUrl;
     if (dto.linkUrl !== undefined) data.linkUrl = dto.linkUrl;
-    if (dto.communityId !== undefined) {
-      if (!dto.communityId) {
-        throw new BizException(40013, '广告位必须选择所属圈子', HttpStatus.BAD_REQUEST);
-      }
-      await this.accessService.assertCommunity(access, dto.communityId);
-      const targetCommunity = await this.prisma.community.findFirst({ where: { id: dto.communityId, deletedAt: null }, select: { id: true } });
-      if (!targetCommunity) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
-      data.community = { connect: { id: dto.communityId } };
-    }
     if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
     if (dto.status !== undefined) data.status = dto.status === 'DISABLED' ? BannerStatus.DISABLED : BannerStatus.ENABLED;
-    const updated = await this.prisma.banner.update({ where: { id }, data });
-    await this.accessService.audit(access, 'banner.update', 'banner', id, { communityId: updated.communityId });
+    // 投放范围变更：仅平台管理员；全圈 / 指定圈子列表二选一
+    let retarget: { all: boolean; ids: string[] } | null = null;
+    if (dto.allCommunities !== undefined || dto.communityIds !== undefined || dto.communityId !== undefined) {
+      this.accessService.assertPlatform(access);
+      const ids = this.normalizeBannerTargetIds(dto);
+      // 未显式给 allCommunities 时：给了非空圈子列表即改为指定投放，否则维持原模式
+      const wantAll = dto.allCommunities !== undefined ? dto.allCommunities === true : ids.length === 0 && existing.allCommunities;
+      if (wantAll) {
+        retarget = { all: true, ids: [] };
+      } else {
+        if (ids.length === 0) {
+          throw new BizException(40013, '广告位必须选择所属圈子', HttpStatus.BAD_REQUEST);
+        }
+        await this.assertBannerTargets(access, ids);
+        retarget = { all: false, ids };
+      }
+    }
+    const retargeted = retarget;
+    const updated = retargeted
+      ? await this.prisma.$transaction(async (tx) => {
+          await tx.bannerCommunity.deleteMany({ where: { bannerId: id } });
+          return tx.banner.update({
+            where: { id },
+            data: retargeted.all
+              ? { ...data, allCommunities: true }
+              : {
+                  ...data,
+                  allCommunities: false,
+                  community: { connect: { id: retargeted.ids[0]! } },
+                  targets: { create: retargeted.ids.map((cid) => ({ communityId: cid })) },
+                },
+          });
+        })
+      : await this.prisma.banner.update({ where: { id }, data });
+    await this.accessService.audit(access, 'banner.update', 'banner', id, {
+      communityId: updated.communityId,
+      allCommunities: updated.allCommunities,
+      ...(retarget ? { communityIds: retarget.ids } : {}),
+    });
     return updated;
   }
   async deleteBanner(id: string, access: AdminAccessContext) {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
-    await this.accessService.assertCommunity(access, existing.communityId);
-    const community = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
-    if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (existing.allCommunities) {
+      // 全圈广告仅平台管理员可管理
+      this.accessService.assertPlatform(access);
+    } else {
+      await this.accessService.assertCommunity(access, existing.communityId);
+      const community = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
+      if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    }
     await this.prisma.banner.delete({ where: { id } });
-    await this.accessService.audit(access, 'banner.delete', 'banner', id, { communityId: existing.communityId });
+    await this.accessService.audit(access, 'banner.delete', 'banner', id, {
+      communityId: existing.communityId,
+      allCommunities: existing.allCommunities,
+    });
     return { id, deleted: true };
   }
   async toggleBanner(id: string, enabled: boolean, access: AdminAccessContext) {
     const existing = await this.prisma.banner.findUnique({ where: { id } });
     if (!existing) throw new BizException(20001, 'Banner 不存在', HttpStatus.NOT_FOUND);
-    await this.accessService.assertCommunity(access, existing.communityId);
-    const community = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
-    if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    if (existing.allCommunities) {
+      // 全圈广告仅平台管理员可管理
+      this.accessService.assertPlatform(access);
+    } else {
+      await this.accessService.assertCommunity(access, existing.communityId);
+      const community = await this.prisma.community.findFirst({ where: { id: existing.communityId, deletedAt: null }, select: { id: true } });
+      if (!community) throw new BizException(80010, '圈子不存在', HttpStatus.NOT_FOUND);
+    }
     const updated = await this.prisma.banner.update({
       where: { id },
       data: { status: enabled ? BannerStatus.ENABLED : BannerStatus.DISABLED },
     });
-    await this.accessService.audit(access, 'banner.toggle', 'banner', id, { enabled, communityId: existing.communityId });
+    await this.accessService.audit(access, 'banner.toggle', 'banner', id, {
+      enabled,
+      communityId: existing.communityId,
+      allCommunities: existing.allCommunities,
+    });
     return updated;
   }
 

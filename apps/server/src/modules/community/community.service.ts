@@ -498,10 +498,17 @@ export class CommunityService {
     }));
   }
 
-  /** 广告位：仅返回当前圈子的 Banner（ENABLED，sortOrder asc）。 */
+  /** 广告位：返回当前圈子可见的 Banner（ENABLED，sortOrder asc）。可见口径 = 全部圈子投放 / 指定圈子含当前圈 / 存量单圈数据兜底。 */
   async listBanners(communityId: string): Promise<BannerVo[]> {
     const rows = await this.prisma.banner.findMany({
-      where: { status: 'ENABLED', communityId },
+      where: {
+        status: 'ENABLED',
+        OR: [
+          { allCommunities: true },
+          { targets: { some: { communityId } } },
+          { targets: { none: {} }, communityId },
+        ],
+      },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
     return rows.map((b) => ({ id: b.id, title: b.title, imageUrl: b.imageUrl, linkUrl: b.linkUrl }));

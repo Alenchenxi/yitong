@@ -33,7 +33,7 @@ const SEED_COMMUNITIES = [
 const DEFAULT_BANNERS = [
   { id: 'bn_seed_1', title: '欢迎来到综合大学圈', imageUrl: 'https://mock-minio.example.com/banners/seed-1.png', communityId: 'cm_default', sortOrder: 1 },
   { id: 'bn_seed_2', title: '新学期招新活动', imageUrl: 'https://mock-minio.example.com/banners/seed-2.png', communityId: 'cm_default', sortOrder: 2 },
-  { id: 'bn_seed_g1', title: '平台公告：文明发言', imageUrl: 'https://mock-minio.example.com/banners/seed-global-1.png', communityId: 'cm_default', sortOrder: 3 },
+  { id: 'bn_seed_g1', title: '平台公告：文明发言', imageUrl: 'https://mock-minio.example.com/banners/seed-global-1.png', communityId: 'cm_default', sortOrder: 3, allCommunities: true },
 ];
 
 const prisma = new PrismaClient();
@@ -72,10 +72,15 @@ async function main() {
     const exists = await prisma.banner.findUnique({ where: { id: b.id } });
     if (exists) continue;
     await prisma.banner.create({
-      data: { id: b.id, title: b.title, imageUrl: b.imageUrl, linkUrl: null, communityId: b.communityId, sortOrder: b.sortOrder, status: 'ENABLED' },
+      data: { id: b.id, title: b.title, imageUrl: b.imageUrl, linkUrl: null, communityId: b.communityId, sortOrder: b.sortOrder, status: 'ENABLED', allCommunities: b.allCommunities ?? false },
     });
     createdBanners += 1;
   }
+  // P2-63 存量回填：平台公告 Banner 在旧环境已存在（seed 跳过），补置全圈投放标记（幂等）
+  await prisma.banner.updateMany({
+    where: { id: 'bn_seed_g1', allCommunities: false },
+    data: { allCommunities: true },
+  });
   if (createdBanners > 0) console.log(`seed: ${createdBanners}/${DEFAULT_BANNERS.length} banners created`);
 
   for (const item of ADMIN_PERMISSION_CATALOG) {

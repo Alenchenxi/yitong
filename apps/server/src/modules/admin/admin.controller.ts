@@ -458,14 +458,14 @@ export class AdminController {
   }
   @Post('banners')
   @RequireAdminPermission(ADMIN_PERMISSIONS.BANNER_MANAGE)
-  async createBanner(@Body() body: { title: string; imageUrl: string; linkUrl?: string | null; communityId: string; sortOrder?: number }, @Req() req: Request) {
+  async createBanner(@Body() body: { title: string; imageUrl: string; linkUrl?: string | null; communityId?: string; communityIds?: string[]; allCommunities?: boolean; sortOrder?: number }, @Req() req: Request) {
     return ok(await this.admin.createBanner(body, (req as AuthenticatedRequest).adminAccess!));
   }
   @Put('banners/:id')
   @RequireAdminPermission(ADMIN_PERMISSIONS.BANNER_MANAGE)
   async updateBanner(
     @Param('id') id: string,
-    @Body() body: Partial<{ title: string; imageUrl: string; linkUrl: string | null; communityId: string; sortOrder: number; status: string }>,
+    @Body() body: Partial<{ title: string; imageUrl: string; linkUrl: string | null; communityId: string; communityIds: string[]; allCommunities: boolean; sortOrder: number; status: string }>,
     @Req() req: Request,
   ) {
     return ok(await this.admin.updateBanner(id, body, (req as AuthenticatedRequest).adminAccess!));

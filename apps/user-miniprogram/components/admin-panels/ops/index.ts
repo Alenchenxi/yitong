@@ -140,7 +140,7 @@ Component({
     editingBoostCode: '',
     editingBoostPrice: '',
     // 广告位 Banner
-    banners: [] as AdminBannerVo[],
+    banners: [] as (AdminBannerVo & { targetDesc: string })[],
     bnTitle: '',
     bnImageUrl: '',
     bnLinkUrl: '',
@@ -148,6 +148,10 @@ Component({
     bnUploading: false,
     bnCommunityId: '',
     bnCommunityIndex: 0,
+    bnScope: 'pick' as 'all' | 'pick',
+    bnTargetIds: [] as string[],
+    bnTargetChips: [] as { id: string; name: string; on: boolean }[],
+    bannerPlatform: false,
     editingBannerId: '',
     editingBannerSort: '',
     editingBannerLink: '',
@@ -271,16 +275,29 @@ Component({
             listBannersAdmin(),
             listCommunitiesAdmin(),
           ]);
+          const access = getApp<AppInstance>().globalData.adminAccess;
+          const bannerPlatform = access?.isPlatform === true;
+          const withDesc = banners.map((item) => ({
+            ...item,
+            // 投放范围展示：全圈 / 指定圈名列表 / 存量单圈兜底
+            targetDesc: item.allCommunities
+              ? '全部圈子'
+              : item.targets.length > 0
+                ? item.targets.map((t) => t.community.name).join('、')
+                : item.community.name,
+          }));
           const bnCommunityIndex = Math.max(
             0,
             communities.findIndex((item) => item.id === this.data.bnCommunityId),
           );
           commit({
-            banners,
+            banners: withDesc,
             communities,
             bnCommunityIndex,
             bnCommunityId: communities[bnCommunityIndex]?.id ?? '',
+            bannerPlatform,
           });
+          this.refreshBannerTargetChips();
         } else if (sub === 'community') {
           const list = await listCommunitiesAdmin(
             this.data.cmStatus || undefined,
@@ -569,6 +586,28 @@ Component({
         bnCommunityId: this.data.communities[bnCommunityIndex]?.id ?? '',
       });
     },
+    /** 平台管理员切换投放范围：全部圈子 / 指定圈子 */
+    onBannerScopeChange(e: WechatMiniprogram.TouchEvent) {
+      const scope = e.currentTarget.dataset.scope as 'all' | 'pick';
+      if (scope !== 'all' && scope !== 'pick') return;
+      if (scope === this.data.bnScope) return;
+      this.setData({ bnScope: scope });
+    },
+    /** 指定圈子多选：维护 id 数组与渲染 chips */
+    onBannerTargetToggle(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      const ids = this.data.bnTargetIds.includes(id)
+        ? this.data.bnTargetIds.filter((item) => item !== id)
+        : [...this.data.bnTargetIds, id];
+      this.setData({ bnTargetIds: ids });
+      this.refreshBannerTargetChips();
+    },
+    refreshBannerTargetChips() {
+      const selected = new Set(this.data.bnTargetIds);
+      this.setData({
+        bnTargetChips: this.data.communities.map((item) => ({ id: item.id, name: item.name, on: selected.has(item.id) })),
+      });
+    },
     async chooseBannerImage() {
       if (this.data.bnUploading) return;
       wx.chooseMedia({
@@ -586,19 +625,39 @@ Component({
       });
     },
     async createBanner() {
-      if (!this.data.bnTitle.trim() || !this.data.bnImageUrl || !this.data.bnCommunityId) {
-        wx.showToast({ title: '请选圈子、填标题并上传图片', icon: 'none' });
+      if (!this.data.bnTitle.trim() || !this.data.bnImageUrl) {
+        wx.showToast({ title: '请填标题并上传图片', icon: 'none' });
         return;
       }
-      await createBannerAdmin({
+      const access = getApp<AppInstance>().globalData.adminAccess;
+      const platform = access?.isPlatform === true;
+      const base = {
         title: this.data.bnTitle.trim(),
         imageUrl: this.data.bnImageUrl,
         linkUrl: this.data.bnLinkUrl.trim() || null,
         sortOrder: Number(this.data.bnSortOrder) || 0,
-        communityId: this.data.bnCommunityId,
-      });
+      };
+      if (platform && this.data.bnScope === 'all') {
+        // 全部圈子投放（含后续新建圈子）
+        await createBannerAdmin({ ...base, allCommunities: true });
+      } else if (platform) {
+        // 指定圈子投放（可多选）
+        if (this.data.bnTargetIds.length === 0) {
+          wx.showToast({ title: '请至少选择一个圈子', icon: 'none' });
+          return;
+        }
+        await createBannerAdmin({ ...base, communityIds: this.data.bnTargetIds });
+      } else {
+        // 圈子管理员维持单圈发布
+        if (!this.data.bnCommunityId) {
+          wx.showToast({ title: '请选圈子、填标题并上传图片', icon: 'none' });
+          return;
+        }
+        await createBannerAdmin({ ...base, communityId: this.data.bnCommunityId });
+      }
       wx.showToast({ title: '已创建', icon: 'success' });
-      this.setData({ bnTitle: '', bnImageUrl: '', bnLinkUrl: '', bnSortOrder: '' });
+      this.setData({ bnTitle: '', bnImageUrl: '', bnLinkUrl: '', bnSortOrder: '', bnTargetIds: [] });
+      this.refreshBannerTargetChips();
       this.load();
     },
     async toggleBanner(e: WechatMiniprogram.TouchEvent) {
