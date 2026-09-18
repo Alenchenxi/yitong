@@ -1,4 +1,5 @@
 import type { AppInstance } from '../../../app';
+import { bindJobModulePageGuard, requireJobModuleVisibility } from '../../../utils/job-module';
 import {
   cancelInterviewInvitation,
   ensureJobConversation,
@@ -152,8 +153,9 @@ Page({
   exchangeReadinessRefreshNeeded: false,
 
   async onLoad(options: { applicationId?: string; conversationId?: string }) {
-    const app = getApp<AppInstance>();
-    if (!app.requireAuth()) return;
+    // 兼职板块平台开关：关闭时 user 角色退出本页（商家沟通不受影响）
+    bindJobModulePageGuard(this);
+    if (!(await requireJobModuleVisibility())) return;
     const applicationId = decodeURIComponent(options.applicationId ?? '').trim();
     const conversationId = decodeURIComponent(options.conversationId ?? '').trim();
     if (!applicationId && !conversationId) {

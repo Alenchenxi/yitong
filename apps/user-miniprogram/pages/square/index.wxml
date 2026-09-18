@@ -139,7 +139,8 @@
     <view class="main-tab {{activeTab === 'dynamic' ? 'active' : ''}}" data-tab="dynamic" bindtap="switchTab">圈子动态</view>
     <view class="main-tab {{activeTab === 'confession' ? 'active' : ''}}" data-tab="confession" bindtap="switchTab">表白墙</view>
     <view wx:if="{{anonymousContentEnabled}}" class="main-tab {{activeTab === 'treehole' ? 'active' : ''}}" data-tab="treehole" bindtap="switchTab">树洞</view>
-    <view class="main-tab {{activeTab === 'job' ? 'active' : ''}}" data-tab="job" bindtap="switchTab">兼职</view>
+    <!-- 兼职 tab 由平台兼职板块开关控制 -->
+    <view wx:if="{{jobModuleEnabled}}" class="main-tab {{activeTab === 'job' ? 'active' : ''}}" data-tab="job" bindtap="switchTab">兼职</view>
   </view>
 
   <!-- 混合流 / 各 tab 列表：按 kind 分发 -->

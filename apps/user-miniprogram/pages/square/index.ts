@@ -25,8 +25,12 @@ import {
   bindAnonymousContentVisibility,
   unbindAnonymousContentVisibility,
 } from '../../utils/anonymous-content';
+import {
+  bindJobModuleVisibility,
+  unbindJobModuleVisibility,
+} from '../../utils/job-module';
 
-// 广场（圈子首页）：树洞能力由全局匿名内容开关控制。
+// 广场（圈子首页）：树洞能力由全局匿名内容开关控制，兼职 tab 由兼职板块开关控制。
 type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
 type RawPageFeedItemVo = FeedItemVo | { kind: 'job_post'; data: JobPostVo };
 type WithFeedKey<T> = T & { feedKey: string };
@@ -63,6 +67,7 @@ interface PageData {
   activeTab: PlazaTab;
   announcements: AnnouncementVo[];
   anonymousContentEnabled: boolean;
+  jobModuleEnabled: boolean;
   anonTokenReady: boolean;
   menuVisible: boolean;
   navTop: number;
@@ -84,6 +89,7 @@ Page({
     activeTab: 'dynamic' as PlazaTab,
     announcements: [],
     anonymousContentEnabled: false,
+    jobModuleEnabled: false,
     anonTokenReady: false,
     menuVisible: false,
     navTop: 0,
@@ -105,6 +111,13 @@ Page({
         void this.reloadFeed();
       }
     });
+    bindJobModuleVisibility(this, (enabled) => {
+      const changed = enabled !== this.data.jobModuleEnabled;
+      this.updateJobModuleVisibility(enabled);
+      if (changed && this.data.community) {
+        void this.reloadFeed();
+      }
+    });
     const inviteCommunityId = parseCommunityInviteId(options);
     if (inviteCommunityId) {
       this._inviteCommunityId = inviteCommunityId;
@@ -116,6 +129,7 @@ Page({
 
   onUnload() {
     unbindAnonymousContentVisibility(this);
+    unbindJobModuleVisibility(this);
   },
 
   updateAnonymousContentVisibility(enabled: boolean) {
@@ -137,6 +151,19 @@ Page({
     });
   },
 
+  updateJobModuleVisibility(enabled: boolean) {
+    const activeTab = !enabled && this.data.activeTab === 'job'
+      ? 'dynamic'
+      : this.data.activeTab;
+    this.setData({
+      jobModuleEnabled: enabled,
+      activeTab,
+      ...(!enabled
+        ? { items: this.data.items.filter((item) => item.kind !== 'job_post') }
+        : {}),
+    });
+  },
+
   async onShow() {
     setCustomTabBarHidden(this, false);
     syncCustomTabBar(this, '/pages/square/index');
@@ -144,6 +171,8 @@ Page({
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
     this.updateAnonymousContentVisibility(anonymousContentEnabled);
+    const jobModuleEnabled = await app.getJobModuleVisibility();
+    this.updateJobModuleVisibility(jobModuleEnabled);
     if (anonymousContentEnabled) {
       this.setData({ anonTokenReady: hasAnonToken() });
       if (!hasAnonToken()) {
@@ -393,13 +422,16 @@ Page({
           nextCursor: r.nextCursor,
           hasMore: r.hasMore,
         };
-      } else {
+      } else if (tab === 'job' && this.data.jobModuleEnabled) {
         const r = await listJobPosts({ cursor: this.data.nextCursor ?? undefined, communityId });
         resp = {
           list: r.list.map((p) => ({ kind: 'job_post' as const, data: p })),
           nextCursor: r.nextCursor,
           hasMore: r.hasMore,
         };
+      } else {
+        // 开关关闭或未知 tab：返回空页，不发请求
+        resp = { list: [], nextCursor: null, hasMore: false };
       }
       this.setData({
         items: [...this.data.items, ...resp.list.map(withFeedKey)],

@@ -1,4 +1,5 @@
 import type { AppInstance } from '../../../app';
+import { bindJobModulePageGuard, requireJobModuleVisibility } from '../../../utils/job-module';
 import {
   listJobPosts,
   isJobListCursorExpired,
@@ -51,9 +52,10 @@ Page({
     searched: false,
   },
 
-  onLoad() {
-    const app = getApp<AppInstance>();
-    if (!app.requireAuth()) return;
+  async onLoad() {
+    // 兼职板块平台开关：关闭时 user 角色退出本页
+    bindJobModulePageGuard(this);
+    await requireJobModuleVisibility();
   },
 
   onKeywordInput(e: WechatMiniprogram.Input) {

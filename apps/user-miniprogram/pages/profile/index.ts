@@ -6,6 +6,18 @@ import {
   bindAnonymousContentVisibility,
   unbindAnonymousContentVisibility,
 } from '../../utils/anonymous-content';
+import {
+  bindJobModuleVisibility,
+  unbindJobModuleVisibility,
+} from '../../utils/job-module';
+
+// 用户角色描述随两个平台开关变化（树洞受匿名内容开关、兼职受兼职板块开关控制）
+function userRoleDesc(anonymousContentEnabled: boolean, jobModuleEnabled: boolean): string {
+  const parts = ['表白墙'];
+  if (anonymousContentEnabled) parts.push('树洞');
+  if (jobModuleEnabled) parts.push('兼职');
+  return parts.join(' · ');
+}
 
 async function countVisibleUnreadNotifications(anonymousContentEnabled: boolean): Promise<number> {
   if (anonymousContentEnabled) {
@@ -39,23 +51,37 @@ Page({
     myRoles: [] as string[],        // 用户实时拥有的角色（来自 /auth/me）
     switchingRole: '',              // 正在切换中的角色（loading 态）
     anonymousContentEnabled: false,
+    jobModuleEnabled: false,
   },
 
   onLoad() {
     bindAnonymousContentVisibility(this, (enabled) => {
       this.updateAnonymousContentVisibility(enabled);
     });
+    bindJobModuleVisibility(this, (enabled) => {
+      this.updateJobModuleVisibility(enabled);
+    });
   },
 
   onUnload() {
     unbindAnonymousContentVisibility(this);
+    unbindJobModuleVisibility(this);
   },
 
   updateAnonymousContentVisibility(enabled: boolean) {
     this.setData({
       anonymousContentEnabled: enabled,
       roleOptions: ALL_ROLES.map((option) => option.key === 'USER'
-        ? { ...option, desc: enabled ? '表白墙 · 树洞 · 兼职' : '表白墙 · 兼职' }
+        ? { ...option, desc: userRoleDesc(enabled, this.data.jobModuleEnabled) }
+        : option),
+    });
+  },
+
+  updateJobModuleVisibility(enabled: boolean) {
+    this.setData({
+      jobModuleEnabled: enabled,
+      roleOptions: ALL_ROLES.map((option) => option.key === 'USER'
+        ? { ...option, desc: userRoleDesc(this.data.anonymousContentEnabled, enabled) }
         : option),
     });
   },
@@ -68,6 +94,8 @@ Page({
     const currentRole = app.globalData.currentRole;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
     this.updateAnonymousContentVisibility(anonymousContentEnabled);
+    const jobModuleEnabled = await app.getJobModuleVisibility();
+    this.updateJobModuleVisibility(jobModuleEnabled);
     this.setData({
       user: u,
       avatarChar: u ? u.nickname.slice(0, 1) : '?',

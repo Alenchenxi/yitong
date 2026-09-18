@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../app';
 import { getMyResume, upsertResume, listResumeApplications, type ResumeApplicationVo } from '../../services/job';
+import { bindJobModulePageGuard, requireJobModuleVisibility } from '../../utils/job-module';
 
 const AVAILABILITIES = ['周末', '工作日晚上', '全天', '寒暑假', '节假日'];
 
@@ -32,8 +33,9 @@ Page({
   },
 
   async onLoad() {
-    const app = getApp<AppInstance>();
-    if (!app.requireAuth()) return;
+    // 兼职板块平台开关：关闭时 user 角色退出本页
+    bindJobModulePageGuard(this);
+    if (!(await requireJobModuleVisibility())) return;
     await this.load();
   },
 

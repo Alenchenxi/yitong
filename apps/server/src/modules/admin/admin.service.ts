@@ -19,6 +19,7 @@ import type { UpdateBoostPlanPriceDto } from './dto/update-boost-plan-price.dto'
 import type { UpdatePricingDto } from './dto/update-pricing.dto';
 import {
   ANONYMOUS_CONTENT_ENABLED_KEY,
+  JOB_MODULE_ENABLED_KEY,
   MERCHANT_REVIEW_ENABLED_KEY,
 } from '../app-config/app-config.service';
 import { AdminAccessService, type AdminAccessContext } from './admin-access.service';
@@ -2241,6 +2242,7 @@ export class AdminService {
   private static readonly APP_CONFIG_KEYS = [
     'community.need_review',
     ANONYMOUS_CONTENT_ENABLED_KEY,
+    JOB_MODULE_ENABLED_KEY,
     MERCHANT_REVIEW_ENABLED_KEY,
     TUTOR_SYNC_ENABLED_KEY,
     TUTOR_SYNC_BATCH_SIZE_KEY,
@@ -2280,6 +2282,7 @@ export class AdminService {
     if (
       key === 'community.need_review'
       || key === ANONYMOUS_CONTENT_ENABLED_KEY
+      || key === JOB_MODULE_ENABLED_KEY
       || key === MERCHANT_REVIEW_ENABLED_KEY
       || key === TUTOR_SYNC_ENABLED_KEY
     ) {
@@ -2288,9 +2291,11 @@ export class AdminService {
           ? '家教自动同步'
           : key === ANONYMOUS_CONTENT_ENABLED_KEY
             ? '匿名内容展示'
-            : key === MERCHANT_REVIEW_ENABLED_KEY
-              ? '商家入驻审核'
-              : '建圈审核';
+            : key === JOB_MODULE_ENABLED_KEY
+              ? '兼职板块'
+              : key === MERCHANT_REVIEW_ENABLED_KEY
+                ? '商家入驻审核'
+                : '建圈审核';
         throw new BizException(40003, `${label}配置必须为布尔值`, HttpStatus.BAD_REQUEST);
       }
       normalizedValue = value;

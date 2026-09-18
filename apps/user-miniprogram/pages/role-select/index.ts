@@ -3,6 +3,18 @@ import {
   bindAnonymousContentVisibility,
   unbindAnonymousContentVisibility,
 } from '../../utils/anonymous-content';
+import {
+  bindJobModuleVisibility,
+  unbindJobModuleVisibility,
+} from '../../utils/job-module';
+
+// 用户角色描述随两个平台开关变化（树洞受匿名内容开关、兼职受兼职板块开关控制）
+function userRoleDesc(anonymousContentEnabled: boolean, jobModuleEnabled: boolean): string {
+  const parts = ['表白墙'];
+  if (anonymousContentEnabled) parts.push('树洞');
+  if (jobModuleEnabled) parts.push('兼职');
+  return parts.join(' · ');
+}
 
 Page({
   data: {
@@ -11,14 +23,30 @@ Page({
     referralCode: '',
     referralTip: '',
     anonymousContentEnabled: false,
+    jobModuleEnabled: false,
+    userRoleDesc: '表白墙',
   },
 
   async onLoad(options: { referralCode?: string }) {
+    const applyDesc = (anonymousContentEnabled: boolean, jobModuleEnabled: boolean) => {
+      this.setData({
+        anonymousContentEnabled,
+        jobModuleEnabled,
+        userRoleDesc: userRoleDesc(anonymousContentEnabled, jobModuleEnabled),
+      });
+    };
     bindAnonymousContentVisibility(this, (enabled) => {
-      this.setData({ anonymousContentEnabled: enabled });
+      applyDesc(enabled, this.data.jobModuleEnabled);
     });
-    const anonymousContentEnabled = await getApp<AppInstance>().getAnonymousContentVisibility();
-    this.setData({ anonymousContentEnabled });
+    bindJobModuleVisibility(this, (enabled) => {
+      applyDesc(this.data.anonymousContentEnabled, enabled);
+    });
+    const app = getApp<AppInstance>();
+    const [anonymousContentEnabled, jobModuleEnabled] = await Promise.all([
+      app.getAnonymousContentVisibility(),
+      app.getJobModuleVisibility(),
+    ]);
+    applyDesc(anonymousContentEnabled, jobModuleEnabled);
     // 分享落地：携带 referralCode（仅对新用户首次注册生效）
     if (options?.referralCode) {
       this.setData({
@@ -30,6 +58,7 @@ Page({
 
   onUnload() {
     unbindAnonymousContentVisibility(this);
+    unbindJobModuleVisibility(this);
   },
 
   async chooseRole(e: WechatMiniprogram.TouchEvent) {

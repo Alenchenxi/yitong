@@ -10,6 +10,9 @@ import {
   fetchAnonymousContentVisibility,
   persistAnonymousContentVisibility,
   readAnonymousContentVisibilityCache,
+  fetchJobModuleVisibility,
+  persistJobModuleVisibility,
+  readJobModuleVisibilityCache,
 } from './services/app-config';
 import { getAdminAccess, type AdminAccessVo } from './services/admin';
 
@@ -25,6 +28,7 @@ const apiBase = FORCE_PRODUCTION
     ? 'http://localhost:3000/api/v1'
     : PROD_API_BASE;
 const cachedAnonymousContentEnabled = readAnonymousContentVisibilityCache();
+const cachedJobModuleEnabled = readJobModuleVisibilityCache();
 const ANONYMOUS_CONTENT_RETRY_DELAYS_MS = [250, 750] as const;
 const ADMIN_ACCESS_STORAGE_KEY = 'yitong_admin_access';
 const cachedAdminAccess = wx.getStorageSync(ADMIN_ACCESS_STORAGE_KEY) as AdminAccessVo | '';
@@ -37,6 +41,18 @@ async function fetchAnonymousContentVisibilityWithRetry(): Promise<boolean> {
   for (let attempt = 0; ; attempt += 1) {
     try {
       return await fetchAnonymousContentVisibility();
+    } catch (error) {
+      const retryDelay = ANONYMOUS_CONTENT_RETRY_DELAYS_MS[attempt];
+      if (retryDelay === undefined) throw error;
+      await delay(retryDelay);
+    }
+  }
+}
+
+async function fetchJobModuleVisibilityWithRetry(): Promise<boolean> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await fetchJobModuleVisibility();
     } catch (error) {
       const retryDelay = ANONYMOUS_CONTENT_RETRY_DELAYS_MS[attempt];
       if (retryDelay === undefined) throw error;
@@ -68,6 +84,7 @@ App({
     apiBase,
     loginReady: false,
     anonymousContentEnabled: cachedAnonymousContentEnabled,
+    jobModuleEnabled: cachedJobModuleEnabled,
     adminAccess: cachedAdminAccess || null,
     anonToken: '', // CR-001 树洞匿名 token
     anonId: '',    // CR-001 当前 anonId
@@ -106,6 +123,7 @@ App({
 
   onShow(options) {
     void this.refreshAnonymousContentVisibility();
+    void this.refreshJobModuleVisibility();
     if (this.globalData.currentRole === 'admin' && this.globalData.token) {
       void this.refreshAdminAccess();
     }
@@ -235,6 +253,59 @@ App({
       ?? Promise.resolve(this.globalData.anonymousContentEnabled);
   },
 
+  // 用户端兼职板块开关：与匿名内容开关同一套「启动/回前台同步 + storage 缓存 + fail closed」通道
+  setJobModuleVisibility(enabled: boolean) {
+    this._jobModuleRefreshVersion += 1;
+    this.applyJobModuleVisibility(enabled);
+  },
+
+  applyJobModuleVisibility(enabled: boolean) {
+    this.globalData.jobModuleEnabled = enabled;
+    persistJobModuleVisibility(enabled);
+    for (const listener of this._jobModuleListeners) listener(enabled);
+  },
+
+  applyJobModuleRefresh(refreshVersion: number, enabled: boolean) {
+    if (refreshVersion !== this._jobModuleRefreshVersion) {
+      return this.globalData.jobModuleEnabled;
+    }
+    this.applyJobModuleVisibility(enabled);
+    return enabled;
+  },
+
+  refreshJobModuleVisibility(): Promise<boolean> {
+    if (this._jobModuleRefreshPromise) {
+      return this._jobModuleRefreshPromise;
+    }
+
+    const refreshVersion = this._jobModuleRefreshVersion + 1;
+    this._jobModuleRefreshVersion = refreshVersion;
+    const refreshPromise = fetchJobModuleVisibilityWithRetry()
+      .then((enabled) => this.applyJobModuleRefresh(refreshVersion, enabled))
+      .catch(() => this.applyJobModuleRefresh(refreshVersion, false))
+      .finally(() => {
+        if (this._jobModuleRefreshPromise === refreshPromise) {
+          this._jobModuleRefreshPromise = null;
+        }
+      });
+    this._jobModuleRefreshPromise = refreshPromise;
+    return refreshPromise;
+  },
+
+  getJobModuleVisibility(): Promise<boolean> {
+    return this._jobModuleRefreshPromise
+      ?? Promise.resolve(this.globalData.jobModuleEnabled);
+  },
+
+  subscribeJobModuleVisibility(listener: (enabled: boolean) => void) {
+    this._jobModuleListeners.push(listener);
+    listener(this.globalData.jobModuleEnabled);
+    return () => {
+      this._jobModuleListeners = this._jobModuleListeners
+        .filter((candidate) => candidate !== listener);
+    };
+  },
+
   refreshAdminAccess(): Promise<AdminAccessVo | null> {
     if (this._adminAccessRefreshPromise) return this._adminAccessRefreshPromise;
     const promise = getAdminAccess()
@@ -284,6 +355,9 @@ App({
   _anonymousContentRefreshPromise: null as Promise<boolean> | null,
   _anonymousContentRefreshVersion: 0,
   _anonymousContentListeners: [] as Array<(enabled: boolean) => void>,
+  _jobModuleRefreshPromise: null as Promise<boolean> | null,
+  _jobModuleRefreshVersion: 0,
+  _jobModuleListeners: [] as Array<(enabled: boolean) => void>,
   _adminAccessRefreshPromise: null as Promise<AdminAccessVo | null> | null,
 });
 
@@ -302,6 +376,7 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
     communityInviteRouting: boolean;
     loginReady: boolean;
     anonymousContentEnabled: boolean;
+    jobModuleEnabled: boolean;
     adminAccess: AdminAccessVo | null;
   };
   loginWithRole: (role: 'user' | 'merchant' | 'admin', referralCode?: string) => Promise<void>;
@@ -314,5 +389,9 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
   refreshAnonymousContentVisibility: () => Promise<boolean>;
   getAnonymousContentVisibility: () => Promise<boolean>;
   subscribeAnonymousContentVisibility: (listener: (enabled: boolean) => void) => () => void;
+  setJobModuleVisibility: (enabled: boolean) => void;
+  refreshJobModuleVisibility: () => Promise<boolean>;
+  getJobModuleVisibility: () => Promise<boolean>;
+  subscribeJobModuleVisibility: (listener: (enabled: boolean) => void) => () => void;
   refreshAdminAccess: () => Promise<AdminAccessVo | null>;
 }>;

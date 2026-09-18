@@ -90,6 +90,9 @@ const sandbox = {
           }
           return remoteEnabled;
         },
+        readJobModuleVisibilityCache: () => false,
+        persistJobModuleVisibility: () => {},
+        fetchJobModuleVisibility: async () => false,
       };
     }
     if (id === './services/admin') {

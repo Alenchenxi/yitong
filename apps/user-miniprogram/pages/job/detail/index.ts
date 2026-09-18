@@ -1,4 +1,5 @@
 import type { AppInstance } from '../../../app';
+import { bindJobModulePageGuard, requireJobModuleVisibility } from '../../../utils/job-module';
 import {
   getJobPost,
   listPostReviews,
@@ -54,6 +55,8 @@ Page({
   postId: '',
 
   onLoad(options: { id?: string }) {
+    // 兼职板块平台开关：关闭时 user 角色退出本页（商家查看报名不受影响）
+    bindJobModulePageGuard(this);
     if (!options?.id) {
       wx.showToast({ title: '参数错误', icon: 'none' });
       return;
@@ -62,8 +65,7 @@ Page({
   },
 
   async onShow() {
-    const app = getApp<AppInstance>();
-    if (!app.requireAuth()) return;
+    if (!(await requireJobModuleVisibility())) return;
     if (this.postId) await this.load();
   },
 

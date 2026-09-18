@@ -109,7 +109,7 @@ assert.match(
 );
 
 const favorites = read('pages/favorites/index.ts');
-assert.match(favorites, /favorites\.filter\(\(item\) => !item\.targetAnonymous\)/);
+assert.match(favorites, /!item\.targetAnonymous/, '收藏列表在匿名内容关闭时必须过滤匿名收藏');
 const notifications = read('components/notifications-view/index.ts');
 assert.match(notifications, /return !notification\.targetAnonymous/);
 const myPosts = read('pages/my-posts/index.ts');

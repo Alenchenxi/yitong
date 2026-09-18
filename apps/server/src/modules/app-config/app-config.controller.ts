@@ -12,4 +12,10 @@ export class AppConfigController {
   async getAnonymousContentVisibility() {
     return ok(await this.appConfig.getAnonymousContentVisibility());
   }
+
+  @Get('job')
+  @Public()
+  async getJobModuleVisibility() {
+    return ok(await this.appConfig.getJobModuleVisibility());
+  }
 }

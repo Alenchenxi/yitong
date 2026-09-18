@@ -165,6 +165,8 @@ Component({
     // 全局设置
     anonymousContentEnabled: false,
     togglingAnonymousContent: false,
+    jobModuleEnabled: false,
+    togglingJobModule: false,
     needReviewEnabled: false,
     togglingNeedReview: false,
     merchantReviewEnabled: true,
@@ -236,6 +238,7 @@ Component({
           this.data.togglingAnonymousContent
           || this.data.togglingNeedReview
           || this.data.togglingMerchantReview
+          || this.data.togglingJobModule
           || this.data.togglingTutorSync
           || this.data.savingTutorSync
         )
@@ -288,6 +291,7 @@ Component({
         } else if (sub === 'settings') {
           const cfgList = await getAppSettings();
           const anonymousContent = cfgList.find((item) => item.key === 'content.anonymous_enabled');
+          const jobModule = cfgList.find((item) => item.key === 'job.enabled');
           const needReview = cfgList.find((item) => item.key === 'community.need_review');
           const merchantReview = cfgList.find((item) => item.key === 'merchant.need_review');
           const tutorSyncEnabled = cfgList.find((item) => item.key === 'tutor_sync.enabled');
@@ -296,6 +300,7 @@ Component({
             typeof batchSizeSetting?.value === 'number' ? String(batchSizeSetting.value) : '100';
           commit({
             anonymousContentEnabled: anonymousContent?.value === true,
+            jobModuleEnabled: jobModule?.value === true,
             needReviewEnabled: needReview?.value === true,
             merchantReviewEnabled: merchantReview?.value !== false,
             tutorSyncEnabled: tutorSyncEnabled?.value === true,
@@ -761,6 +766,31 @@ Component({
         },
       });
     },
+    // 全局设置 - 兼职板块开关（与匿名内容开关同模式：写 KV 并同步小程序全局状态）
+    async toggleJobModule(e: WechatMiniprogram.SwitchChange) {
+      if (
+        this.data.loading
+        || !this.data.appSettingsLoaded
+        || this.data.togglingAnonymousContent
+        || this.data.togglingNeedReview
+        || this.data.togglingMerchantReview
+        || this.data.togglingJobModule
+        || this.data.togglingTutorSync
+        || this.data.savingTutorSync
+      ) return;
+      const previous = this.data.jobModuleEnabled;
+      const next = e.detail.value;
+      this.setData({ jobModuleEnabled: next, togglingJobModule: true });
+      try {
+        await updateAppSetting('job.enabled', next);
+        getApp<AppInstance>().setJobModuleVisibility(next);
+        wx.showToast({ title: next ? '兼职板块已开启' : '兼职板块已关闭', icon: 'success' });
+      } catch {
+        this.setData({ jobModuleEnabled: previous });
+      } finally {
+        this.setData({ togglingJobModule: false });
+      }
+    },
     async toggleAnonymousContent(e: WechatMiniprogram.SwitchChange) {
       if (
         this.data.loading
@@ -768,6 +798,7 @@ Component({
         || this.data.togglingAnonymousContent
         || this.data.togglingNeedReview
         || this.data.togglingMerchantReview
+        || this.data.togglingJobModule
         || this.data.togglingTutorSync
         || this.data.savingTutorSync
       ) return;
@@ -793,6 +824,7 @@ Component({
         this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
         this.data.togglingMerchantReview ||
+        this.data.togglingJobModule ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
       )
@@ -817,6 +849,7 @@ Component({
         this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
         this.data.togglingMerchantReview ||
+        this.data.togglingJobModule ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
       ) return;
@@ -841,6 +874,7 @@ Component({
         this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
         this.data.togglingMerchantReview ||
+        this.data.togglingJobModule ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
       )
@@ -864,6 +898,7 @@ Component({
         this.data.togglingAnonymousContent ||
         this.data.togglingNeedReview ||
         this.data.togglingMerchantReview ||
+        this.data.togglingJobModule ||
         this.data.togglingTutorSync ||
         this.data.savingTutorSync
       )

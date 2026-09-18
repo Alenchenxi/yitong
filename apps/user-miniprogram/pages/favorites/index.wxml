@@ -3,7 +3,7 @@
     <view class="tab {{tab === 'all' ? 'active' : ''}}" data-tab="all" bindtap="switchTab">全部 ({{total}})</view>
     <view class="tab {{tab === 'post' ? 'active' : ''}}" data-tab="post" bindtap="switchTab">表白墙</view>
     <view wx:if="{{anonymousContentEnabled}}" class="tab {{tab === 'anon_post' ? 'active' : ''}}" data-tab="anon_post" bindtap="switchTab">树洞</view>
-    <view class="tab {{tab === 'job_post' ? 'active' : ''}}" data-tab="job_post" bindtap="switchTab">兼职</view>
+    <view wx:if="{{jobModuleEnabled}}" class="tab {{tab === 'job_post' ? 'active' : ''}}" data-tab="job_post" bindtap="switchTab">兼职</view>
   </view>
 
   <view class="list" wx:if="{{items.length > 0}}">

@@ -13,21 +13,26 @@ import {
   bindAnonymousContentVisibility,
   unbindAnonymousContentVisibility,
 } from '../../utils/anonymous-content';
+import {
+  bindJobModuleVisibility,
+  unbindJobModuleVisibility,
+} from '../../utils/job-module';
 
 // 内容搜索页（广场搜索栏落地页）：表白墙 / 兼职，按当前圈子作用域
 type Tab = 'confession' | 'treehole' | 'job';
 
-const ALL_TABS: Array<{ key: Tab; label: string; anonymousOnly?: boolean }> = [
+const ALL_TABS: Array<{ key: Tab; label: string; anonymousOnly?: boolean; jobOnly?: boolean }> = [
   { key: 'confession', label: '表白墙' },
   { key: 'treehole', label: '树洞', anonymousOnly: true },
-  { key: 'job', label: '兼职' },
+  { key: 'job', label: '兼职', jobOnly: true },
 ];
 
 Page({
   data: {
     q: '',
-    tabs: ALL_TABS.filter((item) => !item.anonymousOnly),
+    tabs: ALL_TABS.filter((item) => !item.anonymousOnly && !item.jobOnly),
     anonymousContentEnabled: false,
+    jobModuleEnabled: false,
     tab: 'confession' as Tab,
     loading: false,
     history: [] as string[],
@@ -43,10 +48,16 @@ Page({
       this.updateAnonymousContentVisibility(enabled);
       if (changed && this.data.hasSearched) void this.runSearch();
     });
+    bindJobModuleVisibility(this, (enabled) => {
+      const changed = enabled !== this.data.jobModuleEnabled;
+      this.updateJobModuleVisibility(enabled);
+      if (changed && this.data.hasSearched) void this.runSearch();
+    });
   },
 
   onUnload() {
     unbindAnonymousContentVisibility(this);
+    unbindJobModuleVisibility(this);
   },
 
   updateAnonymousContentVisibility(enabled: boolean) {
@@ -54,8 +65,20 @@ Page({
     this.setData({
       anonymousContentEnabled: enabled,
       tab,
-      tabs: ALL_TABS.filter((item) => enabled || !item.anonymousOnly),
+      tabs: ALL_TABS.filter((item) =>
+        (enabled || !item.anonymousOnly) && (this.data.jobModuleEnabled || !item.jobOnly)),
       ...(!enabled ? { treeholeResults: [] } : {}),
+    });
+  },
+
+  updateJobModuleVisibility(enabled: boolean) {
+    const tab = !enabled && this.data.tab === 'job' ? 'confession' as Tab : this.data.tab;
+    this.setData({
+      jobModuleEnabled: enabled,
+      tab,
+      tabs: ALL_TABS.filter((item) =>
+        (this.data.anonymousContentEnabled || !item.anonymousOnly) && (enabled || !item.jobOnly)),
+      ...(!enabled ? { jobResults: [] } : {}),
     });
   },
 
@@ -64,6 +87,8 @@ Page({
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
     this.updateAnonymousContentVisibility(anonymousContentEnabled);
+    const jobModuleEnabled = await app.getJobModuleVisibility();
+    this.updateJobModuleVisibility(jobModuleEnabled);
     this.setData({
       history: getHistory(),
     });
@@ -115,9 +140,11 @@ Page({
         this.setData({
           treeholeResults: r.list.map((post) => ({ ...post, timeText: formatTime(post.createdAt) })),
         });
-      } else {
+      } else if (this.data.jobModuleEnabled) {
         const r = await listJobPosts({ keyword: q, communityId });
         this.setData({ jobResults: r.list });
+      } else {
+        this.setData({ jobResults: [] });
       }
     } catch {
       wx.showToast({ title: '搜索失败', icon: 'none' });
@@ -141,7 +168,7 @@ Page({
 
   openJob(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
-    if (!id) return;
+    if (!id || !this.data.jobModuleEnabled) return;
     wx.navigateTo({ url: `/pages/job/detail/index?id=${id}` });
   },
 });

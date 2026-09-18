@@ -1,4 +1,5 @@
 import type { AppInstance } from '../../../app';
+import { bindJobModulePageGuard, requireJobModuleVisibility } from '../../../utils/job-module';
 import {
   cancelApp,
   ensureJobConversation,
@@ -26,9 +27,13 @@ Page({
   },
 
   async onShow() {
-    const app = getApp<AppInstance>();
-    if (!app.requireAuth()) return;
+    // 兼职板块平台开关：关闭时 user 角色退出本页
+    if (!(await requireJobModuleVisibility())) return;
     await this.load();
+  },
+
+  onLoad() {
+    bindJobModulePageGuard(this);
   },
 
   async load() {

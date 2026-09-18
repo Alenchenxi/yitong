@@ -10,6 +10,7 @@ import {
 } from '../../services/job';
 import { getLocationContext } from '../../services/place-suggest';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
+import { bindJobModulePageGuard, requireJobModuleVisibility } from '../../utils/job-module';
 
 type Tab = 'recommend' | 'latest' | 'urgent' | 'nearest';
 type FilterSection = 'district' | 'settlement';
@@ -43,10 +44,15 @@ Page({
     locationError: '',
   },
 
+  onLoad() {
+    // 兼职板块平台开关：关闭时 user 角色退出本页（商家发岗不受影响）
+    bindJobModulePageGuard(this);
+  },
+
   async onShow() {
     syncCustomTabBar(this, '/pages/job/index');
+    if (!(await requireJobModuleVisibility())) return;
     const app = getApp<AppInstance>();
-    if (!app.requireAuth()) return;
     const isMerchant = app.globalData.currentRole === 'MERCHANT';
     this.setData({ isMerchant, tab: isMerchant ? 'latest' : 'recommend' });
     this.reload();
