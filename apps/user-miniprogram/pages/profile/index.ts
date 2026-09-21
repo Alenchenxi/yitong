@@ -1,6 +1,6 @@
 import type { AppInstance } from '../../app';
 import { listNotifications } from '../../services/notification';
-import { refreshRoles, ALL_ROLES, roleLabel } from '../../services/auth';
+import { refreshRoles, ALL_ROLES } from '../../services/auth';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
 import {
   bindAnonymousContentVisibility,
@@ -17,6 +17,11 @@ function userRoleDesc(anonymousContentEnabled: boolean, jobModuleEnabled: boolea
   if (anonymousContentEnabled) parts.push('树洞');
   if (jobModuleEnabled) parts.push('兼职');
   return parts.join(' · ');
+}
+
+// 身份卡徽章按管理权限显示：拥有 ADMIN 角色显示「管理员」，没有管理权限才是「普通用户」
+function profileRoleText(myRoles: string[]): string {
+  return myRoles.includes('ADMIN') ? '管理员' : '普通用户';
 }
 
 async function countVisibleUnreadNotifications(anonymousContentEnabled: boolean): Promise<number> {
@@ -100,12 +105,12 @@ Page({
       user: u,
       avatarChar: u ? u.nickname.slice(0, 1) : '?',
       currentRole,
-      roleText: roleLabel(currentRole),
+      roleText: profileRoleText(u?.roles ?? []),
       myRoles: u?.roles ?? [],
     });
     // 后台刷新实时角色权限（静默，不阻塞 UI）
     refreshRoles().then((roles) => {
-      if (roles) this.setData({ myRoles: roles });
+      if (roles) this.setData({ myRoles: roles, roleText: profileRoleText(roles) });
     });
     try {
       this.setData({
@@ -141,7 +146,7 @@ Page({
       if (!msg) wx.showToast({ title: '切换失败，请重试', icon: 'none' });
       // 刷新角色状态
       refreshRoles().then((roles) => {
-        if (roles) this.setData({ myRoles: roles });
+        if (roles) this.setData({ myRoles: roles, roleText: profileRoleText(roles) });
       });
     } finally {
       this.setData({ switchingRole: '' });
