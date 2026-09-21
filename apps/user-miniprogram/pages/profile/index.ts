@@ -1,6 +1,6 @@
 import type { AppInstance } from '../../app';
 import { listNotifications } from '../../services/notification';
-import { refreshRoles, ALL_ROLES } from '../../services/auth';
+import { refreshRoles, ALL_ROLES, type RoleOption } from '../../services/auth';
 import { profileRoleText } from '../../utils/auth';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
 import {
@@ -12,12 +12,37 @@ import {
   unbindJobModuleVisibility,
 } from '../../utils/job-module';
 
+// P2-72 切换角色入口格子：实时权限渲染（与管理端 profile panel 同口径）
+// guide=true 为「去入驻」引导态（未入驻商家，点击进商家端由 shell 探测跳入驻页）
+interface RoleCell extends RoleOption {
+  guide: boolean;
+}
+
 // 用户角色描述随两个平台开关变化（树洞受匿名内容开关、兼职受兼职板块开关控制）
 function userRoleDesc(anonymousContentEnabled: boolean, jobModuleEnabled: boolean): string {
   const parts = ['表白墙'];
   if (anonymousContentEnabled) parts.push('树洞');
   if (jobModuleEnabled) parts.push('兼职');
   return parts.join(' · ');
+}
+
+// P2-72 按实时权限构建切换格子：USER 恒显（人人拥有）；MERCHANT 未入驻显示「去入驻」
+// 引导；ADMIN 仅实时拥有时显示（后台加/删管理员，回到本页随 refreshRoles 出现/消失）
+function buildRoleCells(
+  myRoles: string[],
+  anonymousContentEnabled: boolean,
+  jobModuleEnabled: boolean,
+): RoleCell[] {
+  return ALL_ROLES.filter(
+    (option) =>
+      option.key !== 'ADMIN' || myRoles.includes('ADMIN'),
+  ).map((option) => ({
+    ...option,
+    desc: option.key === 'USER'
+      ? userRoleDesc(anonymousContentEnabled, jobModuleEnabled)
+      : option.desc,
+    guide: option.key === 'MERCHANT' && !myRoles.includes('MERCHANT'),
+  }));
 }
 
 async function countVisibleUnreadNotifications(anonymousContentEnabled: boolean): Promise<number> {
@@ -48,7 +73,7 @@ Page({
     currentRole: '',
     roleText: '',
     unreadCount: 0,
-    roleOptions: ALL_ROLES,         // 3 个角色入口常量
+    roleOptions: buildRoleCells([], false, false), // P2-72 实时权限渲染，onShow 按缓存/实时 roles 重算
     myRoles: [] as string[],        // 用户实时拥有的角色（来自 /auth/me）
     switchingRole: '',              // 正在切换中的角色（loading 态）
     anonymousContentEnabled: false,
@@ -72,18 +97,14 @@ Page({
   updateAnonymousContentVisibility(enabled: boolean) {
     this.setData({
       anonymousContentEnabled: enabled,
-      roleOptions: ALL_ROLES.map((option) => option.key === 'USER'
-        ? { ...option, desc: userRoleDesc(enabled, this.data.jobModuleEnabled) }
-        : option),
+      roleOptions: buildRoleCells(this.data.myRoles, enabled, this.data.jobModuleEnabled),
     });
   },
 
   updateJobModuleVisibility(enabled: boolean) {
     this.setData({
       jobModuleEnabled: enabled,
-      roleOptions: ALL_ROLES.map((option) => option.key === 'USER'
-        ? { ...option, desc: userRoleDesc(this.data.anonymousContentEnabled, enabled) }
-        : option),
+      roleOptions: buildRoleCells(this.data.myRoles, this.data.anonymousContentEnabled, enabled),
     });
   },
 
@@ -101,17 +122,12 @@ Page({
       user: u,
       avatarChar: u ? u.nickname.slice(0, 1) : '?',
       currentRole,
-      roleText: profileRoleText(u?.roles ?? [], u?.adminTypeName),
-      myRoles: u?.roles ?? [],
     });
+    // P2-72 徽章/切换格子统一走 applyRoles（含 roleOptions 实时权限重算）
+    this.applyRoles(u?.roles ?? []);
     // 后台刷新实时角色权限（静默，不阻塞 UI）；refreshRoles 已同步 adminTypeName 进 globalData
     refreshRoles().then((roles) => {
-      if (roles) {
-        this.setData({
-          myRoles: roles,
-          roleText: profileRoleText(roles, app.globalData.user?.adminTypeName),
-        });
-      }
+      if (roles) this.applyRoles(roles);
     });
     try {
       this.setData({
@@ -122,11 +138,27 @@ Page({
     }
   },
 
+  // P2-72 刷新角色后同步徽章与切换格子（refreshRoles 已把最新 adminTypeName 写回 globalData.user）
+  applyRoles(roles: string[]) {
+    const app = getApp<AppInstance>();
+    this.setData({
+      myRoles: roles,
+      roleText: profileRoleText(roles, app.globalData.user?.adminTypeName),
+      roleOptions: buildRoleCells(roles, this.data.anonymousContentEnabled, this.data.jobModuleEnabled),
+    });
+  },
+
   // 切换角色：二次确认权限 → switchRole → reLaunch 到目标端首页
   async switchToRole(e: WechatMiniprogram.TouchEvent) {
     const role = e.currentTarget.dataset.role as string;
     if (!role || role === this.data.currentRole) return;
-    // 不拥有该角色 → toast 提示
+    // P2-72 未入驻商家格：去入驻引导（统一进商家 shell，未入驻由 shell 探测跳入驻）
+    const cell = this.data.roleOptions.find((c) => c.key === role);
+    if (cell?.guide) {
+      this.goMerchant();
+      return;
+    }
+    // 不拥有该角色 → toast 提示（refreshRoles 未回/缓存过期的时序兜底）
     if (!this.data.myRoles.includes(role)) {
       wx.showToast({ title: '暂无该角色权限', icon: 'none' });
       return;
@@ -147,12 +179,7 @@ Page({
       if (!msg) wx.showToast({ title: '切换失败，请重试', icon: 'none' });
       // 刷新角色状态
       refreshRoles().then((roles) => {
-        if (roles) {
-          this.setData({
-            myRoles: roles,
-            roleText: profileRoleText(roles, getApp<AppInstance>().globalData.user?.adminTypeName),
-          });
-        }
+        if (roles) this.applyRoles(roles);
       });
     } finally {
       this.setData({ switchingRole: '' });

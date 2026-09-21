@@ -90,9 +90,6 @@
   border-color: var(--yt-primary);
   background: linear-gradient(135deg, var(--yt-primary-lighter), var(--yt-primary-light));
 }
-.role-cell.role-off {
-  opacity: 0.45;
-}
 .role-cell.role-switching {
   opacity: 0.6;
 }
@@ -106,8 +103,4 @@
   padding: 2rpx 10rpx;
   border-radius: 999rpx;
   margin-top: 8rpx;
-}
-.role-tag.role-tag-off {
-  color: var(--yt-text-sub);
-  background: var(--yt-disabled-bg);
 }
