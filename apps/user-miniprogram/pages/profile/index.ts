@@ -1,6 +1,7 @@
 import type { AppInstance } from '../../app';
 import { listNotifications } from '../../services/notification';
 import { refreshRoles, ALL_ROLES } from '../../services/auth';
+import { profileRoleText } from '../../utils/auth';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
 import {
   bindAnonymousContentVisibility,
@@ -17,13 +18,6 @@ function userRoleDesc(anonymousContentEnabled: boolean, jobModuleEnabled: boolea
   if (anonymousContentEnabled) parts.push('树洞');
   if (jobModuleEnabled) parts.push('兼职');
   return parts.join(' · ');
-}
-
-// 身份卡徽章按管理权限显示：拥有 ADMIN 角色显示具体管理员类型名（平台管理员/圈子管理员等），
-// 没有管理权限才是「普通用户」；类型名缺失（未绑定 AdminUser 的历史脏数据）时回落「管理员」
-function profileRoleText(myRoles: string[], adminTypeName?: string | null): string {
-  if (!myRoles.includes('ADMIN')) return '普通用户';
-  return adminTypeName || '管理员';
 }
 
 async function countVisibleUnreadNotifications(anonymousContentEnabled: boolean): Promise<number> {

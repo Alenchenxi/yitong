@@ -4,7 +4,7 @@
     <view class="profile-avatar">{{nickname ? nickname.slice(0,1) : '管'}}</view>
     <view class="profile-info">
       <view class="profile-name">{{nickname || '管理员'}}</view>
-      <view class="profile-badge">管理员</view>
+      <view class="profile-badge">{{roleText}}</view>
     </view>
   </view>
 

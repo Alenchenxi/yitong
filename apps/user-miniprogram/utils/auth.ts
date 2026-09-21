@@ -8,6 +8,14 @@ export interface UserInfo {
   adminTypeName?: string | null; // 管理员类型名（平台管理员/圈子管理员等；无 ADMIN 角色或未绑定时为空）
 }
 
+// 身份卡徽章按管理权限显示（用户端「我的」页与管理端「我的」panel 共用同一口径）：
+// 拥有 ADMIN 角色显示具体管理员类型名（平台管理员/圈子管理员等），
+// 没有管理权限才是「普通用户」；类型名缺失（未绑定 AdminUser 的历史脏数据）时回落「管理员」
+export function profileRoleText(myRoles: string[], adminTypeName?: string | null): string {
+  if (!myRoles.includes('ADMIN')) return '普通用户';
+  return adminTypeName || '管理员';
+}
+
 interface LoginResp {
   accessToken: string;
   refreshToken: string;

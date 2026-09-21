@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../../app';
 import { refreshRoles } from '../../../services/auth';
+import { profileRoleText } from '../../../utils/auth';
 
 // 管理端「我的」panel（由 pages/admin/index shell 保活装载）
 Component({
@@ -19,6 +20,8 @@ Component({
 
   data: {
     nickname: '',
+    // 身份徽章：与用户端「我的」页同一 profileRoleText 口径（ADMIN 角色显具体管理员类型名）
+    roleText: '管理员',
     // role switching
     currentRole: '',
     myRoles: [] as string[],
@@ -35,6 +38,8 @@ Component({
       this.setData({
         nickname: u ? u.nickname : '',
         currentRole: app.globalData.currentRole,
+        roleText: profileRoleText(u?.roles ?? [], u?.adminTypeName),
+        myRoles: u?.roles ?? [],
       });
       this.loadRoles();
     },
@@ -42,11 +47,20 @@ Component({
     async loadRoles() {
       try {
         const roles = await refreshRoles();
-        if (roles) this.setData({ myRoles: roles });
+        if (roles) this.applyRoles(roles);
       } catch {
         const app = getApp<AppInstance>();
-        if (app.globalData.user) this.setData({ myRoles: app.globalData.user.roles });
+        if (app.globalData.user) this.applyRoles(app.globalData.user.roles);
       }
+    },
+
+    // 刷新角色后同步徽章与切换列表（refreshRoles 已把最新 adminTypeName 写回 globalData.user）
+    applyRoles(roles: string[]) {
+      const app = getApp<AppInstance>();
+      this.setData({
+        myRoles: roles,
+        roleText: profileRoleText(roles, app.globalData.user?.adminTypeName),
+      });
     },
 
     async onSwitchRole(e: WechatMiniprogram.TouchEvent) {
@@ -62,7 +76,7 @@ Component({
         await app.switchRole(role.toLowerCase() as 'user' | 'merchant' | 'admin');
         app.routeToRoleHome(role.toLowerCase());
       } catch {
-        refreshRoles().then((roles) => { if (roles) this.setData({ myRoles: roles }); });
+        refreshRoles().then((roles) => { if (roles) this.applyRoles(roles); });
       } finally {
         this.setData({ switchingRole: '' });
       }
