@@ -219,11 +219,34 @@ export class JobService {
   private get publicationPolicy(): PublicationPolicyService {
     return this.publication ?? new PublicationPolicyService(this.prisma);
   }
+  // 平台管理员发布的岗位（P2-52 平台内容，非同步家教）：与同步家教一样
+  // 按“圈子管理员优先”口径展示联系方式，仅回退链不同（回退发岗时快照）。
+  private isPlatformManagedPost(p: {
+    publisherScope?: PublicationScope;
+    applyMode?: JobApplyMode;
+    publisherName?: string | null;
+  }): boolean {
+    return (
+      p.publisherScope === PublicationScope.PLATFORM &&
+      !this.tutorJobPolicy.isExternalTutorPost(p)
+    );
+  }
+
   private async resolveCommunityOwnerContact(
-    posts: Array<{ applyMode?: JobApplyMode; publisherName?: string | null }>,
+    posts: Array<{
+      applyMode?: JobApplyMode;
+      publisherName?: string | null;
+      publisherScope?: PublicationScope;
+    }>,
     communityId: string | null,
   ): Promise<CommunityOwnerContact | null> {
-    if (!communityId || !posts.some((post) => this.tutorJobPolicy.isExternalTutorPost(post))) {
+    if (
+      !communityId ||
+      !posts.some(
+        (post) =>
+          this.tutorJobPolicy.isExternalTutorPost(post) || this.isPlatformManagedPost(post),
+      )
+    ) {
       return null;
     }
     const targetCommunityId = communityId;
@@ -1649,15 +1672,28 @@ export class JobService {
     communityOwnerContact: CommunityOwnerContact | null = null,
   ): JobPostVo {
     const isExternalTutorPost = this.tutorJobPolicy.isExternalTutorPost(p);
+    // 同步家教：仅用圈子管理员/圈主联系方式（P2-60，不回退同步源快照）。
+    // 平台管理员发布的岗位：允许展示时同样优先圈子管理员/圈主联系方式
+    // （圈子侧作为整体，电话/微信不混源）；圈子侧整体未填写时回退发岗时
+    // 平台管理员（发布账号）联系方式快照，最后保留存量商家资料兜底。
+    const circleContact =
+      this.isPlatformManagedPost(p) &&
+      !!(communityOwnerContact && (communityOwnerContact.phone || communityOwnerContact.wechat))
+        ? communityOwnerContact
+        : null;
     const contactPhone = isExternalTutorPost
       ? (communityOwnerContact?.phone ?? null)
       : exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
-        ? (p.contactPhoneSnapshot ?? p.merchant?.contactPhone ?? null)
+        ? circleContact
+          ? (circleContact.phone ?? null)
+          : (p.contactPhoneSnapshot ?? p.merchant?.contactPhone ?? null)
         : null;
     const contactWechat = isExternalTutorPost
       ? (communityOwnerContact?.wechat ?? null)
       : exposeContact || p.applyMode === JobApplyMode.CONTACT_ONLY
-        ? (p.contactWechatSnapshot ?? p.merchant?.contactWechat ?? null)
+        ? circleContact
+          ? (circleContact.wechat ?? null)
+          : (p.contactWechatSnapshot ?? p.merchant?.contactWechat ?? null)
         : null;
 
     return {

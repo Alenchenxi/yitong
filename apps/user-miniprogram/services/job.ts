@@ -41,8 +41,8 @@ export interface JobPostVo {
   title: string;
   description: string;
   requirements: string | null; // P0-19 任职要求
-  contactPhone: string | null; // M3-10 发岗时联系方式快照（存量回退商家资料）
-  contactWechat: string | null;
+  contactPhone: string | null; // M3-10 发岗时联系方式快照（存量回退商家资料）；同步家教/平台管理员岗位在圈内优先展示圈子管理员联系方式，回退发岗快照
+  contactWechat: string | null; // 同上（圈子侧电话/微信不与快照混源）
   contactInstruction: string | null;
   salary: string;
   salaryAmount: number | null; // P0-18 薪资数额（auto-parse，范围筛选用）
