@@ -112,6 +112,19 @@ export function clearAuth(app: AppLike) {
   wx.removeStorageSync(STORAGE_KEY);
 }
 
+// 账号资料更新后同步登录缓存（globalData.user + storage.user），
+// 让「我的」页 / 各端 profile panel 等直接读缓存的展示点立即生效
+export function updateCachedUser(
+  app: AppLike,
+  patch: Partial<Pick<UserInfo, 'nickname' | 'avatarUrl'>>,
+): void {
+  if (!app.globalData.user) return;
+  app.globalData.user = { ...app.globalData.user, ...patch };
+  const cached = wx.getStorageSync(STORAGE_KEY) || {};
+  (cached as any).user = app.globalData.user;
+  wx.setStorageSync(STORAGE_KEY, cached);
+}
+
 // CR-001: 持久化 anonToken（token 签发后调用，保持 storage 同步）
 export function persistAnonToken(app: AppLike, anonToken: string, anonId: string) {
   app.globalData.anonToken = anonToken;

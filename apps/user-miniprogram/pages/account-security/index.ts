@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../app';
 import { getAccount, updateAccount, deleteAccount } from '../../services/account';
+import { updateCachedUser } from '../../utils/auth';
 
 const GENDERS = ['male', 'female', 'other'];
 
@@ -51,13 +52,15 @@ Page({
     }
     this.setData({ saving: true });
     try {
-      await updateAccount({
+      const a = await updateAccount({
         nickname: this.data.nickname.trim(),
         gender: this.data.genderIndex >= 0 ? GENDERS[this.data.genderIndex] : undefined,
         birthday: this.data.birthday || undefined,
         phone: this.data.phone.trim(),
         wechat: this.data.wechat.trim(),
       });
+      // 同步登录缓存：用户端「我的」页与管理端 profile panel 均直接读 globalData.user
+      updateCachedUser(getApp<AppInstance>(), { nickname: a.nickname, avatarUrl: a.avatarUrl });
       wx.showToast({ title: '已保存', icon: 'success' });
     } catch {
       /* toast */
