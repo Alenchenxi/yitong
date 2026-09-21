@@ -249,11 +249,22 @@ export class AuthService {
       });
       roles = found.map((r) => r.role);
     }
+    // 拥有 ADMIN 角色时附带管理员类型名（平台管理员/圈子管理员/自定义类型），
+    // 用户端徽章按具体类型展示；无绑定 AdminUser（历史脏数据）时回落 null → 前端显示「管理员」
+    let adminTypeName: string | null = null;
+    if (roles.includes(Role.ADMIN) && user.openid) {
+      const admin = await this.prisma.adminUser.findFirst({
+        where: { openid: user.openid },
+        select: { adminType: { select: { name: true } } },
+      });
+      adminTypeName = admin?.adminType?.name ?? null;
+    }
     return {
       id: user.id,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
       roles,
+      adminTypeName,
     };
   }
 

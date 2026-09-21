@@ -19,9 +19,11 @@ function userRoleDesc(anonymousContentEnabled: boolean, jobModuleEnabled: boolea
   return parts.join(' · ');
 }
 
-// 身份卡徽章按管理权限显示：拥有 ADMIN 角色显示「管理员」，没有管理权限才是「普通用户」
-function profileRoleText(myRoles: string[]): string {
-  return myRoles.includes('ADMIN') ? '管理员' : '普通用户';
+// 身份卡徽章按管理权限显示：拥有 ADMIN 角色显示具体管理员类型名（平台管理员/圈子管理员等），
+// 没有管理权限才是「普通用户」；类型名缺失（未绑定 AdminUser 的历史脏数据）时回落「管理员」
+function profileRoleText(myRoles: string[], adminTypeName?: string | null): string {
+  if (!myRoles.includes('ADMIN')) return '普通用户';
+  return adminTypeName || '管理员';
 }
 
 async function countVisibleUnreadNotifications(anonymousContentEnabled: boolean): Promise<number> {
@@ -105,12 +107,17 @@ Page({
       user: u,
       avatarChar: u ? u.nickname.slice(0, 1) : '?',
       currentRole,
-      roleText: profileRoleText(u?.roles ?? []),
+      roleText: profileRoleText(u?.roles ?? [], u?.adminTypeName),
       myRoles: u?.roles ?? [],
     });
-    // 后台刷新实时角色权限（静默，不阻塞 UI）
+    // 后台刷新实时角色权限（静默，不阻塞 UI）；refreshRoles 已同步 adminTypeName 进 globalData
     refreshRoles().then((roles) => {
-      if (roles) this.setData({ myRoles: roles, roleText: profileRoleText(roles) });
+      if (roles) {
+        this.setData({
+          myRoles: roles,
+          roleText: profileRoleText(roles, app.globalData.user?.adminTypeName),
+        });
+      }
     });
     try {
       this.setData({
@@ -146,7 +153,12 @@ Page({
       if (!msg) wx.showToast({ title: '切换失败，请重试', icon: 'none' });
       // 刷新角色状态
       refreshRoles().then((roles) => {
-        if (roles) this.setData({ myRoles: roles, roleText: profileRoleText(roles) });
+        if (roles) {
+          this.setData({
+            myRoles: roles,
+            roleText: profileRoleText(roles, getApp<AppInstance>().globalData.user?.adminTypeName),
+          });
+        }
       });
     } finally {
       this.setData({ switchingRole: '' });

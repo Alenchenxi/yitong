@@ -47,16 +47,20 @@ export function refreshRoles(): Promise<string[] | null> {
         Authorization: `Bearer ${app.globalData.token}`,
       },
       success: (r) => {
-        const b = r.data as ApiResult<{ roles: string[] }>;
+        const b = r.data as ApiResult<{ roles: string[]; adminTypeName: string | null }>;
         if (b.code === 0 && b.data?.roles) {
           // 更新内存
           if (app.globalData.user) {
             app.globalData.user.roles = b.data.roles;
+            app.globalData.user.adminTypeName = b.data.adminTypeName;
           }
           // 同步 storage
           try {
             const cached = wx.getStorageSync('yitong_auth') || {};
-            if (cached.user) cached.user.roles = b.data.roles;
+            if (cached.user) {
+              cached.user.roles = b.data.roles;
+              cached.user.adminTypeName = b.data.adminTypeName;
+            }
             wx.setStorageSync('yitong_auth', cached);
           } catch { /* storage 失败不影响 */ }
           resolve(b.data.roles);

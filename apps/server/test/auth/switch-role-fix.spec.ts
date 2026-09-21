@@ -189,14 +189,22 @@ describe('AuthService.switchRole 场景 A: USER+MERCHANT+ADMIN + AdminUser 绑�
     expect(firstCall.type).toBe('access');
     expect(firstCall.uid).toBe('u_x');
     expect(firstCall.role).toBe(Role.ADMIN);
-    // adminUser.findFirst 应被调用一次，where.openid=openid_x
-    expect(prisma.adminUser.findFirst).toHaveBeenCalledTimes(1);
-    expect(prisma.adminUser.findFirst).toHaveBeenCalledWith({
+    // adminUser.findFirst 调用 2 次（P2-66 起 toUserVo 附带 adminTypeName 解析）：
+    // 第 1 次：switchRole 的 ADMIN 资格校验（active 管理员类型过滤）
+    // 第 2 次：issueTokens -> toUserVo 的管理员类型名解析（仅按 openid 查，取 adminType.name）
+    expect(prisma.adminUser.findFirst).toHaveBeenCalledTimes(2);
+    expect(prisma.adminUser.findFirst).toHaveBeenNthCalledWith(1, {
       where: {
         openid: 'openid_x',
         adminType: { active: true, deletedAt: null },
       },
     });
+    expect(prisma.adminUser.findFirst).toHaveBeenNthCalledWith(2, {
+      where: { openid: 'openid_x' },
+      select: { adminType: { select: { name: true } } },
+    });
+    // fixture 未绑定 adminType -> adminTypeName 回落 null（前端显示「管理员」）
+    expect(result.user.adminTypeName).toBeNull();
   });
 });
 

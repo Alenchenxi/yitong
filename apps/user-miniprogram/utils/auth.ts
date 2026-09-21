@@ -5,6 +5,7 @@ export interface UserInfo {
   nickname: string;
   avatarUrl: string | null;
   roles: string[]; // 拥有的角色集合
+  adminTypeName?: string | null; // 管理员类型名（平台管理员/圈子管理员等；无 ADMIN 角色或未绑定时为空）
 }
 
 interface LoginResp {
