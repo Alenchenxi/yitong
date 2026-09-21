@@ -17,6 +17,8 @@ export interface CommunityVo {
   rejectReason: string | null; // P2-26 仅被拒态有值
   isMember: boolean;
   myRole: 'OWNER' | 'ADMIN' | 'MEMBER' | null;
+  /** P2-70 发岗免支付口径：该圈在我名下管理（圈内 OWNER/ADMIN 或管理端分配的圈子管理员授权）。仅 /community/list 计算 */
+  managedByMe?: boolean;
   createdAt: string;
 }
 
@@ -43,6 +45,15 @@ export function isCommunityManagerRole(role: CommunityVo['myRole'] | undefined):
   return role === 'OWNER' || role === 'ADMIN';
 }
 
+/**
+ * P2-70 该圈是否「我管理的圈子」（发岗免支付口径）：圈内圈主/管理员角色，
+ * 或管理端分配的圈子管理员授权（/community/list 的 managedByMe，最终以服务端为准）。
+ */
+export function isCommunityManagedByMe(c: Pick<CommunityVo, 'myRole' | 'managedByMe'> | undefined): boolean {
+  if (!c) return false;
+  return isCommunityManagerRole(c.myRole) || c.managedByMe === true;
+}
+
 /** P2-64 发岗选圈整理结果：排序后列表 + picker 展示名（与列表按下标对齐）+ 是否圈子管理员 */
 export interface JobCommunityPicker {
   list: CommunityVo[];
@@ -51,21 +62,22 @@ export interface JobCommunityPicker {
 }
 
 /**
- * P2-64 发岗选圈列表整理：
- * - 圈子管理员/圈主：自己管理的圈子排前并标注「（免费发布）」，其余标「（付费发布）」，组内保持原顺序；
+ * P2-64/70 发岗选圈列表整理：
+ * - 圈子管理员/圈主（圈内角色或管理端授权，见 isCommunityManagedByMe）：自己管理的圈子排前
+ *   并标注「（免费发布）」，其余标「（付费发布）」，组内保持原顺序；
  * - 普通商家：原顺序、原名称（不加标签、不排序）。
  */
 export function buildJobCommunityPicker(list: CommunityVo[]): JobCommunityPicker {
-  if (!list.some((c) => isCommunityManagerRole(c.myRole))) {
+  if (!list.some((c) => isCommunityManagedByMe(c))) {
     return { list, names: list.map((c) => c.name), isCircleAdmin: false };
   }
   const sorted = [...list].sort(
-    (a, b) => (isCommunityManagerRole(a.myRole) ? 0 : 1) - (isCommunityManagerRole(b.myRole) ? 0 : 1),
+    (a, b) => (isCommunityManagedByMe(a) ? 0 : 1) - (isCommunityManagedByMe(b) ? 0 : 1),
   );
   return {
     list: sorted,
     names: sorted.map((c) =>
-      isCommunityManagerRole(c.myRole) ? `${c.name}（免费发布）` : `${c.name}（付费发布）`
+      isCommunityManagedByMe(c) ? `${c.name}（免费发布）` : `${c.name}（付费发布）`
     ),
     isCircleAdmin: true,
   };

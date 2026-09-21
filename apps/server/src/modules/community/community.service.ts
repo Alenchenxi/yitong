@@ -130,9 +130,9 @@ export class CommunityService {
     }
   }
 
-  /** 全部 ACTIVE 圈子 + 当前用户 isMember/myRole；可选按 category 过滤（广场左侧分类） */
+  /** 全部 ACTIVE 圈子 + 当前用户 isMember/myRole/managedByMe；可选按 category 过滤（广场左侧分类） */
   async listPublic(uid: string, category?: string): Promise<CommunityVo[]> {
-    const [communities, memberships] = await Promise.all([
+    const [communities, memberships, consoleScope] = await Promise.all([
       this.prisma.community.findMany({
         where: {
           status: CommunityStatus.ACTIVE,
@@ -145,17 +145,52 @@ export class CommunityService {
         where: { userId: uid },
         select: { communityId: true, role: true },
       }),
+      // P2-70：管理端分配的圈子管理员授权范围（非平台类型；普通用户两查皆空，无额外成本路径）
+      this.consoleCircleAdminScope(uid),
     ]);
     const memberMap = new Map(memberships.map((m) => [m.communityId, m.role]));
     const stats = await this.countCommunityStats(communities);
     return communities
-      .map((c) => this.toVo(c, memberMap.get(c.id) ?? null, stats.get(c.id)))
+      .map((c) => {
+        const vo = this.toVo(c, memberMap.get(c.id) ?? null, stats.get(c.id));
+        // P2-70 发岗免支付口径：圈内 OWNER/ADMIN 或 管理端圈子管理员授权（含全圈）→「我管理的圈子」
+        const role = memberMap.get(c.id);
+        if (
+          role === CommunityMemberRole.OWNER
+          || role === CommunityMemberRole.ADMIN
+          || (consoleScope !== null && (consoleScope.all || consoleScope.ids.has(c.id)))
+        ) {
+          vo.managedByMe = true;
+        }
+        return vo;
+      })
       .sort(
         (a, b) =>
           b.memberCount - a.memberCount ||
           a.createdAt.localeCompare(b.createdAt) ||
           a.id.localeCompare(b.id),
       );
+  }
+
+  /**
+   * P2-70 管理端圈子管理员（admin_users 非平台类型 + adminType active/未删，与
+   * publication-policy.isPlatformUser 同套绑定关系）的圈子授权范围：
+   * all=「全部圈子」授权；ids=指定圈集合；该用户不是管理端管理员（或无 openid）返回 null。
+   * 只读辅助，供发岗免支付（payment）与选圈标注（listPublic）对齐「自己的圈子」口径。
+   */
+  private async consoleCircleAdminScope(uid: string): Promise<{ all: boolean; ids: Set<string> } | null> {
+    const user = await this.prisma.user.findUnique({ where: { id: uid }, select: { openid: true } });
+    if (!user?.openid) return null;
+    const admin = await this.prisma.adminUser.findFirst({
+      where: { openid: user.openid, adminType: { active: true, deletedAt: null, isPlatform: false } },
+      select: { id: true, allCommunities: true },
+    });
+    if (!admin) return null;
+    const scopes = await this.prisma.adminCommunityScope.findMany({
+      where: { adminUserId: admin.id },
+      select: { communityId: true },
+    });
+    return { all: admin.allCommunities, ids: new Set(scopes.map((s) => s.communityId)) };
   }
 
   /** 圈子搜索：name 模糊匹配（ACTIVE，最多 20 条） */

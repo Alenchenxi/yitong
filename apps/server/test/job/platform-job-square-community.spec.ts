@@ -470,6 +470,10 @@ describe('圈子批量动态统计', () => {
       community: {
         findMany: jest.fn().mockResolvedValue(communities),
       },
+      // P2-70：listPublic 并行查 consoleCircleAdminScope；user.findUnique 返回 null 即短路，不触 adminUser
+      user: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
       communityMember: {
         findMany: jest.fn().mockResolvedValue([]),
         groupBy: jest.fn().mockResolvedValue([

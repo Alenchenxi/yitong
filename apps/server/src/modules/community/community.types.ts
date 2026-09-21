@@ -20,6 +20,8 @@ export interface CommunityVo {
   rejectReason: string | null;
   isMember: boolean;
   myRole: CommunityRoleVo | null;
+  /** P2-70 发岗免支付口径：该圈在我名下管理（圈内 OWNER/ADMIN，或管理端分配的圈子管理员授权范围/全圈）。仅 listPublic 计算；缺省/false 均表示非我管理 */
+  managedByMe?: boolean;
   createdAt: string;
 }
 

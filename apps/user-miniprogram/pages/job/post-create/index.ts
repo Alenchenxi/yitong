@@ -4,7 +4,7 @@ import {
   type JobPostVoExt,
   type JobTemplateVo,
 } from '../../../services/job';
-import { buildJobCommunityPicker, isCommunityManagerRole, listCommunities, type CommunityVo } from '../../../services/community';
+import { buildJobCommunityPicker, isCommunityManagedByMe, listCommunities, type CommunityVo } from '../../../services/community';
 import { publishJob } from '../../../services/payment';
 import type { AppInstance } from '../../../app';
 
@@ -234,10 +234,10 @@ Page({
         duration: f.duration,
         communityId: this.data.selectedCommunityId || undefined,
       });
-      // P2-64 免支付直发判定（仅作预判，服务端 CommunityMember 口径为准）：
-      // 平台管理员任意圈免；圈子管理员/圈主发到自己管理的圈子免；否则进支付页正常付费
+      // P2-64/70 免支付直发判定（仅作预判，服务端为准）：
+      // 平台管理员任意圈免；圈子管理员/圈主（圈内角色或管理端授权）发到自己管理的圈子免；否则进支付页正常付费
       const selectedCommunity = this.data.communities.find((c) => c.id === this.data.selectedCommunityId);
-      const ownManagedCircle = isCommunityManagerRole(selectedCommunity?.myRole);
+      const ownManagedCircle = isCommunityManagedByMe(selectedCommunity);
       if (getApp<AppInstance>().globalData.user?.roles?.includes('ADMIN') || ownManagedCircle) {
         const order = await publishJob({ jobPostId: post.id, duration: f.duration });
         if (order.jobPostStatus === 'PUBLISHED') {
