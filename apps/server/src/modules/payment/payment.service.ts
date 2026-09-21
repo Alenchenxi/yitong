@@ -56,7 +56,7 @@ export class PaymentService {
   // ===== 兼职付费发布（JOB_PUBLISH）=====
 
   // 免支付发岗公共流程：建 waived 订单 → 直接履约（PAID + 岗位直发），响应结构同付费下单。
-  // 适用两类身份（P2-64）：平台管理员（user_roles.role=ADMIN，任意圈子全免）、
+  // 适用两类身份（P2-64）：平台管理员（AdminUser + adminType.isPlatform，任意圈子全免）、
   // 圈子管理员/圈主（CommunityMember.role ∈ OWNER/ADMIN，仅发到自己管理的圈子免）。
   // 前端发布页凭本响应 jobPostStatus=PUBLISHED 直接提示发布成功，否则进支付页。
   private async fulfillWaivedJobPublishOrder(
@@ -118,12 +118,11 @@ export class PaymentService {
     if (!pricing) throw new BizException(50004, '该档位单价未配置', HttpStatus.CONFLICT);
 
     // 免支付发岗两类身份（P2-64）：校验流程照走，不进支付页，订单直接 PAID + 岗位直发。
-    // 1) 平台管理员（user_roles.role=ADMIN）：任意圈子全免；
+    // 1) 平台管理员：任意圈子全免。判定必须用 AdminUser + adminType.isPlatform（与
+    //    publication-policy.isPlatformUser 同口径）——不能用 user_roles.role=ADMIN：
+    //    createAdmin 给圈子管理员建档时同样写该角色，误判会导致圈子管理员全圈子免支付。
     // 2) 圈子管理员/圈主（CommunityMember.role ∈ OWNER/ADMIN）：仅发到自己管理的圈子免，其他圈子照常付费。
-    const adminRole = await this.prisma.userRole.findUnique({
-      where: { userId_role: { userId: merchantUid, role: 'ADMIN' } },
-    });
-    if (adminRole) {
+    if (await this.publicationPolicy.isPlatformUser(merchantUid)) {
       return this.fulfillWaivedJobPublishOrder(merchant.id, post.id, dto.duration, pricing.price, '平台管理员');
     }
     if (post.communityId) {
