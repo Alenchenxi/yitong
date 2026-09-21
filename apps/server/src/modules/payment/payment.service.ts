@@ -2,6 +2,7 @@ import { HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import {
+  CommunityMemberRole,
   JobDuration,
   MerchantStatus,
   JobPostStatus,
@@ -54,6 +55,44 @@ export class PaymentService {
 
   // ===== 兼职付费发布（JOB_PUBLISH）=====
 
+  // 免支付发岗公共流程：建 waived 订单 → 直接履约（PAID + 岗位直发），响应结构同付费下单。
+  // 适用两类身份（P2-64）：平台管理员（user_roles.role=ADMIN，任意圈子全免）、
+  // 圈子管理员/圈主（CommunityMember.role ∈ OWNER/ADMIN，仅发到自己管理的圈子免）。
+  // 前端发布页凭本响应 jobPostStatus=PUBLISHED 直接提示发布成功，否则进支付页。
+  private async fulfillWaivedJobPublishOrder(
+    merchantId: string,
+    jobPostId: string,
+    duration: JobDuration,
+    price: Prisma.Decimal,
+    waivedBy: string,
+  ) {
+    const order = await this.prisma.paymentOrder.create({
+      data: {
+        scene: PayScene.JOB_PUBLISH,
+        channel: PayChannel.XPAY,
+        merchantId,
+        jobPostId,
+        duration,
+        amount: price,
+        status: PayStatus.PENDING,
+        waived: true,
+      },
+    });
+    await this.fulfillOrder(order.id);
+    const done = await this.prisma.paymentOrder.findUniqueOrThrow({ where: { id: order.id } });
+    this.logger.log(`${waivedBy}免支付发岗: order=${order.id} job=${jobPostId}`);
+    return {
+      orderId: order.id,
+      amount: done.amount.toString(),
+      status: done.status,
+      jobPostId,
+      jobPostStatus: JobPostStatus.PUBLISHED,
+      virtualPayParams: null,
+      wxPayParams: null,
+      waived: true,
+    };
+  }
+
   // 付费发布：按 PricingConfig 计价下单。金额服务端算，不信前端。
   // - 凭证齐全（isReady）：虚拟支付道具直购下单，返回 virtualPayParams 供前端 wx.requestVirtualPayment；
   //   订单留 PENDING，等消息推送发货回调（xpay_goods_deliver_notify）或前端支付成功后的 sync 兜底对账置 PAID。
@@ -78,37 +117,26 @@ export class PaymentService {
     const pricing = await this.prisma.pricingConfig.findUnique({ where: { duration: dto.duration } });
     if (!pricing) throw new BizException(50004, '该档位单价未配置', HttpStatus.CONFLICT);
 
-    // 平台管理员（user_roles.role=ADMIN）发岗免支付：校验流程照走，不进支付页，订单直接 PAID + 岗位直发。
-    // 前端发布页检测 ADMIN 角色后不下跳支付页，凭本响应的 jobPostStatus=PUBLISHED 直接提示发布成功。
+    // 免支付发岗两类身份（P2-64）：校验流程照走，不进支付页，订单直接 PAID + 岗位直发。
+    // 1) 平台管理员（user_roles.role=ADMIN）：任意圈子全免；
+    // 2) 圈子管理员/圈主（CommunityMember.role ∈ OWNER/ADMIN）：仅发到自己管理的圈子免，其他圈子照常付费。
     const adminRole = await this.prisma.userRole.findUnique({
       where: { userId_role: { userId: merchantUid, role: 'ADMIN' } },
     });
     if (adminRole) {
-      const order = await this.prisma.paymentOrder.create({
-        data: {
-          scene: PayScene.JOB_PUBLISH,
-          channel: PayChannel.XPAY,
-          merchantId: merchant.id,
-          jobPostId: post.id,
-          duration: dto.duration,
-          amount: pricing.price,
-          status: PayStatus.PENDING,
-          waived: true,
-        },
+      return this.fulfillWaivedJobPublishOrder(merchant.id, post.id, dto.duration, pricing.price, '平台管理员');
+    }
+    if (post.communityId) {
+      const membership = await this.prisma.communityMember.findUnique({
+        where: { communityId_userId: { communityId: post.communityId, userId: merchantUid } },
+        select: { role: true },
       });
-      await this.fulfillOrder(order.id);
-      const done = await this.prisma.paymentOrder.findUniqueOrThrow({ where: { id: order.id } });
-      this.logger.log(`平台管理员免支付发岗: order=${order.id} job=${post.id}`);
-      return {
-        orderId: order.id,
-        amount: done.amount.toString(),
-        status: done.status,
-        jobPostId: post.id,
-        jobPostStatus: JobPostStatus.PUBLISHED,
-        virtualPayParams: null,
-        wxPayParams: null,
-        waived: true,
-      };
+      if (
+        membership
+        && (membership.role === CommunityMemberRole.OWNER || membership.role === CommunityMemberRole.ADMIN)
+      ) {
+        return this.fulfillWaivedJobPublishOrder(merchant.id, post.id, dto.duration, pricing.price, '圈子管理员');
+      }
     }
 
     // 道具守卫：改价后新道具未在微信支付网关生效（约10~15分钟）时抛 50008（提示「当前支付人数过多，请稍后重试」），顺带触发同步重试

@@ -38,6 +38,39 @@ export function listCommunities(category?: string): Promise<CommunityVo[]> {
   return request<CommunityVo[]>({ url: `/community/list${query}` });
 }
 
+/** 圈子管理角色：圈主/管理员（P2-64 发岗免支付判定口径，与后端 payment.service 一致，最终以服务端为准） */
+export function isCommunityManagerRole(role: CommunityVo['myRole'] | undefined): boolean {
+  return role === 'OWNER' || role === 'ADMIN';
+}
+
+/** P2-64 发岗选圈整理结果：排序后列表 + picker 展示名（与列表按下标对齐）+ 是否圈子管理员 */
+export interface JobCommunityPicker {
+  list: CommunityVo[];
+  names: string[];
+  isCircleAdmin: boolean;
+}
+
+/**
+ * P2-64 发岗选圈列表整理：
+ * - 圈子管理员/圈主：自己管理的圈子排前并标注「（免费发布）」，其余标「（付费发布）」，组内保持原顺序；
+ * - 普通商家：原顺序、原名称（不加标签、不排序）。
+ */
+export function buildJobCommunityPicker(list: CommunityVo[]): JobCommunityPicker {
+  if (!list.some((c) => isCommunityManagerRole(c.myRole))) {
+    return { list, names: list.map((c) => c.name), isCircleAdmin: false };
+  }
+  const sorted = [...list].sort(
+    (a, b) => (isCommunityManagerRole(a.myRole) ? 0 : 1) - (isCommunityManagerRole(b.myRole) ? 0 : 1),
+  );
+  return {
+    list: sorted,
+    names: sorted.map((c) =>
+      isCommunityManagerRole(c.myRole) ? `${c.name}（免费发布）` : `${c.name}（付费发布）`
+    ),
+    isCircleAdmin: true,
+  };
+}
+
 /** 圈子搜索（name 模糊匹配，最多 20 条） */
 export function searchCommunities(keyword: string): Promise<CommunityVo[]> {
   return request<CommunityVo[]>({ url: `/community/search?keyword=${encodeURIComponent(keyword)}` });

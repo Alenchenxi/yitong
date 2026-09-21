@@ -1,6 +1,6 @@
 import { getJobCategories, type JobCategoryGridItem } from '../../../services/job';
 import { suggestPlaces, reverseGeocode, type PoiInfoVo } from '../../../services/place-suggest';
-import { listCommunities, type CommunityVo } from '../../../services/community';
+import { buildJobCommunityPicker, listCommunities, type CommunityVo } from '../../../services/community';
 import type { AppInstance } from '../../../app';
 
 type LocationPermissionAction = '' | 'miniProgramSettings' | 'appSettings' | 'privacy' | 'retry';
@@ -32,6 +32,8 @@ Page({
     },
     // 圈子：发岗归属圈子（类别宫格与工作地点之间；默认商家当前圈子，可改）
     communities: [] as CommunityVo[],
+    communityNames: [] as string[], // picker 展示名（与 communities 按下标对齐；圈子管理员带免费/付费标注）
+    isCircleAdmin: false as boolean, // P2-64 当前商家是否圈子管理员/圈主（控制选圈标注与排序）
     selectedCommunityId: '' as string,
     selectedCommunityName: '' as string,
     selectedCommunityIndex: 0 as number,
@@ -76,22 +78,26 @@ Page({
     try {
       const list = await listCommunities();
       if (list.length === 0) {
-        this.setData({ communities: [], communityLoadFailed: true });
+        this.setData({ communities: [], communityNames: [], communityLoadFailed: true });
         return;
       }
       const app = getApp<AppInstance>();
       const activeId = app.globalData.activeCommunityId;
-      const prefer = list.find((c) => c.id === activeId) ?? list[0]!;
-      const idx = list.findIndex((c) => c.id === prefer.id);
+      // P2-64 圈子管理员/圈主：自己管理的圈子排前并标注免费/付费；普通商家原顺序原名
+      const picker = buildJobCommunityPicker(list);
+      const prefer = picker.list.find((c) => c.id === activeId) ?? picker.list[0]!;
+      const idx = picker.list.findIndex((c) => c.id === prefer.id);
       this.setData({
-        communities: list,
+        communities: picker.list,
+        communityNames: picker.names,
+        isCircleAdmin: picker.isCircleAdmin,
         selectedCommunityId: prefer.id,
         selectedCommunityName: prefer.name,
         selectedCommunityIndex: idx >= 0 ? idx : 0,
         communityLoadFailed: false,
       });
     } catch {
-      this.setData({ communityLoadFailed: true });
+      this.setData({ communityNames: [], communityLoadFailed: true });
     }
   },
 

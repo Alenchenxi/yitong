@@ -4,7 +4,7 @@ import {
   type JobPostVoExt,
   type JobTemplateVo,
 } from '../../../services/job';
-import { listCommunities, type CommunityVo } from '../../../services/community';
+import { buildJobCommunityPicker, isCommunityManagerRole, listCommunities, type CommunityVo } from '../../../services/community';
 import { publishJob } from '../../../services/payment';
 import type { AppInstance } from '../../../app';
 
@@ -55,6 +55,8 @@ Page({
     submitting: false,
     // 圈子：发岗归属圈子（下拉选择，默认商家当前圈子）
     communities: [] as CommunityVo[],
+    communityNames: [] as string[], // picker 展示名（与 communities 按下标对齐；圈子管理员带免费/付费标注）
+    isCircleAdmin: false as boolean, // P2-64 当前商家是否圈子管理员/圈主（控制选圈标注与排序）
     selectedCommunityId: '',
     selectedCommunityName: '',
     selectedCommunityIndex: 0,
@@ -88,24 +90,28 @@ Page({
     try {
       const list = await listCommunities();
       if (list.length === 0) {
-        this.setData({ communities: [], communityLoadFailed: true });
+        this.setData({ communities: [], communityNames: [], communityLoadFailed: true });
         return;
       }
       const app = getApp<AppInstance>();
       const activeId = app.globalData.activeCommunityId;
+      // P2-64 圈子管理员/圈主：自己管理的圈子排前并标注免费/付费；普通商家原顺序原名
+      const picker = buildJobCommunityPicker(list);
       // 预选优先级：publish 页所选圈子（pendingCommunityId）> 当前圈子 > 第一个
       const pending = this.data.pendingCommunityId;
-      const prefer = list.find((c) => c.id === pending) ?? list.find((c) => c.id === activeId) ?? list[0]!;
-      const idx = list.findIndex((c) => c.id === prefer.id);
+      const prefer = picker.list.find((c) => c.id === pending) ?? picker.list.find((c) => c.id === activeId) ?? picker.list[0]!;
+      const idx = picker.list.findIndex((c) => c.id === prefer.id);
       this.setData({
-        communities: list,
+        communities: picker.list,
+        communityNames: picker.names,
+        isCircleAdmin: picker.isCircleAdmin,
         selectedCommunityId: prefer.id,
         selectedCommunityName: prefer.name,
         selectedCommunityIndex: idx >= 0 ? idx : 0,
         communityLoadFailed: false,
       });
     } catch {
-      this.setData({ communityLoadFailed: true });
+      this.setData({ communityNames: [], communityLoadFailed: true });
     }
   },
 
@@ -228,14 +234,18 @@ Page({
         duration: f.duration,
         communityId: this.data.selectedCommunityId || undefined,
       });
-      // 平台管理员发岗免支付：直接下单（服务端校验 ADMIN 角色，免支付岗位直发），不进支付页
-      if (getApp<AppInstance>().globalData.user?.roles?.includes('ADMIN')) {
+      // P2-64 免支付直发判定（仅作预判，服务端 CommunityMember 口径为准）：
+      // 平台管理员任意圈免；圈子管理员/圈主发到自己管理的圈子免；否则进支付页正常付费
+      const selectedCommunity = this.data.communities.find((c) => c.id === this.data.selectedCommunityId);
+      const ownManagedCircle = isCommunityManagerRole(selectedCommunity?.myRole);
+      if (getApp<AppInstance>().globalData.user?.roles?.includes('ADMIN') || ownManagedCircle) {
         const order = await publishJob({ jobPostId: post.id, duration: f.duration });
         if (order.jobPostStatus === 'PUBLISHED') {
           wx.showToast({ title: '发布成功', icon: 'success' });
           setTimeout(() => wx.reLaunch({ url: '/pages/merchant/index?tab=jobs' }), 1200);
           return;
         }
+        // 服务端判定仍需支付（预判失配兜底）：落支付页（该单已建 PENDING，支付页会复用）
       }
       wx.redirectTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${f.duration}` });
     } catch (e) {
