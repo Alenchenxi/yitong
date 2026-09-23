@@ -11,13 +11,15 @@ import {
   PublicationScope,
   Prisma,
   Settlement,
+  Merchant,
 } from '@prisma/client';
+import { timingSafeEqual } from 'node:crypto';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { parseSalaryAmount } from '../../common/job/parse-salary-amount';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationService, NotificationType } from '../notification/notification.service';
-import { CommunityService } from '../community/community.service';
+import { CommunityService, DEFAULT_COMMUNITY_ID } from '../community/community.service';
 import { JobVisibilityPolicyService } from '../job-visibility/job-visibility.service';
 import { LocationService } from './location.service';
 import { WORK_DATE_VALUES, WORK_PERIOD_VALUES } from './dto/job.dto';
@@ -32,7 +34,12 @@ import type {
   ApplyDto,
   UpsertResumeDto,
   UpdateJobPostDto,
+  BatchImportJobPostsDto,
+  BatchImportJobPostItem,
 } from './dto/job.dto';
+
+// P2-73 批量导入岗位固定挂靠商家：温州森阳课后托管服务有限公司（线上主运营账号）
+const BATCH_IMPORT_MERCHANT_ID = 'cmtquopy900lcci1ws3zjf73p';
 
 const MERCHANT_CONTACT_SELECT = {
   userId: true,
@@ -463,6 +470,138 @@ export class JobService {
 
     // 发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）；此处保持 PENDING 草稿
     return this.toPostVo(await this.refreshPost(post.id), true);
+  }
+
+  // ===== P2-73 批量导入岗位（全圈直发）=====
+  // 哑管道口径：调用方负责坐标解析与数据质量，服务端只做 token 校验、基本格式/
+  // 枚举校验（全局 ValidationPipe）与内容安全 checkText，其余字段原样落库并补
+  // 固定值：挂靠 BATCH_IMPORT_MERCHANT_ID、D90（expireAt=+90天）、PLATFORM +
+  // ALL_COMMUNITIES（全圈同步）、直接 PUBLISHED（不走支付）。
+  // token：Authorization: Bearer 与 JOB_BATCH_IMPORT_TOKEN 全等比对（恒时比较）；
+  // 环境变量未配置 = 接口整体禁用（fail-closed）。
+  assertBatchImportToken(authHeader: string | undefined): void {
+    const expected = process.env.JOB_BATCH_IMPORT_TOKEN?.trim() ?? '';
+    if (!expected) {
+      throw new BizException(10003, '批量导入接口未配置 token，已禁用', HttpStatus.FORBIDDEN);
+    }
+    const prefix = 'Bearer ';
+    const provided = authHeader?.startsWith(prefix)
+      ? authHeader.slice(prefix.length).trim()
+      : '';
+    const providedBuf = Buffer.from(provided, 'utf8');
+    const expectedBuf = Buffer.from(expected, 'utf8');
+    if (providedBuf.length !== expectedBuf.length || !timingSafeEqual(providedBuf, expectedBuf)) {
+      throw new BizException(10003, '批量导入 token 无效', HttpStatus.FORBIDDEN);
+    }
+  }
+
+  async batchImport(dto: BatchImportJobPostsDto): Promise<{
+    total: number;
+    succeeded: number;
+    failed: number;
+    results: Array<{ index: number; ok: boolean; postId?: string; code?: number; message?: string }>;
+  }> {
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { id: BATCH_IMPORT_MERCHANT_ID },
+    });
+    if (!merchant || merchant.status !== MerchantStatus.APPROVED) {
+      throw new BizException(
+        60003,
+        '批量导入默认商家不存在或未过审，禁止导入',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    // 同批次共用同一过期时间（90 天），与单条发岗口径一致
+    const expireAt = new Date(Date.now() + 90 * 86_400_000);
+    const results: Array<{
+      index: number;
+      ok: boolean;
+      postId?: string;
+      code?: number;
+      message?: string;
+    }> = [];
+    for (const [index, item] of dto.posts.entries()) {
+      try {
+        const created = await this.batchImportOne(item, merchant, expireAt);
+        results.push({ index, ok: true, postId: created.id });
+      } catch (err) {
+        if (err instanceof BizException) {
+          results.push({ index, ok: false, code: err.bizCode, message: err.message });
+        } else {
+          this.logger.error(
+            `批量导入第 ${index} 条内部错误: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`,
+          );
+          results.push({ index, ok: false, code: 90001, message: '内部错误' });
+        }
+      }
+    }
+    const succeeded = results.filter((r) => r.ok).length;
+    return {
+      total: dto.posts.length,
+      succeeded,
+      failed: dto.posts.length - succeeded,
+      results,
+    };
+  }
+
+  // 单条导入：逐条隔离失败（BizException 由 batchImport 捕获记入 results，不中断整批）
+  private async batchImportOne(
+    item: BatchImportJobPostItem,
+    merchant: Merchant,
+    expireAt: Date,
+  ): Promise<{ id: string }> {
+    const customCategory = item.customCategory?.trim() || null;
+    if (customCategory && item.category !== JobCategory.LONG_TERM) {
+      throw new BizException(40003, '自定义岗位类型仅可用于自定义岗位', HttpStatus.BAD_REQUEST);
+    }
+    await Promise.all([
+      this.moderation.checkText(item.title),
+      this.moderation.checkText(item.description),
+      this.moderation.checkText(item.salary),
+      this.moderation.checkText(item.location),
+      ...(customCategory ? [this.moderation.checkText(customCategory)] : []),
+    ]);
+    const communityId = item.communityId?.trim() || DEFAULT_COMMUNITY_ID;
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      select: { status: true },
+    });
+    if (!community || community.status !== CommunityStatus.ACTIVE) {
+      throw new BizException(40006, '圈子不存在或不可用', HttpStatus.BAD_REQUEST);
+    }
+    return this.prisma.jobPost.create({
+      data: {
+        merchantId: merchant.id,
+        communityId,
+        title: item.title,
+        description: item.description,
+        requirements: item.requirements ?? null,
+        contactPhoneSnapshot: item.contactPhone?.trim() || merchant.contactPhone,
+        contactWechatSnapshot: item.contactWechat?.trim() || merchant.contactWechat,
+        salary: item.salary,
+        salaryAmount: parseSalaryAmount(item.salary),
+        location: item.location,
+        locationPoiId: item.locationPoiId ?? null,
+        locationLng: item.locationLng ?? null,
+        locationLat: item.locationLat ?? null,
+        locationCity: item.locationCity ?? null,
+        category: item.category,
+        customCategory,
+        settlement: item.settlement,
+        workDates: this.filterWhitelist(item.workDates, WORK_DATE_VALUES),
+        workPeriods: this.filterWhitelist(item.workPeriods, WORK_PERIOD_VALUES),
+        headcount: item.headcount ?? 1,
+        urgent: item.urgent ?? false,
+        online: item.online ?? false,
+        questions: item.questions ?? [],
+        duration: JobDuration.D90,
+        expireAt,
+        publisherScope: PublicationScope.PLATFORM,
+        visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
+        status: JobPostStatus.PUBLISHED,
+      },
+      select: { id: true },
+    });
   }
 
   // M3-04 编辑岗位：商家可编辑未下架且属于自己的岗位（PENDING / PUBLISHED 可编辑，TAKEN_DOWN / EXPIRED 不可编辑）；

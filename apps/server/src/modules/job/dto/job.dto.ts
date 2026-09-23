@@ -1,4 +1,4 @@
-import { IsArray, ArrayMinSize, ArrayMaxSize, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsArray, ArrayMinSize, ArrayMaxSize, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 // P0-17 岗位分类 / 结算方式枚举值（与 schema.prisma JobCategory / Settlement 对齐）
@@ -452,4 +452,128 @@ export class RecordImpressionsDto {
   @ArrayMaxSize(50)
   @IsString({ each: true })
   postIds!: string[];
+}
+
+// ===== P2-73 批量导入岗位（全圈直发）=====
+// 哑管道口径：坐标四件套与数据质量由调用方负责，服务端只做 token 校验 +
+// 基本格式/枚举校验 + 原样落库；固定值（森阳商家/D90 90天/PLATFORM 全圈/直接
+// PUBLISHED）与缺省值在 service 补齐。字段名写错会因 forbidNonWhitelisted 整批 400。
+export class BatchImportJobPostItem {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  title!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  description!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  requirements?: string;
+
+  // 薪资文本需含数字，服务端提取第一段数字作 salaryAmount（薪资范围筛选用）
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  salary!: string;
+
+  // 地点展示文本（必填）；坐标不参与解析，调用方通过 geocode 自行换好后随请求传入
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  location!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  locationPoiId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  locationLng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  locationLat?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  locationCity?: string;
+
+  @IsIn(JOB_CATEGORY_VALUES)
+  category!: (typeof JOB_CATEGORY_VALUES)[number];
+
+  // 自定义类型名：仅 category=LONG_TERM 可带；按「是否传值」判定自定义，不另设开关
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  customCategory?: string;
+
+  @IsIn(SETTLEMENT_VALUES)
+  settlement!: (typeof SETTLEMENT_VALUES)[number];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  workDates?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  workPeriods?: string[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(999)
+  headcount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  urgent?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  online?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  questions?: string[];
+
+  // 归属圈子（审核归属用）；不传默认 cm_default，全圈同步下不影响可见范围
+  @IsOptional()
+  @IsString()
+  communityId?: string;
+
+  // 联系方式快照覆盖：不传落默认商家资料；展示优先级仍是 圈子管理员→圈主→快照
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  contactPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  contactWechat?: string;
+}
+
+export class BatchImportJobPostsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => BatchImportJobPostItem)
+  posts!: BatchImportJobPostItem[];
 }

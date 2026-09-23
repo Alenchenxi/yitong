@@ -2,12 +2,13 @@ import { Body, Controller, Delete, Get, HttpStatus, Param, Post, Put, Query, Req
 import type { Request } from 'express';
 import { ok } from '../../common/dto/api-response';
 import { BizException } from '../../common/exceptions/biz.exception';
+import { Public } from '../auth/public.decorator';
 import type { AuthenticatedRequest } from '../auth/types';
 import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
 import { JobTemplateService } from './job-template.service';
 import { LocationService } from './location.service';
-import { CreateJobPostDto, JobListQueryDto, JobRecommendQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto, RecordImpressionsDto } from './dto/job.dto';
+import { CreateJobPostDto, JobListQueryDto, JobRecommendQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto, RecordImpressionsDto, BatchImportJobPostsDto } from './dto/job.dto';
 import { JobTemplateQueryDto } from './dto/job-template.dto';
 import { GeocodeQueryDto, LocationContextQueryDto, PoiDetailQueryDto, PlaceSuggestionQueryDto, ReverseGeocodeQueryDto } from './dto/location.dto';
 
@@ -76,6 +77,16 @@ export class JobController {
   async createPost(@Body() dto: CreateJobPostDto, @Req() req: Request) {
     const u = (req as AuthenticatedRequest).user!;
     return ok(await this.job.createPost(u.uid, dto, u.openid));
+  }
+
+  // P2-73 批量导入岗位（全圈直发）：不走登录体系，@Public() 豁免全局 JwtAuthGuard，
+  // 由 assertBatchImportToken 校验 Authorization: Bearer 固定 token；
+  // 路由为两段式（job-posts/batch-import），不会与 job-posts/:id 系列冲突
+  @Public()
+  @Post('job-posts/batch-import')
+  async batchImport(@Body() dto: BatchImportJobPostsDto, @Req() req: Request) {
+    this.job.assertBatchImportToken(req.headers.authorization);
+    return ok(await this.job.batchImport(dto));
   }
 
   @Get('job-posts')
