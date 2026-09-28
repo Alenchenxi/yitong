@@ -6,6 +6,7 @@ import {
   getJobPostStats,
   deleteJobPost,
   republishJobPost,
+  publishJobPost,
   getPostChipLabels,
   type JobPostVo,
   type PostStatsVo,
@@ -101,22 +102,49 @@ Page({
     this.setData({ expanded: !this.data.expanded });
   },
 
-  // PENDING 直跳支付；PUBLISHED / TAKEN_DOWN / EXPIRED 先 republish 再跳
+  // PENDING：有效期内已发布过（编辑回退）→ 免付费直发；新草稿 → 直跳支付。
+  // PUBLISHED / TAKEN_DOWN / EXPIRED：先 republish 回退 PENDING，再按是否可免付费分流（P2-74）。
   async onStartHiring() {
     const post = this.data.post;
     if (!post) return;
     if (post.status === 'PENDING') {
+      if (post.canFreeRepublish) {
+        await this.freePublish();
+        return;
+      }
       wx.navigateTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${post.duration}` });
       return;
     }
-    // PUBLISHED / TAKEN_DOWN / EXPIRED：先 republish 回退 PENDING，再跳支付
+    // PUBLISHED / TAKEN_DOWN / EXPIRED：先 republish 回退 PENDING，再分流
     try {
       wx.showLoading({ title: '处理中', mask: true });
       await republishJobPost(post.id);
       wx.hideLoading();
-      wx.navigateTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${post.duration}` });
+      const refreshed = await getJobPost(post.id);
+      this.applyPost(refreshed, this.data.stats);
+      if (refreshed.canFreeRepublish) {
+        await this.freePublish();
+        return;
+      }
+      wx.navigateTo({ url: `/pages/payment/index?jobPostId=${post.id}&duration=${refreshed.duration}` });
     } catch {
       wx.hideLoading();
+    }
+  },
+
+  // P2-74 免付费直接发布：时效保持原岗位时限（服务端不动 expireAt）
+  async freePublish() {
+    if (!this.postId) return;
+    try {
+      wx.showLoading({ title: '发布中', mask: true });
+      const post = await publishJobPost(this.postId);
+      wx.hideLoading();
+      wx.showToast({ title: '已发布', icon: 'success' });
+      this.applyPost(post, this.data.stats);
+    } catch (err) {
+      wx.hideLoading();
+      const msg = (err as { message?: string })?.message || '发布失败,请重试';
+      wx.showModal({ title: '发布失败', content: msg, showCancel: false, confirmText: '我知道了' });
     }
   },
 

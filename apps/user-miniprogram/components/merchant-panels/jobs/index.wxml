@@ -93,8 +93,16 @@
         catchtap="goEdit"
         data-id="{{item.id}}"
       >编辑</button>
+      <!-- P2-74 有效期内已发布过（编辑回退）→「发布」免付费直发；新草稿 →「付费发布」走支付 -->
       <button
-        wx:if="{{item.status === 'PENDING'}}"
+        wx:if="{{item.status === 'PENDING' && item.canFreeRepublish}}"
+        class="action-btn pay-btn"
+        size="mini"
+        catchtap="onPublish"
+        data-id="{{item.id}}"
+      >发布</button>
+      <button
+        wx:if="{{item.status === 'PENDING' && !item.canFreeRepublish}}"
         class="action-btn pay-btn"
         size="mini"
         catchtap="goPay"

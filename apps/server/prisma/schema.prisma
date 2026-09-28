@@ -838,6 +838,7 @@ model JobPost {
   moderationAuthority   ModerationAuthority? @map("moderation_authority")
   moderationVersion     Int                  @default(0) @map("moderation_version")
   takenDownAt           DateTime?            @map("taken_down_at") // M3-05 商家主动下架时间（null=未下架或非下架状态）
+  publishedAt           DateTime?            @map("published_at") // P2-74 首次发布时间（付费兑现/免付直发/批量导入/家教同步时写入，只设不清）；PENDING+已发布过+有效期内 → 编辑后免付费重发
   deletedAt             DateTime?            @map("deleted_at") // M3-07 商家硬删草稿（软删字段，null=未删；list/get 全链路过滤 deletedAt:null）
   createdAt             DateTime             @default(now()) @map("created_at")
   merchant              Merchant             @relation(fields: [merchantId], references: [id])

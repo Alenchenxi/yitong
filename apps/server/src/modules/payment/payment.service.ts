@@ -136,6 +136,16 @@ export class PaymentService {
       throw new BizException(50002, '岗位已发布或已下架，无需再次付费', HttpStatus.CONFLICT);
     }
 
+    // P2-74 有效期内已发布过的岗位（编辑回退）：重新发布免付费，不得再生成付费订单
+    //（防旧入口/脏状态重复收费）；免费重发走 POST /job-posts/:id/publish。
+    if (post.publishedAt && (post.expireAt === null || post.expireAt.getTime() > Date.now())) {
+      throw new BizException(
+        40004,
+        '该岗位在有效期内重新发布免付费，请直接点击发布',
+        HttpStatus.CONFLICT,
+      );
+    }
+
     const pricing = await this.prisma.pricingConfig.findUnique({ where: { duration: dto.duration } });
     if (!pricing) throw new BizException(50004, '该档位单价未配置', HttpStatus.CONFLICT);
 
@@ -413,10 +423,12 @@ export class PaymentService {
           id: string;
           publisherScope: PublicationScope;
           communityId: string;
+          publishedAt: Date | null;
         }>>(
           `SELECT "id",
                   "publisher_scope" AS "publisherScope",
-                  "community_id" AS "communityId"
+                  "community_id" AS "communityId",
+                  "published_at" AS "publishedAt"
            FROM "job_posts"
            WHERE "id" = $1
            FOR UPDATE`,
@@ -454,6 +466,8 @@ export class PaymentService {
           data: {
             status: JobPostStatus.PUBLISHED,
             expireAt,
+            // P2-74 首次发布时间只记第一次（过期后重新付费开新窗口不覆盖）
+            publishedAt: lockedPost.publishedAt ?? new Date(),
             contactPhoneSnapshot: merchant.contactPhone,
             contactWechatSnapshot: merchant.contactWechat,
           },

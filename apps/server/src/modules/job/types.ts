@@ -46,6 +46,8 @@ export interface JobPostVo {
   platformPublished: boolean;
   status: JobPostStatus;
   takenDownAt: string | null;
+  publishedAt: string | null; // P2-74 首次发布时间（null=从未发布过）
+  canFreeRepublish: boolean; // P2-74 PENDING+已发布过+原有效期未过 → 可免付费直接重发
   deletedAt: string | null;
   createdAt: string;
   myApplication?: {

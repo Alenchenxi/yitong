@@ -77,6 +77,9 @@ export interface JobPostVo {
   // M3-04 编辑返回扩展：编辑前状态、是否需要重新发布
   editedFromStatus?: string;
   needsRepublish?: boolean;
+  // P2-74 首次发布时间（null=从未发布过）；canFreeRepublish=PENDING+已发布过+原有效期未过 → 免付费直接重发
+  publishedAt?: string | null;
+  canFreeRepublish?: boolean;
   // 用户端"最近"tab：距离（km，仅 sort=nearest 时返回）
   distance?: number;
 }
@@ -664,4 +667,9 @@ export function recordJobImpressions(postIds: string[]) {
 // M3-08 重新发布：PUBLISHED/TAKEN_DOWN/EXPIRED → PENDING（强制重付）
 export function republishJobPost(id: string) {
   return request<{ id: string; status: 'PENDING'; duration: 'D30' | 'D90' }>({ url: `/job-posts/${id}/republish`, method: 'POST' });
+}
+
+// P2-74 编辑后免付费发布：PENDING（已发布过且原有效期未过）→ 直接 PUBLISHED，不产生支付订单、时效不顺延
+export function publishJobPost(id: string) {
+  return request<JobPostVo>({ url: `/job-posts/${id}/publish`, method: 'POST' });
 }

@@ -278,4 +278,11 @@ export class JobController {
     const uid = (req as AuthenticatedRequest).user!.uid;
     return ok(await this.job.republishPost(uid, id));
   }
+
+  // P2-74 编辑后免付费发布：PENDING + 已发布过 + 原有效期未过 → 直接 PUBLISHED（不走支付，时效不顺延）
+  @Post('job-posts/:id/publish')
+  async publishPost(@Param('id') id: string, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.job.publishPost(uid, id));
+  }
 }

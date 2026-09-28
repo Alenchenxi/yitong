@@ -4,6 +4,7 @@ import {
   getMerchantDashboard,
   listJobPosts,
   takeDownJobPost,
+  publishJobPost,
   type JobPostVo,
   type MerchantDashboardVo,
 } from '../../../services/job';
@@ -145,6 +146,23 @@ Component({
     goPay(e: WechatMiniprogram.TouchEvent) {
       const { id, dur } = e.currentTarget.dataset as { id: string; dur: string };
       wx.navigateTo({ url: `/pages/payment/index?jobPostId=${id}&duration=${dur}` });
+    },
+
+    // P2-74 编辑回退岗有效期内免付费直发（不进支付页，时效保持原岗位时限）
+    async onPublish(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      if (!id || this.data.loading) return;
+      wx.showLoading({ title: '发布中', mask: true });
+      try {
+        await publishJobPost(id);
+        wx.hideLoading();
+        wx.showToast({ title: '已发布', icon: 'success' });
+        this.load();
+      } catch (err) {
+        wx.hideLoading();
+        const msg = (err as { message?: string })?.message || '发布失败,请重试';
+        wx.showModal({ title: '发布失败', content: msg, showCancel: false, confirmText: '我知道了' });
+      }
     },
 
     // 新建岗位 -> 切发布 tab（事件冒泡 shell）

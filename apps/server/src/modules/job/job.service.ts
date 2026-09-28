@@ -599,13 +599,14 @@ export class JobService {
         publisherScope: PublicationScope.PLATFORM,
         visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
         status: JobPostStatus.PUBLISHED,
+        publishedAt: new Date(), // P2-74 直发即首次发布
       },
       select: { id: true },
     });
   }
 
   // M3-04 编辑岗位：商家可编辑未下架且属于自己的岗位（PENDING / PUBLISHED 可编辑，TAKEN_DOWN / EXPIRED 不可编辑）；
-  // PUBLISHED 编辑后回退为 PENDING（需重新付费发布）；duration 不可改（影响支付与 expireAt）。
+  // PUBLISHED 编辑后回退为 PENDING（原有效期内可免付费重发，见 publishPost）；duration 不可改（影响支付与 expireAt）。
   async updatePost(merchantUid: string, postId: string, dto: UpdateJobPostDto, openid?: string) {
     const post = await this.prisma.jobPost.findUnique({
       where: { id: postId },
@@ -711,6 +712,52 @@ export class JobService {
     vo.editedFromStatus = post.status;
     vo.needsRepublish = wasPublished;
     return vo;
+  }
+
+  // P2-74 编辑后免付费重新发布：PENDING + 已发布过（publishedAt 非空）+ 原有效期未过 → 直接置 PUBLISHED，不产生支付订单。
+  // 时效锚定：不改动 expireAt（保持创建/首次发布时锚定的岗位时限，编辑重发不得顺延）；原有效期已过仍需走付费发布开新窗口。
+  async publishPost(uid: string, postId: string) {
+    const post = await this.prisma.jobPost.findUnique({
+      where: { id: postId },
+      include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
+    });
+    if (!post) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND);
+    if (post.deletedAt) throw new BizException(40001, '岗位不存在', HttpStatus.NOT_FOUND); // M3-07 软删过滤
+    if (post.merchant.userId !== uid) {
+      throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
+    }
+    await this.publicationPolicy.assertOwnerCanManage(uid, post.publisherScope);
+    await this.community.assertUserCanParticipate(uid, post.communityId);
+    if (post.status !== JobPostStatus.PENDING) {
+      throw new BizException(40004, '仅待发布岗位可执行发布', HttpStatus.CONFLICT);
+    }
+    if (post.moderationAuthority) {
+      throw new BizException(40004, '管理员下架的岗位不可由商家重新发布', HttpStatus.CONFLICT);
+    }
+    if (!post.publishedAt) {
+      throw new BizException(50002, '岗位尚未发布过，需付费发布', HttpStatus.CONFLICT);
+    }
+    if (post.expireAt && post.expireAt.getTime() <= Date.now()) {
+      throw new BizException(40004, '岗位有效期已过，需重新付费发布', HttpStatus.CONFLICT);
+    }
+    // 联系快照随发布刷新（与支付兑现 fulfillOrder 口径一致）；条件更新防并发/防重
+    const updated = await this.prisma.jobPost.updateMany({
+      where: {
+        id: postId,
+        status: JobPostStatus.PENDING,
+        deletedAt: null,
+        moderationAuthority: null,
+      },
+      data: {
+        status: JobPostStatus.PUBLISHED,
+        contactPhoneSnapshot: post.merchant.contactPhone,
+        contactWechatSnapshot: post.merchant.contactWechat,
+      },
+    });
+    if (updated.count !== 1) {
+      throw new BizException(40004, '岗位状态已变更，请刷新后重试', HttpStatus.CONFLICT);
+    }
+    return this.toPostVo(await this.refreshPost(postId), true);
   }
 
   // M3-05 主动下架岗位：仅 PUBLISHED 可下架（PENDING 是草稿无需下架；TAKEN_DOWN/EXPIRED 幂等报错）；保留下架时间。
@@ -1798,6 +1845,7 @@ export class JobService {
       publisherName?: string | null;
       status: JobPostStatus;
       takenDownAt?: Date | null;
+      publishedAt?: Date | null; // P2-74 首次发布时间（null=从未发布过）
       deletedAt?: Date | null; // M3-07 软删字段
       createdAt: Date;
       merchant?: {
@@ -1877,6 +1925,12 @@ export class JobService {
       platformPublished: p.publisherScope === PublicationScope.PLATFORM,
       status: p.status,
       takenDownAt: p.takenDownAt ? p.takenDownAt.toISOString() : null,
+      // P2-74 免付费重发判定：PENDING + 已发布过 + 原有效期未过（expireAt=null 长期有效视为未过）
+      publishedAt: p.publishedAt ? p.publishedAt.toISOString() : null,
+      canFreeRepublish:
+        p.status === JobPostStatus.PENDING &&
+        !!p.publishedAt &&
+        (p.expireAt === null || p.expireAt.getTime() > Date.now()),
       deletedAt: p.deletedAt ? p.deletedAt.toISOString() : null, // M3-07 审计字段
       createdAt: p.createdAt.toISOString(),
       // M3-04 编辑返回扩展（仅 updatePost 设置）

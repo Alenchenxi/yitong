@@ -72,5 +72,5 @@
   <view class="hint" wx:if="{{isEdit}}">发布时长创建后不可修改</view>
   <button class="submit {{submitting ? 'submit-disabled' : ''}}" bindtap="submit" disabled="{{submitting}}">{{submitting ? '保存中…' : (isEdit ? '保存修改' : '发布岗位')}}</button>
   <view class="hint" wx:if="{{!isEdit}}">创建为草稿，提交后需付费发布（30/90 天单价由后台配置）</view>
-  <view class="hint" wx:if="{{isEdit}}">已发布岗位编辑后将回退为待发布，需重新付费发布</view>
+  <view class="hint" wx:if="{{isEdit}}">已发布岗位编辑后将回退为待发布，有效期内重新发布免费（有效期保持原岗位时限，不顺延）</view>
 </view>

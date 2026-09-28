@@ -396,6 +396,7 @@ export class TutorSyncService {
         featured: false,
         featuredAt: null,
         status: JobPostStatus.PUBLISHED,
+        publishedAt: new Date(), // P2-74 直发即首次发布
         takenDownAt: null,
         deletedAt: null,
       })),

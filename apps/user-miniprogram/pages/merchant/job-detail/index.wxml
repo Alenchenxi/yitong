@@ -116,7 +116,7 @@
       删除
     </view>
     <view class="bar-btn bar-btn-primary {{post.status === 'PENDING' ? '' : 'bar-btn-full'}}" bindtap="onStartHiring">
-      {{post.status === 'PENDING' ? '开始招聘' : '重新发布'}}
+      {{post.status === 'PENDING' ? (post.canFreeRepublish ? '发布' : '开始招聘') : '重新发布'}}
     </view>
   </view>
 </view>
