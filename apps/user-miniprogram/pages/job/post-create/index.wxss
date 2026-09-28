@@ -8,6 +8,7 @@
 }
 .field { margin-top: 24rpx; background: #FFFFFF; border-radius: 12rpx; padding: 24rpx; }
 .field .label { font-size: 28rpx; color: #4E5969; margin-bottom: 12rpx; }
+.circle-hint { font-size: 24rpx; color: #86909C; margin: -4rpx 0 12rpx; }
 .input-row { display: flex; gap: 16rpx; align-items: center; }
 .input { flex: 1 1 auto; font-size: 30rpx; color: #1D2129; padding: 8rpx 0; }
 .textarea { width: 100%; min-height: 160rpx; font-size: 28rpx; color: #1D2129; }
@@ -28,6 +29,15 @@
 .collapsible { display: flex; justify-content: space-between; align-items: center; }
 .collapsible .arrow { color: #86909C; font-size: 24rpx; }
 .more-fields .field { background: #FFFFFF; }
+/* P2-76 继续完善新增：开关行 + 报名问题标签（与编辑表单对齐） */
+.switch-row { display: flex; justify-content: space-between; align-items: center; }
+.switch-row .label { margin-bottom: 0; font-size: 28rpx; color: #4E5969; }
+.switch-row + .switch-row { margin-top: 24rpx; }
+.q-tags { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.q-tag { background: #FFF7CC; color: #1D2129; font-size: 24rpx; padding: 8rpx 16rpx; border-radius: 8rpx; }
+.add-row { display: flex; gap: 16rpx; margin-top: 12rpx; }
+.add-input { flex: 1 1 auto; background: #F2F3F5; border-radius: 8rpx; padding: 12rpx 16rpx; font-size: 28rpx; color: #1D2129; }
+.add-btn { background: #F9C801; color: #1D2129; font-size: 26rpx; padding: 12rpx 24rpx; border-radius: 8rpx; }
 .action { margin-top: 48rpx; padding-bottom: 48rpx; }
 .btn-primary {
   width: 100%; height: 88rpx; line-height: 88rpx;

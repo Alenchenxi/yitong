@@ -275,6 +275,8 @@ export function createJobPost(data: {
   locationCity?: string;
   // 圈子：发岗归属圈子（可选；缺省服务端取商家当前圈子）
   communityId?: string;
+  // P2-75 联系方式快照覆盖（可选；缺省落商家资料）
+  contactWechat?: string;
 }) {
   return request<JobPostVoExt>({ url: '/job-posts', method: 'POST', data });
 }

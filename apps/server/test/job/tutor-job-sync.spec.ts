@@ -12,7 +12,6 @@ import {
   JobDuration,
   JobPostStatus,
   JobVisibilityScope,
-  PublicationScope,
   Settlement,
 } from '@prisma/client';
 import { AdminService } from '../../src/modules/admin/admin.service';
@@ -1611,20 +1610,20 @@ describe('小程序同步岗位静态契约', () => {
 });
 
 describe('同步全圈可见策略', () => {
-  it('可见性过滤允许全圈同步岗位，同时普通岗位仍按当前圈隔离', () => {
+  it('可见性过滤允许全圈同步岗位，同时旧本圈岗位仍按当前圈隔离', () => {
     const filters = new JobVisibilityPolicyService().buildFilters(
       'community_a',
       new Date('2026-08-29T08:00:00.000Z'),
     );
+    // P2-75 全圈可见不再限定发布者身份（平台岗/同步岗/商家岗统一命中）；
+    // 旧 COMMUNITY 可见仅保留迁移窗口兜底，仍限归属圈且要求圈子 ACTIVE
     expect(filters).toEqual([
       {
         OR: [
           {
-            publisherScope: PublicationScope.PLATFORM,
             visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
           },
           {
-            publisherScope: PublicationScope.COMMUNITY,
             visibilityScope: JobVisibilityScope.COMMUNITY,
             communityId: 'community_a',
             community: { is: { status: CommunityStatus.ACTIVE } },

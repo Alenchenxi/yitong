@@ -438,8 +438,9 @@ export class JobService {
         title: dto.title,
         description: dto.description,
         requirements: dto.requirements ?? null,
-        contactPhoneSnapshot: merchant.contactPhone,
-        contactWechatSnapshot: merchant.contactWechat,
+        // P2-75 联系方式快照覆盖接线：DTO 一直支持发岗时覆盖商家资料，此前未使用导致表单收集被丢弃
+        contactPhoneSnapshot: dto.contactPhone ?? merchant.contactPhone,
+        contactWechatSnapshot: dto.contactWechat ?? merchant.contactWechat,
         salary: dto.salary,
         salaryAmount: parseSalaryAmount(dto.salary),
         location: dto.location,
@@ -459,10 +460,9 @@ export class JobService {
         duration: dto.duration,
         expireAt,
         publisherScope,
-        visibilityScope:
-          publisherScope === PublicationScope.PLATFORM
-            ? JobVisibilityScope.ALL_COMMUNITIES
-            : JobVisibilityScope.COMMUNITY,
+        // P2-75 发岗仅选归属圈子，发布后全圈同步：可见范围统一 ALL_COMMUNITIES；
+        // 治理仍按 publisherScope 分流（圈子管理员管 COMMUNITY 岗，平台管理员管 PLATFORM 岗）
+        visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
         status: JobPostStatus.PENDING,
       },
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },

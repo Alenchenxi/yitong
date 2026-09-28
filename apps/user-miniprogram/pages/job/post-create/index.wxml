@@ -62,9 +62,10 @@
     </view>
   </view>
 
-  <!-- 归属圈子（职位类别和工作地点之间；新建岗位默认当前圈子，可改） -->
+  <!-- 归属圈子（职位类别和工作地点之间；新建岗位默认当前圈子，可改）；P2-75 发布后全圈同步 -->
   <view class="field">
     <view class="label">发布圈子</view>
+    <view class="circle-hint">岗位发布后全圈可见，所选圈子作为归属（治理与统计）</view>
     <picker range="{{communityNames}}" value="{{selectedCommunityIndex}}" bindchange="onPickCommunity">
       <view class="readonly-row" bindtap="onTapCommunityField">
         <text class="value">{{selectedCommunityName || (communityLoadFailed ? '圈子加载失败，点击重试' : '选择圈子')}}</text>
@@ -133,6 +134,33 @@
           bindtap="onTogglePeriod"
           data-label="{{item.label}}"
         >{{item.label}}</view>
+      </view>
+    </view>
+    <!-- P2-76 与编辑表单对齐：工作日期 / 急招 / 可线上 / 报名问题 -->
+    <view class="field">
+      <view class="label">工作日期</view>
+      <view class="chip-row">
+        <view
+          wx:for="{{workDateOptions}}"
+          wx:key="label"
+          class="chip {{item.selected ? 'active' : ''}}"
+          bindtap="onToggleWorkDate"
+          data-label="{{item.label}}"
+        >{{item.label}}</view>
+      </view>
+    </view>
+    <view class="field">
+      <view class="switch-row"><text class="label">急招</text><switch checked="{{urgent}}" bindchange="toggleUrgent" color="#F9C801" /></view>
+      <view class="switch-row"><text class="label">可线上</text><switch checked="{{online}}" bindchange="toggleOnline" color="#F9C801" /></view>
+    </view>
+    <view class="field">
+      <view class="label">报名问题（选填）</view>
+      <view class="q-tags" wx:if="{{questions.length > 0}}">
+        <view class="q-tag" wx:for="{{questions}}" wx:key="*this" data-idx="{{index}}" bindtap="removeQuestion">{{item}} ✕</view>
+      </view>
+      <view class="add-row">
+        <input class="add-input" value="{{questionInput}}" bindinput="onQuestionInput" placeholder="如：何时能到岗 / 有无相关经验" bindconfirm="addQuestion" />
+        <view class="add-btn" bindtap="addQuestion">添加</view>
       </view>
     </view>
   </view>

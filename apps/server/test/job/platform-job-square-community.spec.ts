@@ -287,30 +287,22 @@ describe('平台岗位发布与报名治理', () => {
 
 
 describe('岗位可见性策略', () => {
-  it('只生成平台全圈与圈子本圈两种合法发布组合', () => {
+  it('全圈可见不限定发布者，旧本圈内容仍限归属活跃圈', () => {
     const filters = new JobVisibilityPolicyService().buildFilters('community_a', NOW);
+    // P2-75 商家岗发布即全圈同步：ALL_COMMUNITIES 分支不再限定 publisherScope；
+    // 旧 COMMUNITY 分支保留迁移窗口兜底，仍限归属圈且要求圈子 ACTIVE
     expect(filters[0]).toEqual({
       OR: [
         {
-          publisherScope: PublicationScope.PLATFORM,
           visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
         },
         {
-          publisherScope: PublicationScope.COMMUNITY,
           visibilityScope: JobVisibilityScope.COMMUNITY,
           communityId: 'community_a',
           community: { is: { status: CommunityStatus.ACTIVE } },
         },
       ],
     });
-    expect(filters[0]).not.toEqual(expect.objectContaining({
-      OR: expect.arrayContaining([
-        expect.objectContaining({
-          publisherScope: PublicationScope.COMMUNITY,
-          visibilityScope: JobVisibilityScope.ALL_COMMUNITIES,
-        }),
-      ]),
-    }));
   });
 });
 describe('广场平台内容可见性', () => {

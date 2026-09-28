@@ -30,10 +30,10 @@ Page({
       lat: 0,
       city: '',
     },
-    // 圈子：发岗归属圈子（类别宫格与工作地点之间；默认商家当前圈子，可改）
+    // 圈子：发岗归属圈子（类别宫格与工作地点之间；默认商家当前圈子，可改）；P2-75 发布后全圈同步，选圈仅定归属
     communities: [] as CommunityVo[],
-    communityNames: [] as string[], // picker 展示名（与 communities 按下标对齐；圈子管理员带免费/付费标注）
-    isCircleAdmin: false as boolean, // P2-64 当前商家是否圈子管理员/圈主（控制选圈标注与排序）
+    communityNames: [] as string[], // picker 展示名（与 communities 按下标对齐）
+    isCircleAdmin: false as boolean, // 保留字段：P2-75 后选圈不再有免费/付费标注，恒 false
     selectedCommunityId: '' as string,
     selectedCommunityName: '' as string,
     selectedCommunityIndex: 0 as number,
@@ -83,7 +83,7 @@ Page({
       }
       const app = getApp<AppInstance>();
       const activeId = app.globalData.activeCommunityId;
-      // P2-64 圈子管理员/圈主：自己管理的圈子排前并标注免费/付费；普通商家原顺序原名
+      // P2-75 圈子仅作归属锚点（原顺序原名，无免费/付费标注），发布后全圈同步
       const picker = buildJobCommunityPicker(list);
       const prefer = picker.list.find((c) => c.id === activeId) ?? picker.list[0]!;
       const idx = picker.list.findIndex((c) => c.id === prefer.id);

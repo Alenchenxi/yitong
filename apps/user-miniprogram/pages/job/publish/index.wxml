@@ -26,9 +26,10 @@
     />
   </view>
 
-  <!-- 归属圈子（职位类别和工作地点之间；新建岗位默认当前圈子，可改） -->
+  <!-- 归属圈子（职位类别和工作地点之间；新建岗位默认当前圈子，可改）；P2-75 发布后全圈同步 -->
   <view class="circle-block">
     <view class="label">发布圈子</view>
+    <view class="circle-hint">岗位发布后全圈可见，所选圈子作为归属（治理与统计）</view>
     <picker range="{{communityNames}}" value="{{selectedCommunityIndex}}" bindchange="onPickCommunity">
       <view class="circle-cell" bindtap="onTapCircleField">
         <text class="{{communityLoadFailed ? 'circle-failed' : 'circle-value'}}">{{selectedCommunityName || (communityLoadFailed ? '圈子加载失败，点击重试' : '选择圈子')}}</text>

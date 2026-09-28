@@ -2,7 +2,6 @@ import { HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import {
-  CommunityMemberRole,
   JobDuration,
   MerchantStatus,
   JobPostStatus,
@@ -56,30 +55,8 @@ export class PaymentService {
   // ===== 兼职付费发布（JOB_PUBLISH）=====
 
   // 免支付发岗公共流程：建 waived 订单 → 直接履约（PAID + 岗位直发），响应结构同付费下单。
-  // 适用两类身份（P2-64/70）：平台管理员（AdminUser + adminType.isPlatform，任意圈子全免）、
-  // 圈子管理员/圈主（圈内 OWNER/ADMIN 或管理端分配的圈子管理员授权范围，仅发到自己管理的圈子免）。
-
-  /**
-   * P2-70 管理端分配的圈子管理员是否授权该圈：admin_users 按 openid 绑定、adminType
-   * 非平台且 active/未删（与 publication-policy.isPlatformUser 同套绑定关系），
-   * allCommunities=true 视为全圈授权，否则查 admin_community_scopes 是否命中。
-   * 与 community.service.consoleCircleAdminScope 同口径，payment 侧只需布尔判定故单独实现。
-   */
-  private async hasConsoleCircleScope(userId: string, communityId: string): Promise<boolean> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { openid: true } });
-    if (!user?.openid) return false;
-    const admin = await this.prisma.adminUser.findFirst({
-      where: { openid: user.openid, adminType: { active: true, deletedAt: null, isPlatform: false } },
-      select: { id: true, allCommunities: true },
-    });
-    if (!admin) return false;
-    if (admin.allCommunities) return true;
-    const hit = await this.prisma.adminCommunityScope.findFirst({
-      where: { adminUserId: admin.id, communityId },
-      select: { id: true },
-    });
-    return hit !== null;
-  }
+  // P2-75 后仅适用一类身份：平台管理员（AdminUser + adminType.isPlatform，任意圈子全免）；
+  // 圈子管理员/圈主（原 P2-64/70/71 的圈内角色与管理端授权免付）改为与普通商家一致走正常付费流程。
   // 前端发布页凭本响应 jobPostStatus=PUBLISHED 直接提示发布成功，否则进支付页。
   private async fulfillWaivedJobPublishOrder(
     merchantId: string,
@@ -149,27 +126,12 @@ export class PaymentService {
     const pricing = await this.prisma.pricingConfig.findUnique({ where: { duration: dto.duration } });
     if (!pricing) throw new BizException(50004, '该档位单价未配置', HttpStatus.CONFLICT);
 
-    // 免支付发岗两类身份（P2-64/70）：校验流程照走，不进支付页，订单直接 PAID + 岗位直发。
-    // 1) 平台管理员：任意圈子全免。判定必须用 AdminUser + adminType.isPlatform（与
-    //    publication-policy.isPlatformUser 同口径）——不能用 user_roles.role=ADMIN：
-    //    createAdmin 给圈子管理员建档时同样写该角色，误判会导致圈子管理员全圈子免支付。
-    // 2) 圈子管理员/圈主：仅发到自己管理的圈子免，其他圈子照常付费。「自己管理的圈子」
-    //    = 圈内角色 CommunityMember.role ∈ OWNER/ADMIN，或管理端分配的圈子管理员
-    //    （admin_users 非平台类型）授权范围 admin_community_scopes（allCommunities=全圈）。
+    // 免支付发岗（P2-75 收敛为一类身份）：平台管理员任意圈子全免，校验流程照走，
+    // 不进支付页，订单直接 PAID + 岗位直发。判定必须用 AdminUser + adminType.isPlatform
+    //（与 publication-policy.isPlatformUser 同口径）——不能用 user_roles.role=ADMIN：
+    // createAdmin 给圈子管理员建档时同样写该角色，误判会导致圈子管理员全圈子免支付。
     if (await this.publicationPolicy.isPlatformUser(merchantUid)) {
       return this.fulfillWaivedJobPublishOrder(merchant.id, post.id, dto.duration, pricing.price, '平台管理员');
-    }
-    if (post.communityId) {
-      const membership = await this.prisma.communityMember.findUnique({
-        where: { communityId_userId: { communityId: post.communityId, userId: merchantUid } },
-        select: { role: true },
-      });
-      const memberManaged =
-        !!membership
-        && (membership.role === CommunityMemberRole.OWNER || membership.role === CommunityMemberRole.ADMIN);
-      if (memberManaged || (await this.hasConsoleCircleScope(merchantUid, post.communityId))) {
-        return this.fulfillWaivedJobPublishOrder(merchant.id, post.id, dto.duration, pricing.price, '圈子管理员');
-      }
     }
 
     // 道具守卫：改价后新道具未在微信支付网关生效（约10~15分钟）时抛 50008（提示「当前支付人数过多，请稍后重试」），顺带触发同步重试

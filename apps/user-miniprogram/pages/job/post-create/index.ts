@@ -4,7 +4,7 @@ import {
   type JobPostVoExt,
   type JobTemplateVo,
 } from '../../../services/job';
-import { buildJobCommunityPicker, isCommunityManagedByMe, listCommunities, type CommunityVo } from '../../../services/community';
+import { buildJobCommunityPicker, listCommunities, type CommunityVo } from '../../../services/community';
 import { publishJob } from '../../../services/payment';
 import type { AppInstance } from '../../../app';
 
@@ -49,14 +49,29 @@ Page({
       { label: '全天', selected: false },
       { label: '可商议', selected: false },
     ] as PeriodOpt[],
+    // P2-76 新建表单补齐（与编辑表单对齐）：工作日期/急招/可线上/报名问题，收纳进「继续完善」折叠区
+    workDateOptions: [
+      { label: '周一', selected: false },
+      { label: '周二', selected: false },
+      { label: '周三', selected: false },
+      { label: '周四', selected: false },
+      { label: '周五', selected: false },
+      { label: '周六', selected: false },
+      { label: '周日', selected: false },
+      { label: '可商议', selected: false },
+    ] as PeriodOpt[],
+    urgent: false,
+    online: false,
+    questions: [] as string[],
+    questionInput: '',
     showMore: false,
     attractivenessLabel: '吸引力计算中…',
     seed: 0,
     submitting: false,
-    // 圈子：发岗归属圈子（下拉选择，默认商家当前圈子）
+    // 圈子：发岗归属圈子（下拉选择，默认商家当前圈子）；P2-75 发布后全圈同步，选圈仅定归属
     communities: [] as CommunityVo[],
-    communityNames: [] as string[], // picker 展示名（与 communities 按下标对齐；圈子管理员带免费/付费标注）
-    isCircleAdmin: false as boolean, // P2-64 当前商家是否圈子管理员/圈主（控制选圈标注与排序）
+    communityNames: [] as string[], // picker 展示名（与 communities 按下标对齐）
+    isCircleAdmin: false as boolean, // 保留字段：P2-75 后选圈不再有免费/付费标注，恒 false
     selectedCommunityId: '',
     selectedCommunityName: '',
     selectedCommunityIndex: 0,
@@ -95,7 +110,7 @@ Page({
       }
       const app = getApp<AppInstance>();
       const activeId = app.globalData.activeCommunityId;
-      // P2-64 圈子管理员/圈主：自己管理的圈子排前并标注免费/付费；普通商家原顺序原名
+      // P2-75 圈子仅作归属锚点（原顺序原名，无免费/付费标注），发布后全圈同步
       const picker = buildJobCommunityPicker(list);
       // 预选优先级：publish 页所选圈子（pendingCommunityId）> 当前圈子 > 第一个
       const pending = this.data.pendingCommunityId;
@@ -187,6 +202,37 @@ Page({
     );
     this.setData({ workPeriodOptions: opts });
   },
+  // P2-76 工作日期（多选，白名单与编辑表单一致）
+  onToggleWorkDate(e: WechatMiniprogram.TouchEvent) {
+    const label = e.currentTarget.dataset.label as string;
+    const opts = this.data.workDateOptions.map((o) =>
+      o.label === label ? { ...o, selected: !o.selected } : o,
+    );
+    this.setData({ workDateOptions: opts });
+  },
+  toggleUrgent() {
+    this.setData({ urgent: !this.data.urgent });
+  },
+  toggleOnline() {
+    this.setData({ online: !this.data.online });
+  },
+  // P2-76 报名问题（动态增删，与编辑表单同交互）
+  onQuestionInput(e: WechatMiniprogram.Input) {
+    this.setData({ questionInput: e.detail.value });
+  },
+  addQuestion() {
+    const q = this.data.questionInput.trim();
+    if (!q) return;
+    if (this.data.questions.includes(q)) {
+      this.setData({ questionInput: '' });
+      return;
+    }
+    this.setData({ questions: [...this.data.questions, q], questionInput: '' });
+  },
+  removeQuestion(e: WechatMiniprogram.TouchEvent) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    this.setData({ questions: this.data.questions.filter((_, i) => i !== idx) });
+  },
   onPickDuration(e: WechatMiniprogram.TouchEvent) {
     const d = e.currentTarget.dataset.d as 'D30' | 'D90';
     this.setData({ 'form.duration': d });
@@ -206,6 +252,7 @@ Page({
       return;
     }
     const workPeriods = this.data.workPeriodOptions.filter((o) => o.selected).map((o) => o.label);
+    const workDates = this.data.workDateOptions.filter((o) => o.selected).map((o) => o.label);
     const headcount = Math.max(1, Math.min(999, Number(f.headcount) || 1));
     // 类别:模板响应 categoryMapTo 回填(已从智能生成接口拿到的枚举值)
     const mappedCategory = (f as Record<string, unknown>)._categoryMapTo as string | undefined;
@@ -229,16 +276,20 @@ Page({
           this.data.selectedKey === 'CUSTOM' ? this.data.customCategory.trim() : undefined,
         isCustomCategory: this.data.selectedKey === 'CUSTOM',
         settlement: f.settlement,
+        workDates,
         workPeriods,
         headcount,
+        urgent: this.data.urgent,
+        online: this.data.online,
+        questions: this.data.questions.length > 0 ? this.data.questions : undefined,
         duration: f.duration,
         communityId: this.data.selectedCommunityId || undefined,
+        // P2-75 联系方式快照覆盖接线：不传落商家资料
+        contactWechat: f.contactWechat.trim() || undefined,
       });
-      // P2-64/70 免支付直发判定（仅作预判，服务端为准）：
-      // 平台管理员任意圈免；圈子管理员/圈主（圈内角色或管理端授权）发到自己管理的圈子免；否则进支付页正常付费
-      const selectedCommunity = this.data.communities.find((c) => c.id === this.data.selectedCommunityId);
-      const ownManagedCircle = isCommunityManagedByMe(selectedCommunity);
-      if (getApp<AppInstance>().globalData.user?.roles?.includes('ADMIN') || ownManagedCircle) {
+      // P2-75 免支付直发预判（仅作预判，服务端为准）：仅平台管理员免付直发；
+      // 圈子管理员/圈主与普通商家一律走正常付费流程（预判失配时服务端返回需支付，自动落支付页复用该单）
+      if (getApp<AppInstance>().globalData.user?.roles?.includes('ADMIN')) {
         const order = await publishJob({ jobPostId: post.id, duration: f.duration });
         if (order.jobPostStatus === 'PUBLISHED') {
           wx.showToast({ title: '发布成功', icon: 'success' });

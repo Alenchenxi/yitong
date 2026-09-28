@@ -126,6 +126,17 @@ export class CreateJobPostDto {
   @IsOptional()
   @IsString()
   communityId?: string;
+
+  // P2-75 联系方式快照覆盖：不传落默认商家资料；展示优先级仍是 圈子管理员→圈主→快照
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  contactPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  contactWechat?: string;
 }
 
 // M3-04 编辑岗位：所有字段 optional（duration 不可改，由 service 校验）
