@@ -1,22 +1,14 @@
 /* eslint-disable no-console */
 import 'reflect-metadata';
-// 岗位发布同页选点 + 强制 4 字段 + 支付闭环 冒烟测试（自包含：FakePrisma + NestJS Test module）
-// 测试范围（2026-08-11 改动）：
-//   1. LocationService.suggestPlaces:
-//      - 空 query → []
-//      - mock 路径(无 AK) → 5 个候选,每个含 poiId/address/lng/lat/city
-//      - 真实 AK 路径(有 AK) → 调百度 API(这里用 mock fetch 模拟返回)
-//   2. LocationService.reverseGeocode:
-//      - mock 路径(无 AK) → 稳定 poiId + 坐标原样回传
-//      - 真实 AK 路径 status=0 → 解析 formatted_address + city
-//      - 真实 AK 路径 status!=0 → 降级到 mock(不抛)
-//   3. JobController 路由顺序:/place-suggestion /reverse-geocode 都必须在 /:id 之前
-//   4. JobService.createPost 4 字段强制:缺一抛 40003
-//   5. PaymentService.createJobPublishOrder(missing wxPay) → mock 自动完成
-//   6. PaymentService.mockPay(orderId) → 状态 PAID + JobPost 变 PUBLISHED
-//   7. PaymentService.getJobPublishPricing → 返回 D30/D90 两档
-// 不依赖数据库 / docker。失败时进程退出码 1.
-import { ConfigService } from '@nestjs/config';
+// 岗位发布选点 + 必填契约 + 支付闭环 冒烟测试（自包含：FakePrisma + NestJS Test module）
+// 测试范围（P2-79 去百度地图改动）：
+//   1. LocationService 全本地能力(P2-79):gcj02ToBd09 锚值/幂等 + parseCityFromAddress 城市解析 + listDistricts
+//   2. JobController 路由顺序:/location-facets 必须在 /:id 之前(静态段不被动态段吞)
+//   3. JobService.createPost 必填契约:location 文本 + lng/lat 缺一抛 40003(0/0 合法,poiId 已全链路删除)
+//   4. PaymentService.createJobPublishOrder(missing wxPay) → mock 自动完成
+//   5. PaymentService.mockPay(orderId) → 状态 PAID + JobPost 变 PUBLISHED
+//   6. PaymentService.getJobPublishPricing → 返回 D30/D90 两档
+// 不依赖数据库 / docker / 外部地图 API。失败时进程退出码 1.
 import { BizException } from '../../src/common/exceptions/biz.exception';
 import { LocationService } from '../../src/modules/job/location.service';
 import { JobController } from '../../src/modules/job/job.controller';
@@ -47,183 +39,39 @@ async function assertThrows(fn: () => unknown | Promise<unknown>, msg: string, c
   assert(ok, `${msg}(抛 ${detail})`);
 }
 
-function makeConfig(vars: Record<string, string>): ConfigService {
-  return { get: <T>(key: string) => vars[key] as unknown as T } as unknown as ConfigService;
-}
-
 async function run(): Promise<void> {
-  console.log('\n========== T1: LocationService.suggestPlaces ==========');
+  console.log('\n========== T1: LocationService 本地地理能力（P2-79 去百度） ==========');
+  {
+    const svc = new LocationService(); // 无参构造:全本地实现,无 AK / ConfigService
+    // 坐标公式锚值(百度 geoconv from=3 to=5 定义本身),容差 1e-6 对齐 round6/Decimal(10,6)
+    const anchor = svc.gcj02ToBd09(116.397428, 39.90923);
+    assert(
+      Math.abs(anchor.lng - 116.403801) <= 1e-6 && Math.abs(anchor.lat - 39.915573) <= 1e-6,
+      `gcj02ToBd09 天安门锚值命中(实际 ${anchor.lng},${anchor.lat})`,
+    );
+    const anchor2 = svc.gcj02ToBd09(121.473701, 31.230416);
+    assert(
+      Math.abs(anchor2.lng - 121.480238) <= 1e-6 && Math.abs(anchor2.lat - 31.236351) <= 1e-6,
+      `gcj02ToBd09 上海锚值命中(实际 ${anchor2.lng},${anchor2.lat})`,
+    );
+    const bd = svc.gcj02ToBd09(116.4, 39.9);
+    assert(bd.lng === 116.40638 && bd.lat === 39.906349, `gcj02ToBd09(116.4,39.9)=${bd.lng},${bd.lat}(与幂等草稿 spec 共用锚值)`);
+    assert(JSON.stringify(svc.gcj02ToBd09(116.4, 39.9)) === JSON.stringify(bd), '同输入幂等(round6 重放一致)');
+    const zero = svc.gcj02ToBd09(0, 0);
+    assert(Number.isFinite(zero.lng) && Number.isFinite(zero.lat), '(0,0) 合法可转换');
 
-  // ---- 子测试 1: 空 query 返回 [] ----
-  {
-    const svc = new LocationService(makeConfig({}));
-    const out = await svc.suggestPlaces('');
-    assert(Array.isArray(out) && out.length === 0, '空 query 返回 []');
-  }
-  {
-    const svc = new LocationService(makeConfig({}));
-    const out = await svc.suggestPlaces('   ');
-    assert(Array.isArray(out) && out.length === 0, '纯空格 query 返回 []');
-  }
+    // 地址城市解析(服务端从选点地址文本解析,不依赖地图 API)
+    assert(svc.parseCityFromAddress('北京市朝阳区望京街道') === '北京市', '直辖市解析(北京市)');
+    assert(svc.parseCityFromAddress('浙江省杭州市西湖区文一路') === '杭州市', '全前缀解析(杭州市)');
+    assert(svc.parseCityFromAddress('杭州西湖区文一路') === '杭州市', '简称解析(杭州市)');
+    assert(svc.parseCityFromAddress('大学生活动中心') === null, '无城市名 → null');
+    assert(svc.parseCityFromAddress(null) === null && svc.parseCityFromAddress('  ') === null, '空输入 → null');
 
-  // ---- 子测试 2: mock 路径(无 AK)返回 5 候选,字段齐 ----
-  {
-    const svc = new LocationService(makeConfig({}));
-    const out = await svc.suggestPlaces('大学城');
-    assert(out.length === 5, `mock 路径返回 5 个候选(实际 ${out.length})`);
-    for (let i = 0; i < out.length; i++) {
-      const c = out[i]!;
-      const ok =
-        typeof c.poiId === 'string' && c.poiId.length > 0 &&
-        typeof c.address === 'string' && c.address.length > 0 &&
-        typeof c.lng === 'number' && c.lng >= 0 &&
-        typeof c.lat === 'number' && c.lat >= 0 &&
-        typeof c.city === 'string' && c.city.length > 0;
-      assert(ok, `候选 ${i} 字段齐(poiId/address/lng/lat/city)=${JSON.stringify(c)}`);
-    }
-  }
-
-  // ---- 子测试 3: mock 路径带 region 生效 ----
-  {
-    const svc = new LocationService(makeConfig({}));
-    const out = await svc.suggestPlaces('星巴克', '杭州');
-    assert(out.length === 5, 'mock 路径带 region 返回 5 候选');
-    assert(out.every((c) => c.city === '杭州'), '候选 city 字段 = region');
-  }
-
-  // ---- 子测试 4: mock 路径同 query 返回稳定(幂等) ----
-  {
-    const svc = new LocationService(makeConfig({}));
-    const a = await svc.suggestPlaces('学校');
-    const b = await svc.suggestPlaces('学校');
-    assert(JSON.stringify(a) === JSON.stringify(b), '同 query 返回稳定(幂等性)');
-  }
-
-  // ---- 子测试 5: 真实 AK 路径(模拟 fetch 命中 status=0) → 走真实 API 路径 ----
-  {
-    const originalFetch = (global as { fetch?: typeof fetch }).fetch;
-    const fakeResults = [
-      { uid: 'real_uid_1', name: '北京大学', address: '北京市海淀区颐和园路5号', location: { lng: 116.31, lat: 39.99 }, city: '北京市' },
-      { uid: 'real_uid_2', name: '北京大学校医院', address: '北京市海淀区颐和园路', location: { lng: 116.315, lat: 39.991 }, city: '北京市' },
-    ];
-    const fakeBody = JSON.stringify({ status: 0, message: 'ok', result: fakeResults });
-    (global as { fetch?: typeof fetch }).fetch = (async (_url: unknown) => {
-      // LocationService 调 resp.json() -> 必须返回 Promise
-      return {
-        status: 200,
-        ok: true,
-        json: async () => JSON.parse(fakeBody),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
-    try {
-      const svc = new LocationService(makeConfig({ BAIDU_MAP_AK: 'fake-ak' }));
-      const out = await svc.suggestPlaces('北京大学', '北京');
-      assert(out.length === 2, `真实 AK 路径命中 mock fetch 返回 2 候选(实际 ${out.length})`);
-      assert(out[0]?.poiId === 'real_uid_1', 'poiId 映射 uid');
-      assert(out[0]?.address === '北京大学 北京市海淀区颐和园路5号', 'address = name + address');
-      assert(out[0]?.city === '北京市', 'city 取自真实结果');
-    } finally {
-      (global as { fetch?: typeof fetch }).fetch = originalFetch;
-    }
-  }
-
-  // ---- 子测试 6: 真实 AK 路径 status !== 0 → 抛 40003 ----
-  {
-    const originalFetch = (global as { fetch?: typeof fetch }).fetch;
-    const fakeBody = JSON.stringify({ status: 302, message: 'AK 错误', result: null });
-    (global as { fetch?: typeof fetch }).fetch = (async () => ({
-      status: 200,
-      ok: true,
-      json: async () => JSON.parse(fakeBody),
-    })) as unknown as typeof fetch;
-    try {
-      const svc = new LocationService(makeConfig({ BAIDU_MAP_AK: 'bad-ak' }));
-      await assertThrows(() => svc.suggestPlaces('咖啡店'), '真实 AK 路径 status!=0 抛 BizException', (e) => {
-        return e instanceof BizException && e.bizCode === 40003;
-      });
-    } finally {
-      (global as { fetch?: typeof fetch }).fetch = originalFetch;
-    }
-  }
-
-  // ---- 子测试 7: reverseGeocode mock 路径(无 AK)→ 稳定 poiId + 坐标原样回传 ----
-  {
-    const svc = new LocationService(makeConfig({}));
-    const a = await svc.reverseGeocode(116.404, 39.915);
-    const b = await svc.reverseGeocode(116.404, 39.915);
-    assert(a.poiId === b.poiId, `mock reverseGeocode 同 lng/lat 幂等(poiId 稳定):${a.poiId}===${b.poiId}`);
-    assert(a.lng === 116.404 && a.lat === 39.915, `mock reverseGeocode 坐标原样回传(不偏移):lng=${a.lng},lat=${a.lat}`);
-    assert(a.poiId.startsWith('mock_rev_'), `mock reverseGeocode poiId 前缀 mock_rev_(实际 ${a.poiId})`);
-    assert(typeof a.address === 'string' && a.address.length > 0, 'mock reverseGeocode address 非空');
-    assert(a.city === '北京', `mock reverseGeocode city 粗判(北京矩形框内 → 北京;实际 ${a.city})`);
-  }
-  {
-    const svc = new LocationService(makeConfig({}));
-    // 微小坐标差异(量化 4 位小数外) → 哈希应变化(允许不同 poiId,但同 4 位小数内必须相同)
-    const a = await svc.reverseGeocode(116.4041, 39.9151);
-    const b = await svc.reverseGeocode(116.4041001, 39.9151001);
-    assert(a.poiId === b.poiId, `mock reverseGeocode 4 位小数量化内坐标差异不影响 poiId(幂等边界):${a.poiId}===${b.poiId}`);
-  }
-  {
-    const svc = new LocationService(makeConfig({}));
-    const sh = await svc.reverseGeocode(121.473, 31.230); // 上海矩形框
-    assert(sh.city === '上海', `mock reverseGeocode city 上海矩形框(实际 ${sh.city})`);
-  }
-
-  // ---- 子测试 8: reverseGeocode 真实 AK 路径 status=0 → 解析 formatted_address + city ----
-  {
-    const originalFetch = (global as { fetch?: typeof fetch }).fetch;
-    let capturedUrl = '';
-    const fakeBody = JSON.stringify({
-      status: 0,
-      message: 'ok',
-      result: {
-        location: { lng: 116.404, lat: 39.915 },
-        formatted_address: '北京市东城区天安门广场',
-        addressComponent: { city: '北京市' },
-        uid: 'bd_real_uid_123',
-      },
-    });
-    (global as { fetch?: typeof fetch }).fetch = (async (url: unknown) => {
-      capturedUrl = String(url);
-      return {
-        status: 200,
-        ok: true,
-        json: async () => JSON.parse(fakeBody),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
-    try {
-      const svc = new LocationService(makeConfig({ BAIDU_MAP_AK: 'real-ak' }));
-      const out = await svc.reverseGeocode(116.404, 39.915, 'gcj02');
-      assert(out.poiId === 'bd_real_uid_123', `真实 AK reverseGeocode 优先用 result.uid(实际 ${out.poiId})`);
-      assert(out.address === '北京市东城区天安门广场', `address 解析 formatted_address(实际 ${out.address})`);
-      assert(out.city === '北京市', `city 解析 addressComponent.city(实际 ${out.city})`);
-      assert(capturedUrl.includes('reverse_geocoding/v3'), `URL 含 reverse_geocoding/v3(实际 ${capturedUrl})`);
-      assert(capturedUrl.includes('location=39.915%2C116.404') || capturedUrl.includes('location=39.915,116.404'), `location 参数 lat,lng 顺序(实际 ${capturedUrl})`);
-      assert(capturedUrl.includes('ak=real-ak'), `URL 含 ak(实际 ${capturedUrl})`);
-    } finally {
-      (global as { fetch?: typeof fetch }).fetch = originalFetch;
-    }
-  }
-
-  // ---- 子测试 9: reverseGeocode 真实 AK 路径 status!=0 → 降级到 mock 不抛 ----
-  {
-    const originalFetch = (global as { fetch?: typeof fetch }).fetch;
-    const fakeBody = JSON.stringify({ status: 302, message: 'AK 错误', result: null });
-    (global as { fetch?: typeof fetch }).fetch = (async () => ({
-      status: 200,
-      ok: true,
-      json: async () => JSON.parse(fakeBody),
-    })) as unknown as typeof fetch;
-    try {
-      const svc = new LocationService(makeConfig({ BAIDU_MAP_AK: 'bad-ak' }));
-      const out = await svc.reverseGeocode(116.404, 39.915);
-      // 降级到 mock: poiId 应有 mock_rev_ 前缀,坐标原样回传
-      assert(out.poiId.startsWith('mock_rev_'), `status!=0 降级 mock poiId 前缀(实际 ${out.poiId})`);
-      assert(out.lng === 116.404 && out.lat === 39.915, 'status!=0 降级坐标原样回传');
-    } finally {
-      (global as { fetch?: typeof fetch }).fetch = originalFetch;
-    }
+    // 区县列表(本地数据包)
+    const bj = svc.listDistricts('北京市');
+    assert(bj.length === 16 && bj.includes('东城区') && bj.includes('密云区'), `北京 16 区(实际 ${bj.length})`);
+    assert(svc.listDistricts('杭州市').includes('西湖区'), '杭州含西湖区');
+    assert(svc.listDistricts('不存在市').length === 0, '未知城市 → []');
   }
 
   console.log('\n========== T2: JobController 路由顺序 ==========');
@@ -246,24 +94,22 @@ async function run(): Promise<void> {
         routeOrder.push({ method: m, path });
       }
     }
-    // 关键校验: /place-suggestion 必须在 /:id 之前出现
-    const placeIdx = routeOrder.findIndex((r) => r.path === 'job-posts/place-suggestion');
+    // 关键校验: /location-facets 必须在 /:id 之前出现(P2-79 唯一新增静态段)
+    const facetsIdx = routeOrder.findIndex((r) => r.path === 'job-posts/location-facets');
     const detailIdx = routeOrder.findIndex((r) => r.path === 'job-posts/:id');
-    assert(placeIdx >= 0, `/place-suggestion 注册存在(序号=${placeIdx}, 总路由数=${routeOrder.length})`);
+    assert(facetsIdx >= 0, `/location-facets 注册存在(序号=${facetsIdx}, 总路由数=${routeOrder.length})`);
     assert(detailIdx >= 0, `/:id 注册存在(序号=${detailIdx})`);
-    assert(placeIdx < detailIdx, `/place-suggestion 在 /:id 之前注册(不被吞):${placeIdx}<${detailIdx}`);
-    // 同样校验: /reverse-geocode 必须在 /:id 之前
-    const reverseIdx = routeOrder.findIndex((r) => r.path === 'job-posts/reverse-geocode');
-    assert(reverseIdx >= 0, `/reverse-geocode 注册存在(序号=${reverseIdx})`);
-    assert(reverseIdx < detailIdx, `/reverse-geocode 在 /:id 之前注册(不被吞):${reverseIdx}<${detailIdx}`);
+    assert(facetsIdx < detailIdx, `/location-facets 在 /:id 之前注册(不被吞):${facetsIdx}<${detailIdx}`);
+    // 旧百度端点已删除:place-suggestion / reverse-geocode 不应再注册
+    assert(routeOrder.every((r) => r.path !== 'job-posts/place-suggestion' && r.path !== 'job-posts/reverse-geocode'), '旧端点 place-suggestion / reverse-geocode 已删除');
   }
 
-  // ---- 子测试 7: 静态段 /template /recommend /featured 在 /:id 之前 ----
+  // ---- 子测试 7: 静态段 /template /recommend /featured /location-facets 在 /:id 之前 ----
   {
     const METHOD_METADATA = 'method';
     const PATH_METADATA = 'path';
     const proto = JobController.prototype as unknown as Record<string, unknown>;
-    const staticKeys = ['job-posts/template', 'job-posts/recommend', 'job-posts/featured', 'job-posts/place-suggestion', 'job-posts/reverse-geocode'];
+    const staticKeys = ['job-posts/template', 'job-posts/recommend', 'job-posts/featured', 'job-posts/location-facets'];
     const order: string[] = [];
     for (const key of Object.getOwnPropertyNames(proto)) {
       const fn = proto[key] as object;
@@ -279,25 +125,22 @@ async function run(): Promise<void> {
     }
   }
 
-  console.log('\n========== T3: JobService.createPost 4 字段强制 ==========');
-  // 这部分依赖真实 DB 的 merchant 查询,我们用 FakePrisma 模拟
-  // 实际功能校验放在 T5 端到端,但本节用最小 FakePrisma 验证业务逻辑
-  // 由于 createPost 直接访问 prisma.merchant 需返回 APPROVED merchant,这里 mock
-  // 通过直接构造 createPost 行为验证 — 使用 mock service 替代真 service
-  // 这里只验证 controller 注册路径 / DTO 必填规则通过 typecheck 在编译时已保证
-  // 运行时语义校验放在 T4/T5
+  console.log('\n========== T3: JobService.createPost 选点字段必填契约 ==========');
+  // 这部分依赖真实 DB 的 merchant 查询,业务层完整校验在 jest 单测覆盖
+  // 这里内联镜像业务校验,验证契约语义(P2-79:location 文本 + 经纬度必传,poiId 已全链路删除)
   {
-    // 必填字段在 DTO 上是 @IsOptional + @IsString@MaxLength(64) 等约束,
+    // 必填字段在 DTO 上是 @IsOptional + @IsNumber 等约束,
     // 意味着 controller 不会在 DTO 校验阶段拒掉,但 JobService.createPost 业务层会拒:
-    //   if (!dto.locationPoiId || dto.locationLng === undefined || dto.locationLat === undefined || !dto.locationCity) → 40003
-    // 通过直接调用思路验证:把这段逻辑内联到本测试
-    const isInvalid = (dto: { locationPoiId?: string; locationLng?: number; locationLat?: number; locationCity?: string }) => {
-      return !dto.locationPoiId || dto.locationLng === undefined || dto.locationLat === undefined || !dto.locationCity;
+    //   if (!dto.location?.trim() || dto.locationLng === undefined || dto.locationLat === undefined) → 40003
+    const isInvalid = (dto: { location?: string; locationLng?: number; locationLat?: number }) => {
+      return !dto.location?.trim() || dto.locationLng === undefined || dto.locationLat === undefined;
     };
-    assert(isInvalid({}), '缺全 4 字段 → 不合法');
-    assert(isInvalid({ locationPoiId: 'p1' }), '缺 lng/lat/city → 不合法');
-    assert(!isInvalid({ locationPoiId: 'p1', locationLng: 0, locationLat: 0, locationCity: '北京' }), 'lng=0 + lat=0 必须被允许(0 是合法值)');
-    assert(!isInvalid({ locationPoiId: 'p1', locationLng: 116.4, locationLat: 39.9, locationCity: '北京' }), '4 字段齐 → 合法');
+    assert(isInvalid({}), '全缺 → 不合法');
+    assert(isInvalid({ location: '东直门地铁站' }), '缺 lng/lat → 不合法');
+    assert(isInvalid({ location: '   ', locationLng: 116.4, locationLat: 39.9 }), 'location 纯空白 → 不合法');
+    assert(isInvalid({ location: '东直门地铁站', locationLng: 116.4 }), '只传 lng → 不合法');
+    assert(!isInvalid({ location: '东直门地铁站', locationLng: 0, locationLat: 0 }), 'lng=0 + lat=0 合法(0 是合法坐标值)');
+    assert(!isInvalid({ location: '东直门地铁站', locationLng: 116.4, locationLat: 39.9 }), '地址+坐标齐 → 合法');
   }
 
   console.log('\n========== T4: PaymentService mock 闭环 / 价格 / mockPay ==========');

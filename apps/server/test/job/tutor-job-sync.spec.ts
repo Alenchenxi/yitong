@@ -1202,7 +1202,8 @@ function buildNearestJobService() {
     $queryRaw: jest.fn().mockResolvedValue([]),
   };
   const location = {
-    convertGcj02ToBd09: jest.fn(async (lng: number, lat: number) => ({ lng, lat })),
+    // P2-79:gcj02ToBd09 同步恒等 mock——用例断言 SQL 预筛选参数,转换公式已由 location.service.spec 覆盖
+    gcj02ToBd09: jest.fn((lng: number, lat: number) => ({ lng, lat })),
     normalizeAdministrativeName: jest.fn((value: string) => value),
   };
   const community = {

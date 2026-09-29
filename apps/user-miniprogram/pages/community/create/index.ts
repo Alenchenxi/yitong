@@ -1,7 +1,7 @@
 import type { AppInstance } from '../../../app';
 import { createCommunity } from '../../../services/community';
 import { uploadImage } from '../../../services/upload';
-import { suggestPlaces, type PoiInfoVo } from '../../../services/place-suggest';
+import { chooseLocation } from '../../../utils/choose-location';
 
 // 圈子类型（与后端 COMMUNITY_CATEGORIES 对齐）
 const CATEGORIES = ['校园', '兴趣', '生活', '兼职'];
@@ -16,11 +16,7 @@ Page({
     categories: CATEGORIES,
     category: '', // 圈子类型（必选）
     region: '', // 所在地区（picker mode=region 省市区选择，如「浙江省杭州市西湖区」）
-    regionPicker: { province: '', city: '', district: '' }, // 省市区，地点搜索限定城市用
-    location: '', // 所在地点（place-suggest 搜索选点地址）
-    searchInput: '',
-    searchFocus: false,
-    candidates: [] as PoiInfoVo[],
+    location: '', // 所在地点（P2-79:wx.chooseLocation 地图选点,name+address 纯文本落库,坐标不存）
     uploading: false,
     backgroundUploading: false,
     submitting: false,
@@ -44,54 +40,14 @@ Page({
   onRegionChange(e: WechatMiniprogram.PickerChange) {
     const value = e.detail.value as unknown as string[];
     const [province = '', city = '', district = ''] = value;
-    this.setData({
-      regionPicker: { province, city, district },
-      region: [province, city, district].filter(Boolean).join(''),
-    });
+    this.setData({ region: [province, city, district].filter(Boolean).join('') });
   },
 
-  // 地点搜索：防抖 300ms 调 place-suggest，候选列表实时展示（编辑即解锁重选）
-  onSearchInput(e: WechatMiniprogram.Input) {
-    const v = e.detail.value;
-    this.setData({ searchInput: v, location: '', searchFocus: true });
-    if (this._searchTimer) clearTimeout(this._searchTimer);
-    if (!v.trim()) {
-      this.setData({ candidates: [] });
-      return;
-    }
-    this._searchTimer = setTimeout(() => this.doSearch(v.trim()), 300) as unknown as number;
-  },
-
-  // 聚焦：清空候选（用户期望重新输入），隐藏已锁定地址
-  onSearchFocus() {
-    this.setData({ searchFocus: true, candidates: [] });
-  },
-
-  onSearchBlur() {
-    this.setData({ searchFocus: false });
-  },
-
-  // 候选搜索：选定城市后限定在该市内；失败静默降级（request.ts 已弹后端 message）
-  async doSearch(q: string) {
-    try {
-      const list = await suggestPlaces(q, this.data.regionPicker.city || undefined);
-      this.setData({ candidates: list });
-    } catch {
-      this.setData({ candidates: [] });
-    }
-  },
-
-  // 点击候选：锁定地址（location 落库），搜索框同步显示
-  onPickCandidate(e: WechatMiniprogram.TouchEvent) {
-    const idx = Number(e.currentTarget.dataset.idx);
-    const c = this.data.candidates[idx];
-    if (!c) return;
-    this.setData({
-      location: c.address,
-      searchInput: c.address,
-      candidates: [],
-      searchFocus: false,
-    });
+  // P2-79 去百度地图:微信原生地图选点(取消/失败静默保持原状态)
+  async onChooseLocation() {
+    const loc = await chooseLocation();
+    if (!loc) return;
+    this.setData({ location: `${loc.name} ${loc.address}`.trim() });
   },
 
   chooseLogo() {
@@ -178,6 +134,4 @@ Page({
       this.setData({ submitting: false });
     }
   },
-
-  _searchTimer: 0 as number,
 });

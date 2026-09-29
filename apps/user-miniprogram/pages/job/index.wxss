@@ -110,6 +110,12 @@
 }
 .filter-title { color: var(--yt-text-main); font-size: 32rpx; font-weight: 600; }
 .filter-city { margin-top: 6rpx; color: var(--yt-text-sub); font-size: 22rpx; }
+/* P2-79 区域筛选:城市/区县分组标题 */
+.filter-group-title {
+  padding: 16rpx 8rpx 8rpx;
+  color: var(--yt-text-sub);
+  font-size: 24rpx;
+}
 .filter-close {
   width: 64rpx;
   height: 64rpx;

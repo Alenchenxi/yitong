@@ -46,13 +46,8 @@ export class CreateJobPostDto {
   @MaxLength(100)
   location!: string;
 
-  // 智能生成流程(2026-08-10):工作地点强制地图选点,4 字段必填,缺一抛 40003
-  // 老数据兼容:4 字段可空(snapshot 模式);新创建岗位必须传齐
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  locationPoiId?: string;
-
+  // P2-79 去百度地图:工作地点经微信 wx.chooseLocation 地图选点获得,location + 经纬度必填(服务端校验)。
+  // 坐标入参为 GCJ-02(微信系),服务端本地公式转 BD-09 后落库;城市由服务端从地址解析,不再由前端传入。
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -66,11 +61,6 @@ export class CreateJobPostDto {
   @Min(-90)
   @Max(90)
   locationLat?: number;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  locationCity?: string;
 
   // P0-17 结构化字段第一批
   @IsIn(JOB_CATEGORY_VALUES)
@@ -171,12 +161,7 @@ export class UpdateJobPostDto {
   @MaxLength(100)
   location?: string;
 
-  // 智能生成流程(2026-08-10):编辑模式 location 4 字段可选;前端传齐才更新
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  locationPoiId?: string;
-
+  // P2-79 去百度地图:编辑模式坐标可选(传则必须成对,服务端校验);坐标 GCJ-02,服务端转 BD-09
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -190,11 +175,6 @@ export class UpdateJobPostDto {
   @Min(-90)
   @Max(90)
   locationLat?: number;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  locationCity?: string;
 
   @IsOptional()
   @IsIn(JOB_CATEGORY_VALUES)
@@ -492,16 +472,11 @@ export class BatchImportJobPostItem {
   @MaxLength(50)
   salary!: string;
 
-  // 地点展示文本（必填）；坐标不参与解析，调用方通过 geocode 自行换好后随请求传入
+  // 地点展示文本（必填）；坐标为 GCJ-02（微信系），服务端转 BD-09 后落库
   @IsString()
   @MinLength(1)
   @MaxLength(100)
   location!: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  locationPoiId?: string;
 
   @IsOptional()
   @Type(() => Number)
@@ -517,6 +492,7 @@ export class BatchImportJobPostItem {
   @Max(90)
   locationLat?: number;
 
+  // 城市回落值：服务端优先从地址文本解析，解析不出才用它（批量导入调用方可不传）
   @IsOptional()
   @IsString()
   @MaxLength(20)

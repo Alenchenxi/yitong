@@ -246,7 +246,7 @@ async function cleanup(prisma) {
       title: `圈子岗_${sfx}`, description: '圈子 smoke 岗位', salary: '100/天', location: '校',
       category: 'CATERING', settlement: 'DAILY', workDates: ['周六'], workPeriods: ['全天'],
       headcount: 2, duration: 'D30', communityId: cid,
-      locationPoiId: 'poi_x', locationLng: 120.1, locationLat: 30.2, locationCity: '杭州',
+      locationLng: 120.1, locationLat: 30.2, // P2-79:坐标语义 GCJ-02,服务端转 BD-09;poiId/city 已删
     });
     assert(job.body.code === 0, 'M 发岗（选圈 cid）');
     const jobId = job.body.data.id;

@@ -10,6 +10,7 @@ import {
 } from '@prisma/client';
 import { JobVisibilityPolicyService } from '../../src/modules/job-visibility/job-visibility.service';
 import { JobService } from '../../src/modules/job/job.service';
+import { LocationService } from '../../src/modules/job/location.service';
 import { TutorJobPolicyService } from '../../src/modules/tutor-sync/tutor-job-policy.service';
 
 describe('JobService 待支付岗位草稿幂等', () => {
@@ -26,10 +27,12 @@ describe('JobService 待支付岗位草稿幂等', () => {
       salary: '150元/天',
       salaryAmount: 150,
       location: '大学生活动中心',
-      locationPoiId: 'poi_1',
-      locationLng: { toString: () => '116.400000' },
-      locationLat: { toString: () => '39.900000' },
-      locationCity: '北京',
+      // P2-79:坐标语义 BD-09(存储系)。此值 = gcj02ToBd09(116.4, 39.9)，
+      // 与下方 payload 重发的 GCJ-02 原值经服务端转换后一致，幂等比较应命中。
+      // 地址不含城市名、圈子 region 为空 → 服务端解析 city=null，草稿同存 null。
+      locationLng: { toString: () => '116.406380' },
+      locationLat: { toString: () => '39.906349' },
+      locationCity: null,
       category: JobCategory.CATERING,
       customCategory: null,
       settlement: Settlement.DAILY,
@@ -79,7 +82,7 @@ describe('JobService 待支付岗位草稿幂等', () => {
       prisma as never,
       { checkText: jest.fn().mockResolvedValue(undefined) } as never,
       { create: jest.fn() } as never,
-      {} as never,
+      new LocationService(), // P2-79:真实本地实现,坐标转换/城市解析参与幂等比较
       { assertUserCanParticipate: jest.fn().mockResolvedValue(undefined) } as never,
       new JobVisibilityPolicyService(),
       new TutorJobPolicyService(),
@@ -91,10 +94,9 @@ describe('JobService 待支付岗位草稿幂等', () => {
       description: candidate.description,
       salary: candidate.salary,
       location: candidate.location,
-      locationPoiId: candidate.locationPoiId,
+      // P2-79:客户端持微信选点 GCJ-02 原值重发，转换在服务端完成
       locationLng: 116.4,
       locationLat: 39.9,
-      locationCity: candidate.locationCity,
       category: JobCategory.CATERING,
       settlement: Settlement.DAILY,
       workPeriods: ['全天'],

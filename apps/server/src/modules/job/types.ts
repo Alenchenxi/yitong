@@ -23,7 +23,6 @@ export interface JobPostVo {
   salary: string;
   salaryAmount: number | null;
   location: string;
-  locationPoiId: string | null;
   locationLng: number | null;
   locationLat: number | null;
   locationCity: string | null;

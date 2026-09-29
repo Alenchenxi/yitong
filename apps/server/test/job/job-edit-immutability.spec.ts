@@ -18,7 +18,6 @@ function jobFixture(overrides: Record<string, unknown> = {}) {
     salary: '150元/天',
     salaryAmount: 150,
     location: '校门口奶茶店',
-    locationPoiId: 'poi_a',
     locationLng: 116.4,
     locationLat: 39.9,
     locationCity: '北京',

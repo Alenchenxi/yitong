@@ -302,24 +302,19 @@ export class JobService {
     };
   }
   // 商家发岗：需 Merchant APPROVED。创建 PENDING 草稿；发布由 feat/payment 负责（付费后置 PUBLISHED + expireAt）
-  // 智能生成流程(2026-08-10):工作地点强制地图选点,4 字段必填,缺一抛 40003
+  // P2-79 去百度地图:工作地点经微信地图选点获得,location + 经纬度必填(0/0 合法),缺一抛 40003
   async createPost(merchantUid: string, dto: CreateJobPostDto, openid?: string) {
     const merchant = await this.prisma.merchant.findUnique({ where: { userId: merchantUid } });
     if (!merchant || merchant.status !== MerchantStatus.APPROVED) {
       throw new BizException(60003, '商家资质未审核通过，不能发岗', HttpStatus.FORBIDDEN);
     }
-    // 强制必填 4 个 location 字段:locationPoiId / locationLng / locationLat / locationCity
+    // 强制必填:location 文本 + 经纬度(坐标入参 GCJ-02,服务端本地公式转 BD-09 后落库)
     if (
-      !dto.locationPoiId ||
+      !dto.location?.trim() ||
       dto.locationLng === undefined ||
-      dto.locationLat === undefined ||
-      !dto.locationCity
+      dto.locationLat === undefined
     ) {
-      throw new BizException(
-        40003,
-        '工作地点必须通过地图选点获得,请补全 poiId/经度/纬度/城市',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new BizException(40003, '工作地点必须通过地图选点获得，请传入地址与经纬度', HttpStatus.BAD_REQUEST);
     }
     const customCategory = dto.customCategory?.trim() || null;
     if (dto.isCustomCategory) {
@@ -343,21 +338,37 @@ export class JobService {
     const days = dto.duration === JobDuration.D90 ? 90 : 30;
     const expireAt = new Date(Date.now() + days * 86_400_000);
     // 圈子：发岗归属圈子（商家显式选圈 -> 校验 ACTIVE；缺省商家当前圈子 -> 默认）
+    // region 用于城市解析失败时的回落（圈子所在地区）
     let communityId: string;
+    let communityRegion: string | null = null;
     if (dto.communityId) {
       const c = await this.prisma.community.findUnique({
         where: { id: dto.communityId },
-        select: { status: true },
+        select: { status: true, region: true },
       });
       if (!c || c.status !== 'ACTIVE')
         throw new BizException(40006, '圈子不存在或不可用', HttpStatus.BAD_REQUEST);
       communityId = dto.communityId;
+      communityRegion = c.region;
     } else {
       communityId = await this.community.getActiveCommunityId(merchantUid);
+      const c = await this.prisma.community.findUnique({
+        where: { id: communityId },
+        select: { region: true },
+      });
+      communityRegion = c?.region ?? null;
     }
     await this.community.assertUserCanParticipate(merchantUid, communityId);
     const publisherScope = await this.publicationPolicy.resolveForUser(merchantUid);
     const expectedHeadcount = dto.headcount ?? 1;
+    // P2-79 去百度地图:入参坐标 GCJ-02(微信选点),本地公式转 BD-09(存储系,与存量岗位一致);
+    // 幂等比较与落库统一用转换值(round6 对齐 Decimal(10,6),重放一致)
+    const bd = this.location.gcj02ToBd09(dto.locationLng, dto.locationLat);
+    // 城市服务端解析:地址文本 → 官方城市名;失败回落圈子 region,再失败 null(老数据 3 字段可空口径不变)
+    const city =
+      this.location.parseCityFromAddress(dto.location) ??
+      this.location.parseCityFromAddress(communityRegion) ??
+      null;
     // 取消支付后重新提交同一岗位：仅复用已经生成过待支付订单的完全一致草稿。
     // 没有支付记录的同名岗位仍允许正常创建，避免误合并商家主动发布的重复岗位。
     const paymentOrderStore = (
@@ -408,10 +419,9 @@ export class JobService {
             (candidate.requirements ?? null) === expectedRequirements &&
             String(candidate.salary ?? '').trim() === dto.salary.trim() &&
             String(candidate.location ?? '').trim() === dto.location.trim() &&
-            (candidate.locationPoiId ?? null) === (dto.locationPoiId ?? null) &&
-            Number(candidate.locationLng ?? NaN) === Number(dto.locationLng ?? NaN) &&
-            Number(candidate.locationLat ?? NaN) === Number(dto.locationLat ?? NaN) &&
-            (candidate.locationCity ?? null) === (dto.locationCity ?? null) &&
+            Number(candidate.locationLng ?? NaN) === bd.lng &&
+            Number(candidate.locationLat ?? NaN) === bd.lat &&
+            (candidate.locationCity ?? null) === city &&
             candidate.category === dto.category &&
             (candidate.customCategory ?? null) === expectedCustomCategory &&
             candidate.settlement === dto.settlement &&
@@ -444,10 +454,9 @@ export class JobService {
         salary: dto.salary,
         salaryAmount: parseSalaryAmount(dto.salary),
         location: dto.location,
-        locationPoiId: dto.locationPoiId,
-        locationLng: dto.locationLng,
-        locationLat: dto.locationLat,
-        locationCity: dto.locationCity,
+        locationLng: bd.lng,
+        locationLat: bd.lat,
+        locationCity: city,
         category: dto.category,
         customCategory,
         settlement: dto.settlement,
@@ -569,6 +578,12 @@ export class JobService {
     if (!community || community.status !== CommunityStatus.ACTIVE) {
       throw new BizException(40006, '圈子不存在或不可用', HttpStatus.BAD_REQUEST);
     }
+    // P2-79:坐标入参 GCJ-02(与 createPost 同契约),传齐成对才转换落库(全或无,防半更新)
+    const itemBd =
+      item.locationLng !== undefined && item.locationLat !== undefined
+        ? this.location.gcj02ToBd09(item.locationLng, item.locationLat)
+        : null;
+    // 城市优先服务端从地址解析,解析不出回落调用方显式传入的 locationCity
     return this.prisma.jobPost.create({
       data: {
         merchantId: merchant.id,
@@ -581,10 +596,9 @@ export class JobService {
         salary: item.salary,
         salaryAmount: parseSalaryAmount(item.salary),
         location: item.location,
-        locationPoiId: item.locationPoiId ?? null,
-        locationLng: item.locationLng ?? null,
-        locationLat: item.locationLat ?? null,
-        locationCity: item.locationCity ?? null,
+        locationLng: itemBd?.lng ?? null,
+        locationLat: itemBd?.lat ?? null,
+        locationCity: this.location.parseCityFromAddress(item.location) ?? item.locationCity ?? null,
         category: item.category,
         customCategory,
         settlement: item.settlement,
@@ -667,29 +681,23 @@ export class JobService {
       data.salaryAmount = parseSalaryAmount(dto.salary);
     }
     if (dto.location !== undefined) data.location = dto.location;
-    // 智能生成流程(2026-08-10):编辑模式 location 4 字段可选;前端传齐才更新(全或无,防半更新)
-    const hasLocExt =
-      dto.locationPoiId !== undefined ||
-      dto.locationLng !== undefined ||
-      dto.locationLat !== undefined ||
-      dto.locationCity !== undefined;
+    // P2-79 去百度地图:编辑模式坐标可选(全或无);传则必须成对 + location 文本非空
+    // 城市从新地址重新解析,解析不出保留旧值(不置空,存量城市筛选不丢)
+    const hasLocExt = dto.locationLng !== undefined || dto.locationLat !== undefined;
     if (hasLocExt) {
+      const effectiveLocation = dto.location ?? post.location;
       if (
-        !dto.locationPoiId ||
         dto.locationLng === undefined ||
         dto.locationLat === undefined ||
-        !dto.locationCity
+        !effectiveLocation.trim()
       ) {
-        throw new BizException(
-          40003,
-          '编辑位置信息必须传齐 poiId/经度/纬度/城市',
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new BizException(40003, '编辑位置信息必须传齐地址与经纬度', HttpStatus.BAD_REQUEST);
       }
-      data.locationPoiId = dto.locationPoiId;
-      data.locationLng = dto.locationLng;
-      data.locationLat = dto.locationLat;
-      data.locationCity = dto.locationCity;
+      const bd = this.location.gcj02ToBd09(dto.locationLng, dto.locationLat);
+      data.locationLng = bd.lng;
+      data.locationLat = bd.lat;
+      data.locationCity =
+        this.location.parseCityFromAddress(effectiveLocation) ?? post.locationCity ?? null;
     }
     if (dto.category !== undefined) {
       data.category = dto.category;
@@ -1050,7 +1058,8 @@ export class JobService {
     }
 
     // 坐标转换
-    const bd = await this.location.convertGcj02ToBd09(userLng, userLat);
+    // P2-79:GCJ-02 → BD-09 本地公式(同步,无 API);Haversine/游标/渐进半径逻辑零改动
+    const bd = this.location.gcj02ToBd09(userLng, userLat);
     // 仅查有坐标的岗位（无坐标不纳入最近排序）
     const where: Prisma.JobPostWhereInput = {
       ...baseWhere,
@@ -1802,6 +1811,56 @@ export class JobService {
     return scored.slice(0, RESULT_LIMIT).map((s) => this.toPostVo(s.post, false, tutorContact));
   }
 
+  // P2-79 去百度地图:区域筛选 facets —— 有岗城市聚合(归一合并存量「北京/北京市」混存)+ 可选城市全量区县列表。
+  // 与列表同口径(resolveFeedCommunityId + jobVisibility),不透传 communityId,保证面板城市在列表能筛出岗。
+  async getLocationFacets(
+    uid: string,
+    city?: string,
+  ): Promise<{
+    cities: Array<{ city: string; count: number }>;
+    city?: string;
+    districts?: string[];
+  }> {
+    const communityId = await this.community.resolveFeedCommunityId(uid);
+    const groups = await this.prisma.jobPost.groupBy({
+      by: ['locationCity'],
+      where: {
+        status: JobPostStatus.PUBLISHED,
+        deletedAt: null, // M3-07 软删过滤
+        locationCity: { not: null },
+        AND: this.jobVisibility.buildFilters(communityId),
+      },
+      _count: { _all: true },
+    });
+    // 归一合并:同城市不同写法归并为一个 chip;展示名取更长的原始值(「北京市」优先于「北京」,确定性)
+    const merged = new Map<string, { city: string; count: number }>();
+    for (const g of groups) {
+      const raw = g.locationCity;
+      if (!raw) continue;
+      const key = this.location.normalizeAdministrativeName(raw);
+      const hit = merged.get(key);
+      if (hit) {
+        hit.count += g._count._all;
+        if (raw.length > hit.city.length) hit.city = raw;
+      } else {
+        merged.set(key, { city: raw, count: g._count._all });
+      }
+    }
+    // 排序:count desc,同数中文序(localeCompare 拼音)
+    const cities = Array.from(merged.values()).sort((a, b) =>
+      a.count !== b.count ? b.count - a.count : a.city.localeCompare(b.city, 'zh-Hans-CN'),
+    );
+    const result: { cities: Array<{ city: string; count: number }>; city?: string; districts?: string[] } = {
+      cities,
+    };
+    if (city?.trim()) {
+      result.city = city.trim();
+      // 本地数据包全量区县(无岗区县也可作筛选项)
+      result.districts = this.location.listDistricts(city.trim());
+    }
+    return result;
+  }
+
   private async assertOwnsPost(uid: string, postId: string) {
     if (!(await this.ownsPost(uid, postId))) {
       throw new BizException(10003, '无权操作该岗位', HttpStatus.FORBIDDEN);
@@ -1838,7 +1897,6 @@ export class JobService {
       salary: string;
       salaryAmount: number | null;
       location: string;
-      locationPoiId?: string | null;
       locationLng?: { toString(): string } | null;
       locationLat?: { toString(): string } | null;
       locationCity?: string | null;
@@ -1915,8 +1973,7 @@ export class JobService {
       salary: p.salary,
       salaryAmount: p.salaryAmount,
       location: p.location,
-      // 智能生成流程(2026-08-10):百度地图结构化字段,前端用于重选/二次校验
-      locationPoiId: p.locationPoiId ?? null,
+      // P2-79 去百度地图:坐标 BD-09(存储系);locationPoiId 已全链路删除
       locationLng: p.locationLng ? Number(p.locationLng.toString()) : null,
       locationLat: p.locationLat ? Number(p.locationLat.toString()) : null,
       locationCity: p.locationCity ?? null,

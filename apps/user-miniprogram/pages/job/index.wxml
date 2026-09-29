@@ -62,7 +62,7 @@
     <view class="filter-header">
       <view>
         <view class="filter-title">筛选</view>
-        <view class="filter-city" wx:if="{{currentCity}}">当前城市：{{currentCity}}</view>
+        <view class="filter-city" wx:if="{{draftCity}}">城市：{{draftCity}}</view>
       </view>
       <view class="filter-close" bindtap="closeFilter" aria-label="关闭">×</view>
     </view>
@@ -83,22 +83,42 @@
 
       <scroll-view class="filter-options" scroll-y>
         <view wx:if="{{filterSection === 'district'}}">
+          <view class="filter-group-title">城市（有岗城市）</view>
           <view class="filter-option-grid">
             <view
-              class="filter-option {{draftDistrict === '' ? 'active' : ''}}"
+              class="filter-option {{draftCity === '' ? 'active' : ''}}"
               data-value=""
-              bindtap="selectDistrict"
+              bindtap="selectCity"
             >不限</view>
             <view
-              class="filter-option {{draftDistrict === item.value ? 'active' : ''}}"
-              wx:for="{{districtOptions}}"
-              wx:key="value"
-              data-value="{{item.value}}"
-              bindtap="selectDistrict"
-            >{{item.label}}</view>
+              class="filter-option {{draftCity === item.city ? 'active' : ''}}"
+              wx:for="{{cityOptions}}"
+              wx:key="city"
+              data-value="{{item.city}}"
+              bindtap="selectCity"
+            >{{item.city}} {{item.count}}</view>
           </view>
-          <view class="filter-state" wx:if="{{locationLoading}}">正在获取当前城市区域...</view>
-          <view class="filter-state error" wx:elif="{{locationError}}">{{locationError}}</view>
+          <view class="filter-state" wx:if="{{facetsLoading}}">正在加载有岗城市...</view>
+          <view class="filter-state error" wx:elif="{{facetsError}}" bindtap="loadCityFacets">{{facetsError}}（点击重试）</view>
+
+          <block wx:if="{{draftCity}}">
+            <view class="filter-group-title">区县（{{draftCity}}）</view>
+            <view class="filter-option-grid" wx:if="{{!districtsLoading}}">
+              <view
+                class="filter-option {{draftDistrict === '' ? 'active' : ''}}"
+                data-value=""
+                bindtap="selectDistrict"
+              >不限</view>
+              <view
+                class="filter-option {{draftDistrict === item.value ? 'active' : ''}}"
+                wx:for="{{districtOptions}}"
+                wx:key="value"
+                data-value="{{item.value}}"
+                bindtap="selectDistrict"
+              >{{item.label}}</view>
+            </view>
+            <view class="filter-state" wx:if="{{districtsLoading}}">正在加载区县...</view>
+          </block>
         </view>
 
         <view wx:elif="{{filterSection === 'settlement'}}" class="filter-option-grid">

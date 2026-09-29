@@ -12,7 +12,7 @@ const [
   jobPageWxml,
   jobPageWxss,
   jobClientTs,
-  placeClientTs,
+  chooseLocationTs,
 ] = await Promise.all([
   readFile(new URL('../src/modules/job/job.controller.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/modules/job/location.service.ts', import.meta.url), 'utf8'),
@@ -22,19 +22,20 @@ const [
   readFile(new URL('pages/job/index.wxml', miniprogram), 'utf8'),
   readFile(new URL('pages/job/index.wxss', miniprogram), 'utf8'),
   readFile(new URL('services/job.ts', miniprogram), 'utf8'),
-  readFile(new URL('services/place-suggest.ts', miniprogram), 'utf8'),
+  readFile(new URL('utils/choose-location.ts', miniprogram), 'utf8'),
 ]);
 
 assert(
-  controllerTs.includes("@Get('job-posts/location-context')") &&
-    controllerTs.includes('this.location.getLocationContext'),
-  '服务端应提供坐标对应城市与全部区县的 location-context 接口',
+  controllerTs.includes("@Get('job-posts/location-facets')") &&
+    controllerTs.includes('this.job.getLocationFacets'),
+  '服务端应提供有岗城市聚合 + 区县列表的 location-facets 接口',
 );
 assert(
-  locationServiceTs.includes('@province-city-china/area') &&
-    locationServiceTs.includes('districts') &&
-    locationServiceTs.includes('addressComponent'),
-  '定位服务应从行政区划数据生成当前城市的全部区县，并读取反向定位区县',
+  locationServiceTs.includes('@province-city-china/city') &&
+    locationServiceTs.includes('parseCityFromAddress') &&
+    locationServiceTs.includes('gcj02ToBd09') &&
+    !locationServiceTs.includes('baidu'),
+  '定位服务应为纯本地实现：本地公式转 BD-09 + 地址解析城市 + 行政区划数据区县',
 );
 assert(
   jobDtoTs.includes('export class JobRecommendQueryDto') &&
@@ -57,9 +58,14 @@ assert(
 );
 
 assert(
-  placeClientTs.includes('getLocationContext') &&
-    placeClientTs.includes('/job-posts/location-context?'),
-  '小程序应封装城市区县上下文请求',
+  jobClientTs.includes('export function getLocationFacets') &&
+    jobClientTs.includes('/job-posts/location-facets'),
+  '小程序应封装有岗城市 facets 请求',
+);
+assert(
+  chooseLocationTs.includes('wx.chooseLocation') &&
+    chooseLocationTs.includes('ChosenLocation'),
+  '小程序应共用微信原生地图选点封装（utils/choose-location.ts）',
 );
 assert(
   jobClientTs.includes('export interface JobRecommendFilter') &&
@@ -86,9 +92,17 @@ assert(
 );
 assert(
   jobPageTs.includes('location: this.data.appliedDistrict || undefined') &&
-    jobPageTs.includes('city: this.data.appliedDistrict ? this.data.currentCity') &&
+    jobPageTs.includes('city: this.data.appliedCity || undefined') &&
     jobPageTs.includes('settlement: this.data.appliedSettlement || undefined'),
-  '普通列表和推荐列表应使用已应用的区域与结算方式筛选',
+  '普通列表和推荐列表应使用已应用的城市/区域与结算方式筛选',
+);
+assert(
+  jobPageTs.includes('cityOptions') &&
+    jobPageTs.includes('loadCityFacets') &&
+    jobPageTs.includes('selectCity') &&
+    jobPageTs.includes('draftCity') &&
+    jobPageTs.includes('appliedCity'),
+  '筛选面板应从 facets 加载有岗城市并维护草稿/已应用城市状态（不依赖定位）',
 );
 assert(
   jobPageWxml.includes('筛选') &&

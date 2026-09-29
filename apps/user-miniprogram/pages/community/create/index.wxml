@@ -45,35 +45,11 @@
     </picker>
   </view>
 
-  <!-- 所在地点（地图搜索选点，复用岗位发布 place-suggest） -->
+  <!-- 所在地点（P2-79:微信原生地图选点） -->
   <view class="field">
     <text class="label">所在地点 *</text>
-    <input
-      class="input"
-      placeholder="搜索地点（如：图书馆 / 大学生活动中心）"
-      value="{{searchInput}}"
-      bindinput="onSearchInput"
-      bindfocus="onSearchFocus"
-      bindblur="onSearchBlur"
-      confirm-type="search"
-    />
-    <view wx:if="{{location && !searchFocus}}" class="locked-location">📍 {{location}}</view>
-    <view wx:if="{{candidates.length > 0}}" class="candidates">
-      <view
-        wx:for="{{candidates}}"
-        wx:key="poiId"
-        wx:for-index="idx"
-        class="candidate"
-        bindtap="onPickCandidate"
-        data-idx="{{idx}}"
-      >
-        <view class="candidate-icon">📍</view>
-        <view class="candidate-info">
-          <view class="candidate-address">{{item.address}}</view>
-          <view class="candidate-city">{{item.city}}</view>
-        </view>
-      </view>
-    </view>
+    <view wx:if="{{location}}" class="locked-location">📍 {{location}}</view>
+    <view class="map-pick-btn" bindtap="onChooseLocation">{{location ? '重新选点' : '地图选点'}}</view>
   </view>
 
   <!-- 简介 -->

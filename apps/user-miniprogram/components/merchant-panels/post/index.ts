@@ -12,6 +12,7 @@ import {
   type Settlement,
   type JobPostVo,
 } from '../../../services/job';
+import { chooseLocation } from '../../../utils/choose-location';
 
 interface Opt {
   value: string;
@@ -73,12 +74,11 @@ Component({
     description: '',
     requirements: '',
     salary: '',
-    // 2026-08-11:location 改为只读 + 选点返填(poiId/lng/lat/city + 地址)
+    // P2-79 去百度地图:location 只读 + wx.chooseLocation 直选返填(name+address 拼接展示文本)
     location: '',
-    locationPoiId: '',
+    locationName: '', // 选点名称,兼作「已选点」标志(空=未选)
     locationLng: 0,
     locationLat: 0,
-    locationCity: '',
     categoryOptions: CATEGORY_OPTIONS,
     customSelected: false,
     customCategory: '',
@@ -125,17 +125,16 @@ Component({
         const settlementOptions = this.data.settlementOptions.map((o) => ({ ...o, selected: o.value === post.settlement }));
         const workDateOptions = this.data.workDateOptions.map((o) => ({ ...o, selected: post.workDates.includes(o.label) }));
         const workPeriodOptions = this.data.workPeriodOptions.map((o) => ({ ...o, selected: post.workPeriods.includes(o.label) }));
-        const ext = post as JobPostVo & { locationPoiId?: string | null; locationLng?: number | null; locationLat?: number | null; locationCity?: string | null };
         this.setData({
           title: post.title,
           description: post.description,
           requirements: post.requirements ?? '',
           salary: post.salary,
           location: post.location,
-          locationPoiId: ext.locationPoiId ?? '',
-          locationLng: ext.locationLng ?? 0,
-          locationLat: ext.locationLat ?? 0,
-          locationCity: ext.locationCity ?? '',
+          // P2-79:编辑回填只回显地址文本;坐标不回填表单(重选才带新坐标,编辑提交本就只传文本)
+          locationName: '',
+          locationLng: 0,
+          locationLat: 0,
           categoryOptions,
           customSelected,
           customCategory: post.customCategory ?? '',
@@ -167,10 +166,9 @@ Component({
         requirements: '',
         salary: '',
         location: '',
-        locationPoiId: '',
+        locationName: '',
         locationLng: 0,
         locationLat: 0,
-        locationCity: '',
         categoryOptions: CATEGORY_OPTIONS.map((o) => ({ ...o })),
         customSelected: false,
         customCategory: '',
@@ -187,27 +185,17 @@ Component({
       });
     },
 
-    // 2026-08-11:点击选点 → 跳 publish 页选完返回回填
-    onPickLocation() {
-      wx.navigateTo({ url: '/pages/job/publish/index?from=merchant' });
-    },
-
-    // 监听 publish 页回填(redirectTo / navigateBack)—— 通过页面栈读 route 参数
-    _pageShowListener() {
-      const pages = getCurrentPages();
-      // 找到当前页面栈顶(merchant 里嵌的 panel,page 是 merchant/index)
-      const cur = pages[pages.length - 1];
-      if (!cur) return;
-      const opts = (cur as { options?: Record<string, string> }).options || {};
-      if (opts.poiId && opts.lng && opts.lat) {
-        this.setData({
-          location: opts.address ?? '',
-          locationPoiId: opts.poiId,
-          locationLng: Number(opts.lng),
-          locationLat: Number(opts.lat),
-          locationCity: opts.city ?? '',
-        });
-      }
+    // P2-79 去百度地图:直调 wx.chooseLocation 地图选点(修复原「跳 publish 页回填」断头路:
+    // from=merchant 参数 publish 页从不读取、_pageShowListener 无调用方,选点回填走不通)
+    async onPickLocation() {
+      const loc = await chooseLocation();
+      if (!loc) return;
+      this.setData({
+        locationName: loc.name,
+        location: `${loc.name} ${loc.address}`.trim(),
+        locationLng: loc.lng,
+        locationLat: loc.lat,
+      });
     },
 
     onInput(e: WechatMiniprogram.Input) {
@@ -286,7 +274,7 @@ Component({
 
     async submit() {
       if (this.data.submitting) return;
-      const { title, description, requirements, salary, location, locationPoiId, locationLng, locationLat, locationCity, duration, headcount, urgent, online, isEdit, editId, customCategory } = this.data;
+      const { title, description, requirements, salary, location, locationName, locationLng, locationLat, duration, headcount, urgent, online, isEdit, editId, customCategory } = this.data;
       const category = this.data.categoryOptions.find((o) => o.selected)?.value;
       const settlement = this.data.settlementOptions.find((o) => o.selected)?.value;
       if (!title.trim() || !description.trim() || !salary.trim() || !location.trim()) {
@@ -303,8 +291,8 @@ Component({
       }
       const persistedCategory = (category === 'CUSTOM' ? 'LONG_TERM' : category) as JobCategory;
       const persistedCustomCategory = category === 'CUSTOM' ? customCategory.trim() : '';
-      // 2026-08-11:新增岗位必须 4 字段(poiId/lng/lat/city)都锁定,否则 40003
-      if (!isEdit && (!locationPoiId || locationLng === 0 || locationLat === 0 || !locationCity)) {
+      // P2-79:新增岗位必须经地图选点(locationName 为选点标志);编辑只需地址文本(历史行为)
+      if (!isEdit && (!location.trim() || !locationName)) {
         wx.showToast({ title: '请先选择工作地点', icon: 'none' });
         return;
       }
@@ -335,17 +323,15 @@ Component({
             this.triggerEvent('switchtab', { tab: 'jobs' });
           }, 600);
         } else {
-          // 创建草稿(2026-08-11:补齐 4 字段)
+          // 创建草稿(P2-79:坐标 GCJ-02 原值直传,服务端转 BD-09;城市服务端解析)
           const post = await createJobPost({
             title: title.trim(),
             description: description.trim(),
             requirements: requirements.trim() || undefined,
             salary: salary.trim(),
             location: location.trim(),
-            locationPoiId,
             locationLng,
             locationLat,
-            locationCity,
             category: persistedCategory,
             customCategory: persistedCustomCategory || undefined,
             isCustomCategory: category === 'CUSTOM',

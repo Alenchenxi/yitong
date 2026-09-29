@@ -19,7 +19,6 @@ Page({
     selectedKey: '' as string,
     categoryLabel: '' as string,
     customCategory: '' as string,
-    locationCity: '' as string,
 
     form: {
       title: '',
@@ -31,10 +30,9 @@ Page({
       headcount: '1',
       duration: 'D30' as 'D30' | 'D90',
       settlement: 'DAILY' as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'COMPLETION',
-      locationPoiId: '',
+      // P2-79 去百度地图:选点坐标 GCJ-02 原值(publish 页 wx.chooseLocation 直传),服务端转 BD-09
       locationLng: 0,
       locationLat: 0,
-      locationCity: '',
     },
     settlements: [
       { value: 'DAILY', label: '日结' },
@@ -84,15 +82,10 @@ Page({
       selectedKey: opts.selectedKey ?? '',
       categoryLabel: decodeURIComponent(opts.categoryLabel ?? ''),
       customCategory: decodeURIComponent(opts.customCategory ?? ''),
-      // city 经 encodeURIComponent 编码传入(publish.onNext),必须 decode;
-      // 否则中文城市编码后(如 %E5%8C%97%E4%BA%AC=24字符)超 CreateJobPostDto.locationCity @MaxLength(20) -> 创建 400,
-      // 且顶部 chip 显示 %E5%8C%97... 乱码
-      locationCity: decodeURIComponent(opts.city ?? ''),
+      // P2-79:只收 address/lng/lat(坐标 GCJ-02 原值,服务端转 BD-09;城市服务端从地址解析)
       'form.location': decodeURIComponent(opts.address ?? ''),
-      'form.locationPoiId': opts.poiId ?? '',
       'form.locationLng': Number(opts.lng ?? 0),
       'form.locationLat': Number(opts.lat ?? 0),
-      'form.locationCity': decodeURIComponent(opts.city ?? ''),
       pendingCommunityId: opts.communityId ?? '',
     });
     this.loadCommunities();
@@ -147,13 +140,13 @@ Page({
   },
 
   async generate() {
-    const { selectedKey, customCategory, form, seed, locationCity } = this.data;
+    const { selectedKey, customCategory, form, seed } = this.data;
     if (!selectedKey) return;
     try {
       const data: JobTemplateVo = await getJobTemplate({
         key: selectedKey,
         customCategory: selectedKey === 'CUSTOM' ? customCategory.trim() : undefined,
-        location: locationCity || form.location,
+        location: form.location,
         headcount: Number(form.headcount) || 1,
         seed,
       });
@@ -267,10 +260,9 @@ Page({
         requirements: f.requirements.trim() || undefined,
         salary: f.salary.trim(),
         location: f.location.trim(),
-        locationPoiId: f.locationPoiId || undefined,
-        locationLng: f.locationLng || undefined,
-        locationLat: f.locationLat || undefined,
-        locationCity: f.locationCity || undefined,
+        // 坐标 GCJ-02 原值直接传(0 不被吞;服务端转 BD-09)
+        locationLng: f.locationLng,
+        locationLat: f.locationLat,
         category,
         customCategory:
           this.data.selectedKey === 'CUSTOM' ? this.data.customCategory.trim() : undefined,

@@ -14,6 +14,7 @@ import {
 import { CommunityService } from '../../src/modules/community/community.service';
 import { JobVisibilityPolicyService } from '../../src/modules/job-visibility/job-visibility.service';
 import { JobService } from '../../src/modules/job/job.service';
+import { LocationService } from '../../src/modules/job/location.service';
 import { PublicationPolicyService } from '../../src/modules/publication/publication-policy.service';
 import { SquareService } from '../../src/modules/square/square.service';
 import { TutorJobPolicyService } from '../../src/modules/tutor-sync/tutor-job-policy.service';
@@ -33,7 +34,6 @@ function jobFixture(overrides: Record<string, unknown> = {}) {
     salary: '150元/天',
     salaryAmount: 150,
     location: '大学生活动中心',
-    locationPoiId: 'poi_a',
     locationLng: 116.4,
     locationLat: 39.9,
     locationCity: '北京',
@@ -76,7 +76,7 @@ function buildJobService(
     prisma as never,
     { checkText: jest.fn().mockResolvedValue(undefined) } as never,
     { create: jest.fn().mockResolvedValue(undefined) } as never,
-    {} as never,
+    new LocationService(), // P2-79:真实本地实现(createPost 坐标转换/城市解析)
     community as never,
     new JobVisibilityPolicyService(),
     new TutorJobPolicyService(),
@@ -123,10 +123,8 @@ describe('平台岗位发布与报名治理', () => {
       description: created.description,
       salary: created.salary,
       location: created.location,
-      locationPoiId: created.locationPoiId,
       locationLng: created.locationLng,
       locationLat: created.locationLat,
-      locationCity: created.locationCity,
       category: JobCategory.CATERING,
       settlement: Settlement.DAILY,
       duration: JobDuration.D30,
@@ -249,10 +247,8 @@ describe('平台岗位发布与报名治理', () => {
       description: '岗位描述',
       salary: '100元/天',
       location: '学校',
-      locationPoiId: 'poi_a',
       locationLng: 116.4,
       locationLat: 39.9,
-      locationCity: '北京',
       category: JobCategory.CATERING,
       settlement: Settlement.DAILY,
       duration: JobDuration.D30,

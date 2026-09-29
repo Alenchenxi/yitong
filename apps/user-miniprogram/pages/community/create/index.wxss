@@ -90,27 +90,20 @@
   background: var(--yt-primary-lighter);
   padding: 16rpx 24rpx;
   border-radius: 12rpx;
+  word-break: break-all;
 }
-.candidates {
-  margin-top: 16rpx;
-  border: 1rpx solid var(--yt-border);
-  border-radius: 12rpx;
+/* P2-79 地图选点次按钮:白底 + 边框(UI 规范 6.1) */
+.map-pick-btn {
+  margin-top: 12rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  font-size: 30rpx;
+  color: var(--yt-text-main);
   background: var(--yt-card);
-  max-height: 600rpx;
-  overflow-y: auto;
+  border: 1rpx solid var(--yt-border);
+  border-radius: 16rpx;
 }
-.candidate {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 20rpx 24rpx;
-  border-bottom: 1rpx solid var(--yt-border);
-}
-.candidate:last-child { border-bottom: none; }
-.candidate-icon { font-size: 28rpx; flex: 0 0 auto; }
-.candidate-info { flex: 1 1 auto; min-width: 0; }
-.candidate-address { font-size: 28rpx; color: var(--yt-text-main); }
-.candidate-city { font-size: 22rpx; color: var(--yt-text-sub); padding-top: 4rpx; }
 .textarea {
   background: var(--yt-card);
   border: 1rpx solid var(--yt-border);

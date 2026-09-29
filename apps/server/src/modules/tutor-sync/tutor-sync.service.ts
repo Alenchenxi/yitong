@@ -298,7 +298,6 @@ export class TutorSyncService {
         "salary" = input."salary",
         "salary_amount" = input."salaryAmount",
         "location" = input."location",
-        "location_poi_id" = NULL,
         "location_lng" = input."locationLng",
         "location_lat" = input."locationLat",
         "location_city" = input."locationCity",
@@ -449,7 +448,8 @@ export class TutorSyncService {
       salary: item.salary,
       salaryAmount: item.salaryAmount,
       location: item.location,
-      locationPoiId: null,
+      // P2-79:locationPoiId 已随 schema 全链路删除;lng/lat 直通不转换——
+      // TODO: 同步源坐标系未知,盲转会双倍偏移;确认源坐标系为 GCJ-02 后在此只套一次 gcj02ToBd09 即可
       locationLng: item.locationLng,
       locationLat: item.locationLat,
       locationCity: item.locationCity,

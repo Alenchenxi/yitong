@@ -90,8 +90,11 @@
   "sitemapLocation": "sitemap.json",
   "permission": {
     "scope.userFuzzyLocation": {
-      "desc": "用于查找附近的人、附近岗位和填写工作地点"
+      "desc": "用于查找附近的人、附近岗位"
+    },
+    "scope.userLocation": {
+      "desc": "用于地图选点选择工作地点或圈子地点"
     }
   },
-  "requiredPrivateInfos": ["getFuzzyLocation"]
+  "requiredPrivateInfos": ["getFuzzyLocation", "chooseLocation"]
 }

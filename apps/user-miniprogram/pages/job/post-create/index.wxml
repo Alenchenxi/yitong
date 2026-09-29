@@ -1,7 +1,7 @@
 <view class="container">
   <!-- 顶部 chip:类别 + 吸引力 -->
   <view class="top-chip">
-    <text class="city">{{locationCity || '北京'}} · {{categoryLabel}}</text>
+    <text class="city">{{categoryLabel}}</text>
     <text class="attr">{{attractivenessLabel}}</text>
   </view>
 

@@ -4,11 +4,11 @@ import {
   isJobListCursorExpired,
   recommendJobs,
   recordJobImpressions,
+  getLocationFacets,
   SETTLEMENT_LABELS,
   type JobPostVo,
   type Settlement,
 } from '../../services/job';
-import { getLocationContext } from '../../services/place-suggest';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
 import { bindJobModulePageGuard, requireJobModuleVisibility } from '../../utils/job-module';
 
@@ -29,19 +29,23 @@ Page({
     hasLocation: false,
     filterVisible: false,
     filterSection: 'district' as FilterSection,
-    currentCity: '',
+    // P2-79 去百度地图:区域筛选改「手动选有岗城市」——facets 聚合有岗城市 + 选中城市的区县列表(不再自动定位)
+    cityOptions: [] as Array<{ city: string; count: number }>,
     districtOptions: [] as Array<{ label: string; value: string }>,
     settlementOptions: (Object.keys(SETTLEMENT_LABELS) as Settlement[]).map((value) => ({
       value,
       label: SETTLEMENT_LABELS[value],
     })),
+    appliedCity: '',
     appliedDistrict: '',
     appliedSettlement: '' as Settlement | '',
+    draftCity: '',
     draftDistrict: '',
     draftSettlement: '' as Settlement | '',
     filterCount: 0,
-    locationLoading: false,
-    locationError: '',
+    facetsLoading: false,
+    facetsError: '',
+    districtsLoading: false,
   },
 
   onLoad() {
@@ -103,7 +107,7 @@ Page({
     try {
       const list = await recommendJobs({
         location: this.data.appliedDistrict || undefined,
-        city: this.data.appliedDistrict ? this.data.currentCity || undefined : undefined,
+        city: this.data.appliedCity || undefined,
         settlement: this.data.appliedSettlement || undefined,
       });
       this.setData({ posts: list, hasMore: false, nextCursor: null });
@@ -130,7 +134,7 @@ Page({
         userLng: isNearest ? this.data.userLng : undefined,
         userLat: isNearest ? this.data.userLat : undefined,
         location: this.data.appliedDistrict || undefined,
-        city: this.data.appliedDistrict ? this.data.currentCity || undefined : undefined,
+        city: this.data.appliedCity || undefined,
         settlement: this.data.appliedSettlement || undefined,
       });
       this.setData({
@@ -163,18 +167,21 @@ Page({
   openFilter() {
     this.setData({
       filterVisible: true,
+      draftCity: this.data.appliedCity,
       draftDistrict: this.data.appliedDistrict,
       draftSettlement: this.data.appliedSettlement,
-      locationError: '',
+      facetsError: '',
     });
-    if (this.data.districtOptions.length === 0 && !this.data.locationLoading) {
-      this.loadLocationContext();
+    // 城市列表只拉一次;重进面板若为空(上次失败)则重试
+    if (this.data.cityOptions.length === 0 && !this.data.facetsLoading) {
+      this.loadCityFacets();
     }
   },
 
   closeFilter() {
     this.setData({
       filterVisible: false,
+      draftCity: this.data.appliedCity,
       draftDistrict: this.data.appliedDistrict,
       draftSettlement: this.data.appliedSettlement,
     });
@@ -189,6 +196,37 @@ Page({
     }
   },
 
+  // P2-79:有岗城市聚合(facets),不依赖定位
+  async loadCityFacets() {
+    this.setData({ facetsLoading: true, facetsError: '' });
+    try {
+      const facets = await getLocationFacets();
+      this.setData({ cityOptions: facets.cities });
+    } catch {
+      this.setData({ facetsError: '城市列表加载失败，请稍后重试' });
+    } finally {
+      this.setData({ facetsLoading: false });
+    }
+  },
+
+  // 选城市:换城市清区县草稿(区县属旧城市),并拉该市区县列表(本地数据包全量,含无岗区县)
+  async selectCity(e: WechatMiniprogram.TouchEvent) {
+    const city = (e.currentTarget.dataset.value as string) ?? '';
+    this.setData({ draftCity: city, draftDistrict: '', districtOptions: [] });
+    if (!city) return;
+    this.setData({ districtsLoading: true });
+    try {
+      const facets = await getLocationFacets(city);
+      this.setData({
+        districtOptions: (facets.districts ?? []).map((district) => ({ label: district, value: district })),
+      });
+    } catch {
+      /* 区县加载失败仅影响区县细分,城市筛选仍可用;request 层已提示 */
+    } finally {
+      this.setData({ districtsLoading: false });
+    }
+  },
+
   selectDistrict(e: WechatMiniprogram.TouchEvent) {
     this.setData({ draftDistrict: (e.currentTarget.dataset.value as string) ?? '' });
   },
@@ -198,44 +236,25 @@ Page({
   },
 
   resetFilter() {
-    this.setData({ draftDistrict: '', draftSettlement: '' });
+    this.setData({ draftCity: '', draftDistrict: '', draftSettlement: '' });
   },
 
   applyFilter() {
+    const appliedCity = this.data.draftCity;
     const appliedDistrict = this.data.draftDistrict;
     const appliedSettlement = this.data.draftSettlement;
-    const filterCount = Number(Boolean(appliedDistrict)) + Number(Boolean(appliedSettlement));
+    const filterCount =
+      Number(Boolean(appliedCity)) +
+      Number(Boolean(appliedDistrict)) +
+      Number(Boolean(appliedSettlement));
     this.setData({
+      appliedCity,
       appliedDistrict,
       appliedSettlement,
       filterCount,
       filterVisible: false,
     });
     this.reload();
-  },
-
-  loadLocationContext() {
-    this.setData({ locationLoading: true, locationError: '' });
-    wx.getFuzzyLocation({
-      type: 'gcj02',
-      success: async (res) => {
-        this.setData({ userLng: res.longitude, userLat: res.latitude, hasLocation: true });
-        try {
-          const context = await getLocationContext(res.longitude, res.latitude);
-          this.setData({
-            currentCity: context.city,
-            districtOptions: context.districts.map((district) => ({ label: district, value: district })),
-          });
-        } catch {
-          this.setData({ locationError: '区域加载失败，请稍后重试' });
-        } finally {
-          this.setData({ locationLoading: false });
-        }
-      },
-      fail: () => {
-        this.setData({ locationLoading: false, locationError: '开启位置权限后可选择工作区域' });
-      },
-    });
   },
 
   onPullDownRefresh() {

@@ -154,7 +154,7 @@ async function cleanup(prisma) {
     async function createPost(token, title) {
       const r = await call('POST', '/job-posts', token, {
         title, description: 'm3-04 测试岗位描述', salary: '100/天', location: '校',
-        locationPoiId: `poi_m3e_${sfx}`, locationLng: 116.4, locationLat: 39.9, locationCity: '北京',
+        locationLng: 116.4, locationLat: 39.9, // P2-79:坐标语义 GCJ-02,服务端转 BD-09;poiId/city 已删
         category: 'CATERING', settlement: 'DAILY', workDates: ['周六'], workPeriods: ['全天'],
         headcount: 2, questions: ['你的身份'], duration: 'D30',
       });

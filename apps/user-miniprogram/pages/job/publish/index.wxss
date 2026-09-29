@@ -54,54 +54,26 @@
   padding: 4rpx 12rpx; border-radius: 8rpx;
 }
 
-.search {
-  position: relative; display: flex; align-items: center;
-  border: 2rpx solid #E5E6EB; border-radius: 12rpx; padding: 0 16rpx;
-  background: #FFFFFF;
+.chosen-card {
+  display: flex; align-items: flex-start; gap: 16rpx;
+  padding: 20rpx 16rpx; margin-bottom: 20rpx;
+  border: 2rpx solid #E5E6EB; border-radius: 12rpx; background: #F7F8FA;
 }
-.search-input {
-  flex: 1 1 auto; height: 72rpx; font-size: 28rpx; color: #1D2129;
-}
-.search-input.locked { color: #1D2129; background: #F7F8FA; }
-.placeholder { color: #86909C; }
-.relocate {
-  flex: 0 0 auto; font-size: 24rpx; color: #F9C801; padding: 8rpx 4rpx;
-}
+.chosen-icon { font-size: 32rpx; flex: 0 0 auto; }
+.chosen-info { flex: 1 1 auto; min-width: 0; }
+.chosen-name { font-size: 28rpx; color: #1D2129; font-weight: 500; }
+.chosen-address { font-size: 24rpx; color: #86909C; padding-top: 4rpx; word-break: break-all; }
 
 .hint {
-  font-size: 24rpx; color: #86909C; padding: 12rpx 4rpx 0;
-}
-.hint-ok { color: #00B42A; }
-.hint-warn { color: #F53F3F; }
-.location-failure {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
-}
-.location-failure-text {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.location-permission-action {
-  flex: 0 0 auto;
-  color: #D46B08;
-  font-weight: 500;
+  font-size: 24rpx; color: #86909C; padding: 12rpx 4rpx 20rpx;
 }
 
-.candidates {
-  margin-top: 16rpx; border: 2rpx solid #E5E6EB; border-radius: 12rpx;
-  background: #FFFFFF; max-height: 600rpx; overflow-y: auto;
+/* 次按钮:白底 + 边框(UI 规范 6.1),与主按钮 #F9C801 区分 */
+.btn-secondary {
+  width: 100%; height: 88rpx; line-height: 88rpx;
+  background: #FFFFFF; color: #1D2129; font-size: 30rpx;
+  border: 2rpx solid #E5E6EB; border-radius: 16rpx;
 }
-.candidate {
-  display: flex; align-items: center; gap: 16rpx;
-  padding: 24rpx; border-bottom: 2rpx solid #F2F3F5;
-}
-.candidate:last-child { border-bottom: none; }
-.candidate-icon { font-size: 32rpx; flex: 0 0 auto; }
-.candidate-info { flex: 1 1 auto; min-width: 0; }
-.candidate-address { font-size: 28rpx; color: #1D2129; }
-.candidate-city { font-size: 22rpx; color: #86909C; padding-top: 4rpx; }
 
 .action { margin-top: 48rpx; }
 .btn-primary {

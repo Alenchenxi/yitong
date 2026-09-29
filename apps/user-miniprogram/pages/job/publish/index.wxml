@@ -38,56 +38,23 @@
     </picker>
   </view>
 
+  <!-- P2-79 去百度地图:微信原生地图选点(wx.chooseLocation) -->
   <view wx:if="{{selectedKey}}" class="location-block">
     <view class="label">
       <text>工作地点</text>
-      <text wx:if="{{location.poiId}}" class="locked-tag">已锁定</text>
+      <text wx:if="{{location}}" class="locked-tag">已选择</text>
     </view>
 
-    <view class="search">
-      <input
-        class="search-input {{selectedLocked ? 'locked' : ''}}"
-        placeholder="搜索工作地点（如：大学城南门）"
-        placeholder-class="placeholder"
-        value="{{searchInput}}"
-        bindinput="onSearchInput"
-        bindfocus="onSearchFocus"
-        bindblur="onSearchBlur"
-        confirm-type="search"
-      />
-      <view wx:if="{{!locating && !location.poiId}}" class="relocate" bindtap="onRelocate">重新定位</view>
-    </view>
-
-    <view wx:if="{{locating}}" class="hint">正在定位...</view>
-    <view wx:elif="{{locationFailed}}" class="hint hint-warn location-failure">
-      <text class="location-failure-text">{{locationErrMsg}}</text>
-      <text
-        wx:if="{{locationPermissionActionLabel}}"
-        class="location-permission-action"
-        bindtap="onLocationPermissionAction"
-      >{{locationPermissionActionLabel}}</text>
-    </view>
-    <view wx:elif="{{autoLocking}}" class="hint">自动选点中...</view>
-    <view wx:elif="{{location.address && !location.poiId && !autoLocking && !autoLockFailed && !locationFailed}}" class="hint">模糊位置：{{location.address}}</view>
-    <view wx:elif="{{autoLockFailed}}" class="hint">未识别当前位置，请搜索</view>
-    <view wx:elif="{{!location.poiId && searchInput}}" class="hint">输入关键词搜索候选</view>
-
-    <view wx:if="{{candidates.length > 0}}" class="candidates">
-      <view
-        wx:for="{{candidates}}"
-        wx:key="poiId"
-        wx:for-index="idx"
-        class="candidate"
-        bindtap="onPickCandidate"
-        data-idx="{{idx}}"
-      >
-        <view class="candidate-icon">📍</view>
-        <view class="candidate-info">
-          <view class="candidate-address">{{item.address}}</view>
-          <view class="candidate-city">{{item.city}}</view>
-        </view>
+    <view wx:if="{{location}}" class="chosen-card">
+      <view class="chosen-icon">📍</view>
+      <view class="chosen-info">
+        <view class="chosen-name">{{location.name}}</view>
+        <view class="chosen-address">{{location.address}}</view>
       </view>
     </view>
+    <view wx:else class="hint">请选择工作地点（地图选点，支持搜索）</view>
+
+    <button class="btn-secondary" bindtap="onChooseLocation">{{location ? '重新选点' : '地图选点'}}</button>
   </view>
 
   <view class="action">

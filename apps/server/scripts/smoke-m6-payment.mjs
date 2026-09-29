@@ -339,8 +339,7 @@ async function createTestUser(prisma, openid, nickname, role) {
       description: 'M6 smoke 测试岗位描述',
       salary: '100/天',
       location: 'M6 测试地点',
-      locationPoiId: `B0FFG9M6SMK_${marker}`,
-      locationLng: 116.397428,
+      locationLng: 116.397428, // P2-79:坐标语义 GCJ-02,服务端转 BD-09;poiId 已删
       locationLat: 39.90923,
       locationCity: '北京',
       category: 'CATERING',
@@ -425,7 +424,6 @@ async function createTestUser(prisma, openid, nickname, role) {
       description: 'M6 smoke 管理员免付测试岗位',
       salary: '88/天',
       location: 'M6 管理员测试地点',
-      locationPoiId: `B0FFG9M6ADM_${marker}`,
       locationLng: 116.397428,
       locationLat: 39.90923,
       locationCity: '北京',

@@ -268,11 +268,9 @@ export function createJobPost(data: {
   online?: boolean;
   questions?: string[]; // P0-21 报名问题
   duration: 'D30' | 'D90';
-  // 智能生成流程(2026-08-10):百度地图结构化字段;后端 createPost 强制必填
-  locationPoiId?: string;
+  // P2-79 去百度地图:坐标为 GCJ-02(微信选点原值),服务端转 BD-09;城市由服务端从地址解析
   locationLng?: number;
   locationLat?: number;
-  locationCity?: string;
   // 圈子：发岗归属圈子（可选；缺省服务端取商家当前圈子）
   communityId?: string;
   // P2-75 联系方式快照覆盖（可选；缺省落商家资料）
@@ -586,7 +584,6 @@ export function getMerchantDashboard(range: DashboardRange = 'all') {
 // ===== 智能生成流程(2026-08-10)=====
 
 export interface JobPostVoExt extends JobPostVo {
-  locationPoiId: string | null;
   locationLng: number | null;
   locationLat: number | null;
   locationCity: string | null;
@@ -641,22 +638,16 @@ export function getJobTemplate(params: {
   return request<JobTemplateVo>({ url: `/job-posts/template?${q.join('&')}` });
 }
 
-export interface PoiInfoVo {
-  poiId: string;
-  address: string;
-  lng: number;
-  lat: number;
-  city: string;
+// P2-79 去百度地图:区域筛选 facets(有岗城市聚合 + 可选城市区县列表,不依赖定位)
+export interface LocationFacetsVo {
+  cities: Array<{ city: string; count: number }>;
+  city?: string;
+  districts?: string[];
 }
 
-// 百度地图正向地理编码(GET /job-posts/geocode)
-export function geocode(address: string) {
-  return request<PoiInfoVo>({ url: `/job-posts/geocode?address=${encodeURIComponent(address)}` });
-}
-
-// poiId 反查(GET /job-posts/poi-detail)
-export function getPoiDetail(poiId: string) {
-  return request<PoiInfoVo>({ url: `/job-posts/poi-detail?poiId=${encodeURIComponent(poiId)}` });
+export function getLocationFacets(city?: string) {
+  const q = city ? `?city=${encodeURIComponent(city)}` : '';
+  return request<LocationFacetsVo>({ url: `/job-posts/location-facets${q}` });
 }
 
 // ===== M3-08 曝光 + 重新发布 =====

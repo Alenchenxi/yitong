@@ -811,11 +811,11 @@ model JobPost {
   salary                String
   salaryAmount          Int?                 @map("salary_amount") // P0-18 薪资数额（auto-parse 自 salary，范围筛选用；单位差异为已知限制）
   location              String
-  // 智能生成流程(2026-08-10):工作地点必须经百度地图选点 / GPS 定位获得，禁止用户手动输入文本。
-  // 老数据兼容：4 字段可空；新创建岗位 createPost 强制必填（缺一抛 40003）。
-  locationPoiId         String?              @map("location_poi_id") // 百度地图 poi uid
-  locationLng           Decimal?             @map("location_lng") @db.Decimal(10, 6) // 经度
-  locationLat           Decimal?             @map("location_lat") @db.Decimal(10, 6) // 纬度
+  // P2-79 去百度地图:工作地点经微信 wx.chooseLocation 地图选点获得,禁止用户手动输入文本。
+  // 入参坐标为 GCJ-02(微信系),服务端本地公式转 BD-09 后落库;城市由服务端从地址文本解析(失败回落圈子 region)。
+  // 老数据兼容:3 字段可空;新创建岗位 createPost 强制必填 location+经纬度(缺一抛 40003)。
+  locationLng           Decimal?             @map("location_lng") @db.Decimal(10, 6) // 经度(BD-09)
+  locationLat           Decimal?             @map("location_lat") @db.Decimal(10, 6) // 纬度(BD-09)
   locationCity          String?              @map("location_city") // 城市（如「北京」）
   category              JobCategory?         @map("category") // P0-17 分类
   customCategory        String?              @map("custom_category") // P2-33 商家自定义岗位类型

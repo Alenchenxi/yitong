@@ -7,10 +7,9 @@ import type { AuthenticatedRequest } from '../auth/types';
 import { JobService } from './job.service';
 import { JobScheduler } from './job.scheduler';
 import { JobTemplateService } from './job-template.service';
-import { LocationService } from './location.service';
 import { CreateJobPostDto, JobListQueryDto, JobRecommendQueryDto, TransitionDto, CreateReviewDto, ReportDto, ApplyDto, UpsertResumeDto, BatchTransitionDto, UpdateJobPostDto, JobPostStatsQueryDto, RecordImpressionsDto, BatchImportJobPostsDto } from './dto/job.dto';
 import { JobTemplateQueryDto } from './dto/job-template.dto';
-import { GeocodeQueryDto, LocationContextQueryDto, PoiDetailQueryDto, PlaceSuggestionQueryDto, ReverseGeocodeQueryDto } from './dto/location.dto';
+import { LocationFacetsQueryDto } from './dto/location.dto';
 
 // 注：API 规范 §6.4 用 PATCH /applications/:id，但 wx.request 不支持 PATCH，
 // 故状态流转改用 POST /applications/:id/transition（语义等价，小程序友好）。
@@ -20,7 +19,6 @@ export class JobController {
     private readonly job: JobService,
     private readonly scheduler: JobScheduler,
     private readonly template: JobTemplateService,
-    private readonly location: LocationService,
   ) {}
 
   // 智能生成流程(2026-08-10):类别网格 + 智能生成 + 百度地图选点
@@ -36,42 +34,13 @@ export class JobController {
     return ok(await this.template.generate(uid, q));
   }
 
-  // 百度地图 API 兜底校验:文本地址反查 poiId/lng/lat/city
-  @Get('job-posts/geocode')
-  async geocode(@Query() q: GeocodeQueryDto, @Req() req: Request) {
-    // 鉴权要求登录;空 user 也算通,真鉴权交给全局 Guard
-    (req as AuthenticatedRequest).user;
-    return ok(await this.location.geocode(q.address));
-  }
-
-  @Get('job-posts/poi-detail')
-  async poiDetail(@Query() q: PoiDetailQueryDto, @Req() req: Request) {
-    (req as AuthenticatedRequest).user;
-    return ok(await this.location.getPoiDetail(q.poiId));
-  }
-
-  // 百度地图 place suggestion:前端搜索框输入时实时调用,返回地址候选列表
-  // GET /job-posts/place-suggestion?query=xxx&region=xxx
-  @Get('job-posts/place-suggestion')
-  async placeSuggestion(@Query() q: PlaceSuggestionQueryDto, @Req() req: Request) {
-    (req as AuthenticatedRequest).user;
-    return ok(await this.location.suggestPlaces(q.query, q.region));
-  }
-
-  // 百度地图反向地理编码:坐标 → POI/地址/城市,供发布岗"模糊定位后自动锁定默认选点"用
-  // GET /job-posts/reverse-geocode?lng=xxx&lat=xxx&coordType=gcj02|bd09
-  // 路由必须在 job-posts/:id 之前(否则会被吞成 :id=reverse-geocode)
-  @Get('job-posts/reverse-geocode')
-  async reverseGeocode(@Query() q: ReverseGeocodeQueryDto, @Req() req: Request) {
-    (req as AuthenticatedRequest).user;
-    return ok(await this.location.reverseGeocode(q.lng, q.lat, q.coordType));
-  }
-
-  // 用户端兼职筛选：定位当前城市，并返回该市完整区县列表
-  @Get('job-posts/location-context')
-  async locationContext(@Query() q: LocationContextQueryDto, @Req() req: Request) {
-    (req as AuthenticatedRequest).user;
-    return ok(await this.location.getLocationContext(q.lng, q.lat, q.coordType));
+  // P2-79 去百度地图:区域筛选 facets(有岗城市聚合 + 可选城市区县列表)
+  // GET /job-posts/location-facets?city=北京市
+  // 路由必须在 job-posts/:id 之前(否则会被吞成 :id=location-facets)
+  @Get('job-posts/location-facets')
+  async locationFacets(@Query() q: LocationFacetsQueryDto, @Req() req: Request) {
+    const uid = (req as AuthenticatedRequest).user?.uid ?? '';
+    return ok(await this.job.getLocationFacets(uid, q.city));
   }
   @Post('job-posts')
   async createPost(@Body() dto: CreateJobPostDto, @Req() req: Request) {
