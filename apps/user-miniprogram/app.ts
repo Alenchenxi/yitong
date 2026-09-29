@@ -15,6 +15,7 @@ import {
   readJobModuleVisibilityCache,
 } from './services/app-config';
 import { getAdminAccess, type AdminAccessVo } from './services/admin';
+import { setupUpdateManager } from './utils/update';
 
 // 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
 // FORCE_PRODUCTION 开关：true=开发者工具(develop)也强制连生产 yitongjiajiao.cn（本地不跑 server 调试真数据用）；
@@ -95,6 +96,8 @@ App({
   },
 
   onLaunch(options) {
+    // P2-78 版本更新监听：新包下载完成后弹窗，确认即 applyUpdate 以新包重启（等效重新进入）
+    setupUpdateManager();
     const inviteCommunityId = parseCommunityInviteId(options);
     if (typeof inviteCommunityId === 'string' && inviteCommunityId) {
       this.globalData.pendingCommunityInviteId = inviteCommunityId;
