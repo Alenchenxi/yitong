@@ -68,6 +68,9 @@
     "pages/settings/index",
     "pages/agreement/index"
   ],
+  "usingComponents": {
+    "update-modal": "/components/update-modal/index"
+  },
   "window": {
     "navigationBarTitleText": "燚桐",
     "navigationBarBackgroundColor": "#ffffff",

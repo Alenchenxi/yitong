@@ -77,3 +77,6 @@
   <view class="chat-input-muted" wx:elif="{{group.isMember && myMutedText}}">🔇 {{myMutedText}}</view>
   <view class="chat-input-disabled" wx:else>加入群聊后可发送消息</view>
 </view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

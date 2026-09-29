@@ -1,0 +1,271 @@
+/* P2-81 版本升级弹窗（校园风，品牌黄体系）——色板取 docs/UI设计规范.md §2：
+   主色 #F9C801 / 深黄 #C59A00 / 浅黄底 #FFF7D1 / 极浅黄底 #FFFBEA
+   结构按本次升级弹窗设计稿：卡片 640rpx、圆角 32rpx、按钮高 88rpx 胶囊 */
+
+/* ========== 遮罩与卡片动效 ========== */
+.um-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45); /* UI设计规范 §2.3 遮罩 */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.24s ease, visibility 0.24s ease;
+}
+
+.um-mask--on {
+  opacity: 1;
+  visibility: visible;
+}
+
+.um-modal {
+  width: 640rpx;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 32rpx;
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  transform: scale(0.92);
+  opacity: 0;
+  transition: transform 0.24s ease, opacity 0.24s ease;
+}
+
+.um-modal--on {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ========== 顶部视觉区：轻量校园元素 ========== */
+.um-visual {
+  position: relative;
+  height: 200rpx;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #FFFBEA 0%, #ffffff 100%);
+  overflow: hidden;
+}
+
+.um-visual-blob {
+  position: absolute;
+  left: 50%;
+  top: -90rpx;
+  width: 420rpx;
+  height: 260rpx;
+  margin-left: -210rpx;
+  border-radius: 50%;
+  background: #FFF7D1;
+  opacity: 0.55;
+}
+
+.um-bubble {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 50%;
+  background: #FFF7D1;
+  font-size: 44rpx;
+}
+
+.um-bubble--left {
+  left: 132rpx;
+  top: 68rpx;
+}
+
+.um-bubble--mid {
+  left: 50%;
+  margin-left: -52rpx;
+  top: 34rpx;
+  width: 104rpx;
+  height: 104rpx;
+  background: #ffffff;
+  border: 2rpx solid #F9C801;
+  font-size: 50rpx;
+}
+
+.um-bubble--right {
+  right: 132rpx;
+  top: 70rpx;
+}
+
+.um-spark {
+  position: absolute;
+  font-size: 24rpx;
+  opacity: 0.9;
+}
+
+.um-spark--a {
+  left: 84rpx;
+  top: 44rpx;
+}
+
+.um-spark--b {
+  right: 90rpx;
+  top: 40rpx;
+  font-size: 20rpx;
+  opacity: 0.7;
+}
+
+.um-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: #F9C801;
+}
+
+.um-dot--a {
+  width: 12rpx;
+  height: 12rpx;
+  left: 210rpx;
+  top: 150rpx;
+  opacity: 0.5;
+}
+
+.um-dot--b {
+  width: 8rpx;
+  height: 8rpx;
+  right: 214rpx;
+  top: 156rpx;
+  opacity: 0.4;
+}
+
+/* ========== 标题与副标题 ========== */
+.um-title {
+  flex-shrink: 0;
+  margin-top: 32rpx;
+  padding: 0 48rpx;
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #1D2129;
+  text-align: center;
+  line-height: 56rpx;
+}
+
+.um-title-accent {
+  color: #C59A00;
+}
+
+.um-subtitle {
+  flex-shrink: 0;
+  margin-top: 12rpx;
+  padding: 0 48rpx;
+  font-size: 28rpx;
+  color: #4E5969;
+  text-align: center;
+  line-height: 44rpx;
+}
+
+/* ========== 版本信息卡（内容多时内部滚动） ========== */
+.um-card-scroll {
+  flex: 1;
+  min-height: 0;
+  margin: 28rpx 40rpx 0;
+}
+
+.um-card {
+  background: #FFF7D1;
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+}
+
+.um-card-label {
+  font-size: 24rpx;
+  color: #86909C;
+  text-align: center;
+}
+
+.um-version-line {
+  margin-top: 12rpx;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.um-version-cur {
+  font-size: 28rpx;
+  color: #86909C;
+  margin-right: 16rpx;
+}
+
+.um-version-arrow {
+  font-size: 28rpx;
+  color: #C9CDD4;
+  margin-right: 16rpx;
+}
+
+.um-version-new {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #C59A00;
+}
+
+.um-logs-label {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(197, 154, 0, 0.18);
+  font-size: 24rpx;
+  color: #86909C;
+}
+
+.um-log-item {
+  margin-top: 12rpx;
+  font-size: 28rpx;
+  color: #4E5969;
+  line-height: 44rpx;
+}
+
+/* ========== 操作按钮 ========== */
+.um-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 32rpx 40rpx;
+  /* 全面屏底部安全区：内容撑满 75vh 时按钮不压 home 条 */
+  padding-bottom: calc(40rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.um-btn {
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 24rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.um-btn::after {
+  border: none;
+}
+
+.um-btn--later {
+  width: 200rpx;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+  background: #FFFBEA;
+  color: #C59A00;
+  border: 2rpx solid #F0DFA8;
+}
+
+.um-btn--reload {
+  flex: 1;
+  background: #F9C801;
+  color: #1D2129; /* UI设计规范：黄底不承载白字，主按钮深色文字 */
+}
+
+.um-press {
+  opacity: 0.85;
+  transform: scale(0.98);
+}

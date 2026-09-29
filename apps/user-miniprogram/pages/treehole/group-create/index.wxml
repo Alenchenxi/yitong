@@ -33,3 +33,6 @@
 
   <button class="submit" bindtap="submit" disabled="{{submitting}}">{{submitting ? '创建中...' : '创建群聊'}}</button>
 </view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

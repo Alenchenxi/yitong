@@ -1,0 +1,51 @@
+<!-- P2-81 版本升级弹窗：遮罩 + 居中卡片（品牌黄体系 docs/UI设计规范.md） -->
+<view
+  wx:if="{{rendered}}"
+  class="um-mask {{visible ? 'um-mask--on' : ''}}"
+  catchtouchmove="noop"
+  catchtap="noop"
+>
+  <view class="um-modal {{visible ? 'um-modal--on' : ''}}" catchtap="noop">
+    <!-- 顶部视觉区：轻量校园元素（❤️表白墙 💭树洞 💼兼职），纯 view/text 组合无图片资源 -->
+    <view class="um-visual">
+      <view class="um-visual-blob"></view>
+      <view class="um-bubble um-bubble--left">❤️</view>
+      <view class="um-bubble um-bubble--mid">💭</view>
+      <view class="um-bubble um-bubble--right">💼</view>
+      <text class="um-spark um-spark--a">✨</text>
+      <text class="um-spark um-spark--b">✨</text>
+      <view class="um-dot um-dot--a"></view>
+      <view class="um-dot um-dot--b"></view>
+    </view>
+
+    <!-- 标题 + 副标题 -->
+    <view class="um-title">校园生活，有了<text class="um-title-accent">新变化</text> ✨</view>
+    <view class="um-subtitle">新版本已经准备好了，让校园生活更方便一点</view>
+
+    <!-- 版本信息卡（内容多时内部滚动） -->
+    <scroll-view class="um-card-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="um-card">
+        <view class="um-card-label">发现新版本</view>
+        <view class="um-version-line">
+          <text class="um-version-cur">{{currentVersion ? 'v' + currentVersion : '当前版本'}}</text>
+          <text class="um-version-arrow">→</text>
+          <text class="um-version-new">{{latestVersion ? 'v' + latestVersion : '新版本'}}</text>
+        </view>
+        <view class="um-logs-label">本次更新</view>
+        <view class="um-log-item" wx:for="{{updateLogs}}" wx:key="*this">{{item}}</view>
+      </view>
+    </scroll-view>
+
+    <!-- 操作按钮：稍后 / 重新加载 -->
+    <view class="um-actions">
+      <button class="um-btn um-btn--later" hover-class="um-press" catchtap="onLater">稍后</button>
+      <button
+        class="um-btn um-btn--reload"
+        hover-class="um-press"
+        loading="{{reloading}}"
+        disabled="{{reloading}}"
+        catchtap="onReload"
+      >重新加载</button>
+    </view>
+  </view>
+</view>

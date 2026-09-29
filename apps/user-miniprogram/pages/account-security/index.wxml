@@ -56,3 +56,6 @@
     <button class="cancel-btn secondary" bindtap="closeCancel">再想想</button>
   </view>
 </view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

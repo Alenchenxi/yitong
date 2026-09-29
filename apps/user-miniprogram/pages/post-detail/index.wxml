@@ -129,3 +129,6 @@
     <button class="send-btn" size="mini" bindtap="sendComment" disabled="{{!commentText || sending}}">发送</button>
   </view>
 </view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

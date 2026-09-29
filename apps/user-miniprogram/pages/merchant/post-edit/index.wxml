@@ -1,1 +1,4 @@
 <post-panel id="post" params="{{postParams}}" bind:switchtab="onSwitchTab" />
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

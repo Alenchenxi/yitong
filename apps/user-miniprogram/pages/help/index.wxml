@@ -25,3 +25,6 @@
     <view class="empty" wx:else>未找到相关问题</view>
   </block>
 </view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

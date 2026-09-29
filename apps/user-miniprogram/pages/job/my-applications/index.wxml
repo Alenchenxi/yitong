@@ -42,3 +42,6 @@
     <button class="send-btn" bindtap="submitReview" disabled="{{submitting}}">{{submitting ? '提交中…' : '提交评价'}}</button>
   </view>
 </view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

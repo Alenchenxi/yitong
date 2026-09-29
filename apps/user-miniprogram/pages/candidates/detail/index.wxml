@@ -142,3 +142,6 @@
 
 <view class="loading" wx:elif="{{!loaded}}">加载中…</view>
 <view class="loading" wx:elif="{{loaded && !detail}}">暂无数据</view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

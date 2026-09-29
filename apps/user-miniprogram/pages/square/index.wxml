@@ -185,3 +185,6 @@
   </view>
   <canvas canvas-id="squareInvitePoster" class="timeline-invite-poster" width="375" height="375"></canvas>
 </view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />

@@ -25,3 +25,6 @@
   <view class="loading" wx:if="{{loading}}">加载中...</view>
   <view class="tip" wx:elif="{{!hasMore && list.length > 0}}">没有更多了</view>
 </view>
+
+<!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
+<update-modal />
