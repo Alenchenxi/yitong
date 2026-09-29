@@ -18,4 +18,11 @@ export class AppConfigController {
   async getJobModuleVisibility() {
     return ok(await this.appConfig.getJobModuleVisibility());
   }
+
+  // P2-79 小程序版本更新说明（用户端更新弹窗展示；@Public 无需登录）
+  @Get('mp-release-notes')
+  @Public()
+  async getMpReleaseNotes() {
+    return ok(await this.appConfig.getMpReleaseNotes());
+  }
 }

@@ -181,6 +181,10 @@ Component({
     tutorSyncConfirmedBatchSize: '100',
     appSettingsLoaded: false,
     savingTutorSync: false,
+    // P2-79 版本更新说明（编辑中 / 已保存回显）
+    mpReleaseNotes: '',
+    mpReleaseNotesConfirmed: '',
+    savingMpReleaseNotes: false,
     loadRequestId: 0,
     loading: false,
   },
@@ -244,7 +248,7 @@ Component({
           || this.data.togglingMerchantReview
           || this.data.togglingJobModule
           || this.data.togglingTutorSync
-          || this.data.savingTutorSync
+          || this.data.savingTutorSync || this.data.savingMpReleaseNotes
         )
       ) {
         return;
@@ -315,6 +319,9 @@ Component({
           const batchSizeSetting = cfgList.find((item) => item.key === 'tutor_sync.max_demands');
           const normalizedBatchSize =
             typeof batchSizeSetting?.value === 'number' ? String(batchSizeSetting.value) : '100';
+          const mpReleaseNotesSetting = cfgList.find((item) => item.key === 'mp.release_notes');
+          const normalizedNotes =
+            typeof mpReleaseNotesSetting?.value === 'string' ? mpReleaseNotesSetting.value : '';
           commit({
             anonymousContentEnabled: anonymousContent?.value === true,
             jobModuleEnabled: jobModule?.value === true,
@@ -323,6 +330,8 @@ Component({
             tutorSyncEnabled: tutorSyncEnabled?.value === true,
             tutorSyncBatchSize: normalizedBatchSize,
             tutorSyncConfirmedBatchSize: normalizedBatchSize,
+            mpReleaseNotes: normalizedNotes,
+            mpReleaseNotesConfirmed: normalizedNotes,
             appSettingsLoaded: true,
           });
         }
@@ -835,7 +844,7 @@ Component({
         || this.data.togglingMerchantReview
         || this.data.togglingJobModule
         || this.data.togglingTutorSync
-        || this.data.savingTutorSync
+        || this.data.savingTutorSync || this.data.savingMpReleaseNotes
       ) return;
       const previous = this.data.jobModuleEnabled;
       const next = e.detail.value;
@@ -859,7 +868,7 @@ Component({
         || this.data.togglingMerchantReview
         || this.data.togglingJobModule
         || this.data.togglingTutorSync
-        || this.data.savingTutorSync
+        || this.data.savingTutorSync || this.data.savingMpReleaseNotes
       ) return;
       const previous = this.data.anonymousContentEnabled;
       const next = e.detail.value;
@@ -885,7 +894,8 @@ Component({
         this.data.togglingMerchantReview ||
         this.data.togglingJobModule ||
         this.data.togglingTutorSync ||
-        this.data.savingTutorSync
+        this.data.savingTutorSync ||
+        this.data.savingMpReleaseNotes
       )
         return;
       this.setData({ togglingNeedReview: true });
@@ -910,7 +920,8 @@ Component({
         this.data.togglingMerchantReview ||
         this.data.togglingJobModule ||
         this.data.togglingTutorSync ||
-        this.data.savingTutorSync
+        this.data.savingTutorSync ||
+        this.data.savingMpReleaseNotes
       ) return;
       const previous = this.data.merchantReviewEnabled;
       this.setData({ merchantReviewEnabled: next, togglingMerchantReview: true });
@@ -935,7 +946,8 @@ Component({
         this.data.togglingMerchantReview ||
         this.data.togglingJobModule ||
         this.data.togglingTutorSync ||
-        this.data.savingTutorSync
+        this.data.savingTutorSync ||
+        this.data.savingMpReleaseNotes
       )
         return;
       const previous = this.data.tutorSyncEnabled;
@@ -959,7 +971,8 @@ Component({
         this.data.togglingMerchantReview ||
         this.data.togglingJobModule ||
         this.data.togglingTutorSync ||
-        this.data.savingTutorSync
+        this.data.savingTutorSync ||
+        this.data.savingMpReleaseNotes
       )
         return;
       const batchSize = Number(this.data.tutorSyncBatchSize);
@@ -980,6 +993,43 @@ Component({
         this.setData({ tutorSyncBatchSize: previousBatchSize });
       } finally {
         this.setData({ savingTutorSync: false });
+      }
+    },
+    // P2-79 版本更新说明：发版前填写本次更新内容，用户端「发现新版本」弹窗展示；留空保存=清空，弹窗回退通用文案
+    onMpReleaseNotesInput(e: WechatMiniprogram.Input) {
+      this.setData({ mpReleaseNotes: e.detail.value });
+    },
+    async saveMpReleaseNotes() {
+      if (
+        this.data.loading ||
+        !this.data.appSettingsLoaded ||
+        this.data.togglingAnonymousContent ||
+        this.data.togglingNeedReview ||
+        this.data.togglingMerchantReview ||
+        this.data.togglingJobModule ||
+        this.data.togglingTutorSync ||
+        this.data.savingTutorSync ||
+        this.data.savingMpReleaseNotes
+      )
+        return;
+      const notes = this.data.mpReleaseNotes.trim();
+      if (notes.length > 300) {
+        wx.showToast({ title: '更新说明最多 300 字', icon: 'none' });
+        return;
+      }
+      const previous = this.data.mpReleaseNotesConfirmed;
+      this.setData({ savingMpReleaseNotes: true });
+      try {
+        await updateAppSetting('mp.release_notes', notes);
+        wx.showToast({ title: notes ? '更新说明已保存' : '更新说明已清空', icon: 'success' });
+        this.setData({
+          mpReleaseNotes: notes,
+          mpReleaseNotesConfirmed: notes,
+        });
+      } catch {
+        this.setData({ mpReleaseNotes: previous });
+      } finally {
+        this.setData({ savingMpReleaseNotes: false });
       }
     },
   },

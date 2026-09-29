@@ -21,6 +21,8 @@ import {
   ANONYMOUS_CONTENT_ENABLED_KEY,
   JOB_MODULE_ENABLED_KEY,
   MERCHANT_REVIEW_ENABLED_KEY,
+  MP_RELEASE_NOTES_KEY,
+  MP_RELEASE_NOTES_MAX_LENGTH,
 } from '../app-config/app-config.service';
 import { AdminAccessService, type AdminAccessContext } from './admin-access.service';
 import {
@@ -2341,6 +2343,7 @@ export class AdminService {
     MERCHANT_REVIEW_ENABLED_KEY,
     TUTOR_SYNC_ENABLED_KEY,
     TUTOR_SYNC_BATCH_SIZE_KEY,
+    MP_RELEASE_NOTES_KEY,
   ] as const;
 
   async getSettings() {
@@ -2352,14 +2355,18 @@ export class AdminService {
         ? TUTOR_SYNC_DEFAULT_BATCH_SIZE
         : key === TUTOR_SYNC_ENABLED_KEY
           ? TUTOR_SYNC_DEFAULT_ENABLED
-          : key === MERCHANT_REVIEW_ENABLED_KEY
-            ? true
-            : false;
+          : key === MP_RELEASE_NOTES_KEY
+            ? ''
+            : key === MERCHANT_REVIEW_ENABLED_KEY
+              ? true
+              : false;
       const value = key === TUTOR_SYNC_BATCH_SIZE_KEY
         ? (parseTutorSyncBatchSize(row?.value) ?? defaultValue)
-        : key === MERCHANT_REVIEW_ENABLED_KEY
-          ? row?.value !== false
-          : row?.value === true;
+        : key === MP_RELEASE_NOTES_KEY
+          ? (typeof row?.value === 'string' ? row.value : '')
+          : key === MERCHANT_REVIEW_ENABLED_KEY
+            ? row?.value !== false
+            : row?.value === true;
       return {
         key,
         value,
@@ -2373,8 +2380,22 @@ export class AdminService {
     if (!(AdminService.APP_CONFIG_KEYS as readonly string[]).includes(key)) {
       throw new BizException(40004, `不支持的配置项: ${key}`, HttpStatus.BAD_REQUEST);
     }
-    let normalizedValue: boolean | number;
-    if (
+    let normalizedValue: boolean | number | string;
+    if (key === MP_RELEASE_NOTES_KEY) {
+      // P2-79 版本更新说明：字符串（trim 后非空且 ≤300 字；空串=清空说明，用户端弹窗回退通用文案）
+      if (typeof value !== 'string') {
+        throw new BizException(40003, '版本更新说明必须为字符串', HttpStatus.BAD_REQUEST);
+      }
+      const trimmed = value.trim();
+      if (trimmed.length > MP_RELEASE_NOTES_MAX_LENGTH) {
+        throw new BizException(
+          40003,
+          `版本更新说明最多 ${MP_RELEASE_NOTES_MAX_LENGTH} 字`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      normalizedValue = trimmed;
+    } else if (
       key === 'community.need_review'
       || key === ANONYMOUS_CONTENT_ENABLED_KEY
       || key === JOB_MODULE_ENABLED_KEY

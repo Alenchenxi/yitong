@@ -4,6 +4,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 export const ANONYMOUS_CONTENT_ENABLED_KEY = 'content.anonymous_enabled';
 export const JOB_MODULE_ENABLED_KEY = 'job.enabled';
 export const MERCHANT_REVIEW_ENABLED_KEY = 'merchant.need_review';
+export const MP_RELEASE_NOTES_KEY = 'mp.release_notes';
+export const MP_RELEASE_NOTES_MAX_LENGTH = 300;
 
 export interface AnonymousContentVisibility {
   anonymousContentEnabled: boolean;
@@ -11,6 +13,10 @@ export interface AnonymousContentVisibility {
 
 export interface JobModuleVisibility {
   jobEnabled: boolean;
+}
+
+export interface MpReleaseNotes {
+  notes: string;
 }
 
 @Injectable()
@@ -49,5 +55,17 @@ export class AppConfigService {
       select: { value: true },
     });
     return config?.value !== false;
+  }
+
+  /**
+   * P2-79 小程序版本更新说明：发版时由管理端填写，用户端 onUpdateReady 弹窗展示。
+   * 缺省空串（用户端弹窗回退通用文案）；非字符串旧值按空串处理。
+   */
+  async getMpReleaseNotes(): Promise<MpReleaseNotes> {
+    const config = await this.prisma.appConfig.findUnique({
+      where: { key: MP_RELEASE_NOTES_KEY },
+      select: { value: true },
+    });
+    return { notes: typeof config?.value === 'string' ? config.value : '' };
   }
 }

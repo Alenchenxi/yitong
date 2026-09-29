@@ -1419,8 +1419,9 @@ describe('小程序同步岗位静态契约', () => {
     expect(template).toContain('1-200 条');
     expect(template).toContain('全量总数不限');
     expect(template).toContain('checked="{{tutorSyncEnabled}}"');
+    // P2-79 起系统设置全部控件忙等守卫统一追加 savingMpReleaseNotes
     expect(template).toContain(
-      'disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingMerchantReview || togglingJobModule || togglingTutorSync || savingTutorSync}}"',
+      'disabled="{{loading || !appSettingsLoaded || togglingAnonymousContent || togglingNeedReview || togglingMerchantReview || togglingJobModule || togglingTutorSync || savingTutorSync || savingMpReleaseNotes}}"',
     );
     expect(logic).toContain("item.key === 'tutor_sync.enabled'");
     expect(logic).toContain("updateAppSetting('tutor_sync.enabled', next)");

@@ -13,6 +13,8 @@ import {
   fetchJobModuleVisibility,
   persistJobModuleVisibility,
   readJobModuleVisibilityCache,
+  fetchMpReleaseNotes,
+  persistMpReleaseNotes,
 } from './services/app-config';
 import { getAdminAccess, type AdminAccessVo } from './services/admin';
 import { setupUpdateManager } from './utils/update';
@@ -127,6 +129,7 @@ App({
   onShow(options) {
     void this.refreshAnonymousContentVisibility();
     void this.refreshJobModuleVisibility();
+    void this.refreshMpReleaseNotes();
     if (this.globalData.currentRole === 'admin' && this.globalData.token) {
       void this.refreshAdminAccess();
     }
@@ -136,6 +139,16 @@ App({
     }
     if (this.globalData.pendingCommunityInviteId && this.globalData.token) {
       this.routeCommunityInviteToSquare();
+    }
+  },
+
+  // P2-79 拉取版本更新说明并落 storage（utils/update 弹窗读缓存拼接）；
+  // 尽力而为：失败静默，弹窗回退通用文案
+  async refreshMpReleaseNotes(): Promise<void> {
+    try {
+      persistMpReleaseNotes(await fetchMpReleaseNotes());
+    } catch {
+      // 网络失败保留上次缓存
     }
   },
 

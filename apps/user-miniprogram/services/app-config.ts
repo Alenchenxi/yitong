@@ -44,3 +44,28 @@ export function fetchJobModuleVisibility(): Promise<boolean> {
     silent: true,
   }).then((response) => response.jobEnabled === true);
 }
+
+// P2-79 小程序版本更新说明：管理端发版时填写，更新弹窗展示（空串=通用文案）
+const MP_RELEASE_NOTES_CACHE_KEY = 'yitong_mp_release_notes';
+
+interface MpReleaseNotesResponse {
+  notes: string;
+}
+
+export function readMpReleaseNotesCache(): string {
+  const cached = wx.getStorageSync(MP_RELEASE_NOTES_CACHE_KEY);
+  return typeof cached === 'string' ? cached : '';
+}
+
+export function persistMpReleaseNotes(notes: string): void {
+  wx.setStorageSync(MP_RELEASE_NOTES_CACHE_KEY, notes);
+}
+
+export function fetchMpReleaseNotes(): Promise<string> {
+  return request<MpReleaseNotesResponse>({
+    url: '/app-config/mp-release-notes',
+    data: { cacheBust: Date.now() },
+    header: { 'Cache-Control': 'no-cache' },
+    silent: true,
+  }).then((response) => (typeof response.notes === 'string' ? response.notes : ''));
+}
