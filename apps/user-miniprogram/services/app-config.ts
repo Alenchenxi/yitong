@@ -61,11 +61,13 @@ export function persistMpReleaseNotes(notes: string): void {
   wx.setStorageSync(MP_RELEASE_NOTES_CACHE_KEY, notes);
 }
 
-export function fetchMpReleaseNotes(): Promise<string> {
+// P2-82 timeoutMs：升级弹窗前的拉取传 5s 超时（拿到数据再弹窗，弱网不拖弹窗）；不传走默认超时
+export function fetchMpReleaseNotes(timeoutMs?: number): Promise<string> {
   return request<MpReleaseNotesResponse>({
     url: '/app-config/mp-release-notes',
     data: { cacheBust: Date.now() },
     header: { 'Cache-Control': 'no-cache' },
     silent: true,
+    timeout: timeoutMs,
   }).then((response) => (typeof response.notes === 'string' ? response.notes : ''));
 }

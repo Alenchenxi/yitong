@@ -22,6 +22,7 @@ export function request<T>(opts: {
   header?: Record<string, string>; // CR-001 额外 header（如 x-anon-token）
   silent?: boolean; // 不弹错误 toast(默认 false 保持既有行为不变)
   silentBizCodes?: number[]; // 指定业务错误由调用方恢复，不在请求层先弹 toast
+  timeout?: number; // 请求超时毫秒数（透传 wx.request；不传走微信默认超时）
 }): Promise<T> {
   const app = getApp<{ globalData: AppGlobalData }>();
   return new Promise((resolve, reject) => {
@@ -29,6 +30,7 @@ export function request<T>(opts: {
       url: `${app.globalData.apiBase}${opts.url}`,
       method: opts.method ?? 'GET',
       data: opts.data,
+      timeout: opts.timeout,
       header: {
         'Content-Type': 'application/json',
         Authorization: app.globalData.token ? `Bearer ${app.globalData.token}` : '',

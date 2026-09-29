@@ -17,7 +17,7 @@ import {
   persistMpReleaseNotes,
 } from './services/app-config';
 import { getAdminAccess, type AdminAccessVo } from './services/admin';
-import { setupUpdateManager } from './utils/update';
+import { refreshUpdateModalLogs, setupUpdateManager } from './utils/update';
 
 // 按小程序运行环境自动选 apiBase：develop=开发者工具(连本机 dev)，trial/release=体验/正式版(连生产)
 // FORCE_PRODUCTION 开关：true=开发者工具(develop)也强制连生产 yitongjiajiao.cn（本地不跑 server 调试真数据用）；
@@ -146,7 +146,11 @@ App({
   // 尽力而为：失败静默，弹窗回退通用文案
   async refreshMpReleaseNotes(): Promise<void> {
     try {
-      persistMpReleaseNotes(await fetchMpReleaseNotes());
+      const notes = await fetchMpReleaseNotes();
+      persistMpReleaseNotes(notes);
+      // P2-82 弹窗可能在拉取完成前已弹出（onUpdateReady 早于本拉取、缓存空回退通用文案）：
+      // 仍显示中则原位刷新更新项，已「稍后」关闭则忽略
+      refreshUpdateModalLogs(notes);
     } catch {
       // 网络失败保留上次缓存
     }

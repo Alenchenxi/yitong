@@ -164,16 +164,24 @@
 }
 
 /* ========== 版本信息卡（内容多时内部滚动） ========== */
+/* P2-82 修复：scroll-view 内容包裹层在部分基础库下不随父容器收缩（宽度跟最长内容走），
+   黄色卡右侧溢出可视区域——scroll-view 与卡片均显式 560rpx（= 弹窗 640 − 两侧边距 40×2）
+   并 border-box，不再依赖内容收缩 */
 .um-card-scroll {
   flex: 1;
   min-height: 0;
+  width: 560rpx;
   margin: 28rpx 40rpx 0;
+  box-sizing: border-box;
 }
 
 .um-card {
+  width: 560rpx;
+  box-sizing: border-box;
   background: #FFF7D1;
   border-radius: 20rpx;
   padding: 24rpx 28rpx;
+  overflow-wrap: break-word; /* 超长无空格内容兜底换行，不撑宽 */
 }
 
 .um-card-label {
