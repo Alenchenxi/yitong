@@ -223,6 +223,8 @@ Component({
 
     // P0-17 分类 / 结算（单选）
     pickCategory(e: WechatMiniprogram.TouchEvent) {
+      // P2-77 编辑模式分类不可改（与发布时长同规则）
+      if (this.data.isEdit) return;
       const value = e.currentTarget.dataset.value as string;
       const customSelected = value === 'CUSTOM';
       this.setData({
@@ -312,16 +314,12 @@ Component({
       this.setData({ submitting: true });
       try {
         if (isEdit && editId) {
-          // M3-04 编辑岗位
+          // M3-04 编辑岗位（P2-77：title/分类创建后不可改，不随编辑提交）
           await updateJobPost(editId, {
-            title: title.trim(),
             description: description.trim(),
             requirements: requirements.trim() || undefined,
             salary: salary.trim(),
             location: location.trim(),
-            category: persistedCategory,
-            customCategory: persistedCustomCategory,
-            isCustomCategory: category === 'CUSTOM',
             settlement: settlement as Settlement,
             workDates,
             workPeriods,

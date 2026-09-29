@@ -15,6 +15,8 @@
 .dur-opt { flex: 1; text-align: center; padding: 16rpx 0; border-radius: 12rpx; background: #f5f6f8; font-size: 26rpx; color: #666; }
 .dur-opt.active { background: #ff4d6d; color: #fff; font-weight: 600; }
 .dur-readonly { opacity: 0.5; }
+/* P2-77 编辑态标题/自定义岗位类型输入框只读 */
+.input-readonly { opacity: 0.6; }
 
 .block { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
 .block .label { display: block; width: auto; margin-bottom: 16rpx; }

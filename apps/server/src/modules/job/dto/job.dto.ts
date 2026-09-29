@@ -139,7 +139,8 @@ export class CreateJobPostDto {
   contactWechat?: string;
 }
 
-// M3-04 编辑岗位：所有字段 optional（duration 不可改，由 service 校验）
+// M3-04 编辑岗位：所有字段 optional；duration 不在字段内（创建后不可改）；
+// P2-77 title / category / customCategory / isCustomCategory 传同值放行、传不同值由 service 拒绝（创建后不可改）
 export class UpdateJobPostDto {
   @IsOptional()
   @IsString()

@@ -131,7 +131,7 @@ async function cleanup(prisma) {
     const B = await login(`MB${sfx}`, `MerchantB_${sfx}`, 'merchant');
     created.userIds.push(B.user.id);
 
-    // 2) A / B 入驻（dev 自动 APPROVED + MERCHANT 角色）
+    // 2) A / B 入驻（基线 app_config merchant.need_review=true 时入驻为 PENDING，直接置 APPROVED 模拟审核通过）
     const regA = await call('POST', '/merchant/register', A.accessToken, {
       shopName: `店铺A_${sfx}`, licenseNo: `LICA${sfx}`, contactPhone: '13800000001',
     });
@@ -144,11 +144,17 @@ async function cleanup(prisma) {
     assert(regB.body.code === 0, 'B 入驻成功');
     const mB = await call('GET', '/merchant/profile', B.accessToken);
     created.merchantIds.push(mB.body.data.id);
+    // 入驻审核置 APPROVED + 设 seed 默认圈 activeCommunityId（发岗写路径基线必填，均为测试数据自身，cleanup 随用户/商家删除）
+    await prisma.merchant.update({ where: { id: mA.body.data.id }, data: { status: 'APPROVED' } });
+    await prisma.merchant.update({ where: { id: mB.body.data.id }, data: { status: 'APPROVED' } });
+    await prisma.user.update({ where: { id: A.user.id }, data: { activeCommunityId: 'cm_default' } });
+    await prisma.user.update({ where: { id: B.user.id }, data: { activeCommunityId: 'cm_default' } });
 
     // 辅助：发岗（PENDING）
     async function createPost(token, title) {
       const r = await call('POST', '/job-posts', token, {
         title, description: 'm3-04 测试岗位描述', salary: '100/天', location: '校',
+        locationPoiId: `poi_m3e_${sfx}`, locationLng: 116.4, locationLat: 39.9, locationCity: '北京',
         category: 'CATERING', settlement: 'DAILY', workDates: ['周六'], workPeriods: ['全天'],
         headcount: 2, questions: ['你的身份'], duration: 'D30',
       });
@@ -192,15 +198,31 @@ async function cleanup(prisma) {
     console.log('\n--- M3-04 编辑岗位 ---');
 
     // 验证点 1：A 编辑自己 PENDING 岗位 -> 成功，字段更新，duration 不变
+    // P2-77：title/分类创建后不可改，编辑只提交允许字段
     const edit1 = await call('PUT', `/job-posts/${pPending.id}`, A.accessToken, {
-      title: `已编辑_${sfx}`, salary: '200/天', headcount: 5,
+      salary: '200/天', headcount: 5,
     });
     assert(edit1.body.code === 0, `编辑 PENDING 成功 ${JSON.stringify(edit1.body).slice(0, 100)}`);
-    assertEq(edit1.body.data.title, `已编辑_${sfx}`, '编辑后 title 更新');
+    assertEq(edit1.body.data.title, `PENDING岗_${sfx}`, '编辑后 title 保持不变（P2-77 不可改）');
+    assertEq(edit1.body.data.category, 'CATERING', '编辑后 category 保持不变（P2-77 不可改）');
     assertEq(edit1.body.data.salary, '200/天', '编辑后 salary 更新');
     assertEq(edit1.body.data.headcount, 5, '编辑后 headcount 更新');
     assertEq(edit1.body.data.status, 'PENDING', '编辑 PENDING 后状态不变 PENDING');
     assertEq(edit1.body.data.duration, 'D30', '编辑后 duration 不可改（仍 D30）');
+
+    // 验证点 1b：改标题 / 改分类 -> 40003 拒绝（P2-77）
+    const editTitle = await call('PUT', `/job-posts/${pPending.id}`, A.accessToken, { title: `尝试改标题_${sfx}` });
+    assertEq(editTitle.status, 400, `改标题 HTTP 400 got=${editTitle.status}`);
+    assertEq(editTitle.body.code, 40003, `改标题 code 40003`);
+    const editCat = await call('PUT', `/job-posts/${pPending.id}`, A.accessToken, { category: 'RETAIL' });
+    assertEq(editCat.status, 400, `改分类 HTTP 400 got=${editCat.status}`);
+    assertEq(editCat.body.code, 40003, `改分类 code 40003`);
+    // 同值提交放行（旧版前端回填后原样提交口径）
+    const editSame = await call('PUT', `/job-posts/${pPending.id}`, A.accessToken, {
+      title: `PENDING岗_${sfx}`, category: 'CATERING', customCategory: '', isCustomCategory: false, headcount: 6,
+    });
+    assert(editSame.body.code === 0, `同值提交成功 ${JSON.stringify(editSame.body).slice(0, 100)}`);
+    assertEq(editSame.body.data.headcount, 6, '同值提交其余字段正常更新');
 
     // 验证点 2：A 编辑自己 PUBLISHED 岗位 -> 成功，状态回退 PENDING，needsRepublish=true
     const edit2 = await call('PUT', `/job-posts/${pPub.id}`, A.accessToken, {
