@@ -1,6 +1,6 @@
 # AGENTS.md — 燚桐项目 Agent 行为约束
 
-> 本文件是燚桐项目（`G:\副业\仿校园小程序开发\project`）所有 agent（主代理 + 子代理）的**强制行为约束**。
+> 本文件是燚桐项目（仓库根 `G:\副业\仿校园小程序开发\project`，项目位于 `yitong/` 子目录）所有 agent（主代理 + 子代理）的**强制行为约束**。
 > 进入项目第一件事：读本文件 → 运行 `/yitong-dev` skill 建立上下文。
 > 主代理派发子代理时，**必须在 prompt 里要求子代理先读本文件**。
 
@@ -126,7 +126,7 @@ squash merge 到 main 并 push 成功后，必须依次执行以下步骤，**�
 - **mock 策略**：缺 WX / COS / TIM / 支付凭证时 dev 走 mock、prod 抛 `90003`（沿用 auth/common）。
 - **Prisma enum**：值必须每行一个；schema 改动跑 `npx prisma migrate dev --name <x>`，必要时 `npx prisma db seed`。
 - **Prisma schema / client**：只要 `schema.prisma`、model、migration、enum 有变更，验收前必须先重新生成 Prisma Client（例如 `npx prisma generate`），再继续 typecheck / smoke / 构建复检；不能把旧 client 当作新结果。
-- **pnpm**：从项目根 `pnpm -C "G:/副业/仿校园小程序开发/project" --filter @yitong/server ...`（filter 从错误 cwd 会报 No projects matched）。
+- **pnpm**：从项目根 `pnpm -C "G:/副业/仿校园小程序开发/project/yitong" --filter @yitong/server ...`（filter 从错误 cwd 会报 No projects matched）。
 - **server tsconfig**：`types:["node"]` + `noUncheckedIndexedAccess` → 用 `import type { File } from 'multer'` 而非全局 `Express.Multer.File`；数组/对象下标防 undefined。
 - **小程序 tsconfig**：`types:["miniprogram-api-typings"]`，`Page`/`Component` 用 catchtap 阻止冒泡。
 - **前端构建产物**：前端验收必须检查构建输出中的 `.js` / `.js.map` 是否已按改动重新生成；只跑 `tsc --noEmit` 不算完成。
