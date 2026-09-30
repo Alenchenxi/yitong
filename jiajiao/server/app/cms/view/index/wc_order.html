@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>完成订单</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="/css/ds_order.css" />
+</head>
+
+<body>
+    <div class="wait_pagebox" id="app">
+        <div class="libray_container">
+            <div class="list_mestbox" v-for="(item,i) in order_listarr" @click="jump_detail_stu(item)">
+                <div class="list_library">
+                    <div class="lf_avatarbox">
+                        <div class="avatar_icon">
+                            <image class="avatar" :src="item.avatar" mode=""></image>
+                            <image class="sex_img" v-if="item.gender==1" src="/img/sex_icon.png" mode="">
+                            </image>
+                            <image class="sex_img" v-else-if="item.gender==2" src="/img/set_nvicon.png" mode="">
+                            </image>
+                        </div>
+                        <div class="teace_login">
+                            <div>最近登录</div>
+                            <div>{{item.login_time}}</div>
+                        </div>
+                    </div>
+                    <div class="rf_user_info">
+                        <div class="list_namebox">
+                            <div class="lf_namebox">
+                                <div class="ragion_text">{{!item.area?'':item.area}}</div>
+                                <div class="name_text">{{item.subject_name}}</div>
+                            </div>
+                            <div class="price_num">{{item.expense}}</div>
+                        </div>
+                        <div class="student_desc">
+                            <div>{{item.gai_kuang}}</div>
+                        </div>
+                        <div class="adres_lang">
+                            <div class="adres_info">
+                                <image src="/img/stu_adresicon.png" mode=""></image>
+                                <div>{{item.address}}</div>
+                            </div>
+                            <!-- <div class="lang_text">2.569km</div> -->
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="button_box">
+                    <div class="apply_btn" @click.stop="look_info(item.teacher_id)">查看教员</div>
+                    <div class="detail_btn" v-if="!item.is_pl?true:false" @click.stop="rate_page(item)">去评价</div>
+                    <div class="detail_btn" v-if="item.is_pl&&!item.is_zp?true:false"  @click.stop="jump_rate(item)">去追评</div>
+                </div>
+
+
+            </div>
+        </div>
+         
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+
+</html>
+<script type="text/javascript">
+var vm = new Vue({
+    el: '#app',
+    data: {
+        order_listarr: [],
+                page: 0,
+                down: 0,
+    },
+    methods: {
+        init: function(page) {
+            $.ajax({
+                url: "/user/wcOrder",
+                type: 'post',
+                data: { "page": page },
+                dataType: 'json',
+                success: function(data) {
+                    if (data.status == 404) {
+                        // layer.msg(data.msg, { icon: 5 });
+                    } else {
+                        vm.order_listarr = data.data;
+                    }
+                },
+                error: function() {
+                    console.log("出错了");
+                }
+            });
+        },
+        look_info(id) {
+            window.location.href="/teacher/"+id+".html";
+            },
+            rate_page(item) {
+                window.location.href="/user/comment?teacher_id=" +item.teacher_id+'&demand_id='+item.demand_id
+            },
+            
+            jump_rate(item) {
+                window.location.href="/user/comment?teacher_id="+item.teacher_id+'&sup_comment_id='+item.is_pl.comment_id+'&demand_id=' + item.demand_id
+            },
+            
+            jump_detail(item){
+                uni.setStorageSync("data_info", item)
+                uni.navigateTo({
+                    // url: "../../component/student_detail/student_detail?hidden=1"
+                    url: "../../faculty_center/complate_page/complate_page"
+                })
+            },
+
+             
+    }
+})
+vm.init(1);
+</script>

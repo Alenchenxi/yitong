@@ -1,0 +1,725 @@
+.teacher_register {
+  width: 100%;
+  min-height: 100vh;
+  background-image: linear-gradient(to bottom, #F3D7C9, #F7F2F5, #F8F8F8);
+  padding-top: 10px;
+}
+.teacher_register .set_phonepopbox {
+  padding: 15px;
+}
+.teacher_register .set_phonepopbox .head_title {
+  width: 100%;
+  display: flex;
+}
+.teacher_register .set_phonepopbox .head_title text {
+  margin: auto;
+  font-size: 14px;
+  color: #000;
+  font-weight: 600;
+}
+.teacher_register .set_phonepopbox .list_setphoenbox {
+  display: flex;
+  padding: 0 10px;
+  margin: 15px 0;
+}
+.teacher_register .set_phonepopbox .list_setphoenbox .lf_title {
+  width: 20%;
+  text-align: right;
+  font-size: 14px;
+  color: #333;
+  margin: auto;
+}
+.teacher_register .set_phonepopbox .list_setphoenbox .set_phoneinput {
+  width: 80%;
+  background-color: #F3D7C9;
+  display: flex;
+  border-radius: 30px;
+  padding: 7px 15px;
+}
+.teacher_register .set_phonepopbox .list_setphoenbox .set_phoneinput input {
+  width: 100%;
+  height: 20px;
+  display: block;
+}
+.teacher_register .set_phonepopbox .list_setphoenbox .set_phoneinput .get_num {
+  white-space: nowrap;
+  margin: auto 0;
+  font-size: 13px;
+  color: #6C7DC6;
+}
+.teacher_register .set_phonepopbox .phone_btnbox {
+  width: 100%;
+  display: flex;
+  padding-top: 10px;
+}
+.teacher_register .set_phonepopbox .phone_btnbox button {
+  width: 100%;
+  margin: auto;
+  font-size: 14px;
+  padding: 4px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 500;
+  background-color: #FB7206;
+}
+.teacher_register .set_phonepopbox .phone_btnbox button::after {
+  border: none;
+}
+.teacher_register .containe_box {
+  width: 100%;
+  overflow-x: hidden;
+  position: relative;
+  min-height: 100vh;
+}
+.teacher_register .containe_box .list_useinfo {
+  width: 100%;
+  position: absolute;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+  min-height: 100vh;
+  left: 0;
+  top: 0;
+  transition-duration: 0.7s;
+}
+.teacher_register .containe_box .list_useinfo .content_info {
+  padding: 0 4% 60px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .head_text {
+  padding: 15px 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .head_text text {
+  display: block;
+  padding: 0px 10px;
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+  border-left: 4px solid #FB7206;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox {
+  padding: 0px 4%;
+  border-radius: 6px;
+  background-color: #fff;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox {
+  padding-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .lf_sex {
+  display: flex;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .lf_sex .sex_text {
+  font-size: 14px;
+  color: #000;
+  margin: auto 10px auto 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .lf_sex .list_sex {
+  display: flex;
+  margin: auto 10px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .lf_sex .list_sex .li_sex {
+  font-size: 14px;
+  color: #000;
+  margin-right: 5px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .lf_sex .list_sex .dot_text {
+  width: 7px;
+  height: 7px;
+  margin: auto 0;
+  border-radius: 100%;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .lf_sex .list_sex .active_text {
+  background-color: #F89CA1;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .rf_age {
+  display: flex;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .rf_age text {
+  width: 115px;
+  text-align: right;
+  font-size: 14px;
+  color: #000;
+  margin: auto 15px auto 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .sex_agebox .rf_age input {
+  padding: 0 5px;
+  margin: auto 0;
+  width: 60px;
+  height: 56px;
+  color: #000;
+  border-radius: 6px;
+  font-size: 15px;
+  background-color: #F5E7DB;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box {
+  width: 100%;
+  padding: 10px 0;
+  border-bottom: 1px solid #F5f5f5;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .list_phone_text {
+  width: 100%;
+  display: flex;
+  padding: 7px 0;
+  justify-content: space-between;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .list_phone_text .lf_text {
+  font-size: 14px;
+  color: #000;
+  display: block;
+  width: 20%;
+  margin: auto 0;
+  text-align: right;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .list_phone_text .rf_input {
+  background-color: #F5E7DB;
+  width: 70%;
+  padding: 0 10px;
+  border-radius: 6px;
+  display: flex;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .list_phone_text .rf_input input {
+  width: 100%;
+  height: 31px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .list_phone_text .rf_input .get_num {
+  white-space: nowrap;
+  margin: auto 0;
+  font-size: 12px;
+  color: #6C7DC6;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_selecttwo {
+  width: 100%;
+  padding: 5px 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_selecttwo .list_select {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_selecttwo .list_select .select_title {
+  display: block;
+  width: 20%;
+  text-align: right;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_selecttwo .list_select .infobo {
+  width: 70%;
+  margin: 5px 0;
+  border-radius: 5px;
+  background-color: #F5E7DB;
+  display: flex;
+  padding: 8px 8px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_selecttwo .list_select .infobo input {
+  width: 100%;
+  text-align: left;
+  color: #000;
+  font-size: 14px;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_selecttwo .list_select .infobo img {
+  width: 16px;
+  height: 16px;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_select {
+  width: 100%;
+  padding: 10px 0;
+  display: flex;
+  justify-content: space-around;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_select .select_title {
+  display: block;
+  text-align: center;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_select .infobo {
+  margin-top: 6px;
+  border-radius: 5px;
+  background-color: #F2F2FC;
+  display: flex;
+  padding: 4px 5px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_select .infobo input {
+  width: 90px;
+  text-align: center;
+  color: #000;
+  font-size: 14px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .user_mesabox .phone_box .chose_select .infobo img {
+  width: 16px;
+  height: 16px;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_useinfo .content_info .next_btn_box {
+  width: 100%;
+  margin-top: 40px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .next_btn_box button {
+  width: 100%;
+  padding: 5px 0;
+  background-color: #F3D7C9;
+  color: #000;
+  font-size: 15px;
+  border-radius: 25px;
+}
+.teacher_register .containe_box .list_useinfo .content_info .next_btn_box button::after {
+  border: none;
+}
+.teacher_register .containe_box .list_mesagetow {
+  width: 100%;
+  position: absolute;
+  min-height: 100vh;
+  top: 0;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+  left: 0;
+  transition-duration: 0.7s;
+}
+.teacher_register .containe_box .list_mesagetow .content_info {
+  padding: 0 4% 60px;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .head_text {
+  padding: 15px 0;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .head_text text {
+  display: block;
+  padding: 0px 10px;
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+  border-left: 8px solid #FB7206;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox {
+  padding: 5px 4% 0;
+  border-radius: 6px;
+  background-color: #fff;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box {
+  width: 100%;
+  padding: 10px 0;
+  border-bottom: 1px solid #F5f5f5;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_areabox {
+  width: 100%;
+  display: flex;
+  padding: 7px 0;
+  justify-content: space-between;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_areabox .lf_text {
+  font-size: 14px;
+  color: #000;
+  display: block;
+  width: 20%;
+  margin: 10px 0 0;
+  text-align: right;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_areabox .rf_areabox {
+  background-color: #F5E7DB;
+  width: 69%;
+  padding: 5px 10px;
+  height: 150px;
+  border-radius: 6px;
+  display: flex;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_areabox .rf_areabox textarea {
+  height: 100%;
+  width: 100%;
+  font-size: 13px;
+  color: #666666;
+  line-height: 23px;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_phone_text {
+  width: 100%;
+  display: flex;
+  padding: 7px 0;
+  justify-content: space-between;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_phone_text .lf_text {
+  font-size: 14px;
+  color: #000;
+  display: block;
+  width: 20%;
+  margin: auto 0;
+  text-align: right;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_phone_text .rf_input {
+  background-color: #F5E7DB;
+  width: 70%;
+  padding: 0 10px;
+  border-radius: 6px;
+  display: flex;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_phone_text .rf_input input {
+  width: 100%;
+  height: 31px;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .list_phone_text .rf_input .get_num {
+  white-space: nowrap;
+  margin: auto 0;
+  font-size: 25px;
+  color: #6C7DC6;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_select {
+  width: 100%;
+  padding: 10px 0;
+  display: flex;
+  justify-content: space-around;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_select .select_title {
+  display: block;
+  text-align: center;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_select .infobo {
+  margin-top: 6px;
+  border-radius: 5px;
+  background-color: #F2F2FC;
+  display: flex;
+  padding: 4px 5px;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_select .infobo input {
+  width: 90px;
+  text-align: center;
+  color: #000;
+  font-size: 14px;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_select .infobo img {
+  width: 16px;
+  height: 16px;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_selecttwo {
+  width: 100%;
+  padding: 5px 0;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_selecttwo .list_select {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_selecttwo .list_select .select_title {
+  display: block;
+  width: 20%;
+  text-align: right;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_selecttwo .list_select .infobo {
+  width: 70%;
+  margin: 5px 0;
+  border-radius: 5px;
+  background-color: #F5E7DB;
+  display: flex;
+  padding: 8px 8px;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_selecttwo .list_select .infobo input {
+  width: 100%;
+  text-align: left;
+  color: #000;
+  font-size: 14px;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .set_meabox .phone_box .chose_selecttwo .list_select .infobo img {
+  width: 16px;
+  height: 16px;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .next_btn_box {
+  width: 100%;
+  display: flex;
+  margin-top: 40px;
+  justify-content: space-around;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .next_btn_box button {
+  width: 40%;
+  padding: 5px 0;
+  background-color: #F3D7C9;
+  color: #000;
+  font-size: 15px;
+  border-radius: 25px;
+}
+.teacher_register .containe_box .list_mesagetow .content_info .next_btn_box button::after {
+  border: none;
+}
+.teacher_register .containe_box .list_meagethree {
+  width: 100%;
+  position: absolute;
+  min-height: 100vh;
+  top: 0;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+  left: 0;
+  transition-duration: 0.7s;
+  display: none;
+}
+.teacher_register .containe_box .list_meagethree .content_info {
+  padding: 0 4% 60px;
+}
+.teacher_register .containe_box .list_meagethree .content_info .head_text {
+  padding: 15px 0;
+}
+.teacher_register .containe_box .list_meagethree .content_info .head_text text {
+  display: block;
+  padding: 0px 10px;
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+  border-left: 8px solid #FB7206;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox {
+  padding: 10px 4%;
+  border-radius: 6px;
+  background-color: #fff;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox {
+  width: 100%;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox .head_img_box {
+  width: 100%;
+  display: flex;
+  padding: 7px 0;
+  justify-content: space-between;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox .head_img_box .lf_text {
+  font-size: 14px;
+  color: #000;
+  display: block;
+  margin: auto 0;
+  text-align: right;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox .head_img_box .rf_img {
+  width: 60px;
+  height: 60px;
+  border: 2px dashed #9c510f;
+  background-color: #fff3ed;
+  border-radius: 5px;
+  display: flex;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox .head_img_box .rf_img img {
+  width: 30px;
+  margin: auto;
+  height: 30px;
+  display: block;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox .head_img_box .rf_upload {
+  width: 60px;
+  height: 60px;
+  border-radius: 5px;
+  display: flex;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox .head_img_box .rf_upload img {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  display: block;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox .id_card_headtitle .head_text {
+  font-size: 14px;
+  color: #000;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .idcardbox .id_card_headtitle .color_text {
+  color: #F34D56;
+  font-size: 12px;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .id_cardimgbox {
+  width: 100%;
+  display: flex;
+  padding: 10px 0;
+  justify-content: space-between;
+  border-bottom: 1px solid #F5F5F5;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .id_cardimgbox .list_img {
+  width: 48%;
+  overflow: hidden;
+  height: 90px;
+  display: flex;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .id_cardimgbox .list_img img {
+  margin: auto;
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_phone_text {
+  width: 100%;
+  display: flex;
+  padding: 7px 0;
+  justify-content: space-between;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_phone_text .lf_text {
+  font-size: 14px;
+  color: #000;
+  display: block;
+  width: 20%;
+  margin: auto 0;
+  text-align: right;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_phone_text .rf_input {
+  background-color: #F5E7DB;
+  width: 70%;
+  padding: 0 10px;
+  border-radius: 6px;
+  display: flex;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_phone_text .rf_input input {
+  width: 100%;
+  height: 31px;
+  text-align: center;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_phone_text .rf_input img {
+  width: 20px;
+  height: 16px;
+  margin: auto 0;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_imgbox {
+  width: 100%;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_imgbox text {
+  font-size: 14px;
+  color: #000;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_imgbox .uploadiimg {
+  width: 100%;
+  height: 260px;
+  display: flex;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .list_imgbox .uploadiimg img {
+  width: 100%;
+  height: 100%;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .certificate_imgbox {
+  width: 100%;
+  display: flex;
+  margin-top: 15px;
+  padding-bottom: 15px;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .certificate_imgbox .certitl_bottitl {
+  width: 100%;
+  display: flex;
+  width: 25%;
+  padding-top: 9px;
+  text-align: right;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .certificate_imgbox .certitl_bottitl .certilf_title {
+  font-size: 12px;
+  color: #999;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .certificate_imgbox .certitl_bottitl .certilf_sym {
+  font-size: 14px;
+  color: #F34D56;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .certificate_imgbox .rf_upiimg {
+  width: 70%;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .certificate_imgbox .rf_upiimg .show_img {
+  width: 100%;
+  height: 90px;
+  display: flex;
+}
+.teacher_register .containe_box .list_meagethree .content_info .img_contenbox .certificate_imgbox .rf_upiimg .show_img img {
+  margin: auto 0;
+  border-radius: 5px;
+  width: 100%;
+  height: 100%;
+}
+.teacher_register .containe_box .list_meagethree .content_info .next_btn_box {
+  width: 100%;
+  display: flex;
+  margin-top: 40px;
+  justify-content: space-around;
+}
+.teacher_register .containe_box .list_meagethree .content_info .next_btn_box button {
+  width: 40%;
+  padding: 5px 0;
+  background-color: #F3D7C9;
+  color: #000;
+  font-size: 15px;
+  border-radius: 25px;
+}
+.teacher_register .containe_box .list_meagethree .content_info .next_btn_box button::after {
+  border: none;
+}
+.teacher_register .subject_popbox {
+  padding: 15px;
+}
+.teacher_register .subject_popbox .subjuc_title {
+  font-size: 14px;
+  color: #000;
+  font-weight: 600;
+  text-align: center;
+  display: block;
+}
+.teacher_register .subject_popbox .mest_scool {
+  width: 100%;
+  max-height: 30vh;
+}
+.teacher_register .subject_popbox .mest_scool .region_contianer {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+}
+.teacher_register .subject_popbox .mest_scool .region_contianer .list_tab {
+  width: 30%;
+  margin: 5px;
+  border: 1px solid rgba(156, 81, 15, 0.3);
+  background-color: #F5E5D8;
+  border-radius: 8px;
+  padding: 12px 0;
+}
+.teacher_register .subject_popbox .mest_scool .region_contianer .list_tab text {
+  text-align: center;
+  font-size: 14px;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  font-weight: 500;
+}
+.teacher_register .subject_popbox .mest_scool .region_contianer .active_border {
+  border: 1px solid #9c510f !important;
+  box-shadow: 0 0 5px #9c510f;
+}
+.teacher_register .subject_popbox .tab_container {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.teacher_register .subject_popbox .tab_container .list_tab {
+  width: 30%;
+  margin: 5px;
+  border: 1px solid rgba(156, 81, 15, 0.3);
+  background-color: #F5E5D8;
+  border-radius: 8px;
+  padding: 12px 0;
+}
+.teacher_register .subject_popbox .tab_container .list_tab text {
+  text-align: center;
+  font-size: 14px;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  font-weight: 500;
+}
+.teacher_register .subject_popbox .tab_container .active_border {
+  border: 1px solid #9c510f !important;
+  box-shadow: 0 0 5px #9c510f;
+}
+.teacher_register .subject_popbox .bottom_sure {
+  padding: 15px 15px 10px;
+}
+.teacher_register .subject_popbox .bottom_sure button {
+  width: 100%;
+  padding: 5px 0;
+  border-radius: 25px;
+  background-color: #FB7206;
+  color: #fff;
+  font-size: 14px;
+}
+.teacher_register .subject_popbox .bottom_sure button::after {
+  border: none;
+}

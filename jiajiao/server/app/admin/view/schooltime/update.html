@@ -1,0 +1,81 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='schooltime_id' id='schooltime_id' value="{$info.schooltime_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">周几：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="week" value="{$info.week}" name="week" class="form-control" placeholder="请输入周几">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">开始时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="start_time" value="{$info.start_time}" name="start_time" class="form-control" placeholder="请输入开始时间">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">结束时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="end_time" value="{$info.end_time}" name="end_time" class="form-control" placeholder="请输入结束时间">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('schooltime_id').set('week').set('start_time').set('end_time');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var ajax = new $ax(Feng.ctxPath + "/Schooltime/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

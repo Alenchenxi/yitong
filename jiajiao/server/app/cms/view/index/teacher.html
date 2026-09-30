@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>教员简历</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="css/teacher.css" />
+    <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css">
+    <style type="text/css">
+     .weui-half-screen-dialog__ft{position: absolute;top: 10px;right: 0px;padding: 0}
+     .weui-btn_primary:not(.weui-btn_disabled):active{background:none;}
+     .weui-btn{color: #db7b7b}
+     .weui-btn_primary{background: none}
+     .weui-picker{z-index: 19891018}
+    </style>
+</head>
+
+<body>
+    <div class="t_library" id="app">
+        <div class="tab_type">
+            <div class="lfserach">
+                <div class="list_tab" onclick="kemu()">
+                    <div class="center_auto">
+                        <input type="text" disabled="disabled" value="科目">
+                        <image src="img/botm_arrow.png" ></image>
+                    </div>
+                </div>
+                <div class="list_tab" onclick="shenfen()">
+                    <div class="center_auto" >
+                        <input value="身份" type="text" disabled="disabled">
+                        <image src="img/botm_arrow.png" mode=""></image>
+                    </div>
+                </div>
+                <div class="list_tab" onclick="quyu()">
+                    <div class="center_auto">
+                        <input value="区域" type="text" disabled="disabled" >
+                        <image src="img/botm_arrow.png" mode=""></image>
+                    </div>
+                </div>
+            </div>
+            <div class="rf_btn" onclick="shaixuan()">
+                <!-- <div class="rf_btn"> -->
+                <span>筛选</span>
+            </div>
+        </div>
+
+        <div class="teacher_databox" id="moban">
+            {volist name="list" id="vo"}
+            <a class="list_teacher" href="/teacher/{$vo.teacher_id}.html">
+                <div class="lf_avatarbox">
+                    <div class="avatar_icon">
+                        <div data-v-a08f20dc="" class="avatar">
+                            <img src="{$vo.head_img}" draggable="false">
+                        </div>
+                        <div data-v-a08f20dc="" class="sex_img">
+                            <img src="img/set_nvicon.png" draggable="false">
+                        </div>
+                    </div>
+                    <div class="teace_login">
+                        <div><span>最近登录</span></div>
+                        <div><span>{$vo.login_time}</span></div>
+                    </div>
+                </div>
+                <div class="rf_user_info">
+                    <div class="list_namebox">
+                        <div class="name_text"><span>{$vo.name}（{$vo.gender_str}）</span></div>
+                        <div class="type"><span>{$vo.teacher_identity_str}</span></div>
+                        <div class="numinfo">
+                            <span class="color_num">{$vo.teach_num}</span>
+                            <div class="num_text"><span>次任教</span></div>
+                        </div>
+                    </div>
+                    <div class="user_typeli">
+                        <div class="shcol_text"><span>{$vo.school}</span></div>
+                        <div class="type_stu"><span>{$vo.specialty}</span></div>
+                    </div>
+                    <div class="botm_mesttype">
+                        <div class="list_mu_type_one">
+                            <div class="type_title"><span>科目：</span></div>
+                            {volist name="$vo.subject_names" id="vos"}
+                            <div class="type_text" >
+                                <span>{$vos.name}</span>
+                            </div>
+                            {/volist}
+                        </div>
+                        <div class="list_mu_type_two">
+                            <div class="type_title"><span>地区：</span></div>
+                            {volist name="$vo.area" id="voa"}
+                            <div class="type_text" >
+                                <span>{$voa}</span>
+                            </div>
+                            {/volist}
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {/volist}
+        </div>
+
+        <div class="teacher_databox">
+            <a class="list_teacher" :href="'/teacher/' + item.teacher_id+'.html'" v-for="item,index in pageData" :key="index">
+                <div class="lf_avatarbox">
+                    <div class="avatar_icon">
+                        <div data-v-a08f20dc="" class="avatar">
+                            <img :src="item.head_img" draggable="false">
+                        </div>
+                        <div data-v-a08f20dc="" class="sex_img">
+                            <img src="img/set_nvicon.png" draggable="false">
+                        </div>
+                    </div>
+                    <div class="teace_login">
+                        <div><span>最近登录</span></div>
+                        <div><span>{{item.login_time}}</span></div>
+                    </div>
+                </div>
+                <div class="rf_user_info">
+                    <div class="list_namebox">
+                        <div class="name_text"><span>{{item.name}}（{{item.gender_str}}）</span></div>
+                        <div class="type"><span>{{item.teacher_identity_str}}</span></div>
+                        <div class="numinfo">
+                            <span class="color_num">{{item.teach_num}}</span>
+                            <div class="num_text"><span>次任教</span></div>
+                        </div>
+                    </div>
+                    <div class="user_typeli">
+                        <div class="shcol_text"><span>{{item.school}}</span></div>
+                        <div class="type_stu"><span>{{item.specialty}}</span></div>
+                    </div>
+                    <div class="botm_mesttype">
+                        <div class="list_mu_type_one">
+                            <div class="type_title"><span>科目：</span></div>
+                            <div class="type_text" v-for="(i, d) in item.subject_names" :key="d"><span>{{i.name}}</span></div>
+                        </div>
+                        <div class="list_mu_type_two">
+                            <div class="type_title"><span>地区：</span></div>
+                            <div class="type_text" v-for="(i, d) in item.area" :key="d"><span>{{i}}</span></div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+
+        <div width='80%' border-radius='20' id="search_popbox" style="display:none" >
+            <div class="search_popbox">
+                <div class="phone_box">
+                    <div class="list_phone_text">
+                        <div class="lf_text">教员编号:</div>
+                        <div class="rf_input uni-input-placeholder">
+                            <input type="text" placeholder="请输入教员编号" v-model="params.teacher_num" placeholder-style="font-size:26rpx;color:#999;">
+                        </div>
+                    </div>
+                    <div class="list_phone_text">
+                        <div class="lf_text">性别:</div>
+                        <div class="rf_input" onclick="selectGender()">
+                            <input type="text" placeholder="请选择性别" id="genderValue" disabled="disabled"  placeholder-style="font-size:26rpx;color:#999;">
+                        </div>
+                    </div>
+                    <div class="list_phone_text">
+                        <div class="lf_text">任教方式:</div>
+                        <div class="rf_input" onclick="selectWay()">
+                            <input type="text" placeholder="请选择任教方式" id="wayValue" disabled="disabled" placeholder-style="font-size:26rpx;color:#999;">
+                        </div>
+                    </div>
+                    <div class="list_phone_text">
+                        <div class="lf_text">综合评价:</div>
+                        <div class="rf_input" onclick="selectPj()">
+                            <input type="text" placeholder="请选择综合评价" id="pjValue" disabled="disabled" placeholder-style="font-size:26rpx;color:#999;">
+                        </div>
+                    </div>
+                </div>
+                <div class="subbutonbox">
+                    <button onclick="filterSubmit()">确定</button>
+                </div>
+            </div>
+        </div>
+
+        <!--&lt;!&ndash; 任教科目 &ndash;&gt;
+        <u-picker mode="selector" v-model="subjects_show" confirm-color='#fbcab1' @confirm='subjects_chosefun' :range="subjects_list"></u-picker>
+        &lt;!&ndash; 学校&ndash;&gt;
+        <u-picker mode="selector" v-model="school_type" confirm-color='#fbcab1' @confirm='school_chosefun' :range="school_typelist"></u-picker>
+        &lt;!&ndash; 选择身份 &ndash;&gt;
+        <u-picker mode="selector" v-model="identity_show" confirm-color='#fbcab1' @confirm='identity_chosefun' :range="identity_show_list"></u-picker>
+        &lt;!&ndash;任教区域 &ndash;&gt;
+        <u-picker mode="selector" v-model="region" confirm-color='#fbcab1' @confirm='reginon_chosefun' :range="region_list"></u-picker>
+        &lt;!&ndash; 任教方式 &ndash;&gt;
+        <u-picker mode="selector" v-model="teaching_type" confirm-color='#fbcab1' @confirm='teaching_type_chosefun' :range="teaching_typelist"></u-picker>
+        &lt;!&ndash; 教员性别 &ndash;&gt;
+        <u-picker mode="selector" v-model="teaher_sexshow" confirm-color='#fbcab1' @confirm='teachersex_chosefun' :range="teaher_sexlist"></u-picker>
+        &lt;!&ndash; 综合评价 &ndash;&gt;
+        <u-picker mode="selector" v-model="rate_show" confirm-color='#fbcab1' @confirm='rate_chosefun' :range="rate_datalist"></u-picker>-->
+        
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="/js/vue.js"></script>
+<script src="https://res.wx.qq.com/t/wx_fed/cdn_libs/res/weui/1.2.8/weui.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+<script type="text/javascript">
+    layui.use(['form'], function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.$;
+    });
+
+    var data = {
+        loading:true, //loading
+        pageData:[],//接口返回列表数据
+        nextpage:true,//是否下一页
+        params:{
+            //传给接口的参数
+            page: 2 ,
+            limit:10,
+            teacher_num:'{$teacher_num}',
+            gender:'{$gender}',
+            teaching_way:'{$teaching_way}',
+            zh_pj:'{$zh_pj}',
+            subject_id:'{$subject_id}',
+            teacher_identity:'{$teacher_identity}',
+            area:'{$area}',
+        },
+        isRefreshLock:true,
+    }
+
+    var vm = new Vue({
+        el: "#app",
+        data: data,
+
+        mounted() {
+            //this.getPage(this.params)//数据
+            window.addEventListener('scroll', this.windowScroll,true)//监听滚动条事件
+        },
+        methods: {
+            //请求接口方法  常规的ajax方式(用这种需要引用jquery)
+            getPage(params){
+                $.ajax({
+                    url:'/teacher/getTeacherList',
+                    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    data:params,
+                    type: 'POST',
+                    dataType: 'JSON',
+                    success: res => {
+                        this.loading = false
+                        if(res.status == 200 ){
+                            if(res.data.length>0){
+                                console.log('加载下一页')
+                                let listData = this.pageData.concat(res.data);
+                                this.pageData=listData
+
+                                console.log(this.pageData);
+                                this.params.page += 1;
+                                //加载数据可以触发
+                                this.isRefreshLock=true
+
+                            }else{
+                                this.nextpage = false;
+                            }
+
+                        }else{
+                            console.log('200以外的情况 处理逻辑')
+                        }
+                    },
+                })
+            },
+
+            //滚动条事件
+            windowScroll(e) {
+                //滚动条滚动时距离顶部的距离
+                let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                //可视区的高度
+                let windowHeight =
+                    document.documentElement.clientHeight || document.body.clientHeight;
+                //滚动条的总高度
+                let scrollHeight =
+                    document.documentElement.scrollHeight || document.body.scrollHeight;
+                //滚动条到底部的条件
+                // console.log(scrollTop + windowHeight + "--" + scrollHeight);
+                if ( scrollTop + windowHeight >= scrollHeight - 200 && this.isRefreshLock) {
+                    console.log('滑动触发加载');
+                    if(this.nextpage){
+                        // false防止多次触发加载数据
+                        this.isRefreshLock = false;
+                        this.getPage(this.params)
+                    }else{
+                        console.log('没有更多数据了')
+                    }
+                }
+            },
+
+        },
+
+        beforeDestroy() {
+            console.log('beforeDestroy')
+            //销毁页面时移除监听事件
+            window.removeEventListener('scroll', this.windowScroll)
+        }
+
+    });
+
+    function  kemu() {
+        $.ajax({
+            url : '/index/getSubjectList',
+            type : 'post',
+            dataType : 'json',
+            data : {},
+            success : function (res) {
+                console.log(res);
+                if(res.status==200){
+                    // 级联picker
+                    weui.picker(res.data, {
+                        className: 'custom-classname',
+                        container: 'body',
+                        defaultValue: [1, 1],
+                        onChange: function (result) {
+                            console.log(result)
+                        },
+                        onConfirm: function (result) {
+                            console.log(result);
+                            //隐藏模板数据
+                            $('#moban').hide();
+                            //清空数据
+                            vm.pageData = [];
+                            //给科目重新赋值
+                            vm.params.subject_id = result[1].value;
+                            //重新给 page 赋值
+                            vm.params.page = 1;
+                            //重新获取数据
+                            vm.getPage(vm.params);
+                        },
+                        id: 'doubleLinePicker'
+                    });
+                }else{
+                    layer.msg(res.msg);
+                }
+            }
+        })
+    }
+
+    function shenfen(){
+        weui.picker([{
+            label: '大学生教员',
+            value: 1
+        }, {
+            label: '普通教员',
+            value: 2
+        }, {
+            label: '专业教员',
+            value: 3
+        }, {
+            label: '不限',
+            value: 4
+        }], 
+        {
+            defaultValue: [1],
+            onChange: function (result) {
+                console.log(result);
+            },
+            onConfirm: function (result) {
+                console.log(result);
+                //隐藏模板数据
+                $('#moban').hide();
+                //清空数据
+                vm.pageData = [];
+                //给身份重新赋值
+                vm.params.teacher_identity = result[0].value;
+                //重新给 page 赋值
+                vm.params.page = 1;
+                //重新获取数据
+                vm.getPage(vm.params);
+            },
+        });
+    }
+
+    function quyu(){
+        $.ajax({
+            url : '/index/getAreaList',
+            type : 'post',
+            dataType : 'json',
+            data : {},
+            success : function (res) {
+                console.log(res);
+                if(res.status==200){
+
+                    console.log(res.data);
+                    weui.picker(
+                        res.data,
+                        {
+                            defaultValue: [res.data[0].value],
+                            onChange: function (result) {
+                                console.log(result);
+                            },
+                            onConfirm: function (result) {
+                                console.log(result);
+                                //隐藏模板数据
+                                $('#moban').hide();
+                                //清空数据
+                                vm.pageData = [];
+                                //给区域重新赋值
+                                vm.params.area = result[0].value;
+                                //重新给 page 赋值
+                                vm.params.page = 1;
+                                //重新获取数据
+                                vm.getPage(vm.params);
+                            },
+                        });
+                }else{
+                    layer.msg(res.msg);
+                }
+            }
+        })
+    }
+
+    //选择性别
+    function selectGender(){
+        weui.picker([{
+                label: '男',
+                value: 1
+            }, {
+                label: '女',
+                value: 2
+            }, {
+                label: '不限',
+                value: 3
+            }],
+            {
+                defaultValue: [1],
+                onChange: function (result) {
+                    console.log(result);
+                },
+                onConfirm: function (result) {
+                    console.log(result);
+                    //给性别重新赋值
+                    vm.params.gender = result[0].value;
+                    //给输入框赋值
+                    $('#genderValue').val(result[0].label);
+                },
+            });
+    }
+
+    //选择任教方式
+    function selectWay(){
+        //教员上门|1|primary,学生上门|2|success,网上辅导|3|info,住家辅导|4|warning,不限|5|danger
+        weui.picker([{
+                label: '教员上门',
+                value: 1
+            }, {
+                label: '学生上门',
+                value: 2
+            }, {
+                label: '网上辅导',
+                value: 3
+            }, {
+                label: '住家辅导',
+                value: 4
+            }, {
+                label: '不限',
+                value: 5
+            }],
+            {
+                defaultValue: [1],
+                onChange: function (result) {
+                    console.log(result);
+                },
+                onConfirm: function (result) {
+                    console.log(result);
+                    //给任教方式重新赋值
+                    vm.params.teaching_way = result[0].value;
+                    //给输入框赋值
+                    $('#wayValue').val(result[0].label);
+                },
+            });
+    }
+
+    //选择综合评价
+    function selectPj(){
+        weui.picker([{
+                label: '高',
+                value: 1
+            }, {
+                label: '低',
+                value: 2
+            }],
+            {
+                defaultValue: [1],
+                onChange: function (result) {
+                    console.log(result);
+                },
+                onConfirm: function (result) {
+                    console.log(result);
+                    //给综合评价重新赋值
+                    vm.params.zh_pj = result[0].value;
+                    //给输入框赋值
+                    $('#pjValue').val(result[0].label);
+                },
+            });
+    }
+
+    //筛选框提交
+    function filterSubmit(){
+        console.log(vm.params);
+        //隐藏模板数据
+        $('#moban').hide();
+        //清空数据
+        vm.pageData = [];
+        //重新给 page 赋值
+        vm.params.page = 1;
+        //重新获取数据
+        vm.getPage(vm.params);
+        layer.closeAll()
+    }
+
+
+    //删选点击
+ function shaixuan(){
+    layer.open({
+      type: 1,
+      title: false,
+      closeBtn: 0,
+      area: ['90%'],
+      shadeClose: true,
+      content: $('#search_popbox')
+    });
+ }
+</script>
+</html>

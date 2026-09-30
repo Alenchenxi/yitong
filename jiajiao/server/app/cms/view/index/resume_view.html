@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>教员简历</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课"/>
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台"/>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/teacher_show.css"/>
+</head>
+
+<body>
+<div class="teacher_detail" id="app">
+    <div class="detial_container">
+        <div class="teacher_infobox">
+            <div class="top_userincont">
+                <div class="lf_avatarbox">
+                    <div class="avatar_icon">
+                        <img class="avatar" src="{$info.head_img}"
+                             draggable="false">
+                        <img class="sex_img" src="/img/set_nvicon.png" draggable="false">
+                    </div>
+                    <div class="teace_login">
+                        <div><span>最近登录</span></div>
+                        <div><span>{$info.login_time}</span></div>
+                    </div>
+                </div>
+                <div class="rf_nameinfobx">
+                    <div class="mest_info">
+                        <div class="list_namebox">
+                            <div class="name_text"><span>{$info.name}（{$info.gender_str}）</span></div>
+                            <div class="id_text"><span>(ID：{$info.teacher_id})</span></div>
+                        </div>
+                        <div class="age_type">
+                            <div class="color_green"><span>{$info.age}岁</span></div>
+                            <div class="color_green"><span>教龄：{$info.teaching_age}年</span></div>
+                            <div class="color_yelow"><span>{$info.teacher_identity_str}</span></div>
+                        </div>
+                        <div class="user_typeli">
+                            <div class="shcol_text"><span>{$info.school}</span></div>
+                            <div class="type_stu"><span>{$info.specialty}</span></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="bottom_numbox">
+                <div class="collae_box">
+                    <div class="clate_cent">
+                        <div class="tit_text">收藏</div>
+                        <div class="del_num">{$info.collect_num}次</div>
+                    </div>
+                </div>
+                <div class="line"></div>
+                <div class="collae_box">
+                    <div class="clate_cent">
+                        <div class="tit_text">任教</div>
+                        <div class="del_num">{$info.teach_num}次</div>
+                    </div>
+                </div>
+                <div class="line"></div>
+                <div class="collae_box">
+                    <div class="clate_cent">
+                        <div class="tit_text">预约</div>
+                        <div class="del_num">{$info.yuyue_num}次</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="message_headtext">
+            <div>任教信息</div>
+        </div>
+        <div class="teach_desctext">
+            <div class="desc_head">自我描述</div>
+            <div class="desc_text">{$info.self_desc}</div>
+        </div>
+        <div class="teach_desctext">
+            <div class="desc_head">任教科目</div>
+            <div class="desc_text">{$info.subject_names_str}</div>
+        </div>
+        <div class="teach_desctext">
+            <div class="list_tiel">
+                <div class="title_desc">任教区域</div>
+                <div class="title_text">
+                    {$info.area}
+                </div>
+            </div>
+            <div class="list_tiel">
+                <div class="title_desc">任教方式</div>
+                <!-- teaching_typelistpop -->
+                <div class="list_box">
+                    <div class="title_text">{$info.teaching_way_str}</div>
+                </div>
+            </div>
+        </div>
+        <div class="teach_desctext">
+            <div class="desc_head">家教经验</div>
+            <div class="desc_text">{$info.experience}</div>
+        </div>
+        <div class="teach_desctext">
+            <div class="desc_head">课酬要求</div>
+            <div class="price_box">
+                <div class="price_text">￥{$info.salary}</div>
+                <div class="plan_desc" @click="jump_pagebtn">（查看平台参考标准）</div>
+            </div>
+        </div>
+        <div class="teach_desctext">
+            <div class="desc_head">所获证书</div>
+            <div class="desc_text">{$info.certificate}</div>
+        </div>
+        <div class="rate_text_info">
+            <div class="rate_head">
+                <div class="rate_color">任教评价</div>
+                <div class="rate_num">（{$info.comment_num}条）</div>
+            </div>
+            <div class="rate_icon">
+                <div class="rate_box">
+                    <u-rate :count="5" v-model="detail_infodata.avg_score" size='44' active-color='#FFCE27'
+                            :disabled="true"></u-rate>
+                </div>
+                <div class="rate_number">（{$info.avg_score}）</div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+</html>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+
+<script src="/static/js/plugins/layui/layui.js"></script>
+<script type="text/javascript">
+    layui.use(['form'], function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.$;
+
+    });
+
+</script>

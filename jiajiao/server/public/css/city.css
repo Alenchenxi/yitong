@@ -1,0 +1,125 @@
+.city_container {
+  width: 100%;
+  min-height: 100vh;
+  padding-bottom: constant(safe-area-inset-bottom);
+  background-color: #f5f5f5;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.city_container .head_city {
+  width: 100%;
+  position: sticky;
+  top: 0;
+  padding: 10px 3%;
+  background-color: #F8F8F8;
+  box-shadow: 0 0 5px #eee;
+  display: flex;
+}
+.city_container .head_city .paresent_text {
+  font-size: 14px;
+  color: #333;
+  margin: auto 0;
+}
+.city_container .head_city .parsent_city {
+  margin: auto 0;
+  color: #FB7206;
+  font-size: 15px;
+  border-bottom: 1px solid #FB7206;
+}
+.city_container .city_box {
+  width: 100%;
+}
+.city_container .city_box .city_title {
+  padding: 10px 3%;
+  display: flex;
+  font-size: 14px;
+  color: #666;
+}
+.city_container .city_box .city_boxtwo {
+  display: flex;
+  flex-wrap: wrap;
+  background-color: #fff;
+}
+.city_container .city_box .city_boxtwo .list_mest_box {
+  padding: 12px 0;
+  width: 25%;
+  border-bottom: 1px solid #ddd;
+}
+.city_container .city_box .city_boxtwo .list_mest_box .list_city span {
+  font-size: 15px;
+  height: 13px;
+  line-height: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  text-align: center;
+  border-right: 1px solid #888;
+  width: 100%;
+}
+.city_container .city_box .city_boxtwo .list_mest_box .list_city .acuteve_text {
+  color: #FB7206;
+}
+.city_container .province_box {
+  width: 100%;
+}
+.city_container .province_box .city_title {
+  padding: 10px 3%;
+  display: flex;
+  font-size: 14px;
+  color: #666;
+}
+.city_container .province_box .line_province {
+  width: 100%;
+}
+.city_container .province_box .line_province .line_box {
+  width: 100%;
+  display: flex;
+  background-color: #fff;
+}
+.city_container .province_box .line_province .line_box .list_province {
+  padding: 12px 0;
+  width: 25%;
+  border-bottom: 1px solid #ddd;
+}
+.city_container .province_box .line_province .line_box .list_province span {
+  font-size: 15px;
+  height: 13px;
+  line-height: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  text-align: center;
+  border-right: 1px solid #888;
+  width: 100%;
+}
+.city_container .province_box .line_province .line_box .active_box text {
+  color: #FB7206;
+}
+.city_container .province_box .line_province .city_contnebox {
+  width: 100%;
+  height: 0;
+  transition-duration: 10s;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  background-color: #ddd;
+}
+.city_container .province_box .line_province .city_contnebox .list_mest_box {
+  padding: 12px 0;
+  width: 25%;
+  border-bottom: 1px solid #ddd;
+}
+.city_container .province_box .line_province .city_contnebox .list_mest_box .list_city span {
+  color: #333;
+  font-size: 15px;
+  height: 13px;
+  line-height: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  text-align: center;
+  border-right: 1px solid #888;
+  width: 100%;
+}

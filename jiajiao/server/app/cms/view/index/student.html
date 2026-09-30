@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>教员简历</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课"/>
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台"/>
+    <link rel="stylesheet" type="text/css" href="css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="css/student.css"/>
+        <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css">
+    <style type="text/css">
+     .weui-half-screen-dialog__ft{position: absolute;top: 10px;right: 0px;padding: 0}
+     .weui-btn_primary:not(.weui-btn_disabled):active{background:none;}
+     .weui-btn{color: #db7b7b}
+     .weui-btn_primary{background: none}
+    </style>
+</head>
+
+<body>
+<div class="s_library" id="app">
+    <div class="tab_type">
+        <div class="list_tab">
+            <!-- <div class="center_auto" @click="subjects_show=true"> -->
+            <div class="center_auto" onclick="quanbu()">
+                <!-- <text>{{subjects_text}}</text> -->
+                <input type="text" disabled="disabled" value="全部">
+                <image src="img/botm_arrow.png"></image>
+            </div>
+        </div>
+        <div class="list_tab">
+            <div class="center_auto" onclick="kemu()">
+                <input type="text" disabled="disabled" value="学科">
+                <image src="img/botm_arrow.png"></image>
+            </div>
+        </div>
+        <div class="list_tab">
+            <div class="center_auto" onclick="quyu()">
+                <input type="text" disabled="disabled" value="区域">
+                <image src="img/botm_arrow.png"></image>
+            </div>
+        </div>
+        <div class="list_tab">
+            <div class="center_auto" onclick="shenfen()">
+                <input type="text" disabled="disabled" value="教师身份">
+                <image src="img/botm_arrow.png"></image>
+            </div>
+        </div>
+    </div>
+
+    <div class="libray_container" id="moban">
+        {volist name="list" id="vo"}
+        <a class="list_library" href="/student/{$vo.demand_id}.html">
+            <div class="lf_avatarbox">
+                <div class="avatar_icon">
+                    <img class="avatar" src="{$vo.avatar}" draggable="false">
+                    <img class="sex_img" src="img/set_nvicon.png" draggable="false">
+                </div>
+                <div class="teace_login">
+                    <div><span>最近登录</span></div>
+                    <div><span>{$vo.login_time}</span></div>
+                </div>
+            </div>
+            <div class="rf_user_info">
+                <div class="list_namebox">
+                    <div class="lf_namebox">
+                        <div class="ragion_text"><span>{$vo.area}</span></div>
+                        <div class="name_text"><span>{$vo.subject_name}</span></div>
+                    </div>
+                    <div class="price_num"><span>{$vo.expense}</span></div>
+                </div>
+                <div class="student_desc">
+                    <div><span>{$vo.gai_kuang}</span></div>
+                </div>
+                <div class="adres_lang">
+                    <div class="adres_info">
+                        <img src="img/stu_adresicon.png" draggable="false">
+                        <div><span>{$vo.address}</span></div>
+                    </div>
+                </div>
+            </div>
+        </a>
+        {/volist}
+    </div>
+
+    <div class="libray_container">
+        <a class="list_library" :href="'/student/'+item.demand_id+'.html'" v-for="item,index in pageData" :key="index">
+            <div class="lf_avatarbox">
+                <div class="avatar_icon">
+                    <img class="avatar" :src="item.avatar" draggable="false">
+                    <img class="sex_img" src="img/set_nvicon.png" draggable="false">
+                </div>
+                <div class="teace_login">
+                    <div><span>最近登录</span></div>
+                    <div><span>{{item.login_time}}</span></div>
+                </div>
+            </div>
+            <div class="rf_user_info">
+                <div class="list_namebox">
+                    <div class="lf_namebox">
+                        <div class="ragion_text"><span>{{item.area}}</span></div>
+                        <div class="name_text"><span>{{item.subject_name}}</span></div>
+                    </div>
+                    <div class="price_num"><span>{{item.expense}}</span></div>
+                </div>
+                <div class="student_desc">
+                    <div><span>{{item.gai_kuang}}</span></div>
+                </div>
+                <div class="adres_lang">
+                    <div class="adres_info">
+                        <img src="img/stu_adresicon.png" draggable="false">
+                        <div><span>{{item.address}}</span></div>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+    </div>
+    <!--&lt;!&ndash; 任教科目 &ndash;&gt;
+    <u-picker mode="selector" v-model="subjects_show" confirm-color='#fbcab1' @confirm='subjects_chosefun'
+              :range="subjects_list"></u-picker>
+    &lt;!&ndash; 性别&ndash;&gt;
+    <u-picker mode="selector" v-model="sex_type" confirm-color='#fbcab1' @confirm='sex_chosefun'
+              :range="sex_typelist"></u-picker>
+    &lt;!&ndash; 状态&ndash;&gt;
+    <u-picker mode="selector" v-model="status_text" confirm-color='#fbcab1' @confirm='status_chosefun'
+              :range="status_typelist"></u-picker>
+    &lt;!&ndash;任教区域 &ndash;&gt;
+    <u-picker mode="selector" v-model="region" confirm-color='#fbcab1' @confirm='reginon_chosefun'
+              :range="region_list"></u-picker>
+    &lt;!&ndash; 任教方式 &ndash;&gt;
+    <u-picker mode="selector" v-model="teaching_type" confirm-color='#fbcab1' @confirm='teaching_type_chosefun'
+              :range="teaching_typelist"></u-picker>
+    <u-popup v-model="subject_popup" mode='bottom' :safe-area-inset-bottom='false'>
+        <div class="subject_popbox">
+            &lt;!&ndash; <text class="subjuc_title">阶段</text> &ndash;&gt;
+            <div class="tab_container">
+                <div :class="subject_num==i?'list_tab active_border':'list_tab'" v-for="(item,i) in subject_popdatalist" @click="choose_activeobject(i)">
+                    <text>{{item.name}}</text>
+                </div>
+            </div>
+            <div class="bottom_sure">
+                <button @click="get_objecttwobtn">确定</button>
+            </div>
+        </div>
+    </u-popup>-->
+</div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="/js/vue.js"></script>
+<script src="https://res.wx.qq.com/t/wx_fed/cdn_libs/res/weui/1.2.8/weui.min.js"></script>
+</html>
+<script type="text/javascript">
+    var data = {
+        loading:true, //loading
+        pageData:[],//接口返回列表数据
+        nextpage:true,//是否下一页
+        params:{
+            //传给接口的参数
+            page: 2 ,
+            limit:10,
+            subject_id:'{$subject_id}',
+            gender:'{$gender}',
+            area:'{$area}',
+            teaching_way:'{$teaching_way}',
+            class_status:'{$class_status}',
+
+        },
+        isRefreshLock:true,
+
+    }
+
+    var vm = new Vue({
+        el: "#app",
+        data: data,
+
+        mounted() {
+            //this.getPage(this.params)//数据
+            window.addEventListener('scroll', this.windowScroll,true)//监听滚动条事件
+        },
+        methods: {
+            //请求接口方法  常规的ajax方式(用这种需要引用jquery)
+            getPage(params){
+                $.ajax({
+                    url:'/student/getStudentList',
+                    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    data:params,
+                    type: 'POST',
+                    dataType: 'JSON',
+                    success: res => {
+                        this.loading = false
+                        if(res.status == 200 ){
+                            if(res.data.length>0){
+                                console.log('加载下一页')
+                                let listData = this.pageData.concat(res.data);
+                                this.pageData=listData
+
+                                console.log(this.pageData);
+                                this.params.page += 1;
+                                //加载数据可以触发
+                                this.isRefreshLock=true
+
+                            }else{
+                                this.nextpage = false;
+                            }
+
+                        }else{
+                            console.log('200以外的情况 处理逻辑')
+                        }
+                    },
+                })
+            },
+
+            //滚动条事件
+            windowScroll(e) {
+                //滚动条滚动时距离顶部的距离
+                let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                //可视区的高度
+                let windowHeight =
+                    document.documentElement.clientHeight || document.body.clientHeight;
+                //滚动条的总高度
+                let scrollHeight =
+                    document.documentElement.scrollHeight || document.body.scrollHeight;
+                //滚动条到底部的条件
+                // console.log(scrollTop + windowHeight + "--" + scrollHeight);
+                if ( scrollTop + windowHeight >= scrollHeight - 200 && this.isRefreshLock) {
+                    console.log('滑动触发加载');
+                    if(this.nextpage){
+                        // false防止多次触发加载数据
+                        this.isRefreshLock = false;
+                        this.getPage(this.params)
+                    }else{
+                        console.log('没有更多数据了')
+                    }
+                }
+            },
+
+        },
+
+        beforeDestroy() {
+            console.log('beforeDestroy')
+            //销毁页面时移除监听事件
+            window.removeEventListener('scroll', this.windowScroll)
+        }
+
+    });
+
+    function quanbu(){
+        weui.picker([{
+            label: '全部',
+            value: 1
+        }, {
+            label: '未完成',
+            value: 2
+        }], 
+        {
+            defaultValue: [1],
+            onChange: function (result) {
+                console.log(result);
+            },
+            onConfirm: function (result) {
+                console.log(result);
+                console.log(result);
+                //隐藏模板数据
+                $('#moban').hide();
+                //清空数据
+                vm.pageData = [];
+                //给全部/未完成重新赋值
+                vm.params.class_status = result[0].value;
+                //重新给 page 赋值
+                vm.params.page = 1;
+                //重新获取数据
+                vm.getPage(vm.params);
+            },
+        });
+    }
+
+    //选择科目
+    function  kemu() {
+        $.ajax({
+            url : '/index/getSubjectList',
+            type : 'post',
+            dataType : 'json',
+            data : {},
+            success : function (res) {
+                console.log(res);
+                if(res.status==200){
+                    // 级联picker
+                    weui.picker(res.data, {
+                        className: 'custom-classname',
+                        container: 'body',
+                        defaultValue: [1, 1],
+                        onChange: function (result) {
+                            console.log(result)
+                        },
+                        onConfirm: function (result) {
+                            console.log(result);
+                            //隐藏模板数据
+                            $('#moban').hide();
+                            //清空数据
+                            vm.pageData = [];
+                            //给科目重新赋值
+                            vm.params.subject_id = result[1].value;
+                            //重新给 page 赋值
+                            vm.params.page = 1;
+                            //重新获取数据
+                            vm.getPage(vm.params);
+                        },
+                        id: 'doubleLinePicker'
+                    });
+                }else{
+                    layer.msg(res.msg);
+                }
+            }
+        })
+    }
+
+
+    //选择区域
+    function quyu(){
+        $.ajax({
+            url : '/index/getAreaList',
+            type : 'post',
+            dataType : 'json',
+            data : {},
+            success : function (res) {
+                console.log(res);
+                if(res.status==200){
+
+                    console.log(res.data);
+                    weui.picker(
+                        res.data,
+                        {
+                            defaultValue: [res.data[0].value],
+                            onChange: function (result) {
+                                console.log(result);
+                            },
+                            onConfirm: function (result) {
+                                console.log(result);
+                                //隐藏模板数据
+                                $('#moban').hide();
+                                //清空数据
+                                vm.pageData = [];
+                                //给区域重新赋值
+                                vm.params.area = result[0].value;
+                                //重新给 page 赋值
+                                vm.params.page = 1;
+                                //重新获取数据
+                                vm.getPage(vm.params);
+                            },
+                        });
+                }else{
+                    layer.msg(res.msg);
+                }
+            }
+        })
+    }
+
+
+    //选择教师身份
+    function shenfen(){
+        weui.picker([{
+                label: '大学生教员',
+                value: 1
+            }, {
+                label: '普通教员',
+                value: 2
+            }, {
+                label: '专业教员',
+                value: 3
+            }, {
+                label: '不限',
+                value: 4
+            }],
+            {
+                defaultValue: [1],
+                onChange: function (result) {
+                    console.log(result);
+                },
+                onConfirm: function (result) {
+                    console.log(result);
+                    //隐藏模板数据
+                    $('#moban').hide();
+                    //清空数据
+                    vm.pageData = [];
+                    //给身份重新赋值
+                    vm.params.teacher_identity = result[0].value;
+                    //重新给 page 赋值
+                    vm.params.page = 1;
+                    //重新获取数据
+                    vm.getPage(vm.params);
+                },
+            });
+    }
+
+</script>

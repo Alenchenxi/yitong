@@ -1,0 +1,376 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="layui-tab layui-tab-brief" lay-filter="test">
+					<ul class="layui-tab-title">
+						<li class="layui-this">基本设置</li>
+						<li>上传配置</li>
+						<li>小程序设置</li>
+						<li>协议</li>
+					</ul>
+					<div class="layui-tab-content" style="margin-top:10px;">
+						<div class="layui-tab-item layui-show">
+							<div class="col-sm-7">
+							<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">站点名称：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="site_title" value="{$info.site_title}" name="site_title" class="form-control" placeholder="请输入站点名称">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">站点LOGO：</label>
+						<div class="col-sm-5">
+							<input type="text" autocomplete="off" id="site_logo" value="{$info.site_logo}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="site_logo" class="form-control" placeholder="请输入站点LOGO">
+							<span class="help-block m-b-none site_logo_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="site_logo_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">接单须知：</label>
+						<div class="col-sm-5">
+							<input type="text" autocomplete="off" id="teacher_register_tip" value="{$info.teacher_register_tip}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="teacher_register_tip" class="form-control" placeholder="点击上传结单须知">
+							<span class="help-block m-b-none teacher_register_tip_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="teacher_register_tip_upload"></span>
+						</div>
+					</div>
+					<div style="font-size: 12px;color: red;margin-left: 65px;margin-top: -15px;margin-bottom: 10px;">提示:建议图片宽:高=390:550</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">关键词站点：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" class="form-control" data-role="tagsinput" id="keyword" value="{$info.keyword}" name="keyword"  >
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">站点描述：</label>
+						<div class="col-sm-9">
+							<textarea id="description" name="description"  class="form-control" placeholder="请输入站点描述">{$info.description}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">站点版权：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="copyright" value="{$info.copyright}" name="copyright" class="form-control" placeholder="请输入站点版权">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">家长支付价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="dial_price" value="{$info.dial_price}" name="dial_price" class="form-control" placeholder="请输入家长支付价格">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">家长支付可拨打电话数量：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="dial_num" value="{$info.dial_num}" name="dial_num" class="form-control" placeholder="请输入家长支付可拨打电话数量">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">家长支付文案：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="dial_text" value="{$info.dial_text}" name="dial_text" class="form-control" placeholder="请输入家长支付文案">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">老师月会员模式：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['teacher_cost_vip'])){ $info['teacher_cost_vip'] = '0'; }; ?>
+							<input name="teacher_cost_vip" value="1" type="radio" {if condition="$info.teacher_cost_vip eq '1'"}checked{/if} title="启用">
+							<input name="teacher_cost_vip" value="0" type="radio" {if condition="$info.teacher_cost_vip eq '0'"}checked{/if} title="关闭">
+						</div>
+					</div>
+					<div style="font-size: 12px;color: red;margin-left: 20px;margin-top: -15px;margin-bottom: 10px;">提示:切换模式后需要"确认提交"才能更改对应价格</div>
+					{if condition="$info.teacher_cost_vip eq '1'"}
+					<div class="form-group">
+						<label class="col-sm-2 control-label">老师月会员价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="teacher_vip_price" value="{$info.teacher_vip_price}" name="teacher_vip_price" class="form-control" placeholder="请输入老师月会员价格">
+						</div>
+					</div>
+					{else /}
+					<div class="form-group">
+						<label class="col-sm-2 control-label">老师支付价格(旧)：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="teacher_price" value="{$info.teacher_price}" name="teacher_price" class="form-control" placeholder="请输入老师支付价格">
+						</div>
+					</div>
+					{/if}
+							<!-- form end -->
+							</div>
+						</div>
+						<div class="layui-tab-item">
+							<div class="col-sm-7">
+							<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">上传文件大小：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="file_size" value="{$info.file_size}" name="file_size" class="form-control" placeholder="请输入上传文件大小">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">文件类型：</label>
+						<div class="col-sm-9">
+							<textarea id="file_type" name="file_type"  class="form-control" placeholder="请输入文件类型">{$info.file_type}</textarea>
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">水印状态：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['water_status'])){ $info['water_status'] = '0'; }; ?>
+							<input name="water_status" value="1" type="radio" {if condition="$info.water_status eq '1'"}checked{/if} title="正常">
+							<input name="water_status" value="0" type="radio" {if condition="$info.water_status eq '0'"}checked{/if} title="禁用">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">水印位置：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="water_position" class="form-control chosen" data-placeholder='请选择水印位置'  id="water_position">
+								<option value="">请选择</option>
+								<option value="1" {if condition="$info.water_position eq '1'"}selected{/if}>左上角水印</option>
+								<option value="2" {if condition="$info.water_position eq '2'"}selected{/if}>上居中水印</option>
+								<option value="3" {if condition="$info.water_position eq '3'"}selected{/if}>右上角水印</option>
+								<option value="4" {if condition="$info.water_position eq '4'"}selected{/if}>左居中水印</option>
+								<option value="5" {if condition="$info.water_position eq '5'"}selected{/if}>居中水印</option>
+								<option value="6" {if condition="$info.water_position eq '6'"}selected{/if}>右居中水印</option>
+								<option value="7" {if condition="$info.water_position eq '7'"}selected{/if}>左下角水印</option>
+								<option value="8" {if condition="$info.water_position eq '8'"}selected{/if}>下居中水印</option>
+								<option value="9" {if condition="$info.water_position eq '9'"}selected{/if}>右下角水印</option>
+							</select>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">水印图片：</label>
+						<div class="col-sm-5">
+							<input type="text" autocomplete="off" id="water_logo" value="{$info.water_logo}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="water_logo" class="form-control" placeholder="请输入水印图片">
+							<span class="help-block m-b-none water_logo_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="water_logo_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">绑定域名：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="domain" value="{$info.domain}" name="domain" class="form-control" placeholder="请输入绑定域名">
+							<span class="help-block m-b-none">上传目录绑定域名访问，请解析域名到 /public/upload目录  前面带上http://  非必填项</span>
+						</div>
+					</div>
+							<!-- form end -->
+							</div>
+						</div>
+						<div class="layui-tab-item">
+							<div class="col-sm-7">
+							<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">接单说明：</label>
+						<div class="col-sm-9">
+							<script id="take_order_sm" type="text/plain" name="take_order_sm" style="width:100%;height:300px;">{$info.take_order_sm}</script>
+							<script type="text/javascript">
+								var ue = UE.getEditor('take_order_sm',{serverUrl : '{:url("admin/Upload/uploadUeditor")}'});
+								scaleEnabled:true
+							</script>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">默认头像：</label>
+						<div class="col-sm-5">
+							<input type="text" autocomplete="off" id="default_avatar" value="{$info.default_avatar}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="default_avatar" class="form-control" placeholder="请输入默认头像">
+							<span class="help-block m-b-none default_avatar_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="default_avatar_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">公众号二维码：</label>
+						<div class="col-sm-5">
+							<input type="text" autocomplete="off" id="gzh_code" value="{$info.gzh_code}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="gzh_code" class="form-control" placeholder="请输入公众号二维码">
+							<span class="help-block m-b-none gzh_code_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="gzh_code_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">联系客服：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="service_tel" value="{$info.service_tel}" name="service_tel" class="form-control" placeholder="请输入联系客服">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">教师身份证是否必传：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['id_card_required'])){ $info['id_card_required'] = '0'; }; ?>
+							<input name="id_card_required" value="1" type="radio" {if condition="$info.id_card_required eq '1'"}checked{/if} title="是">
+							<input name="id_card_required" value="0" type="radio" {if condition="$info.id_card_required eq '0'"}checked{/if} title="否">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">学生证/毕业证是否必传：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['student_card_required'])){ $info['student_card_required'] = '0'; }; ?>
+							<input name="student_card_required" value="1" type="radio" {if condition="$info.student_card_required eq '1'"}checked{/if} title="是">
+							<input name="student_card_required" value="0" type="radio" {if condition="$info.student_card_required eq '0'"}checked{/if} title="否">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">教师资格证是否必传：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['itic_required'])){ $info['itic_required'] = '0'; }; ?>
+							<input name="itic_required" value="1" type="radio" {if condition="$info.itic_required eq '1'"}checked{/if} title="是">
+							<input name="itic_required" value="0" type="radio" {if condition="$info.itic_required eq '0'"}checked{/if} title="否">
+						</div>
+					</div>
+							<!-- form end -->
+							</div>
+						</div>
+						<div class="layui-tab-item">
+							<div class="col-sm-7">
+							<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">用户协议：</label>
+						<div class="col-sm-9">
+							<script id="user_agreement" type="text/plain" name="user_agreement" style="width:100%;height:300px;">{$info.user_agreement}</script>
+							<script type="text/javascript">
+								var ue = UE.getEditor('user_agreement',{serverUrl : '{:url("admin/Upload/uploadUeditor")}'});
+								scaleEnabled:true
+							</script>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">免责声明：</label>
+						<div class="col-sm-9">
+							<script id="disclaimer" type="text/plain" name="disclaimer" style="width:100%;height:300px;">{$info.disclaimer}</script>
+							<script type="text/javascript">
+								var ue = UE.getEditor('disclaimer',{serverUrl : '{:url("admin/Upload/uploadUeditor")}'});
+								scaleEnabled:true
+							</script>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">隐私政策：</label>
+						<div class="col-sm-9">
+							<script id="privacy_agreement" type="text/plain" name="privacy_agreement" style="width:100%;height:300px;">{$info.privacy_agreement}</script>
+							<script type="text/javascript">
+								var ue = UE.getEditor('privacy_agreement',{serverUrl : '{:url("admin/Upload/uploadUeditor")}'});
+								scaleEnabled:true
+							</script>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">教员接家教协议：</label>
+						<div class="col-sm-9">
+							<script id="jiaoyuan_xieyi" type="text/plain" name="jiaoyuan_xieyi" style="width:100%;height:300px;">{$info.jiaoyuan_xieyi}</script>
+							<script type="text/javascript">
+								var ue = UE.getEditor('jiaoyuan_xieyi',{serverUrl : '{:url("admin/Upload/uploadUeditor")}'});
+								scaleEnabled:true
+							</script>
+						</div>
+					</div>
+							<!-- form end -->
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-7">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.index()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js?t=1498856285724" charset="utf-8"></script>
+<link href='__PUBLIC__/static/js/plugins/chosen/chosen.min.css' rel='stylesheet'/>
+<script src='__PUBLIC__/static/js/plugins/chosen/chosen.jquery.js'></script>
+<link rel='stylesheet' href='__PUBLIC__/static/js/plugins/tagsinput/tagsinput.css'>
+<script type='text/javascript' src='__PUBLIC__/static/js/plugins/tagsinput/tagsinput.min.js'></script>
+<script>
+layui.use(['form'],function(){});
+layui.use('element', function(){
+	var element = layui.element;
+	element.on('tab(test)', function(elem){
+		uploader('water_logo_upload','water_logo','image',false,'','{:url("admin/Upload/uploadImages")}');
+		uploader('default_avatar_upload','default_avatar','image',false,'','{:url("admin/Upload/uploadImages")}');
+		uploader('gzh_code_upload','gzh_code','image',false,'','{:url("admin/Upload/uploadImages")}');
+	});
+});
+uploader('site_logo_upload','site_logo','image',false,'','{:getUploadServerUrl()}');
+uploader('water_logo_upload','water_logo','image',false,'','{:getUploadServerUrl()}');
+uploader('default_avatar_upload','default_avatar','image',false,'','{:getUploadServerUrl()}');
+uploader('gzh_code_upload','gzh_code','image',false,'','{:getUploadServerUrl()}');
+uploader('teacher_register_tip_upload','teacher_register_tip','image',false,'','{:getUploadServerUrl()}');
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+		site_title: {
+			validators: {
+				notEmpty: {
+					message: '站点名称不能为空'
+	 			},
+	 		}
+	 	},
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('site_title').set('site_logo').set('keyword').set('description').set('file_size').set('file_type').set('copyright').set('water_position').set('water_logo').set('domain').set('default_avatar').set('gzh_code').set('service_tel').set('dial_price').set('dial_num').set('teacher_price')
+		.set('teacher_vip_price').set('teacher_register_tip').set('dial_text');
+};
+
+CodeInfoDlg.index = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var water_status = $("input[name = 'water_status']:checked").val();
+	 var take_order_sm = UE.getEditor('take_order_sm').getContent();
+	 var user_agreement = UE.getEditor('user_agreement').getContent();
+	 var disclaimer = UE.getEditor('disclaimer').getContent();
+	 var privacy_agreement = UE.getEditor('privacy_agreement').getContent();
+	 var id_card_required = $("input[name = 'id_card_required']:checked").val();
+	 var student_card_required = $("input[name = 'student_card_required']:checked").val();
+	 var itic_required = $("input[name = 'itic_required']:checked").val();
+	 var jiaoyuan_xieyi = UE.getEditor('jiaoyuan_xieyi').getContent();
+	 var teacher_cost_vip = $("input[name = 'teacher_cost_vip']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/Base/config", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('teacher_cost_vip',teacher_cost_vip);
+	 ajax.set('water_status',water_status);
+	 ajax.set('take_order_sm',take_order_sm);
+	 ajax.set('user_agreement',user_agreement);
+	 ajax.set('disclaimer',disclaimer);
+	 ajax.set('privacy_agreement',privacy_agreement);
+	 ajax.set('id_card_required',id_card_required);
+	 ajax.set('student_card_required',student_card_required);
+	 ajax.set('itic_required',itic_required);
+	 ajax.set('jiaoyuan_xieyi',jiaoyuan_xieyi);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+</script>
+
+
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

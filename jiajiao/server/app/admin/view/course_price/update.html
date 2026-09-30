@@ -1,0 +1,98 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='course_price_id' id='course_price_id' value="{$info.course_price_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">科目名称：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="name" value="{$info.name}" name="name" class="form-control" placeholder="请输入科目名称">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">大学生教员价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="dxs_price" value="{$info.dxs_price}" name="dxs_price" class="form-control" placeholder="请输入大学生教员价格">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">普通教员价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="pt_price" value="{$info.pt_price}" name="pt_price" class="form-control" placeholder="请输入普通教员价格">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">专业教员价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="zy_price" value="{$info.zy_price}" name="zy_price" class="form-control" placeholder="请输入专业教员价格">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">所属类别：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="type_id" class="form-control" id="type_id">
+								<option value="">请选择</option>
+								{sql connect="mysql" query="select type_id,name from cd_type"}
+									<option value="{$sql.type_id}" {if condition="$info.type_id eq $sql.type_id"}selected{/if}>{$sql.name}</option>
+								{/sql}
+							</select>
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('course_price_id').set('name').set('dxs_price').set('pt_price').set('zy_price').set('type_id');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var ajax = new $ax(Feng.ctxPath + "/CoursePrice/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

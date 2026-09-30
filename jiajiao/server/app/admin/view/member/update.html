@@ -1,0 +1,130 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='mid' id='mid' value="{$info.mid}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">昵称：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="nickname" value="{$info.nickname}" name="nickname" class="form-control" placeholder="请输入昵称">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">头像：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="avatar" value="{$info.avatar}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="avatar" class="form-control" placeholder="请输入头像">
+							<span class="help-block m-b-none avatar_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="avatar_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">手机：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mobile" value="{$info.mobile}" name="mobile" class="form-control" placeholder="请输入手机">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">性别：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['gender'])){ $info['gender'] = '1'; }; ?>
+							<input name="gender" value="1" type="radio" {if condition="$info.gender eq '1'"}checked{/if} title="男">
+							<input name="gender" value="2" type="radio" {if condition="$info.gender eq '2'"}checked{/if} title="女">
+							<input name="gender" value="3" type="radio" {if condition="$info.gender eq '3'"}checked{/if} title="不限">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">账户余额：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="amount" value="{$info.amount}" name="amount" class="form-control" placeholder="请输入账户余额">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">状态：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['status'])){ $info['status'] = 1; }; ?>
+							<input name="status" value="1" type="radio" {if condition="$info.status eq '1'"}checked{/if} title="正常">
+							<input name="status" value="0" type="radio" {if condition="$info.status eq '0'"}checked{/if} title="禁用">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">身份：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['groupid'])){ $info['groupid'] = '0'; }; ?>
+							<input name="groupid" value="0" type="radio" {if condition="$info.groupid eq '0'"}checked{/if} title="游客">
+							<input name="groupid" value="1" type="radio" {if condition="$info.groupid eq '1'"}checked{/if} title="学生">
+							<input name="groupid" value="2" type="radio" {if condition="$info.groupid eq '2'"}checked{/if} title="老师">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">剩余联系次数：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="dial_num" value="{$info.dial_num}" name="dial_num" class="form-control" placeholder="请输入剩余联系次数">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+uploader('avatar_upload','avatar','image',false,'','{:getUploadServerUrl()}');
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('mid').set('nickname').set('avatar').set('mobile').set('amount').set('dial_num');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var gender = $("input[name = 'gender']:checked").val();
+	 var status = $("input[name = 'status']:checked").val();
+	 var groupid = $("input[name = 'groupid']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/Member/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('gender',gender);
+	 ajax.set('status',status);
+	 ajax.set('groupid',groupid);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

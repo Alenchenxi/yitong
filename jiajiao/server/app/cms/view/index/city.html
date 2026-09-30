@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+     <title>城市选择</title>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="/css/city.css" />
+    <style type="text/css">
+        .list_mest_box{display: none}
+    </style>
+</head>
+
+<body>
+    <div class="city_container">
+        <div class="head_city" v-if="parsent_text">
+            <text class="paresent_text">当前城市：</text>
+            <text class="parsent_city" >{$city}</text>
+        </div>
+        <div class="city_box">
+            <text class="city_title">热门城市</text>
+            <div class="city_boxtwo">
+                {volist name="$data.hot_city_list" id="vo"}
+                 <div class="list_mest_box" style="display:block" >
+                    <div class="list_city" onclick="chooseCity('{$vo.name}')">
+                         <span>{$vo.name}</span>
+                    </div>
+                </div>
+                {/volist}
+            </div>
+        </div>
+
+        <div class="province_box">
+            <text class="city_title">其他省份</text>
+            <div class="line_province" >
+
+                {volist name="$data.province_list" id="vo"}
+
+                <div class="line_box">
+                    {volist name="$vo" id="vop"}
+                    <div class="list_province"  onclick="showCity({$vop.id})">
+                          <span  id="provinc{$vop.id}">{$vop.name}</span>
+                    </div>
+                    {/volist}
+                    <div style="clear:both"></div>
+                </div>
+                 
+                <div class="city_contnebox"   style="height:auto;" >
+                    {volist name="$vo" id="vop"}
+                    {volist name="$vop.city_list" id="voc"}
+                    <div class="list_mest_box city_{$vop.id}"   onclick="chooseCity('{$voc.name}')">
+                        <div class="list_city">
+                             <span  >{$voc.name}</span>
+                        </div>
+                    </div>
+                    {/volist}
+                    {/volist}
+                </div>
+                {/volist}
+
+            </div>
+        </div>
+
+       
+
+
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+</html>
+<script type="text/javascript">
+    layui.use(['form'], function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.$;
+
+    });
+
+    //选择城市
+    function chooseCity(city){
+        $.ajax({
+            url : '/index/city',
+            type : 'post',
+            dataType : 'json',
+            data : {'city':city},
+            success : function (res) {
+                console.log(res);
+                if(res.status==200){
+                    window.location.href = document.referrer;
+                }
+            }
+        })
+    }
+
+function showCity(id){
+    $(".list_mest_box").hide();
+    $(".city_"+id).show();
+}
+</script>

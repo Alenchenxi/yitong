@@ -1,0 +1,237 @@
+{extend name='common/_container'} 
+{block name="content"} 
+<div class="ibox float-e-margins"> 
+	<div class="ibox-content"> 
+		<table class="table table-bordered" style="word-break:break-all;"> 
+			<tbody> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">联系方式：</td> 
+					<td>{$info.mobile}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">微信号：</td> 
+					<td>{$info.wechat}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">微信昵称：</td> 
+					<td>{$info.nickname}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">真实姓名：</td> 
+					<td>{$info.name}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">身份证号码：</td> 
+					<td>{$info.id_number}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">性别：</td> 
+					<td><?php echo getFieldVal($info["gender"],"男|1|success,女|2|warning,不限|3|info");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">年龄：</td> 
+					<td>{$info.age}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">邮箱：</td> 
+					<td>{$info.mail}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">身份证正面：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.id_card_zheng}')"><img height="75" src="{$info.id_card_zheng}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">身份证反面：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.id_card_fan}')"><img height="75" src="{$info.id_card_fan}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学生证：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.student_card_img}')"><img height="75" src="{$info.student_card_img}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学历证：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.diploma_img}')"><img height="75" src="{$info.diploma_img}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">教师证：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.itic_img}')"><img height="75" src="{$info.itic_img}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">头像：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.head_img}')"><img height="75" src="{$info.head_img}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">教龄：</td> 
+					<td>{$info.teaching_age}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学校：</td> 
+					<td>{$info.school}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">籍贯：</td> 
+					<td>{$info.birthplace}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学校就读开始时间：</td> 
+					<td>{$info.school_start_time}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学校就读结束时间：</td> 
+					<td>{$info.school_end_time}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学历：</td> 
+					<td>{$info.education}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">专业：</td> 
+					<td>{$info.specialty}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">教师身份：</td> 
+					<td><?php echo getFieldVal($info["teacher_identity"],"大学生教员|1|primary,专职教员|2|success,不限|3|info");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教方式：</td> 
+					<td><?php echo getFieldVal($info["teaching_way"],"上门授课|1|primary,在线授课|2|success,均可|3|info");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教省份：</td> 
+					<td>{$info.province}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教城市：</td> 
+					<td>{$info.city}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教区域：</td> 
+					<td>{$info.area}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教经验：</td> 
+					<td>{$info.experience}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">成功案例标题：</td> 
+					<td>{$info.successful_case_title}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">家教经验：</td> 
+					<td>{$info.successful_case}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">自我介绍：</td> 
+					<td>{$info.introduction}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">奖励荣誉：</td> 
+					<td>{$info.honor}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">奖励荣誉图片：</td> 
+					<td>
+						<ul>
+						<?php $honor_imgList = json_decode(html_out($info["honor_img"]),true);?>
+						{foreach name="honor_imgList" id="vo"}
+						<li style="float:left; margin-bottom:2px; margin-right:2px;"><a href="javascript:void(0)" onclick="openImg('{$vo.url}')"><img src="{$vo.url}" height="75"></a></li>
+						{/foreach}
+						</ul>
+</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">教师职称：</td> 
+					<td>{$info.teacher_title}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">教师职称证书：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.teacher_title_img}')"><img height="75" src="{$info.teacher_title_img}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学信网截图：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.chsi_img}')"><img height="75" src="{$info.chsi_img}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">个人标签：</td> 
+					<td>{$info.label}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">个人照片：</td> 
+					<td>
+						<ul>
+						<?php $photosList = json_decode(html_out($info["photos"]),true);?>
+						{foreach name="photosList" id="vo"}
+						<li style="float:left; margin-bottom:2px; margin-right:2px;"><a href="javascript:void(0)" onclick="openImg('{$vo.url}')"><img src="{$vo.url}" height="75"></a></li>
+						{/foreach}
+						</ul>
+</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">个人作品：</td> 
+					<td><a target="_blank" href="{$info.works}">下载附件</a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">收藏数：</td> 
+					<td>{$info.collect_num}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教次数：</td> 
+					<td>{$info.teach_num}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">预约数：</td> 
+					<td>{$info.yuyue_num}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">平均分：</td> 
+					<td>{$info.avg_score}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">是否隐藏：</td> 
+					<td><?php echo getFieldVal($info["is_hide"],"是|1|primary,否|0|success");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">状态：</td> 
+					<td><?php echo getFieldVal($info["status"],"待审核|0|primary,审核通过|1|success,审核未通过|2|danger");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">上线/下线：</td> 
+					<td><?php echo getFieldVal($info["is_on_off"],"上线|1|primary,下线|2|success");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">下线次数：</td> 
+					<td>{$info.offline_num}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">原因：</td> 
+					<td>{$info.cause}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">经度：</td> 
+					<td>{$info.longitude}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">纬度：</td> 
+					<td>{$info.latitude}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">分享码：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.qrcode}')"><img height="75" src="{$info.qrcode}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">海报：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.poster}')"><img height="75" src="{$info.poster}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">星级：</td> 
+					<td><?php echo getFieldVal($info["star_level"],"1星|1|primary,2星|2|success,3星|3|info,4星|4|warning,5星|5|danger");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">多少课时起购：</td> 
+					<td>{$info.min_hour}</td>   
+				</tr> 
+			</tbody> 
+		</table> 
+	</div> 
+</div> 
+{/block} 

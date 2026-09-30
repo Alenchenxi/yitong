@@ -1,0 +1,75 @@
+.standard_page {
+  width: 100%;
+  min-height: 100vh;
+  background-image: linear-gradient(to bottom, #F6EFE6, #F8F8F8);
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: 10px;
+}
+.standard_page .charge_tablecontainer {
+  padding: 0 4%;
+}
+.standard_page .charge_tablecontainer .list_table {
+  margin-bottom: 25px;
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 10px;
+}
+.standard_page .charge_tablecontainer .list_table .table_headtext {
+  display: flex;
+  padding: 10px 0;
+}
+.standard_page .charge_tablecontainer .list_table .table_headtext text {
+  margin: auto;
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+}
+.standard_page .charge_tablecontainer .list_table .table_center {
+  margin-top: 10px;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .tab_title {
+  display: flex;
+  padding: 12px 0;
+  background-color: #000;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .tab_title .list_title {
+  width: 25%;
+  display: flex;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .tab_title .list_title text {
+  margin: auto;
+  text-align: center;
+  font-size: 14px;
+  color: #fff;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .table_info {
+  width: 100%;
+  display: flex;
+  margin-bottom: 3px;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .table_info .list_info {
+  width: 25%;
+  padding: 12px 0;
+  display: flex;
+  border: 1px solid #ddd;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .table_info .list_info text {
+  margin: auto;
+  font-size: 13px;
+  color: #333;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .table_info .bg_color1 {
+  background-color: #FFF5F4;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .table_info .bg_color2 {
+  background-color: #FEF8E8;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .table_info .bg_color3 {
+  background-color: #E2F0FF;
+}
+.standard_page .charge_tablecontainer .list_table .table_center .table_info .bg_color4 {
+  background-color: #EFFFF5;
+}

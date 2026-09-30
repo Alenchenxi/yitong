@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>收费标准</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课"/>
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台"/>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/charges.css"/>
+</head>
+
+<body>
+<div class="standard_page">
+    <div class="charge_tablecontainer">
+
+        {volist name="list" id="vo"}
+        <div class="list_table">
+            <div class="table_headtext">
+                <text>{$vo.name}</text>
+            </div>
+            <div class="table_center">
+                <div class="tab_title">
+                    <div class="list_title">
+                        <text>科目</text>
+                    </div>
+                    <div class="list_title">
+                        <text>大学生教员</text>
+                    </div>
+                    <div class="list_title">
+                        <text>普通教员</text>
+                    </div>
+                    <div class="list_title">
+                        <text>专业教员</text>
+                    </div>
+                </div>
+                {volist name="$vo.price_list" id="pvo"}
+                <div class="table_info">
+                    <div class="list_info bg_color1">
+                        <text>{$pvo.name}</text>
+                    </div>
+                    <div class="list_info bg_color2">
+                        <text>{$pvo.dxs_price}元</text>
+                    </div>
+                    <div class="list_info bg_color3">
+                        <text>{$pvo.pt_price}元</text>
+                    </div>
+                    <div class="list_info bg_color4">
+                        <text>{$pvo.zy_price}元</text>
+                    </div>
+                </div>
+                {/volist}
+
+            </div>
+        </div>
+        {/volist}
+
+    </div>
+</div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+
+</html>
+<script type="text/javascript">
+</script>

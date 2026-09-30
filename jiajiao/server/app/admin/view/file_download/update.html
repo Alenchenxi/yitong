@@ -1,0 +1,115 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='file_download_id' id='file_download_id' value="{$info.file_download_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">文件名称：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="name" value="{$info.name}" name="name" class="form-control" placeholder="请输入文件名称">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">文件内容：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="file" value="{$info.file}" name="file" class="form-control" placeholder="请输入文件内容">
+							<span class="help-block m-b-none file_process"></span>
+						</div>
+						<div class="col-sm-3" style="position:relative; right:30px;">
+							<span id="file_upload"></span>
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">文件类型：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['type'])){ $info['type'] = '1'; }; ?>
+							<input name="type" value="1" type="radio" {if condition="$info.type eq '1'"}checked{/if} title="试卷下载(学生)">
+							<input name="type" value="2" type="radio" {if condition="$info.type eq '2'"}checked{/if} title="试卷下载(老师)">
+							<input name="type" value="3" type="radio" {if condition="$info.type eq '3'"}checked{/if} title="家庭教育">
+							<input name="type" value="4" type="radio" {if condition="$info.type eq '4'"}checked{/if} title="教案下载(老师)">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="price" value="{$info.price}" name="price" class="form-control" placeholder="请输入价格">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">状态：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['status'])){ $info['status'] = '0'; }; ?>
+							<input name="status" value="0" type="radio" {if condition="$info.status eq '0'"}checked{/if} title="待审核">
+							<input name="status" value="1" type="radio" {if condition="$info.status eq '1'"}checked{/if} title="审核通过">
+							<input name="status" value="2" type="radio" {if condition="$info.status eq '2'"}checked{/if} title="审核未通过">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">排序：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="zsort" value="{$info.zsort}" name="zsort" class="form-control" placeholder="请输入排序">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+uploader('file_upload','file','file',false,'','{:getUploadServerUrl()}');
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('file_download_id').set('name').set('file').set('price').set('zsort');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var type = $("input[name = 'type']:checked").val();
+	 var status = $("input[name = 'status']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/FileDownload/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('type',type);
+	 ajax.set('status',status);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

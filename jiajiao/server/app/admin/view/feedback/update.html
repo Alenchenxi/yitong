@@ -1,0 +1,93 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='feedback_id' id='feedback_id' value="{$info.feedback_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">会员id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mid" value="{$info.mid}" name="mid" class="form-control" placeholder="请输入会员id">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">反馈内容：</label>
+						<div class="col-sm-9">
+							<textarea id="content" name="content"  class="form-control" placeholder="请输入反馈内容">{$info.content}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">图片：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="img" value="{$info.img}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="img" class="form-control" placeholder="请输入图片">
+							<span class="help-block m-b-none img_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="img_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">创建时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" value="{if condition="$info.create_time neq 0"}{$info.create_time|date='Y-m-d H:i:s'}{/if}" name="create_time"  placeholder="请输入创建时间" class="form-control" id="create_time">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+uploader('img_upload','img','image',false,'','{:getUploadServerUrl()}');
+laydate.render({elem: '#create_time',type: 'datetime',trigger:'click'});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('feedback_id').set('mid').set('content').set('img').set('create_time');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var ajax = new $ax(Feng.ctxPath + "/Feedback/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

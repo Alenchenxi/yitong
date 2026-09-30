@@ -5,6 +5,7 @@
 | 目录 | 项目 | 规范入口 |
 | --- | --- | --- |
 | `yitong/` | 燚桐校园生活小程序（用户/商家/管理三端 + NestJS 后端 + 表白墙/树洞/兼职） | `yitong/CLAUDE.md`（自动导入 `yitong/AGENTS.md`） |
+| `jiajiao/` | 家教小程序（购入源码二开：uni-app 小程序 + ThinkPHP 6 后端） | `jiajiao/AGENTS.md` |
 
 ## 加入新项目
 - 新项目放到与本文件平级的独立子目录（如 `<新项目>/`），前台 + 后台代码都放在该子目录内，自带各自的 `CLAUDE.md` / `AGENTS.md` 与 `.gitignore`。

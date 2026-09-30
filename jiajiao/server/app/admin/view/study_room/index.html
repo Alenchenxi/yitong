@@ -1,0 +1,235 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="ibox-content"> 
+				<div class="row row-lg"> 
+					<div class="col-sm-12"> 
+						<div class="row" id="searchGroup">
+							<div class="distpicker5">
+								<div class="col-sm-2">
+									<div class="input-group">
+										<div class="input-group-btn">
+											<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">省</button>
+										</div>
+										<select lay-ignore id="province" class="form-control" ></select>
+									</div>
+								</div>
+								<div class="col-sm-2">
+									<div class="input-group">
+										<div class="input-group-btn">
+											<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">市</button>
+										</div>
+										<select lay-ignore id="city" class="form-control" ></select>
+									</div>
+								</div>
+								<div class="col-sm-2">
+									<div class="input-group">
+										<div class="input-group-btn">
+											<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">区</button>
+										</div>
+										<select lay-ignore id="area" class="form-control" ></select>
+									</div>
+								</div>
+							</div>
+							<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.data.js"></script>
+							<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.js"></script>
+							<script src="__PUBLIC__/static/js/plugins/shengshiqu/main.js"></script>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">联系人</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="linkman" placeholder="联系人" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">电话</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="mobile" placeholder="电话" />
+								</div>
+							</div>
+							<!-- search end -->
+							<div class="col-sm-1">
+								<button type="button" class="btn btn-success " onclick="CodeGoods.search()" id="">
+									<i class="fa fa-search"></i>&nbsp;搜索
+								</button>
+							</div>
+						</div>
+						<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+						{if condition="in_array('admin/StudyRoom/add',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="add" class="btn btn-primary button-margin" onclick="CodeGoods.add()">
+						<i class="fa fa-plus"></i>&nbsp;添加
+						</button>
+						{/if}
+						{if condition="in_array('admin/StudyRoom/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="update" class="btn btn-success button-margin" onclick="CodeGoods.update()">
+						<i class="fa fa-pencil"></i>&nbsp;修改
+						</button>
+						{/if}
+						{if condition="in_array('admin/StudyRoom/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="delete" class="btn btn-danger button-margin" onclick="CodeGoods.delete()">
+						<i class="fa fa-trash"></i>&nbsp;删除
+						</button>
+						{/if}
+						</div>
+						<table id="CodeGoodsTable" data-mobile-responsive="true" data-click-to-select="true">
+							<thead><tr><th data-field="selectItem" data-checkbox="true"></th></tr></thead>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	var CodeGoods = {id: "CodeGoodsTable",seItem: null,table: null,layerIndex: -1};
+
+	CodeGoods.initColumn = function () {
+ 		return [
+ 			{field: 'selectItem', checkbox: true},
+ 			{title: '编号', field: 'study_room_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '省市区', field: 'province|city|area', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.provincecityareaFormatter },
+ 			{title: '详细地址', field: 'address', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '联系人', field: 'linkman', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '电话', field: 'mobile', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '价格', field: 'price', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '操作', field: '', visible: true, align: 'center', valign: 'middle',formatter: 'CodeGoods.buttonFormatter'},
+ 		];
+ 	};
+
+	CodeGoods.buttonFormatter = function(value,row,index) {
+		if(row.study_room_id){
+			var str= '';
+			{if condition="in_array('admin/StudyRoom/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-success btn-xs" title="修改"  onclick="CodeGoods.update('+row.study_room_id+')"><i class="fa fa-pencil"></i>&nbsp;修改</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admin/StudyRoom/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-danger btn-xs" title="删除"  onclick="CodeGoods.delete('+row.study_room_id+')"><i class="fa fa-trash"></i>&nbsp;删除</button>&nbsp;';
+			{/if}
+			return str;
+		}
+	}
+
+	CodeGoods.provincecityareaFormatter = function(value,row,index) {
+		 var areaStr = '';
+		 if(row.province){
+		 	areaStr += "-"+row.province;
+		 }
+		 if(row.city){
+		 	areaStr += "-"+row.city;
+		 }
+		 if(row.area){
+		 	areaStr += "-"+row.area;
+		 }
+		areaStr = areaStr.substr(1);
+		return areaStr;
+	}
+
+	CodeGoods.formParams = function() {
+		var queryData = {};
+		queryData['offset'] = 0;
+		queryData['province'] = $("#province").val();
+		queryData['city'] = $("#city").val();
+		queryData['area'] = $("#area").val();
+		queryData['linkman'] = $("#linkman").val();
+		queryData['mobile'] = $("#mobile").val();
+		return queryData;
+	}
+
+	CodeGoods.check = function () {
+		var selected = $('#' + this.id).bootstrapTable('getSelections');
+		if(selected.length == 0){
+			Feng.info("请先选中表格中的某一记录！");
+			return false;
+		}else{
+			CodeGoods.seItem = selected;
+			return true;
+		}
+	};
+
+	CodeGoods.add = function (value) {
+		var url = location.search;
+		var index = layer.open({type: 2,title: '添加',area: ['800px', '550px'],fix: false, maxmin: true,content: Feng.ctxPath + '/StudyRoom/add'+url});
+		this.layerIndex = index;
+		if(!IsPC()){layer.full(index)}
+	}
+
+
+	CodeGoods.update = function (value) {
+		if(value){
+			var index = layer.open({type: 2,title: '修改',area: ['800px', '550px'],fix: false, maxmin: true,content: Feng.ctxPath + '/StudyRoom/update?study_room_id='+value});
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.study_room_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var index = layer.open({type: 2,title: '修改',area: ['800px', '550px'],fix: false, maxmin: true,content: Feng.ctxPath + '/StudyRoom/update?study_room_id='+idx});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.delete = function (value) {
+		if(value){
+			Feng.confirm("是否删除选中项？", function () {
+				var ajax = new $ax(Feng.ctxPath + "/StudyRoom/delete", function (data) {
+					if ('00' === data.status) {
+						Feng.success(data.msg);
+						CodeGoods.table.refresh();
+					} else {
+						Feng.error(data.msg);
+					}
+				});
+				ajax.set('study_room_id', value);
+				ajax.start();
+			});
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.study_room_id;
+				});
+				idx = idx.substr(1);
+				Feng.confirm("是否删除选中项？", function () {
+					var ajax = new $ax(Feng.ctxPath + "/StudyRoom/delete", function (data) {
+						if ('00' === data.status) {
+							Feng.success(data.msg,1000);
+							CodeGoods.table.refresh();
+						} else {
+							Feng.error(data.msg,1000);
+						}
+					});
+					ajax.set('study_room_id', idx);
+					ajax.start();
+				});
+			}
+		}
+	}
+
+
+	CodeGoods.search = function() {
+		CodeGoods.table.refresh({query : CodeGoods.formParams()});
+	};
+
+	$(function() {
+		var defaultColunms = CodeGoods.initColumn();
+		var url = location.search;
+		var table = new BSTable(CodeGoods.id, Feng.ctxPath+"/StudyRoom/index"+url,defaultColunms,20);
+		table.setPaginationType("server");
+		table.setQueryParams(CodeGoods.formParams());
+		CodeGoods.table = table.init();
+	});
+</script>
+{/block}

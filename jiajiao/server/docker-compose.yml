@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yantong-app
+    ports:
+      - "8080:80"
+    volumes:
+      # 挂载日志目录（持久化到宿主机）
+      - ./runtime/log:/var/www/html/runtime/log
+      # 开发阶段可取消下面注释，直接挂载代码热更新
+      # - .:/var/www/html
+    environment:
+      - APP_ENV=production
+    restart: unless-stopped
+    networks:
+      - yantong-net
+
+networks:
+  yantong-net:
+    driver: bridge

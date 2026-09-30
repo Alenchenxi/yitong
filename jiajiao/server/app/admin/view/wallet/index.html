@@ -1,0 +1,133 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="ibox-content"> 
+				<div class="row row-lg"> 
+					<div class="col-sm-12"> 
+						<div class="row" id="searchGroup">
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">订单号</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="sn" placeholder="订单号" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">类型</button>
+									</div>
+									<select class="form-control" id="type">
+										<option value="">请选择</option>
+										<option value="1">收入</option>
+										<option value="2">支出</option>
+									</select>
+								</div>
+							</div>
+							<div class="col-sm-3">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">创建时间范围</button>
+									</div>
+									<input type="text" autocomplete="off" placeholder="时间范围" class="form-control" id="create_time">
+								</div>
+							</div>
+							<!-- search end -->
+							<div class="col-sm-1">
+								<button type="button" class="btn btn-success " onclick="CodeGoods.search()" id="">
+									<i class="fa fa-search"></i>&nbsp;搜索
+								</button>
+							</div>
+						</div>
+						<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+						</div>
+						<table id="CodeGoodsTable" data-mobile-responsive="true" data-click-to-select="true">
+							<thead><tr><th data-field="selectItem" data-checkbox="true"></th></tr></thead>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	var CodeGoods = {id: "CodeGoodsTable",seItem: null,table: null,layerIndex: -1};
+
+	CodeGoods.initColumn = function () {
+ 		return [
+ 			{field: 'selectItem', checkbox: true},
+ 			{title: '编号', field: 'wallet_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '订单号', field: 'sn', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '会员id', field: 'mid', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '会员昵称', field: 'nickname', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '金额', field: 'amount', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '备注', field: 'remark', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '类型', field: 'type', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.typeFormatter},
+ 			{title: '创建时间', field: 'create_time', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.create_timeFormatter},
+ 		];
+ 	};
+
+	CodeGoods.typeFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-success">收入</span>';
+				break;
+				case '2':
+					return '<span class="label label-danger">支出</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.create_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.formParams = function() {
+		var queryData = {};
+		queryData['offset'] = 0;
+		queryData['sn'] = $("#sn").val();
+		queryData['type'] = $("#type").val();
+		queryData['create_time_start'] = $("#create_time").val().split(" - ")[0];
+		queryData['create_time_end'] = $("#create_time").val().split(" - ")[1];
+		return queryData;
+	}
+
+	CodeGoods.check = function () {
+		var selected = $('#' + this.id).bootstrapTable('getSelections');
+		if(selected.length == 0){
+			Feng.info("请先选中表格中的某一记录！");
+			return false;
+		}else{
+			CodeGoods.seItem = selected;
+			return true;
+		}
+	};
+
+	CodeGoods.search = function() {
+		CodeGoods.table.refresh({query : CodeGoods.formParams()});
+	};
+
+	$(function() {
+		var defaultColunms = CodeGoods.initColumn();
+		var url = location.search;
+		var table = new BSTable(CodeGoods.id, Feng.ctxPath+"/Wallet/index"+url,defaultColunms,20);
+		table.setPaginationType("server");
+		table.setQueryParams(CodeGoods.formParams());
+		CodeGoods.table = table.init();
+	});
+	laydate.render({elem: '#create_time',type: 'datetime',range:true,
+		ready: function(date){
+			$(".layui-laydate-footer [lay-type='datetime'].laydate-btns-time").click();
+			$(".laydate-main-list-1 .layui-laydate-content li ol li:last-child").click();
+			$(".layui-laydate-footer [lay-type='date'].laydate-btns-time").click();
+		}
+	});
+</script>
+{/block}

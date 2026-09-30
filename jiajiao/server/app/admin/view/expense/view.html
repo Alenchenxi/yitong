@@ -1,0 +1,23 @@
+{extend name='common/_container'} 
+{block name="content"} 
+<div class="ibox float-e-margins"> 
+	<div class="ibox-content"> 
+		<table class="table table-bordered" style="word-break:break-all;"> 
+			<tbody> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">会员：</td> 
+					<td>{$info.mid}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">消费金额：</td> 
+					<td>{$info.amount}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">消费时间：</td> 
+					<td>{if $info.createtime}{$info.createtime|date='Y-m-d H:i:s'}{/if}</td>   
+				</tr> 
+			</tbody> 
+		</table> 
+	</div> 
+</div> 
+{/block} 

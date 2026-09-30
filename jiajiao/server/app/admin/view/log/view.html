@@ -1,0 +1,47 @@
+{extend name='common/_container'} 
+{block name="content"} 
+<div class="ibox float-e-margins"> 
+	<div class="ibox-content"> 
+		<table class="table table-bordered" style="word-break:break-all;"> 
+			<tbody> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">应用名称：</td> 
+					<td>{$info.application_name}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">操作用户：</td> 
+					<td>{$info.username}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">请求url：</td> 
+					<td>{$info.url}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">ip：</td> 
+					<td>{$info.ip}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">useragent：</td> 
+					<td>{$info.useragent}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">请求内容：</td> 
+					<td>{$info.content}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">异常信息：</td> 
+					<td>{$info.errmsg}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">类型：</td> 
+					<td><?php echo getFieldVal($info["type"],"登录日志|1|primary,操作日志|2|success,异常日志|3|danger");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">创建时间：</td> 
+					<td>{if $info.create_time}{$info.create_time|date='Y-m-d H:i:s'}{/if}</td>   
+				</tr> 
+			</tbody> 
+		</table> 
+	</div> 
+</div> 
+{/block} 

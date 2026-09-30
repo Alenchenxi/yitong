@@ -1,0 +1,75 @@
+{extend name='common/_container'} 
+{block name="content"} 
+<div class="ibox float-e-margins"> 
+	<div class="ibox-content"> 
+		<table class="table table-bordered" style="word-break:break-all;"> 
+			<tbody> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">订单编号：</td> 
+					<td>{$info.sn}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">性别：</td> 
+					<td><?php echo getFieldVal($info["gender"],"男|1|success,女|2|warning");?></td>   
+				</tr>
+				<tr>
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学生年级：</td>
+					<td>{$info.grade_name}</td>
+				</tr>
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教科目：</td>
+					<td>{$info.subject_name}</td>
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教城市/区域：</td> 
+					<td>{$info.province}-{$info.city}-{$info.area}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">详细地址：</td> 
+					<td>{$info.address}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">学员概况：</td> 
+					<td>{$info.gai_kuang}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教费用：</td>
+					<td>{$info.expense}</td>
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">任教时间：</td> 
+					<td>{$info.teach_time}</td>
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">教员性别：</td> 
+					<td><?php echo getFieldVal($info["teacher_gender"],"男|1|success,女|2|warning");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">教师身份：</td> 
+					<td><?php echo getFieldVal($info["teacher_identity"],"大学生教员|1|primary,普通教员|2|success,专业教员|3|danger");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">教员要求：</td> 
+					<td>{$info.teacher_require}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">联系人：</td> 
+					<td>{$info.linkman}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">手机号：</td> 
+					<td>{$info.mobile}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">创建时间：</td> 
+					<td>{if $info.create_time}{$info.create_time|date='Y-m-d H:i:s'}{/if}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">状态：</td> 
+					<td><?php echo getFieldVal($info["status"],"完成订单|1|primary,待上订单|0|success,关闭订单|2|danger");?></td>   
+				</tr> 
+			</tbody> 
+		</table> 
+	</div> 
+</div> 
+{/block} 

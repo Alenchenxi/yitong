@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>预约订单</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课"/>
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台"/>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/ds_order.css"/>
+</head>
+
+<body>
+<div class="wait_pagebox" id="app">
+    <div class="libray_container">
+        <div class="list_mestbox" v-for="(item,i) in order_listarr" @click="jump_detail_stu(item)">
+            <div class="list_library">
+                <div class="lf_avatarbox">
+                    <div class="avatar_icon">
+                        <image class="avatar" :src="item.avatar" mode=""></image>
+                        <image class="sex_img" v-if="item.gender==1" src="/img/sex_icon.png" mode="">
+                        </image>
+                        <image class="sex_img" v-else-if="item.gender==2" src="/img/set_nvicon.png" mode="">
+                        </image>
+                    </div>
+                    <div class="teace_login">
+                        <div>最近登录</div>
+                        <div>{{item.login_time}}</div>
+                    </div>
+                </div>
+                <div class="rf_user_info">
+                    <div class="list_namebox">
+                        <div class="lf_namebox">
+                            <div class="ragion_text">{{!item.area ? '' : item.area}}</div>
+                            <div class="name_text">{{item.subject_name}}</div>
+                        </div>
+                        <div class="price_num">{{item.expense}}</div>
+                    </div>
+                    <div class="student_desc">
+                        <div>{{item.gai_kuang}}</div>
+                    </div>
+                    <div class="adres_lang">
+                        <div class="adres_info">
+                            <image src="/img/stu_adresicon.png" mode=""></image>
+                            <div>{{item.address}}</div>
+                        </div>
+                        <!-- <div class="lang_text">2.569km</div> -->
+                    </div>
+                </div>
+            </div>
+            <div class="button_box">
+                <!--//已购|1|success,待付|2|warning,已完成|3|success-->
+                {if $order_state==1}
+                <div class="detail_btn" @click.stop="updateOrderStatus(item,4)">确认完成</div>
+                <div class="apply_btn" @click.stop="updateOrderStatus(item,2)">申请退款</div>
+                {elseif $order_state==2}
+                <div class="detail_btn" @click.stop="goDemandInfo(item)">去支付</div>
+                {/if}
+            </div>
+        </div>
+    </div>
+
+    <div role="dialog" aria-modal="true" class="js_dialog" id="iosDialog1" style="display: none;">
+        <div class="weui-mask"></div>
+        <div class="weui-dialog">
+            <div class="weui-dialog__hd"><strong class="weui-dialog__title" id="js_title1">提示</strong></div>
+            <div class="weui-dialog__bd">是否确认关闭该订单</div>
+            <div class="weui-dialog__ft">
+                <a role="button" href="javascript:" class="weui-dialog__btn weui-dialog__btn_default" id="cancel">取消</a>
+                <a role="button" href="javascript:" class="weui-dialog__btn weui-dialog__btn_primary" id="confirm">确认</a>
+            </div>
+        </div>
+    </div>
+
+    <!--<u-modal v-model="dwon_btnpop" :show-cancel-button='true' confirm-color='#FB7206' @confirm='sure_delte' :content="'是否确认关闭改订单'"></u-modal>
+    <u-popup v-model="apply_pop" mode='center' width='90%' border-radius='20'>
+        <div class="apply_container">
+            <div class="head_title">教师申请</div>
+            <scroll-div scroll-y="true" class="scroolbox">
+                <div class="teacher_content">
+                    <div class="list_teacher" v-for="(item,i) in phone_list" @click="jump_detail(item)">
+                        <div class="lf_avatarbox">
+                            <div class="avatar_icon">
+                                <image v-if="item.head_img" class="avatar" :src="pic_url+item.head_img" mode="">
+                                </image>
+                                <image v-else class="avatar" :src="item.avatar" mode=""></image>
+                                <image v-if="item.gender==1" class="sex_img" src="/img/sex_icon.png" mode="">
+                                </image>
+                                <image v-else class="sex_img" src="/img/set_nvicon.png" mode=""></image>
+                            </div>
+                            <div class="teace_login">
+                                <div>最近登录</div>
+                                <div>{{item.login_time}}</div>
+                            </div>
+                        </div>
+                        <div class="rf_user_info">
+                            <div class="list_namebox">
+                                <div class="name_text">{{item.name}}（{{item.gender==1?'男':'女'}}）</div>
+                                <div class="type">{{item.teacher_identity==1?'大学生教员':item.teacher_identity==2?'普通教员': item.teacher_identity==3?'专业教员':'不限'}}</div>
+                                <div class="numinfo">
+                                    <div class="color_num">{{item.teach_num}}</div>
+                                    <div class="num_text">次任教</div>
+                                </div>
+                            </div>
+                            <div class="user_typeli">
+                                <div class="shcol_text">{{item.school}}</div>
+                                <div class="type_stu">{{item.specialty}}</div>
+                            </div>
+                            <div class="botm_mesttype">
+                                <div class="list_mu_type_one">
+                                    <div class="type_title">科目：</div>
+                                    <div v-if="item.subject_names.length>3" class="type_text" v-for="(text,n) in item.subject_names">{{text.name}}</div>
+                                    <div v-if="item.subject_names.length<4" class="type_text" v-for="(text,n) in item.subject_names">{{text.name}}</div>
+                                    &lt;!&ndash; <div class="type_text">小学英语</div> &ndash;&gt;
+                                </div>
+                                <div class="list_mu_type_two">
+                                    <div class="type_title">地区：</div>
+                                    &lt;!&ndash; <div class="type_text" >{{item.area}}</div> &ndash;&gt;
+                                    <div class="type_text" v-for="(info,t) in item.area_text">{{info}}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </scroll-div>
+        </div>
+    </u-popup>-->
+</div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+</html>
+<script type="text/javascript">
+    var order_state = '{$order_state}'
+
+    layui.use(['form'], function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.$;
+    });
+
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            page: 1,
+            pic_url: "https://wx.xrkjj.net/",
+            phone_list: [],
+            order_listarr: [],
+            dwon_btnpop: false,
+            item_info: {},
+            apply_pop: false,
+            down: 0,
+        },
+        methods: {
+            init: function (page) {
+                $.ajax({
+                    url: "/teacher/myOrder",
+                    type: 'post',
+                    data: {"page": page, 'order_state': order_state},
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.status == 404) {
+                            // layer.msg(data.msg, { icon: 5 });
+                        } else {
+                            vm.order_listarr = data.data;
+                        }
+                    },
+                    error: function () {
+                        console.log("出错了");
+                    }
+                });
+            },
+            goDemandInfo(item){
+                window.location.href= '/student/'+item.demand_id+'.html';
+            },
+            updateOrderStatus(item,status){
+                $.ajax({
+                    url : '/teacher/updateOrderStatus',
+                    type : 'post',
+                    dataType : 'json',
+                    data : {'order_id':item.order_id, 'status':status},
+                    success : function (res) {
+                        console.log(res);
+                        if(res.status==200){
+                            layer.msg(res.msg,{time: 1000},function(){
+                                window.location.reload();
+                            });
+                        }else{
+                            layer.msg(res.msg);
+                        }
+                    }
+                })
+                return false;
+            },
+            look_applyfun(item) {
+                this.get_phonelistfun(item.demand_id);
+
+                uni.showLoading({
+                    title: "加载中..."
+                })
+            },
+            call_phone(phone) {
+                wx.makePhoneCall({
+                    phoneNumber: phone
+                })
+            },
+            // 重新发布
+            loadgetfun(item) {
+                // uni.switchTab({
+                //  url: "../../pages/student_send/student_send"
+                // })
+                // uni.setStorageSync("set_data_item", item)
+
+                uni.navigateTo({
+                    url: "../../component/student_set/student_set?type=3"
+                })
+                uni.setStorageSync("set_data_item", item)
+
+
+                // uni.showLoading({
+                //  title:"刷新中...",                 
+                // })
+                // setTimeout(()=>{
+                //  uni.hideLoading()
+                //  uni.showToast({
+                //      title:"刷新成功",
+                //      icon:"none"
+                //  })
+                // },3000)
+            },
+            // 删除订单
+            delete_orderbtn(item, n) {
+                this.item_info = item;
+                this.del_num = n;
+                this.dwon_btnpop = true;
+            },
+            // 确认删除你
+            sure_delte() {
+                console.log("删除订单")
+                let data = {
+                    demand_id: this.item_info.demand_id
+                }
+                let token = uni.getStorageSync("token")
+                this.http.post_request("/user/getDelDemand", data, token).then(res => {
+                    console.log(res)
+                    if (res.status == 200) {
+                        uni.showToast({
+                            title: "关闭成功",
+                            icon: "none"
+                        })
+                        this.order_listarr.splice(this.del_num, 1)
+                    } else {
+                        uni.showToast({
+                            title: res.msg,
+                            icon: "none"
+                        })
+                    }
+                })
+            },
+            jump_detail_stu(item) {
+               /* uni.setStorageSync("data_info", item)
+                uni.navigateTo({
+                    // url: "../../component/student_detail/student_detail?hidden=1"
+                    url: "../../faculty_center/complate_page/complate_page"
+                })*/
+
+                if(order_state==3){
+                    window.location.href= '/student/'+item.demand_id+'?type=1.html';
+                }else{
+                    window.location.href= '/student/'+item.demand_id+'.html';
+                }
+
+            },
+            //  跳转详情
+            jump_detail(item) {
+                let token = uni.getStorageSync("token");
+                if (!token) {
+                    uni.navigateTo({
+                        url: "../../component/login_page/login_page"
+                    })
+                    // uni.showToast({
+                    //  title: "请登录后查看",
+                    //  icon: "none"
+                    // })
+                    return false
+                }
+                uni.navigateTo({
+                    url: "../../component/teacher_detail/teacher_detail?teacher_id=" + item.teacher_id + '&type=4'
+                })
+            },
+
+            // 获取订单
+            get_complate_orderlist() {
+                this.page++;
+                let data = {
+                    limit: 10,
+                    page: this.page,
+                    status: 0,
+                }
+                let token = uni.getStorageSync("token")
+                this.http.post_request("/user/getStuDemandList", data, token).then(res => {
+                    console.log(res)
+                    if (res.status == 200) {
+                        if (res.data.length == 0) {
+                            this.page--;
+                            let titmeg = "到底了！";
+                            if (this.page == 0) {
+                                titmeg = "暂无信息"
+                            }
+                            uni.showToast({
+                                title: titmeg,
+                                icon: "none"
+                            });
+                            this.down = 1;
+                        } else {
+
+                            this.order_listarr = this.order_listarr.concat(res.data);
+                        }
+
+                    } else {
+                        uni.showToast({
+                            title: "No,服务器开小差了~~",
+                            icon: "none"
+                        })
+                    }
+
+
+                })
+            },
+            get_phonelistfun(demand_id) {
+                let data = {
+                    demand_id: demand_id
+                }
+                let token = uni.getStorageSync("token")
+                this.http.post_request("/index/getDemandTeacherList", data, token).then(res => {
+                    console.log(res)
+                    uni.hideLoading()
+                    if (res.status == 200) {
+                        if (res.data.length == 0) {
+                            uni.showToast({
+                                title: "暂无申请...",
+                                icon: "none"
+                            })
+                        } else {
+                            this.apply_pop = true;
+                            // console.log(res.data.areasplit(','))
+                            // //    res.data.area_text=res.data.area.split(',')
+                            // // console.log(res.data.area_text)
+                            res.data.forEach(item => {
+                                console.log(item.area)
+                                item.area_text = (item.area.split(",")).splice(0, 3);
+                                console.log(">>>>>>>>>>>>>>>>>>>>>>>>")
+                                console.log(item.area_text)
+                            })
+                            this.phone_list = res.data;
+                        }
+
+                    }
+                })
+            }
+        }
+    })
+    vm.init(1);
+</script>

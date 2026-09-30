@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+     <title>向日葵家教</title>
+     <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+	 <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="css/index.css" />
+    <link rel="stylesheet" href="./css/swiper.css">
+</head>
+
+<body>
+    <div class="indexpage">
+        <div class="page_content">
+            <div class="top_searchbosx">
+                <div class="lf_citybox" @click="choose_address">
+                    <a href="/index/city.html">{$city}</a>
+                    <image src="img/botm_arrow.png" mode=""></image>
+                </div>
+                <div class="search_box" @click="jump_serach" onclick="location.href='/index/search'">
+                    <image src="img/search.png" mode=""></image>
+                    <input type="text" disabled="disabled" v-model="serach_text" confirm-type='search' placeholder="教员/学员" placeholder-style="font-size:26rpx;color:#99999;" class="uni-input-input">
+                </div>
+            </div>
+            <div class="banner">
+                <div class="swiper-container swiper" id="swiperbannerone">
+                    <div class="swiper-wrapper ">
+                        {volist name="info.slide_list" id="vo"}
+                        <div class="swiper-slide ">
+                            <img src="{$vo.pic}" />
+                        </div>
+                        {/volist}
+                    </div>
+                    <div class="swiper-pagination"></div>
+                </div>
+            </div>
+            <div class="taost_container">
+
+                {volist name="info.msg_list" id="vo"}
+                <div class="taost_cneter" onclick="location.href='news/{$vo.content_id}.html'">
+                    <div class="lf_icon">
+                        <image src="img/index_taost.png" mode=""></image>
+                    </div>
+                    <div class="lf_messsage">
+                        <text>{$vo.title}</text>
+                    </div>
+                </div>
+                {/volist}
+            </div>
+            <div class="warehouse">
+                <a  href="teacher.html" class="list_house" @click="jump_library(0)">
+                    <div class="center_house">
+                        <image src="img/house1.png" mode=""></image>
+                        <text>教员简历</text>
+                    </div>
+                </a>
+                <a href="student.html"  class="blue_house" @click="jump_library(1)">
+                    <div class="center_house">
+                        <image src="img/house2.png" mode=""></image>
+                        <text>学员需求</text>
+                    </div>
+                </a>
+            </div>
+            <div class="list_bloackbox">
+                <div class="block_center">
+                    {volist name="info.grade_list" id="vo"}
+                    <a class="color_text{$key+1}" href="/teacher?grade_id={$vo.grade_id}"><span>{$vo.name}</span></a>
+                    {/volist}
+                </div>
+            </div>
+            <div class="type_educatiaon">
+                <div class="eductaion_center">
+                    <div class="list_education" onclick="location.href='/teacher?teacher_identity=1'">
+                        <image src="img/educaion_1.png" mode=""></image>
+                        <text>大学生教员</text>
+                    </div>
+                    <div class="list_education" onclick="location.href='/teacher?teacher_identity=2'">
+                        <image src="img/educaion_2.png" mode=""></image>
+                        <text>普通教员</text>
+                    </div>
+                    <div class="list_education" onclick="location.href='/teacher?teacher_identity=3'">
+                        <image src="img/educaion_3.png" mode=""></image>
+                        <text>专业教员</text>
+                    </div>
+                </div>
+            </div>
+            <!-- #ifdef H5 -->
+            <div class="active_mestbox" v-if="show_h5">
+                <!-- 最新资讯 -->
+                <div class="new_head">
+                    <text class="mest_headtitle">最新资讯</text>
+                </div>
+                <div class="new_teacherlist" v-if=" message_activedata.msg_list.length">
+                    <div class="mest_list_container">
+                        {volist name="info.new_msg_list" id="vo"}
+                        <a class="list_info" href="news/{$vo.content_id}.html">
+                            <div class="schoole_text"><span>{$vo.title}</span></div>
+                        </a>
+                        {/volist}
+                    </div>
+                </div>
+                <!-- 最新教员 -->
+                <div class="new_head" v-if=" message_activedata.teacher_list.length">
+                    <text class="mest_headtitle">最新教员</text>
+                </div>
+                <div class="new_activelist" v-if=" message_activedata.teacher_list.length">
+                    <div class="mest_list_container">
+                        {volist name="info.new_teacher_list" id="vo"}
+                        <div class="list_info" onclick="location.href='/teacher/{$vo.teacher_id}.html'">
+                            <div class="name_text"><span>{$vo.name}</span></div>
+                            <!--//大学生教员|1|primary,普通教员|2|success,专业教员|3|danger,不限|4|info-->
+                            {if $vo.teacher_identity==1}
+                            <div class="schoole_text"><span>大学生教员</span></div>
+                            {elseif $vo.teacher_identity==2}
+                            <div class="schoole_text"><span>普通教员</span></div>
+                            {elseif $vo.teacher_identity==3}
+                            <div class="schoole_text"><span>专业教员</span></div>
+                            {else}
+                            <div class="schoole_text"><span>不限</span></div>
+                            {/if}
+                            <div class="schoole_text"><span>{$vo.teaching_age}年教龄</span></div>
+                            <div class="schoole_text"><span>{$vo.school}</span></div>
+                        </div>
+                        {/volist}
+                    </div>
+                </div>
+                <!-- 最新学员 -->
+                <div class="new_head" v-if=" message_activedata.demand_list.length">
+                    <text class="mest_headtitle">最新学员</text>
+                </div>
+                <div class="new_studentlist" v-if=" message_activedata.demand_list.length">
+                    <div class="mest_list_container">
+                        {volist name="info.new_demand_list" id="vo"}
+                        <div class="list_info" onclick="location.href='/student/{$vo.demand_id}.html'">
+                            <div class="name_text"><span>{$vo.area}</span></div>
+                            <div class="schoole_text"><span>{$vo.subject_name}</span></div>
+                            <div class="schoole_text"><span>{$vo.expense}</span></div>
+                            <div class="schoole_text"><span>{$vo.gai_kuang}</span></div>
+                        </div>
+                        {/volist}
+                    </div>
+                </div>
+            </div>
+            <!-- #endif -->
+        </div>
+    </div>
+
+    {include file="index/footer"}
+<script src="./js/swiper.min.js"></script>
+
+</html>
+<script type="text/javascript">
+var swiper = new Swiper('#swiperbannerone', {
+    pagination: '.swiper-pagination',
+    nextButton: '.swiper-button-next',
+    prevButton: '.swiper-button-prev',
+    slidesPerView: 1,
+    setWrapperSize: true,
+    autoplay: 3000,
+    paginationClickable: true,
+    disableOnInteraction: false,
+    autoplayDisableOnInteraction: false,
+    spaceBetween: 30,
+    loop: true,
+    observer: true,
+    observeParents: true,
+
+});
+</script>

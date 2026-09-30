@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>教员简历</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课"/>
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台"/>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/user.css"/>
+     <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css">
+</head>
+
+<body>
+<div class="main_page">
+    <div class="page_content">
+        <div class="user_box">
+            {if $user_info}
+            <!-- 已登录 -->
+            <div class="user_nologin" >
+                <div class="login_icon">
+                    <img src="{$user_info.avatar}" mode=""></img>
+                </div>
+                <div class="rf_textbox">
+                    <text class="smal_text">{$user_info.nickname}</text>
+                </div>
+            </div>
+            {else}
+            <!-- 未登录 -->
+            <div class="user_nologin" v-if="!is_login">
+                <div class="login_icon">
+                    <img src="/img/login_icon.png" mode="">
+                </div>
+                <div class="rf_textbox">
+                    <div class="login_btnbox">
+                        <a href="/login">
+                            <text @click="logiinbtn">立即登录</text>
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+            {/if}
+        </div>
+
+        <div class="order_typebox">
+            <a href="/student/release" class="list_orderbar" @click="order_jump(0)">
+                <img src="/img/order_bar1.png" mode=""></img>
+                <text>创建订单</text>
+            </a>
+            <a href="/user/dsOrder" class="list_orderbar" @click="order_jump(1)">
+                <img src="/img/order_bar2.png" mode=""></img>
+                <text>待上订单</text>
+            </a>
+            <a href="/user/wcOrder" class="list_orderbar" @click="order_jump(2)">
+                <img src="/img/order_bar3.png" mode=""></img>
+                <text>完成订单</text>
+            </a>
+            <a href="/user/collect" class="list_orderbar" @click="order_jump(3)">
+                <img src="/img/order_bar4.png" mode=""></img>
+                <text>我的收藏</text>
+            </a>
+        </div>
+
+        <div class="tab_barpagebox">
+            <a href="/user/explain.html" class="list_bar" @click="jump_page(0)">
+                <img class="set_img" src="/img/main_bar1.png" mode=""></img>
+                <text>家教说明</text>
+            </a>
+            <a href="/user/classroom" class="list_bar" @click="jump_page(1)">
+                <img src="/img/main_bar2.png" mode=""></img>
+                <text>自习教室</text>
+            </a>
+            <a href="/user/charges" class="list_bar" @click="jump_page(2)">
+                <img src="/img/main_bar3.png" mode=""></img>
+                <text>收费标准</text>
+            </a>
+            <a href="/user/estimate" class="list_bar" @click="jump_page(3)">
+                <img src="/img/main_bar4.png" mode=""></img>
+                <text>我的评价</text>
+            </a>
+            <a href="/user/message" class="list_bar" @click="jump_page(4)">
+                <img src="/img/main_bar5.png" mode=""></img>
+                <text>我的消息</text>
+            </a>
+            <a href="/user/feedback" class="list_bar" @click="jump_page(5)">
+                <img src="/img/main_bar6.png" mode=""></img>
+                <text>意见反馈</text>
+            </a>
+            <a href="/user/cancel" class="list_bar" @click="jump_page(6)">
+                <img src="/img/main_bar7.png" mode=""></img>
+                <text>注销账号</text>
+            </a>
+            {if $user_info}
+            <div class="list_bar" onclick="logout()">
+                <img src="/img/main_bar8.png" mode=""></img>
+                <text>退出登录</text>
+            </div>
+            {/if}
+        </div>
+
+        {if $teacher_info}
+        <div class="jump_setcentbtn" v-if="botm_btn">
+            <button onclick="location.href='/user/teacherCenter'">教员管理中心</button>
+        </div>
+        {/if}
+    </div>
+
+    <div role="dialog" aria-modal="true" class="js_dialog" id="iosDialog1" style="display: none;">
+          <div class="weui-mask"></div>
+          <div class="weui-dialog">
+                <div class="weui-dialog__hd"><strong class="weui-dialog__title" id="js_title1">提示</strong></div>
+                <div class="weui-dialog__bd">是否退出登录</div>
+                <div class="weui-dialog__ft">
+                    <a role="button" href="javascript:" class="weui-dialog__btn weui-dialog__btn_default" id="cancellogout">取消</a>
+                    <a role="button" href="javascript:" class="weui-dialog__btn weui-dialog__btn_primary" id="confirmlogout">确认</a>
+                </div>
+            </div>
+      </div>
+</div>
+</body>
+{include file="index/footer"}
+
+</html>
+<script src="/static/js/plugins/layui/layui.js"></script>
+<script type="text/javascript">
+    var $iosDialog1 = $('#iosDialog1');
+    layui.use(['form'], function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.$;
+
+        //取消退出
+        $('#cancellogout').click(function (){
+            $iosDialog1.fadeOut();
+        })
+
+        //确认退出
+        $('#confirmlogout').click(function (){
+            $.post('/login/out', {}, function (res) {
+                if(res.status==200){
+                    layer.msg(res.msg,{time: 1000},function(){
+                        window.location.reload();
+                    });
+                }
+            })
+            
+            $iosDialog1.fadeOut();
+        })
+
+    });
+
+    function logout(){
+            $iosDialog1.fadeIn(200);
+            $iosDialog1.attr('aria-hidden','false');
+            $iosDialog1.attr('tabindex','0');
+            $iosDialog1.trigger('focus');
+        // layer.confirm("是否退出登录？", {
+        //     btn: ["确定", "取消"] //按钮
+        // }, function (index) {
+        //     $.post('/login/out', {}, function (res) {
+        //         if(res.status==200){
+        //             layer.msg(res.msg,{time: 1000},function(){
+        //                 window.location.reload();
+        //             });
+        //         }
+        //     })
+        //     layer.close(index);
+        // }, function () {
+
+        // });
+    }
+
+
+
+</script>

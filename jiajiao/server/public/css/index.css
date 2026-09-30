@@ -1,0 +1,565 @@
+.indexpage {
+  width: 96%;
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding: 0 2%;
+  padding-bottom: 20px;
+}
+.indexpage .page_content {
+  padding-bottom: 50px;
+  width: 100%;
+}
+.indexpage .page_content .top_searchbosx {
+  width: 100%;
+  background-color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 10px 0;
+  display: flex;
+  justify-content: space-between;
+}
+.indexpage .page_content .top_searchbosx .lf_citybox {
+  display: flex;
+  width: 24%;
+  margin: auto 0;
+}
+.indexpage .page_content .top_searchbosx .lf_citybox a {
+  width: 80%;
+  white-space: nowrap;
+  overflow: hidden;
+  margin: auto 0;
+  font-size: 15px;
+  color: #000;
+  text-align: center;
+  display: block;
+  font-weight: 600;
+}
+.indexpage .page_content .top_searchbosx .lf_citybox img {
+  margin: auto 0;
+  width: 16px;
+  height: 16px;
+}
+.indexpage .page_content .top_searchbosx .search_box {
+  display: flex;
+  width: 73%;
+  transition-duration: 0.5s;
+  border-radius: 50px;
+  padding: 5px 10px;
+  background-color: #F0F4F7;
+  margin: auto 0;
+  justify-content: space-between;
+}
+.indexpage .page_content .top_searchbosx .search_box img {
+  margin: auto 0;
+  width: 16px;
+  height: 16px;
+}
+.indexpage .page_content .top_searchbosx .search_box input {
+  width: 88%;
+  font-size: 14px;
+  color: #000;
+}
+.indexpage .page_content .banner {
+  width: 100%;
+  height: 180px;
+  margin: 10px 0;
+  position: relative;
+}
+.indexpage .page_content .banner .swiper {
+  height: 100%;
+  background-color: #FFFFFF;
+  margin: auto;
+  overflow: hidden;
+  border-radius: 7px;
+}
+.indexpage .page_content .banner .swiper .swiper-item {
+  width: 100%;
+  height: 100%;
+}
+.indexpage .page_content .banner .swiper .swiper-item img {
+  width: 100%;
+  height: 100%;
+  border-radius: 7px;
+}
+.indexpage .page_content .banner .dot_banerbox {
+  width: 100%;
+  display: flex;
+  position: absolute;
+  bottom: 7px;
+}
+.indexpage .page_content .banner .dot_banerbox .dot_center {
+  margin: auto;
+  display: flex;
+}
+.indexpage .page_content .banner .dot_banerbox .dot_center text {
+  width: 10px;
+  margin: auto 6px;
+  border-radius: 50px;
+  height: 10px;
+  display: block;
+  background-color: #fff;
+}
+.indexpage .page_content .banner .dot_banerbox .dot_center .active_dot {
+  width: 24px;
+  height: 8px;
+  transition-duration: 0.5s;
+  background-color: #ef6300;
+}
+.indexpage .page_content .taost_container {
+  width: 100%;
+}
+.indexpage .page_content .taost_container .taost_cneter {
+  width: 100%;
+  background-color: #F3F3F3;
+  display: flex;
+  padding: 10px 0;
+  border-radius: 7px;
+  justify-content: space-between;
+}
+.indexpage .page_content .taost_container .taost_cneter .lf_icon {
+  width: 20%;
+  margin: auto;
+  display: flex;
+}
+.indexpage .page_content .taost_container .taost_cneter .lf_icon img {
+  margin: auto;
+  width: 25px;
+  height: 22px;
+}
+.indexpage .page_content .taost_container .taost_cneter .lf_messsage {
+  width: 80%;
+  display: flex;
+}
+.indexpage .page_content .taost_container .taost_cneter .lf_messsage .swiper {
+  width: 100%;
+  margin: auto;
+  height: 50px;
+  display: flex;
+}
+.indexpage .page_content .taost_container .taost_cneter .lf_messsage .swiper swiper-item {
+  width: 100%;
+  margin: auto;
+  display: flex;
+}
+.indexpage .page_content .taost_container .taost_cneter .lf_messsage .swiper swiper-item text {
+  width: 100%;
+  margin: auto 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  color: #000;
+}
+.indexpage .page_content .warehouse {
+  width: 100%;
+  padding: 10px 0;
+  display: flex;
+}
+.indexpage .page_content .warehouse .list_house {
+  width: 50%;
+  display: flex;
+  background-image: linear-gradient(#F86253, #FA834E);
+  padding: 20px 0;
+  border-top-left-radius: 20px;
+}
+.indexpage .page_content .warehouse .list_house .center_house {
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+}
+.indexpage .page_content .warehouse .list_house .center_house img {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto;
+}
+.indexpage .page_content .warehouse .list_house .center_house text {
+  font-size: 15px;
+  color: #ffffff;
+  width: 100%;
+  display: block;
+  text-align: center;
+  margin-top: 20px;
+}
+.indexpage .page_content .warehouse .blue_house {
+  background-image: linear-gradient(#4584F8, #4EADF8);
+  width: 50%;
+  display: flex;
+  border-top-right-radius: 20px;
+  padding: 20px 0;
+}
+.indexpage .page_content .warehouse .blue_house .center_house {
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+}
+.indexpage .page_content .warehouse .blue_house .center_house img {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto;
+}
+.indexpage .page_content .warehouse .blue_house .center_house text {
+  font-size: 15px;
+  color: #ffffff;
+  width: 100%;
+  display: block;
+  text-align: center;
+  margin-top: 20px;
+}
+.indexpage .page_content .list_bloackbox {
+  width: 100%;
+}
+.indexpage .page_content .list_bloackbox .block_center {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+}
+.indexpage .page_content .list_bloackbox .block_center a {
+  width: 25%;
+  height: 80px;
+  display: block;
+  line-height: 80px;
+  text-align: center;
+  border-radius: 4px;
+}
+.indexpage .page_content .list_bloackbox .block_center .color_text1 {
+  background-color: #FFF5F4;
+  color: #E47323;
+}
+.indexpage .page_content .list_bloackbox .block_center .color_text2 {
+  background-color: #FEF8E8;
+  color: #E8A536;
+}
+.indexpage .page_content .list_bloackbox .block_center .color_text3 {
+  background-color: #E2F0FF;
+  color: #478EF8;
+}
+.indexpage .page_content .list_bloackbox .block_center .color_text4 {
+  background-color: #EFFFF5;
+  color: #3EB16E;
+}
+.indexpage .page_content .list_bloackbox .block_center .color_text5 {
+  background-color: #F4FFFE;
+  color: #31CFBF;
+}
+.indexpage .page_content .list_bloackbox .block_center .color_text6 {
+  background-color: #FFEFF9;
+  color: #D579B0;
+}
+.indexpage .page_content .list_bloackbox .block_center .color_text7 {
+  background-color: #E3FCFF;
+  color: #49C4D2;
+}
+.indexpage .page_content .list_bloackbox .block_center .color_text8 {
+  background-color: #FFEFEF;
+  color: #D45D5D;
+}
+.indexpage .page_content .type_educatiaon {
+  width: 100%;
+  padding: 7px 0;
+}
+.indexpage .page_content .type_educatiaon .eductaion_center {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+.indexpage .page_content .type_educatiaon .eductaion_center .list_education {
+  width: 30%;
+  background-color: #E9EFFF;
+  padding: 12px 0;
+  display: flex;
+  border-radius: 20px;
+  flex-direction: column;
+}
+.indexpage .page_content .type_educatiaon .eductaion_center .list_education img {
+  width: 56px;
+  height: 46px;
+  margin: 0px auto 10px;
+}
+.indexpage .page_content .type_educatiaon .eductaion_center .list_education text {
+  font-size: 12px;
+  color: #000;
+  font-weight: 600;
+  display: block;
+  text-align: center;
+}
+.indexpage .page_content .active_mestbox {
+  width: 100%;
+  padding: 10px 0;
+}
+.indexpage .page_content .active_mestbox .new_activelist {
+  padding: 0 7px;
+  margin: 12px 0;
+  background-color: #fbf5ef;
+  border-radius: 18px;
+}
+.indexpage .page_content .active_mestbox .new_activelist .new_head {
+  width: 100%;
+  padding: 7px 0 10px;
+  display: flex;
+  justify-content: space-between;
+}
+.indexpage .page_content .active_mestbox .new_activelist .new_head .mest_headtitle {
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+}
+.indexpage .page_content .active_mestbox .new_activelist .mest_list_container {
+  width: 100%;
+  padding-bottom: 7px;
+}
+.indexpage .page_content .active_mestbox .new_activelist .mest_list_container .list_info {
+  width: 100%;
+  position: relative;
+  padding: 10px 0px 10px 20px;
+  border-bottom: 1px dashed #ddd;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.indexpage .page_content .active_mestbox .new_activelist .mest_list_container .list_info .name_text {
+  display: inline;
+  font-size: 14px;
+  color: #3EB16E;
+  font-weight: 600;
+}
+.indexpage .page_content .active_mestbox .new_activelist .mest_list_container .list_info .schoole_text {
+  display: inline;
+  margin-left: 20px;
+}
+.indexpage .page_content .active_mestbox .new_activelist .mest_list_container .list_info::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  width: 5px;
+  height: 5px;
+  background-color: #bfbebe;
+  border-radius: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.indexpage .page_content .active_mestbox .new_teacherlist {
+  padding: 0 7px;
+  margin: 7px 0;
+  background-color: #fbf5ef;
+  border-radius: 18px;
+}
+.indexpage .page_content .active_mestbox .new_teacherlist .new_head {
+  width: 100%;
+  padding: 7px 0 10px;
+  display: flex;
+  justify-content: space-between;
+}
+.indexpage .page_content .active_mestbox .new_teacherlist .new_head .mest_headtitle {
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+}
+.indexpage .page_content .active_mestbox .new_teacherlist .mest_list_container {
+  width: 100%;
+  padding-bottom: 7px;
+}
+.indexpage .page_content .active_mestbox .new_teacherlist .mest_list_container .list_info {
+  width: 100%;
+  position: relative;
+  padding: 10px 0px 10px 20px;
+  border-bottom: 1px dashed #ddd;
+  display: block;
+}
+.indexpage .page_content .active_mestbox .new_teacherlist .mest_list_container .list_info .name_text {
+  display: inline;
+  font-size: 14px;
+  color: #3EB16E;
+  font-weight: 600;
+}
+.indexpage .page_content .active_mestbox .new_teacherlist .mest_list_container .list_info .schoole_text {
+  display: inline;
+  font-size: 14px;
+  color: #000;
+}
+.indexpage .page_content .active_mestbox .new_teacherlist .mest_list_container .list_info::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  width: 5px;
+  height: 5px;
+  background-color: #bfbebe;
+  border-radius: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.indexpage .page_content .active_mestbox .new_studentlist {
+  padding: 0 7px;
+  margin: 7px 0;
+  background-color: #fbf5ef;
+  border-radius: 18px;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .new_head {
+  width: 100%;
+  padding: 7px 0 10px;
+  display: flex;
+  justify-content: space-between;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .new_head .mest_headtitle {
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .mest_list_container {
+  width: 100%;
+  padding-bottom: 7px;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .mest_list_container .list_info {
+  width: 100%;
+  position: relative;
+  padding: 10px 0px 10px 20px;
+  border-bottom: 1px dashed #ddd;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: block;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .mest_list_container .list_info .name_text {
+  display: inline;
+  font-size: 14px;
+  color: #3EB16E;
+  font-weight: 600;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .mest_list_container .list_info .schoole_text {
+  display: inline;
+  margin-left: 10px;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .mest_list_container .list_info .stu_desc {
+  width: 100%;
+  display: flex;
+  padding: 10px 0 0;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .mest_list_container .list_info .stu_desc .schoole_text {
+  margin-left: 0px;
+  font-size: 24px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.indexpage .page_content .active_mestbox .new_studentlist .mest_list_container .list_info::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  width: 5px;
+  height: 5px;
+  background-color: #bfbebe;
+  border-radius: 100%;
+  top: 50%;
+}
+.indexpage .mask_box {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+.indexpage .mask_box .help_container {
+  width: 80%;
+  background-color: #fff;
+  margin: auto;
+  background-image: linear-gradient(to bottom, #F3D7C9, #F7F2F5);
+  border-radius: 10px;
+  padding-bottom: 20px;
+}
+.indexpage .mask_box .help_container .conteintbox {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.indexpage .mask_box .help_container .conteintbox .intro_text {
+  width: 100%;
+  display: block;
+  padding: 7px;
+  color: #999;
+  text-align: center;
+}
+.indexpage .mask_box .help_container .conteintbox .avatar_img {
+  margin: -80px auto 0;
+  width: 160px;
+  border-radius: 100%;
+  height: 160px;
+}
+.indexpage .mask_box .help_container .conteintbox .avatar_img img {
+  width: 100%;
+  border-radius: 100%;
+  height: 100%;
+}
+.indexpage .mask_box .help_container .conteintbox .mest_infotwo {
+  display: flex;
+  width: 80%;
+  margin: auto;
+  justify-content: flex-end;
+}
+.indexpage .mask_box .help_container .conteintbox .mest_infotwo .name_mestbox {
+  font-size: 14px;
+  color: #000;
+}
+.indexpage .mask_box .help_container .conteintbox .mest_infotwo .name_mestbox text {
+  font-size: 46px;
+  color: #FB7206;
+}
+.indexpage .mask_box .help_container .conteintbox .mest_info {
+  padding: 10px 0;
+  margin: auto;
+  width: 80%;
+}
+.indexpage .mask_box .help_container .conteintbox .mest_info .name_mestbox {
+  font-size: 14px;
+  color: #000;
+}
+.indexpage .mask_box .help_container .conteintbox .mest_info .name_mestbox text {
+  font-size: 46px;
+  color: #FB7206;
+}
+.indexpage .mask_box .help_container .conteintbox .mest_info .name_mestboxtow {
+  margin-left: 50px;
+  font-size: 14px;
+  color: #000;
+}
+.indexpage .mask_box .help_container .conteintbox .mest_info .name_mestboxtow text {
+  font-size: 46px;
+  color: #FB7206;
+}
+.indexpage .mask_box .help_container .help_btnbox {
+  width: 100%;
+  display: flex;
+  padding: 50px 6% 0;
+}
+.indexpage .mask_box .help_container .help_btnbox button {
+  width: 100%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 50px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.indexpage .mask_box .help_container .help_btnbox button:after {
+  border: none;
+}
+.uni-input-input {
+  position: relative;
+  display: block;
+  height: 100%;
+  background: none;
+  color: inherit;
+  opacity: 1;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  text-indent: inherit;
+  text-transform: inherit;
+  text-shadow: inherit;
+}
+.uni-input-input,
+.uni-input-placeholder {
+  width: 100%;
+}

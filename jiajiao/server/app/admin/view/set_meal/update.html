@@ -1,0 +1,87 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='set_meal_id' id='set_meal_id' value="{$info.set_meal_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">套餐名称：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="name" value="{$info.name}" name="name" class="form-control" placeholder="请输入套餐名称">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">简历置顶天数：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="stick_days" value="{$info.stick_days}" name="stick_days" class="form-control" placeholder="请输入简历置顶天数">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">赠送天数：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="give_days" value="{$info.give_days}" name="give_days" class="form-control" placeholder="请输入赠送天数">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="price" value="{$info.price}" name="price" class="form-control" placeholder="请输入价格">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('set_meal_id').set('name').set('stick_days').set('give_days').set('price');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var ajax = new $ax(Feng.ctxPath + "/SetMeal/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

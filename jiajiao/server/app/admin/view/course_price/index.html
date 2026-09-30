@@ -1,0 +1,194 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="ibox-content"> 
+				<div class="row row-lg"> 
+					<div class="col-sm-12"> 
+						<div class="row" id="searchGroup">
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">科目名称</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="name_s" placeholder="科目名称" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">所属类别</button>
+									</div>
+									<select class="form-control" id="type_id">
+										<option value="">请选择</option>
+										{sql connect="mysql" query="select type_id,name from cd_type"}
+										<option value="{$sql.type_id}">{$sql.name}</option>
+										{/sql}
+									</select>
+								</div>
+							</div>
+							<!-- search end -->
+							<div class="col-sm-1">
+								<button type="button" class="btn btn-success " onclick="CodeGoods.search()" id="">
+									<i class="fa fa-search"></i>&nbsp;搜索
+								</button>
+							</div>
+						</div>
+						<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+						{if condition="in_array('admin/CoursePrice/add',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="add" class="btn btn-primary button-margin" onclick="CodeGoods.add()">
+						<i class="fa fa-plus"></i>&nbsp;添加
+						</button>
+						{/if}
+						{if condition="in_array('admin/CoursePrice/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="update" class="btn btn-success button-margin" onclick="CodeGoods.update()">
+						<i class="fa fa-pencil"></i>&nbsp;修改
+						</button>
+						{/if}
+						{if condition="in_array('admin/CoursePrice/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="delete" class="btn btn-danger button-margin" onclick="CodeGoods.delete()">
+						<i class="fa fa-trash"></i>&nbsp;删除
+						</button>
+						{/if}
+						</div>
+						<table id="CodeGoodsTable" data-mobile-responsive="true" data-click-to-select="true">
+							<thead><tr><th data-field="selectItem" data-checkbox="true"></th></tr></thead>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	var CodeGoods = {id: "CodeGoodsTable",seItem: null,table: null,layerIndex: -1};
+
+	CodeGoods.initColumn = function () {
+ 		return [
+ 			{field: 'selectItem', checkbox: true},
+ 			{title: '编号', field: 'course_price_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '科目名称', field: 'name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '大学生教员价格', field: 'dxs_price', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '普通教员价格', field: 'pt_price', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '专业教员价格', field: 'zy_price', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '所属类别', field: 'type_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '所属类别', field: 'type_name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '操作', field: '', visible: true, align: 'center', valign: 'middle',formatter: 'CodeGoods.buttonFormatter'},
+ 		];
+ 	};
+
+	CodeGoods.buttonFormatter = function(value,row,index) {
+		if(row.course_price_id){
+			var str= '';
+			{if condition="in_array('admin/CoursePrice/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-success btn-xs" title="修改"  onclick="CodeGoods.update('+row.course_price_id+')"><i class="fa fa-pencil"></i>&nbsp;修改</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admin/CoursePrice/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-danger btn-xs" title="删除"  onclick="CodeGoods.delete('+row.course_price_id+')"><i class="fa fa-trash"></i>&nbsp;删除</button>&nbsp;';
+			{/if}
+			return str;
+		}
+	}
+
+	CodeGoods.formParams = function() {
+		var queryData = {};
+		queryData['offset'] = 0;
+		queryData['name_s'] = $("#name_s").val();
+		queryData['type_id'] = $("#type_id").val();
+		return queryData;
+	}
+
+	CodeGoods.check = function () {
+		var selected = $('#' + this.id).bootstrapTable('getSelections');
+		if(selected.length == 0){
+			Feng.info("请先选中表格中的某一记录！");
+			return false;
+		}else{
+			CodeGoods.seItem = selected;
+			return true;
+		}
+	};
+
+	CodeGoods.add = function (value) {
+		var url = location.search;
+		var index = layer.open({type: 2,title: '添加',area: ['800px', '450px'],fix: false, maxmin: true,content: Feng.ctxPath + '/CoursePrice/add'+url});
+		this.layerIndex = index;
+		if(!IsPC()){layer.full(index)}
+	}
+
+
+	CodeGoods.update = function (value) {
+		if(value){
+			var index = layer.open({type: 2,title: '修改',area: ['800px', '450px'],fix: false, maxmin: true,content: Feng.ctxPath + '/CoursePrice/update?course_price_id='+value});
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.course_price_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var index = layer.open({type: 2,title: '修改',area: ['800px', '450px'],fix: false, maxmin: true,content: Feng.ctxPath + '/CoursePrice/update?course_price_id='+idx});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.delete = function (value) {
+		if(value){
+			Feng.confirm("是否删除选中项？", function () {
+				var ajax = new $ax(Feng.ctxPath + "/CoursePrice/delete", function (data) {
+					if ('00' === data.status) {
+						Feng.success(data.msg);
+						CodeGoods.table.refresh();
+					} else {
+						Feng.error(data.msg);
+					}
+				});
+				ajax.set('course_price_id', value);
+				ajax.start();
+			});
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.course_price_id;
+				});
+				idx = idx.substr(1);
+				Feng.confirm("是否删除选中项？", function () {
+					var ajax = new $ax(Feng.ctxPath + "/CoursePrice/delete", function (data) {
+						if ('00' === data.status) {
+							Feng.success(data.msg,1000);
+							CodeGoods.table.refresh();
+						} else {
+							Feng.error(data.msg,1000);
+						}
+					});
+					ajax.set('course_price_id', idx);
+					ajax.start();
+				});
+			}
+		}
+	}
+
+
+	CodeGoods.search = function() {
+		CodeGoods.table.refresh({query : CodeGoods.formParams()});
+	};
+
+	$(function() {
+		var defaultColunms = CodeGoods.initColumn();
+		var url = location.search;
+		var table = new BSTable(CodeGoods.id, Feng.ctxPath+"/CoursePrice/index"+url,defaultColunms,20);
+		table.setPaginationType("server");
+		table.setQueryParams(CodeGoods.formParams());
+		CodeGoods.table = table.init();
+	});
+</script>
+{/block}

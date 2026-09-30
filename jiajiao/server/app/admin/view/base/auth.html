@@ -1,0 +1,110 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+			<button type="button" id="check-all" class="btn btn-primary button-margin" onclick="CodeGoods.add()">
+			<i class="fa fa-plus"></i>&nbsp;全选
+			</button>
+	
+			<button type="button" id="uncheck-all" class="btn btn-success button-margin" onclick="CodeGoods.update()">
+			<i class="fa fa-edit"></i>&nbsp;取消全选
+			</button>
+			
+			<button type="button" id="expand-all" class="btn btn-warning button-margin" onclick="CodeGoods.updatePassword()">
+			<i class="fa fa-pencil"></i>&nbsp;展开所有节点
+			</button>
+			
+			<button type="button" id="collapse-all" class="btn btn-danger button-margin" onclick="CodeGoods.delete()">
+			<i class="fa fa-trash"></i>&nbsp;收起所有节点
+			</button>
+			</div>
+			<div class="ibox-content" style="margin-top:20px;">
+				<div id="frmt" class="demo"></div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9">
+					<button type="button" class="btn btn-primary" onclick="getMenuIds()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+<link rel="stylesheet" href="__PUBLIC__/static/js/plugins/jstree/themes/default/style.min.css" />
+<script src="__PUBLIC__/static/js/plugins/jstree/jstree.min.js"></script>
+<script>
+
+ // 全选
+$('#check-all').click(function () {
+	$('#frmt').jstree(true).check_all();
+});
+// 取消全选
+$('#uncheck-all').click(function () {
+	$('#frmt').jstree(true).uncheck_all();
+});
+// 展开所有
+$('#expand-all').click(function () {
+	$('#frmt').jstree(true).open_all();
+});
+// 收起所有
+$('#collapse-all').click(function () {
+	$('#frmt').jstree(true).close_all();
+});
+
+
+
+
+$('#frmt').jstree({
+	plugins: ["checkbox", "search"],
+	"checkbox" : {
+		"keep_selected_style": false,//是否默认选中
+        "three_state": false,//父子级别级联选择
+        "cascade":'down+up',
+	},
+	'core' : {
+		'data' : {$nodes}
+	}
+});
+
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+		
+	}
+}
+
+function getMenuIds(){
+	var idx = [];
+	var jstree = $(".jstree-clicked").each(function(){
+		idx.push($(this).attr('data-id'));
+	});
+	
+	var ajax = new $ax(Feng.ctxPath + "/Base/auth", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success("操作成功" );
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error("操作失败！" + data.msg + "！");
+		 }
+	 }, function (data) {
+	 	Feng.error("操作失败!" + data.responseJSON.message + "!");
+	 });
+	 ajax.set('idx',idx);
+	 ajax.set('role_id',{$Request.get.role_id});
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+}
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}
+
+

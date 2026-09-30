@@ -1,0 +1,464 @@
+.student_detail {
+  width: 92%;
+  min-height: 100vh;
+  background-image: linear-gradient(to bottom, #F6EFE6, #F8F8F8);
+  padding: 0 4%;
+  padding-top: 10px;
+}
+.student_detail .detail_container {
+  padding-bottom: 100px;
+}
+.student_detail .detail_container .white_box {
+  border-radius: 10px;
+  background-color: #fff;
+  padding: 10px 10px 5px;
+}
+.student_detail .detail_container .white_box .list_msgbox {
+  padding: 10px 0;
+}
+.student_detail .detail_container .white_box .list_msgbox .handle_text {
+  width: 100%;
+  font-size: 16px;
+  display: block;
+  height: 19px;
+  line-height: 19px;
+  color: #000;
+  font-weight: 600;
+  padding-left: 10px;
+  border-left: 4px solid #FB7206;
+}
+.student_detail .detail_container .white_box .list_msgbox .detial_infobox {
+  width: 100%;
+  margin-top: 10px;
+  padding-left: 15px;
+}
+.student_detail .detail_container .white_box .list_msgbox .detial_infobox .line_text {
+  width: 100%;
+  padding: 7px 0;
+  display: flex;
+}
+.student_detail .detail_container .white_box .list_msgbox .detial_infobox .line_text .color_title {
+  font-size: 15px;
+  color: #6C7DC6;
+  display: block;
+  width: 90px;
+}
+.student_detail .detail_container .white_box .list_msgbox .detial_infobox .line_text .ifno_text {
+  font-size: 15px;
+  color: #000;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.student_detail .detail_container .white_box .list_msgbox .detial_infobox .line_text .price_color {
+  font-size: 14px;
+  color: #F34D56;
+}
+.student_detail .detail_container .white_box .list_msgbox .detial_infobox .line_text .areate_text text {
+  font-size: 15px;
+  color: #000;
+  line-height: 23px;
+}
+.student_detail .detail_container .white_box .botm_ordernum {
+  width: 100%;
+  display: flex;
+  padding: 20px 0;
+  justify-content: space-between;
+}
+.student_detail .detail_container .white_box .botm_ordernum text {
+  font-size: 12px;
+  max-width: 50%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #999;
+}
+.student_detail .toast_container {
+  padding: 15px;
+}
+.student_detail .toast_container .head_titlebox {
+  width: 100%;
+  display: flex;
+}
+.student_detail .toast_container .head_titlebox text {
+  margin: auto;
+  font-size: 14px;
+  color: #000;
+  font-weight: 600;
+}
+.student_detail .toast_container .status_onebox {
+  width: 100%;
+}
+.student_detail .toast_container .status_onebox .contentext {
+  width: 100%;
+  display: block;
+  height: 110px;
+  text-align: center;
+  line-height: 110px;
+}
+.student_detail .toast_container .status_onebox button {
+  width: 92%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.student_detail .toast_container .status_onebox button:after {
+  border: none;
+}
+.student_detail .toast_container .status_twobox {
+  width: 100%;
+}
+.student_detail .toast_container .status_twobox .conte_info {
+  display: flex;
+  flex-direction: column;
+  padding-top: 15px;
+}
+.student_detail .toast_container .status_twobox .conte_info .mest_titl {
+  font-size: 13px;
+  color: #000;
+  text-align: center;
+  display: block;
+  width: 100%;
+}
+.student_detail .toast_container .status_twobox .conte_info .sm_taost {
+  display: block;
+  margin: 15px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+.student_detail .toast_container .status_twobox .buttoncontae {
+  width: 100%;
+  display: flex;
+  background-color: #FB7206;
+  border-radius: 25px;
+  padding: 9px 0;
+}
+.student_detail .toast_container .status_twobox .buttoncontae .conta_center {
+  margin: auto;
+  display: flex;
+}
+.student_detail .toast_container .status_twobox .buttoncontae .conta_center img {
+  width: 20px;
+  height: 20px;
+  display: block;
+  margin: auto 0;
+}
+.student_detail .toast_container .status_twobox .buttoncontae .conta_center text {
+  color: #fff;
+  font-size: 14px;
+  margin: auto 8px;
+}
+.student_detail .toast_container .status_threebox {
+  width: 100%;
+}
+.student_detail .toast_container .status_threebox .sm_taost {
+  display: flex;
+  min-height: 110px;
+  padding: 0 25px;
+}
+.student_detail .toast_container .status_threebox .sm_taost text {
+  margin: auto;
+  font-size: 13px;
+  color: #000;
+}
+.student_detail .toast_container .status_threebox button {
+  width: 92%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.student_detail .toast_container .status_threebox button:after {
+  border: none;
+}
+.student_detail .bottom_butn {
+  left: 0;
+  width: 100%;
+  padding: 20px 0;
+  display: flex;
+  box-shadow: 0 0 10px #ddd;
+  position: fixed;
+  background-color: #fff;
+  bottom: 0;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.student_detail .bottom_butn .show_button {
+  width: 100%;
+}
+.student_detail .bottom_butn .show_button .complatebtn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.student_detail .bottom_butn .show_button .complatebtn button {
+  width: 92%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #999;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #dddddd;
+}
+.student_detail .bottom_butn .show_button .complatebtn button:after {
+  border: none;
+}
+.student_detail .bottom_butn .show_button .complatebtn text {
+  display: block;
+  width: 100%;
+  margin: 15px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt {
+  width: 100%;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .btn_onebox {
+  width: 100%;
+  display: flex;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .btn_onebox button {
+  width: 92%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .btn_onebox button:after {
+  border: none;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest {
+  width: 100%;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .contact_btn {
+  width: 100%;
+  display: flex;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .contact_btn button {
+  width: 92%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .contact_btn button:after {
+  border: none;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container {
+  width: 100%;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .goutongbtn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .goutongbtn button {
+  width: 92%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .goutongbtn button:after {
+  border: none;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .goutongbtn text {
+  display: block;
+  width: 100%;
+  margin: 15px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox {
+  width: 100%;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .hel_mestbtn {
+  width: 100%;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .hel_mestbtn .btn_twobox {
+  width: 100%;
+  padding: 0 3%;
+  display: flex;
+  justify-content: space-between;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .hel_mestbtn .btn_twobox .list_btnbox {
+  width: 47%;
+  position: relative;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .hel_mestbtn .btn_twobox .list_btnbox button {
+  width: 100%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .hel_mestbtn .btn_twobox .list_btnbox button:after {
+  border: none;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .hel_mestbtn .taost_infobox {
+  width: 92%;
+  margin: auto;
+  padding-top: 5px;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .hel_mestbtn .taost_infobox .tiostile {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #000;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .hel_mestbtn .taost_infobox text {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .btn_onebox {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .btn_onebox button {
+  width: 92%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .btn_onebox button:after {
+  border: none;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .btn_onebox .taost_infobox {
+  width: 92%;
+  margin: auto;
+  padding-top: 5px;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .btn_onebox .taost_infobox .tiostile {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #000;
+}
+.student_detail .bottom_butn .show_button .no_complatebnt .else_btnmest .no_container .start_switchbtnbox .btn_onebox .taost_infobox text {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+.student_detail .firedn_helppop {
+  width: 100%;
+  padding: 15px;
+}
+.student_detail .firedn_helppop .help_title {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 14px;
+  color: #000;
+}
+.student_detail .firedn_helppop .help_datalist {
+  width: 100%;
+  padding: 0 10px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.student_detail .firedn_helppop .help_datalist .list_help {
+  width: 100%;
+  margin: 15px 0;
+  padding: 15px;
+  box-shadow: 0 0 10px #eeeeee;
+  display: flex;
+  font-weight: 600;
+  justify-content: space-between;
+}
+.student_detail .firedn_helppop .help_datalist .list_help .lf_info {
+  margin: auto 0;
+  display: flex;
+}
+.student_detail .firedn_helppop .help_datalist .list_help .lf_info img {
+  width: 50px;
+  height: 50px;
+  margin: auto 0;
+  border-radius: 100%;
+}
+.student_detail .firedn_helppop .help_datalist .list_help .lf_info text {
+  margin: auto 15px;
+  font-size: 14px;
+  color: #000;
+  font-weight: 500;
+}
+.student_detail .firedn_helppop .help_datalist .list_help .rf_add {
+  margin: auto 0;
+}
+.student_detail .firedn_helppop .help_datalist .list_help .rf_add .mests_text {
+  margin: auto 0;
+  font-size: 14px;
+  color: #000;
+  font-weight: 500;
+}
+.student_detail .firedn_helppop .help_datalist .list_help .rf_add .sym_text {
+  margin: auto 0;
+  font-size: 14px;
+  color: #FB7206;
+  font-weight: 500;
+}
+.student_detail .firedn_helppop .help_datalist .list_help .rf_add .big_num {
+  margin: auto 0;
+  font-size: 44px;
+  color: #FB7206;
+  font-weight: 500;
+}
+.student_detail .firedn_helppop .help_desc {
+  text-align: center;
+  display: block;
+  width: 100%;
+  font-size: 13px;
+  color: #999;
+  margin: 15px 0;
+}
+.student_detail .firedn_helppop .help_btn {
+  width: 100%;
+}
+.student_detail .firedn_helppop .help_btn button {
+  width: 92%;
+  margin: auto;
+  font-size: 14px;
+  padding: 6px 0;
+  color: #fff;
+  border-radius: 25px;
+  font-weight: 600;
+  background-color: #FB7206;
+}
+.student_detail .firedn_helppop .help_btn button:after {
+  border: none;
+}

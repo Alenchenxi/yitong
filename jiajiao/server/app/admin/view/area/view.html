@@ -1,0 +1,35 @@
+{extend name='common/_container'} 
+{block name="content"} 
+<div class="ibox float-e-margins"> 
+	<div class="ibox-content"> 
+		<table class="table table-bordered" style="word-break:break-all;"> 
+			<tbody> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">父id：</td> 
+					<td>{$info.parentid}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">名称：</td> 
+					<td>{$info.name}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">排序：</td> 
+					<td>{$info.listorder}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">热门城市：</td> 
+					<td><?php echo getFieldVal($info["is_hot"],"开启|1,关闭|0");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">直接联系：</td> 
+					<td><?php echo getFieldVal($info["is_direct_contact"],"是|1|primary,否|0|success");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">退款开关：</td> 
+					<td><?php echo getFieldVal($info["refund_switch"],"开启|1,关闭|0");?></td>   
+				</tr> 
+			</tbody> 
+		</table> 
+	</div> 
+</div> 
+{/block} 

@@ -1,0 +1,129 @@
+.login_phonebox {
+  width: 100%;
+  min-height: 100vh;
+}
+.login_phonebox .container_box {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+.login_phonebox .container_box .page_boxone {
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(to bottom, #F3D7C9, #F7F2F5);
+  transition-duration: 0.3s;
+  display: flex;
+}
+.login_phonebox .container_box .page_boxone .page_auto {
+  margin: 100px auto;
+}
+.login_phonebox .container_box .page_boxone .page_auto .title {
+  margin-top: 15px;
+  width: 100%;
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  display: block;
+  padding: 3px 10px;
+}
+.login_phonebox .container_box .page_boxone .page_auto .input_box {
+  padding: 2px 15px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 20px;
+  display: flex;
+}
+.login_phonebox .container_box .page_boxone .page_auto .input_box input {
+  margin: auto 0;
+  width: 100%;
+  padding: 5px 0;
+  background-color: rgba(255, 255, 255, 0);
+}
+.login_phonebox .container_box .page_boxone .page_auto .input_box text {
+  margin: auto 0;
+  white-space: nowrap;
+}
+.login_phonebox .container_box .page_boxone .page_auto .submt_btn {
+  width: 100%;
+  margin-top: 100px;
+}
+.login_phonebox .container_box .page_boxone .page_auto .submt_btn button {
+  width: 100%;
+  padding: 3px 0;
+  border-radius: 25px;
+  background-color: #FB7206;
+  color: #fff;
+  font-size: 14px;
+}
+.login_phonebox .container_box .page_boxone .page_auto .submt_btn button::after {
+  border: none;
+}
+.login_phonebox .container_box .page_boxtwo {
+  position: absolute;
+  background-image: linear-gradient(to bottom, #F3D7C9, #F7F2F5);
+  top: 100%;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  background-color: blue;
+  transition-duration: 0.3s;
+}
+.login_phonebox .container_box .page_boxtwo .page_auto {
+  margin: 100px auto;
+  width: 90%;
+}
+.login_phonebox .container_box .page_boxtwo .page_auto .title {
+  width: 100%;
+  font-size: 17px;
+  font-weight: 600;
+  color: #000;
+  display: block;
+  padding: 5px 10px;
+}
+.login_phonebox .container_box .page_boxtwo .page_auto .phone_text_num {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+.login_phonebox .bottom_messagebox {
+  width: 100%;
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  z-index: 10;
+  flex-direction: column;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.login_phonebox .bottom_messagebox .center_mesg {
+  margin: auto;
+  padding-bottom: 125px;
+  display: flex;
+}
+.login_phonebox .bottom_messagebox .center_mesg .aduio_chose {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  border-radius: 100%;
+  border: 1px solid #FB7206;
+}
+.login_phonebox .bottom_messagebox .center_mesg .aduio_chose .audio_dot {
+  width: 11px;
+  margin: auto;
+  height: 11px;
+  border-radius: 100%;
+  background-color: #FB7206;
+}
+.login_phonebox .bottom_messagebox .center_mesg .mest_text {
+  font-size: 13px;
+  font-weight: 600;
+  margin: auto;
+  color: #000;
+}
+.login_phonebox .bottom_messagebox .center_mesg .text_info {
+  font-size: 13px;
+  font-weight: 500;
+  margin: auto;
+  color: #000;
+}

@@ -1,0 +1,289 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="ibox-content"> 
+				<div class="row row-lg"> 
+					<div class="col-sm-12"> 
+						<div class="row" id="searchGroup">
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">教学态度</button>
+									</div>
+									<select class="form-control" id="attitude">
+										<option value="">请选择</option>
+										<option value="1">1星</option>
+										<option value="2">2星</option>
+										<option value="3">3星</option>
+										<option value="4">4星</option>
+										<option value="5">5星</option>
+									</select>
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">专业等级</button>
+									</div>
+									<select class="form-control" id="level">
+										<option value="">请选择</option>
+										<option value="1">1星</option>
+										<option value="2">2星</option>
+										<option value="3">3星</option>
+										<option value="4">4星</option>
+										<option value="5">5星</option>
+									</select>
+								</div>
+							</div>
+							<div class="col-sm-3">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">创建时间范围</button>
+									</div>
+									<input type="text" autocomplete="off" placeholder="时间范围" class="form-control" id="create_time">
+								</div>
+							</div>
+							<!-- search end -->
+							<div class="col-sm-1">
+								<button type="button" class="btn btn-success " onclick="CodeGoods.search()" id="">
+									<i class="fa fa-search"></i>&nbsp;搜索
+								</button>
+							</div>
+						</div>
+						<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+						{if condition="in_array('admin/Comment/add',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="add" class="btn btn-primary button-margin" onclick="CodeGoods.add()">
+						<i class="fa fa-plus"></i>&nbsp;添加
+						</button>
+						{/if}
+						{if condition="in_array('admin/Comment/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="update" class="btn btn-success button-margin" onclick="CodeGoods.update()">
+						<i class="fa fa-pencil"></i>&nbsp;修改
+						</button>
+						{/if}
+						{if condition="in_array('admin/Comment/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="delete" class="btn btn-danger button-margin" onclick="CodeGoods.delete()">
+						<i class="fa fa-trash"></i>&nbsp;删除
+						</button>
+						{/if}
+						</div>
+						<table id="CodeGoodsTable" data-mobile-responsive="true" data-click-to-select="true">
+							<thead><tr><th data-field="selectItem" data-checkbox="true"></th></tr></thead>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	var CodeGoods = {id: "CodeGoodsTable",seItem: null,table: null,layerIndex: -1};
+
+	CodeGoods.initColumn = function () {
+ 		return [
+ 			{field: 'selectItem', checkbox: true},
+ 			{title: '编号', field: 'comment_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '评价人', field: 'mid', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '老师id', field: 'teacher_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '教学态度', field: 'attitude', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.attitudeFormatter},
+ 			{title: '专业等级', field: 'level', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.levelFormatter},
+ 			{title: '评价内容', field: 'content', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '图片', field: 'pics', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.picsFormatter},
+ 			{title: '创建时间', field: 'create_time', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.create_timeFormatter},
+ 			{title: '上级评论id', field: 'sup_comment_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '订单id', field: 'order_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '需求id', field: 'demand_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '操作', field: '', visible: true, align: 'center', valign: 'middle',formatter: 'CodeGoods.buttonFormatter'},
+ 		];
+ 	};
+
+	CodeGoods.buttonFormatter = function(value,row,index) {
+		if(row.comment_id){
+			var str= '';
+			{if condition="in_array('admin/Comment/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-success btn-xs" title="修改"  onclick="CodeGoods.update('+row.comment_id+')"><i class="fa fa-pencil"></i>&nbsp;修改</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admin/Comment/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-danger btn-xs" title="删除"  onclick="CodeGoods.delete('+row.comment_id+')"><i class="fa fa-trash"></i>&nbsp;删除</button>&nbsp;';
+			{/if}
+			return str;
+		}
+	}
+
+	CodeGoods.attitudeFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-primary">1星</span>';
+				break;
+				case '2':
+					return '<span class="label label-success">2星</span>';
+				break;
+				case '3':
+					return '<span class="label label-info">3星</span>';
+				break;
+				case '4':
+					return '<span class="label label-warning">4星</span>';
+				break;
+				case '5':
+					return '<span class="label label-danger">5星</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.levelFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-primary">1星</span>';
+				break;
+				case '2':
+					return '<span class="label label-success">2星</span>';
+				break;
+				case '3':
+					return '<span class="label label-info">3星</span>';
+				break;
+				case '4':
+					return '<span class="label label-warning">4星</span>';
+				break;
+				case '5':
+					return '<span class="label label-danger">5星</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.picsFormatter = function(value,row,index) {
+		if(value){
+			var img = JSON.parse(row.pics.replace(/&quot;/g,'"'));	
+			var imgs = '';	
+			for(var i in img) {	
+				if(img[i]["url"]){	
+					imgs += "<a href=\"javascript:void(0)\" onclick=\"openImg('"+img[i]["url"]+"')\"><img height='30' src="+img[i]["url"]+"></a>&nbsp;";	
+				}
+			}
+			return imgs;
+		}
+	}
+
+	CodeGoods.create_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.formParams = function() {
+		var queryData = {};
+		queryData['offset'] = 0;
+		queryData['attitude'] = $("#attitude").val();
+		queryData['level'] = $("#level").val();
+		queryData['create_time_start'] = $("#create_time").val().split(" - ")[0];
+		queryData['create_time_end'] = $("#create_time").val().split(" - ")[1];
+		return queryData;
+	}
+
+	CodeGoods.check = function () {
+		var selected = $('#' + this.id).bootstrapTable('getSelections');
+		if(selected.length == 0){
+			Feng.info("请先选中表格中的某一记录！");
+			return false;
+		}else{
+			CodeGoods.seItem = selected;
+			return true;
+		}
+	};
+
+	CodeGoods.add = function (value) {
+		var url = location.search;
+		var index = layer.open({type: 2,title: '添加',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Comment/add'+url});
+		this.layerIndex = index;
+		if(!IsPC()){layer.full(index)}
+	}
+
+
+	CodeGoods.update = function (value) {
+		if(value){
+			var index = layer.open({type: 2,title: '修改',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Comment/update?comment_id='+value});
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.comment_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var index = layer.open({type: 2,title: '修改',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Comment/update?comment_id='+idx});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.delete = function (value) {
+		if(value){
+			Feng.confirm("是否删除选中项？", function () {
+				var ajax = new $ax(Feng.ctxPath + "/Comment/delete", function (data) {
+					if ('00' === data.status) {
+						Feng.success(data.msg);
+						CodeGoods.table.refresh();
+					} else {
+						Feng.error(data.msg);
+					}
+				});
+				ajax.set('comment_id', value);
+				ajax.start();
+			});
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.comment_id;
+				});
+				idx = idx.substr(1);
+				Feng.confirm("是否删除选中项？", function () {
+					var ajax = new $ax(Feng.ctxPath + "/Comment/delete", function (data) {
+						if ('00' === data.status) {
+							Feng.success(data.msg,1000);
+							CodeGoods.table.refresh();
+						} else {
+							Feng.error(data.msg,1000);
+						}
+					});
+					ajax.set('comment_id', idx);
+					ajax.start();
+				});
+			}
+		}
+	}
+
+
+	CodeGoods.search = function() {
+		CodeGoods.table.refresh({query : CodeGoods.formParams()});
+	};
+
+	$(function() {
+		var defaultColunms = CodeGoods.initColumn();
+		var url = location.search;
+		var table = new BSTable(CodeGoods.id, Feng.ctxPath+"/Comment/index"+url,defaultColunms,20);
+		table.setPaginationType("server");
+		table.setQueryParams(CodeGoods.formParams());
+		CodeGoods.table = table.init();
+	});
+	laydate.render({elem: '#create_time',type: 'datetime',range:true,
+		ready: function(date){
+			$(".layui-laydate-footer [lay-type='datetime'].laydate-btns-time").click();
+			$(".laydate-main-list-1 .layui-laydate-content li ol li:last-child").click();
+			$(".layui-laydate-footer [lay-type='date'].laydate-btns-time").click();
+		}
+	});
+</script>
+{/block}

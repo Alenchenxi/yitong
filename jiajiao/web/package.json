@@ -1,0 +1,7 @@
+{
+	"dependencies": {
+		"miniprogram-recycle-view": "^0.1.5",
+		"uview-ui": "^2.0.35",
+		"vk-uview-ui": "^1.4.4"
+	}
+}

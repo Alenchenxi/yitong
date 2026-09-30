@@ -1,0 +1,203 @@
+.study_house {
+  width: 100%;
+  min-height: 100vh;
+  background-image: linear-gradient(to bottom, #F6EFE6, #F8F8F8);
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.study_house .head_addresss {
+  width: 100%;
+  padding: 10px 5%;
+  position: sticky;
+  top: 0;
+  background-color: #F6EFE6;
+  display: flex;
+}
+.study_house .head_addresss .bottomarrow {
+  width: 20px;
+  height: 19px;
+  margin: auto 8px;
+}
+.study_house .head_addresss text {
+  font-size: 14px;
+  color: #000;
+  margin: auto 0;
+  font-weight: 600;
+}
+.study_house .study_box {
+  padding: 0px 4% 15px;
+}
+.study_house .study_box .no_datamest {
+  width: 100%;
+  height: 80vh;
+  display: flex;
+}
+.study_house .study_box .no_datamest .center_empty {
+  margin: auto;
+  font-size: 13px;
+}
+.study_house .study_box .list_study {
+  border-radius: 9px;
+  box-shadow: 0 0 5px #eeeeee;
+  background-color: #fff;
+  margin-bottom: 15px;
+}
+.study_house .study_box .list_study .typemest_two {
+  padding: 15px 0 15px 15px;
+  display: flex;
+  justify-content: space-between;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox {
+  width: 75%;
+  margin: auto 0;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox .adres_info {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox .adres_info .imglogintext {
+  display: flex;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox .adres_info .imglogintext img {
+  width: 12px;
+  height: 15px;
+  margin: auto 5px auto 0;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox .adres_info .imglogintext text {
+  font-size: 13px;
+  width: 315px;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: auto 0;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox .adres_info .lan_text {
+  margin: auto 0;
+  font-size: 13px;
+  color: #000;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox .phone_nametext {
+  display: flex;
+  justify-content: space-between;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox .phone_nametext .phone_number {
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+  margin: auto 0;
+}
+.study_house .study_box .list_study .typemest_two .lf_infomesagebox .phone_nametext .price_number {
+  font-size: 12px;
+  color: #F34D56;
+  margin: auto 0;
+}
+.study_house .study_box .list_study .typemest_two .rf_contactbtn {
+  width: 25%;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+}
+.study_house .study_box .list_study .typemest_two .rf_contactbtn .call_img {
+  margin: auto;
+  width: 35px;
+  height: 35px;
+  background-color: #FB7206;
+  border-radius: 100%;
+  display: flex;
+}
+.study_house .study_box .list_study .typemest_two .rf_contactbtn .call_img img {
+  width: 23px;
+  height: 23px;
+  margin: auto;
+}
+.study_house .study_box .list_study .typemest_two .rf_contactbtn text {
+  margin: 5px auto 0;
+  text-align: center;
+  font-size: 12px;
+  color: #000;
+}
+.study_house .study_box .list_study .typemest_one {
+  display: flex;
+  width: 100%;
+  padding-bottom: 1px;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo {
+  width: 78%;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .img_mst {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  border-top-left-radius: 9px;
+  border-bottom-right-radius: 9px;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .img_mst img {
+  height: 100%;
+  width: 100%;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone {
+  width: 100%;
+  margin: 15px 0;
+  padding: 0 15px;
+  border-right: 1px solid #ebebeb;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone .adres_info {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone .adres_info .imglogintext {
+  display: flex;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone .adres_info .imglogintext img {
+  width: 12px;
+  height: 15px;
+  margin: auto 5px auto 0;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone .adres_info .imglogintext text {
+  font-size: 13px;
+  width: 115px;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: auto 0;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone .adres_info .lan_text {
+  margin: auto 0;
+  font-size: 13px;
+  color: #000;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone .phone_nametext {
+  display: flex;
+  justify-content: space-between;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone .phone_nametext .phone_number {
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+  margin: auto 0;
+}
+.study_house .study_box .list_study .typemest_one .lf_imginfo .adres_phone .phone_nametext .price_number {
+  font-size: 12px;
+  color: #F34D56;
+  margin: auto 0;
+}
+.study_house .study_box .list_study .typemest_one .rf_mest_info {
+  width: 22%;
+  padding-bottom: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.study_house .study_box .list_study .typemest_one .rf_mest_info .top_log {
+  width: 80px;
+  margin: 0 auto;
+}
+.study_house .study_box .list_study .typemest_one .rf_mest_info .call_log {
+  width: 50px;
+  margin: 0 auto;
+  height: 50px;
+}

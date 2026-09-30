@@ -1,0 +1,156 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='comment_id' id='comment_id' value="{$info.comment_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">评价人：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mid" value="{$info.mid}" name="mid" class="form-control" placeholder="请输入评价人">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">老师id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="teacher_id" value="{$info.teacher_id}" name="teacher_id" class="form-control" placeholder="请输入老师id">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">教学态度：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['attitude'])){ $info['attitude'] = '1'; }; ?>
+							<input name="attitude" value="1" type="radio" {if condition="$info.attitude eq '1'"}checked{/if} title="1星">
+							<input name="attitude" value="2" type="radio" {if condition="$info.attitude eq '2'"}checked{/if} title="2星">
+							<input name="attitude" value="3" type="radio" {if condition="$info.attitude eq '3'"}checked{/if} title="3星">
+							<input name="attitude" value="4" type="radio" {if condition="$info.attitude eq '4'"}checked{/if} title="4星">
+							<input name="attitude" value="5" type="radio" {if condition="$info.attitude eq '5'"}checked{/if} title="5星">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">专业等级：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['level'])){ $info['level'] = '1'; }; ?>
+							<input name="level" value="1" type="radio" {if condition="$info.level eq '1'"}checked{/if} title="1星">
+							<input name="level" value="2" type="radio" {if condition="$info.level eq '2'"}checked{/if} title="2星">
+							<input name="level" value="3" type="radio" {if condition="$info.level eq '3'"}checked{/if} title="3星">
+							<input name="level" value="4" type="radio" {if condition="$info.level eq '4'"}checked{/if} title="4星">
+							<input name="level" value="5" type="radio" {if condition="$info.level eq '5'"}checked{/if} title="5星">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">评价内容：</label>
+						<div class="col-sm-9">
+							<textarea id="content" name="content"  class="form-control" placeholder="请输入评价内容">{$info.content}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">图片：</label>
+						<div class="col-sm-6">
+							<div class="pics pic_list">
+								<li id="pics_upload"></li>
+							</div>
+							<div style="clear:both"></div>
+							<span class="help-block m-b-none pics_process"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">创建时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" value="{if condition="$info.create_time neq 0"}{$info.create_time|date='Y-m-d H:i:s'}{/if}" name="create_time"  placeholder="请输入创建时间" class="form-control" id="create_time">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">上级评论id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="sup_comment_id" value="{$info.sup_comment_id}" name="sup_comment_id" class="form-control" placeholder="请输入上级评论id">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">订单id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="order_id" value="{$info.order_id}" name="order_id" class="form-control" placeholder="请输入订单id">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">需求id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="demand_id" value="{$info.demand_id}" name="demand_id" class="form-control" placeholder="请输入需求id">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script src='__PUBLIC__/static/js/plugins/paixu/jquery-migrate-1.1.1.js'></script>
+<script src='__PUBLIC__/static/js/plugins/paixu/jquery.dragsort-0.5.1.min.js'></script>
+<script>
+$(function(){
+	$(".filelist").dragsort({dragSelector: "img",dragBetween: true ,dragEnd:function(){}});
+});
+layui.use(['form'],function(){});
+uploader('pics_upload','pics','image',true,'{$info.pics}','{:getUploadServerUrl()}');
+setUploadButton('pics_upload');
+laydate.render({elem: '#create_time',type: 'datetime',trigger:'click'});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('comment_id').set('mid').set('teacher_id').set('content').set('create_time').set('sup_comment_id').set('order_id').set('demand_id');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var attitude = $("input[name = 'attitude']:checked").val();
+	 var level = $("input[name = 'level']:checked").val();
+	 var pics = {};
+	 $(".pics li").each(function() {
+		if($(this).find('img').attr('src')){
+	 		pics[$(this).index()] = {'url':$(this).find('img').attr('src'),'title':$(this).find('input').val()};
+		}
+	 });
+	 var ajax = new $ax(Feng.ctxPath + "/Comment/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('attitude',attitude);
+	 ajax.set('level',level);
+	 ajax.set('pics',(JSON.stringify(pics) == '{}' || JSON.stringify(pics) == '{"":""}') ? '' : JSON.stringify(pics));
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

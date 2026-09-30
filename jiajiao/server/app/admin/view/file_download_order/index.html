@@ -1,0 +1,122 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="ibox-content"> 
+				<div class="row row-lg"> 
+					<div class="col-sm-12"> 
+						<div class="row" id="searchGroup">
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">订单号</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="sn" placeholder="订单号" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">状态</button>
+									</div>
+									<select class="form-control" id="status">
+										<option value="">请选择</option>
+										<option value="0">待支付</option>
+										<option value="1">已支付</option>
+									</select>
+								</div>
+							</div>
+							<!-- search end -->
+							<div class="col-sm-1">
+								<button type="button" class="btn btn-success " onclick="CodeGoods.search()" id="">
+									<i class="fa fa-search"></i>&nbsp;搜索
+								</button>
+							</div>
+						</div>
+						<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+						</div>
+						<table id="CodeGoodsTable" data-mobile-responsive="true" data-click-to-select="true">
+							<thead><tr><th data-field="selectItem" data-checkbox="true"></th></tr></thead>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	var CodeGoods = {id: "CodeGoodsTable",seItem: null,table: null,layerIndex: -1};
+
+	CodeGoods.initColumn = function () {
+ 		return [
+ 			{field: 'selectItem', checkbox: true},
+ 			{title: '编号', field: 'file_download_order_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '订单号', field: 'sn', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '会员id', field: 'mid', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '文件id', field: 'file_download_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '金额', field: 'amount', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '创建时间', field: 'create_time', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.create_timeFormatter},
+ 			{title: '状态', field: 'status', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.statusFormatter},
+ 			{title: '支付时间', field: 'pay_time', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.pay_timeFormatter},
+ 		];
+ 	};
+
+	CodeGoods.create_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.statusFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '0':
+					return '<span class="label label-primary">待支付</span>';
+				break;
+				case '1':
+					return '<span class="label label-success">已支付</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.pay_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.formParams = function() {
+		var queryData = {};
+		queryData['offset'] = 0;
+		queryData['sn'] = $("#sn").val();
+		queryData['status'] = $("#status").val();
+		return queryData;
+	}
+
+	CodeGoods.check = function () {
+		var selected = $('#' + this.id).bootstrapTable('getSelections');
+		if(selected.length == 0){
+			Feng.info("请先选中表格中的某一记录！");
+			return false;
+		}else{
+			CodeGoods.seItem = selected;
+			return true;
+		}
+	};
+
+	CodeGoods.search = function() {
+		CodeGoods.table.refresh({query : CodeGoods.formParams()});
+	};
+
+	$(function() {
+		var defaultColunms = CodeGoods.initColumn();
+		var url = location.search;
+		var table = new BSTable(CodeGoods.id, Feng.ctxPath+"/FileDownloadOrder/index"+url,defaultColunms,20);
+		table.setPaginationType("server");
+		table.setQueryParams(CodeGoods.formParams());
+		CodeGoods.table = table.init();
+	});
+</script>
+{/block}

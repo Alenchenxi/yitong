@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>评价</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="https://weui.zhekouchecang.com/css/weui.css" />
+    <link rel="stylesheet" type="text/css" href="https://weui.zhekouchecang.com/css/weuix.css" />
+    <style type="text/css">
+    .rate_page {
+        min-height: 100vh;
+        padding-bottom: constant(safe-area-inset-bottom);
+        padding-bottom: env(safe-area-inset-bottom);
+        background-color: #f8f8f8;
+        padding-left: 4%;
+        padding-right: 4%;
+        padding-top: 15px;
+    }
+
+
+    .rate_page .message_container {
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 0 5px #eeeeee;
+    }
+
+    .rate_page .message_container .uploadbox {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        border-bottom: 1px solid #f6f6f6;
+    }
+
+    .rate_page .message_container .list_img {
+        width: 30%;
+        height: 90px;
+        margin: 3px;
+        box-sizing: 0 0 5px #f6f6f6;
+    }
+    .rate_page .message_container .list_img img{
+
+    }
+
+    .rate_page .message_container .uploadimg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .rate_page .message_container img {
+        width: 100%;
+        height: 100%;
+        border-radius: 5px;
+    }
+
+    .rate_box {
+        width: 100%;
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .rf_ratebox {
+        width: 100%;
+    }
+
+    .list_rate {
+        display: flex;
+        padding: 7px 0;
+    }
+
+    .title_text {
+        font-size: 15px;
+        color: #000;
+        margin-right: 9px;
+    }
+
+    .textaretboxcont {
+        padding: 10px;
+        border-radius: 3px;
+        background-color: #f5f5f5;
+    }
+
+    .textaretboxcont textarea {
+        width: 100%;
+        height: 130px;
+        font-size: 13px;
+        color: #333;
+        line-height: 25px;
+    }
+
+    .submit_butbox {
+        width: 100%;
+        display: flex;
+        padding: 30px 0 0;
+    }
+
+    .submit_butbox button {
+        width: 92%;
+        margin: auto;
+        background-color: #FB7206;
+        color: #fff;
+        padding: 2px 0;
+        font-size: 14px;
+        border-radius: 20px;
+    }
+    </style>
+</head>
+
+<body>
+    <div class="rate_page" id="app">
+        <div class="message_container">
+            <div class="uploadbox">
+                <div class="list_img dtusc"  v-if="uploadiimglist.length==6?false:true">
+                    <image class="uploadimg" src="/img/upload_icon.png" mode=""></image>
+                </div>
+                <div class="list_img" v-for="(item,i) in uploadiimglist">
+                    <img :src="pic_url+item" alt="">
+                </div>
+            </div>
+            <div class="rate_box">
+                <div class="rf_ratebox">
+                    <div class="list_rate">
+                       <div class="title_text">教学态度</div>
+                        <div class="rate_start">
+                            <!--<u-rate :count="5" size='42' active-color='#F89CA1' v-model="rate_data.sppeed_value">
+                            </u-rate>-->
+                            <div class="page-bd-15">
+                                <div class="weui-rater" v-model="rate_data.sppeed_value">
+                                    <a data-value="attitude" data-num = "1"> <span>★</span> </a>
+                                    <a data-value="attitude" data-num = "2"> <span>★</span> </a>
+                                    <a data-value="attitude" data-num = "3"> <span>★</span> </a>
+                                    <a data-value="attitude" data-num = "4"> <span>★</span> </a>
+                                    <a data-value="attitude" data-num = "5"> <span>★</span> </a>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="list_rate">
+                       <div class="title_text">专业水平</div>
+                        <div class="rate_start">
+                            <!--<u-rate :count="5" size='42' active-color='#F89CA1' v-model="rate_data.server_value">
+                            </u-rate>-->
+                            <div class="page-bd-15">
+                                <div class="weui-rater" v-model="rate_data.server_value">
+                                    <a data-value="level" data-num = "1"> <span>★</span> </a>
+                                    <a data-value="level" data-num = "2"> <span>★</span> </a>
+                                    <a data-value="level" data-num = "3"> <span>★</span> </a>
+                                    <a data-value="level" data-num = "4"> <span>★</span> </a>
+                                    <a data-value="level" data-num = "5"> <span>★</span> </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="textaretboxcont">
+                <textarea maxlength="-1" class="uni-textarea-textarea"  v-model="desc_text" placeholder="请描述一下对教员的教导感受" placeholder-style="font-size:26rpx;color:#999999;line-height:50rpx;"></textarea>
+            </div>
+        </div>
+        <div class="submit_butbox">
+            <button @click="submit_infofun">提交评价</button>
+        </div>
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+<script src="https://weui.zhekouchecang.com/js/zepto.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+
+</html>
+<script type="text/javascript">
+    $(function(){
+        $(".weui-rater a").click(function(){
+            var index = $(this).index();  //当前点击
+
+            //console.log(index);
+            for(var i = 0;i < index;i++){
+                $(this).siblings().eq(i).addClass('on');
+            }
+            for(var j = index; j <=5;j++){
+                $(this).siblings().eq(j).removeClass('on');
+            }
+            $(this).addClass('on');
+            console.log($(this).data('num'));
+            console.log($(this).data('value'));
+
+            //类型
+            var type = $(this).data('value');
+            //分值
+            var score = $(this).data('num');
+
+            if(type=='attitude'){
+                vm.rate_data.sppeed_value = score;
+            }
+            if(type=='level'){
+                vm.rate_data.server_value = score;
+            }
+
+        })
+
+    });
+
+
+    layui.use(['upload', 'element', 'layer','form'], function(){
+        var $ = layui.$ //只有执行了这一步，部分表单元素才会自动修饰成功
+            ,upload = layui.upload
+            ,form = layui.form;
+
+        //图片上传
+        var up_that;
+        $(".dtusc").click(function () {
+            up_that = this;
+        })
+        //常规使用 - 普通图片上传
+        var uploadInst = upload.render({
+            elem: '.dtusc'
+            ,url: '/Base/upload' //此处用的是第三方的 http 请求演示，实际使用时改成您自己的上传接口即可。
+            ,done: function(result){
+                // n==1 教师证 n== 2 学生证 n==3 学历证 n==4 头像
+                var n = $(up_that).attr('data-value');
+                console.log(n);
+                if(result.status==200){
+
+                    vm.uploadiimglist.push(result.data)
+                }else{
+                    layer.msg(result.msg);
+                }
+            }
+
+        });
+
+    });
+var vm = new Vue({
+    el: '#app',
+    data: {
+        pic_url: "{$pic_url}",
+        // 图片列表
+        uploadiimglist: [],
+        // 评分
+        rate_data: {
+            sppeed_value: 0,
+            server_value: 0,
+        },
+        // 产品和使用感受
+        desc_text: "",
+        teacher_id: '{$teacher_id}',
+        sup_comment_id: '{$sup_comment_id}',
+        demand_id: "{$demand_id}"
+    },
+    methods: {
+        // 提交
+        submit_infofun() {
+            // if (this.uploadiimglist.length == 0) {
+            //  uni.showToast({
+            //      title: "请上传图片",
+            //      icon: "none"
+            //  })
+            //  return false
+            // }
+            if (this.desc_text == '') {
+                return layer.msg("请描述产品的使用感受");
+            }
+            if (this.rate_data.sppeed_value == 0) {
+                return layer.msg("请对教学态度打分");
+            }
+            if (this.rate_data.server_value == 0) {
+                return layer.msg("请对专业水平打分");
+            }
+            let data = {
+                teacher_id: this.teacher_id,
+                attitude: this.rate_data.sppeed_value,
+                level: this.rate_data.server_value,
+                content: this.desc_text,
+                pics: this.uploadiimglist.join(","),
+                demand_id: this.demand_id,
+                sup_comment_id: this.sup_comment_id
+            }
+
+            $.ajax({
+                url : '/student/addComment',
+                type : 'post',
+                dataType : 'json',
+                data : data,
+                success : function (res) {
+                    console.log(res);
+                    if(res.status==200){
+                        layer.msg(res.msg,{time: 1000},function(){
+                            window.location.href = document.referrer;
+                        });
+                    }else{
+                        layer.msg(res.msg);
+                    }
+                }
+            })
+        },
+        // 图片上传
+        upload_imgfun() {
+            let that = this;
+            uni.chooseImage({
+                count: 3, //默认9
+                sizeType: ['original', 'compressed'], //可以指定是原图还是压缩图，默认二者都有
+                sourceType: ['album'], //从相册选择                  
+                success: function(res) {
+                    console.log(res)
+                    let imginfolist = res.tempFilePaths;
+                    uni.showLoading({
+                        title: "请稍后..."
+                    })
+
+                    imginfolist.forEach(item => {
+                        wx.uploadFile({
+                            url: that.pic_url + '/Base/upload',
+                            filePath: item,
+                            name: 'file',
+                            formData: {
+                                user: 'data'
+                            },
+                            success(result) {
+                                let imgdata = JSON.parse(result.data);
+                                that.uploadiimglist.push(imgdata.data)
+                            },
+                            fail(err) {
+                                console.log(err)
+                            }
+                        });
+
+                    })
+
+                    uni.hideLoading()
+
+                }
+            });
+        },
+    }
+})
+</script>

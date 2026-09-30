@@ -1,0 +1,35 @@
+{extend name='common/_container'} 
+{block name="content"} 
+<div class="ibox float-e-margins"> 
+	<div class="ibox-content"> 
+		<table class="table table-bordered" style="word-break:break-all;"> 
+			<tbody> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">标题：</td> 
+					<td>{$info.title}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">图片：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.pic}')"><img height="75" src="{$info.pic}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">链接地址：</td> 
+					<td>{$info.url}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">状态：</td> 
+					<td><?php echo getFieldVal($info["status"],"正常|1|success,禁用|0|danger");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">类型(是否显示输入框)：</td> 
+					<td><?php echo getFieldVal($info["type"],"显示|1|success,不显示|0|danger");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">详情：</td> 
+					<td>{$info.detail|html_out}</td>   
+				</tr> 
+			</tbody> 
+		</table> 
+	</div> 
+</div> 
+{/block} 

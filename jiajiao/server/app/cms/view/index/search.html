@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>搜索</title>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/search.css"/>
+    <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css">
+    <style type="text/css">
+        .weui-half-screen-dialog__ft{position: absolute;top: 10px;right: 0px;padding: 0}
+        .weui-btn_primary:not(.weui-btn_disabled):active{background:none;}
+        .weui-btn{color: #db7b7b}
+        .weui-btn_primary{background: none}
+        .weui-picker{z-index: 19891018}
+    </style>
+</head>
+
+<body>
+
+<div class="index_searchpage" id="app">
+    <div class="top_searchbosx">
+        <div class="lf_citybox" @click="type_picker=true" onclick="selectRole()">
+            <div>{{type_list[type_num]}}</div>
+            <img src="/img/botm_arrow.png" mode="">
+        </div>
+        <div class="search_box">
+            <img src="/img/search.png" mode="">
+            <input type="text" v-model="serach_text" confirm-type='search' @confirm='serachbtn'
+                   @input="input_change" :placeholder="type_list[type_num]+'搜索'"
+                   placeholder-style="font-size:26rpx;color:#99999;">
+
+        </div>
+        <div style="margin:auto 0;width:50px;text-align: center" @click="serachbtn">搜索</div>
+    </div>
+
+
+    <div class="containerbox" v-if="is_serach">
+        <div class="content" v-if="serach_backdatalist.length!=0">
+            <div class="teacher_box" v-if="type_num==0">
+                <div class="list_teacher" v-for="(item,i) in serach_backdatalist" @click="jump_detail(item,0)">
+                    <div class="lf_avatarbox">
+                        <div class="avatar_icon">
+                            <img v-if="item.head_img" class="avatar" :src="item.head_img" mode="">
+                            <img v-else class="avatar" :src="item.avatar" mode="">
+                            <img v-if="item.gender==1" class="sex_img" src="/img/sex_icon.png" mode="">
+
+                            <img v-else class="sex_img" src="/img/set_nvicon.png" mode="">
+                        </div>
+                        <div class="teace_login">
+                            <div>最近登录</div>
+                            <div>{{item.login_time}}</div>
+                        </div>
+                    </div>
+                    <div class="rf_user_info">
+                        <div class="list_namebox">
+                            <div class="name_text">{{item.name}}（{{item.gender == 1 ? '男' : '女'}}）</div>
+                            <div
+                                    class="type">
+                                {{item.teacher_identity == 1 ? '大学生教员' : item.teacher_identity == 2 ? '普通教员' : item.teacher_identity == 3 ? '专业教员' : '不限'}}
+                            </div>
+                            <div class="numinfo">
+                                <div class="color_num">{{item.teach_num}}</div>
+                                <div class="num_text">次任教</div>
+                            </div>
+                        </div>
+                        <div class="user_typeli">
+                            <div class="shcol_text">{{item.school}}</div>
+                            <div class="type_stu">{{item.specialty}}</div>
+                        </div>
+                        <div class="botm_mesttype">
+                            <div class="list_mu_type_one">
+                                <div class="type_title">科目：</div>
+                                <!-- <div v-if="item.subject_names.length>3" class="type_text" v-for="(text,n) in item.subject_names.splice(0,3)">{{text.name}}</div>
+                                <div v-else class="type_text" v-for="(text,n) in item.subject_names">{{text.name}}</div> -->
+                                <div v-if="item.subject_names.length>3" class="type_text"
+                                     v-for="(text,n) in item.subject_names">{{text.name}}
+                                </div>
+                                <div v-if="item.subject_names.length<4" class="type_text"
+                                     v-for="(text,n) in item.subject_names">{{text.name}}
+                                </div>
+                                <!-- <div class="type_text">小学英语</div> -->
+                            </div>
+                            <div class="list_mu_type_two">
+                                <div class="type_title">地区：</div>
+                                <div class="type_text" v-for="(info,t) in item.area_text">{{info}}</div>
+                                <!-- <div class="lang_text">
+                                    <div>3.89km</div>
+                                </div> -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+            <div class="student_box" v-else>
+                <div class="list_library" v-for="(item,i) in serach_backdatalist" @click="jump_detail(item,1)">
+                    <div class="lf_avatarbox">
+                        <div class="avatar_icon">
+                            <img class="avatar" :src="item.avatar" mode="">
+                            <img class="sex_img" v-if="item.gender==1" src="/img/sex_icon.png" mode="">
+
+                            <img class="sex_img" v-else-if="item.gender==2" src="/img/set_nvicon.png"
+                                 mode="">
+
+                        </div>
+                        <div class="teace_login">
+                            <div>最近登录</div>
+                            <div>{{item.login_time}}</div>
+                        </div>
+                    </div>
+                    <div class="rf_user_info">
+                        <div class="list_namebox">
+                            <div class="lf_namebox">
+                                <div class="ragion_text">{{item.area}}</div>
+                                <div class="name_text">{{item.subject_name}}</div>
+                            </div>
+
+                            <div class="price_num">{{item.expense}}</div>
+                        </div>
+                        <div class="student_desc">
+                            <div>{{item.gai_kuang}}</div>
+                        </div>
+                        <div class="adres_lang">
+                            <div class="adres_info">
+                                <img src="/img/stu_adresicon.png" mode="">
+                                <div>{{item.address}}</div>
+                            </div>
+                            <!-- <div class="lang_text">2.569km</div> -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <div class="no_datamst" v-else>
+            <div class="centempty">
+                <u-empty text="暂无信息" mode="list"></u-empty>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="" v-else>
+        <div class="search_info" v-if="search_datalist.length!=0">
+            <div class="list_line" v-for="(item,i) in search_datalist" @click="serachdatafun(item)">
+                <div class="lf_msg">
+                    <img src="/img/naozhong.png" mode="">
+                    <div>{{item}}</div>
+                </div>
+                <img @click.stop="delete_listdata(i)" src="/img/erro_icon.png" mode="">
+            </div>
+        </div>
+        <div class="no_datatext" v-else>
+            <!-- <div></div> -->
+            <div class="centempty">
+                <u-empty text="暂无搜索记录" mode="list"></u-empty>
+            </div>
+        </div>
+    </div>
+
+    <u-picker mode="selector" v-model="type_picker" confirm-color='#fbcab1' @confirm='type_chosefun'
+              :range="type_list"></u-picker>
+</div>
+
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+<script src="https://res.wx.qq.com/t/wx_fed/cdn_libs/res/weui/1.2.8/weui.min.js"></script>
+</html>
+<script type="text/javascript">
+    var layer;
+    layui.use("layer", function () {
+        layer = layui.layer;
+    })
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            is_serach: false,
+            type_picker: false,
+            type_list: ['教员', '学员'],
+            type_num: 0,
+            serach_text: "",
+            search_datalist: [],
+            serach_backdatalist: [],
+        },
+
+        methods: {
+            jump_detail(item, n) {
+                if (vm.type_num == 0) {
+                    window.location.href = "/teacher/" + item.teacher_id + ".html"
+                }
+                if (this.type_num == 1) {
+                    window.location.href = "/student/" + item.teacher_id + ".html"
+                }
+
+
+            },
+            input_change() {
+                if (this.serach_text == '') {
+                    this.is_serach = false
+                }
+            },
+            // Picker 选择
+            type_chosefun(event) {
+                this.type_num = event[0];
+                this.serach_backdatalist = [];
+                this.is_serach = false;
+                this.serach_text = ''
+
+            },
+            serachbtn() {
+                if (this.serach_text == '') {
+                    layer.msg("请输入搜索内容");
+                    return
+                }
+                // let search_data_info = uni.getStorageSync("search_data");
+                // if (!search_data_info) {
+                //     this.search_datalist.unshift(this.serach_text)
+                //     uni.setStorageSync("search_data", this.search_datalist)
+                // } else {
+                //     if (search_data_info.indexOf(this.serach_text) > -1) {
+                //         return false
+                //     } else {
+                //         this.search_datalist.unshift(this.serach_text)
+                //         uni.setStorageSync("search_data", this.search_datalist)
+                //     }
+                // }
+
+                vm.search_fun(vm.serach_text)
+            },
+            // 关键字搜索
+            serachdatafun(item) {
+                console.log(item)
+                this.search_fun(item)
+                this.serach_text = item;
+            },
+
+            search_fun(serach_text) {
+                vm.is_serach = true;
+                let data = {
+                    type: vm.type_num,
+                    keyword: serach_text
+                }
+                $.ajax({
+                    url: '/index/getSearchList',
+                    type: 'post',
+                    dataType: 'json',
+                    data: data,
+                    success: function (res) {
+                        if (res.status == 200) {
+                            if (vm.type_num == 0) {
+                                res.data.forEach(item => {
+                                    item.area_text = (item.area.split(",")).splice(0, 3)
+                                })
+                            }
+                            vm.serach_backdatalist = res.data;
+                        }
+                    }
+                })
+            },
+
+            // 从缓存数组中获取5条数据
+            get_fivedata() {
+                let mesagedata = uni.getStorageSync("search_data").slice(this.search_datalist.length, 5 + this
+                    .search_datalist.length);
+                if (mesagedata.length == 0) {
+                    uni.showToast({
+                        title: "暂无历史记录",
+                        icon: "none"
+                    })
+                    return
+                } else {
+                    mesagedata.forEach(item => {
+                        this.search_datalist.push(item)
+                    })
+                }
+            },
+
+            // 第一条词条删除
+            delete_listdata(n) {
+                console.log('ttt')
+                let datalist = this.search_datalist.splice(n, 1)
+                uni.setStorageSync("search_data", this.search_datalist)
+
+            },
+
+        }
+    })
+
+    //选择角色
+    function selectRole() {
+        weui.picker([{
+                label: '教员',
+                value: 0
+            }, {
+                label: '学员',
+                value: 1
+            }],
+            {
+                defaultValue: [0],
+               /* onChange: function (result) {
+                    console.log(result);
+                },*/
+                onConfirm: function (result) {
+                    console.log(result);
+
+                    vm.serach_text = '';
+                    vm.serach_backdatalist = [];
+                    vm.type_num = result[0].value;
+                },
+            });
+    }
+
+</script>

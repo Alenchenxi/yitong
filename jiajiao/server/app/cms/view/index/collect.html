@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>我的收藏</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课"/>
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台"/>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/collect.css"/>
+</head>
+
+<body>
+<div class="my_collagepage" id="app">
+    <div class="teacher_databox">
+        <div class="list_collage" v-for="item,index in pageData" :key="index">
+            <a class="list_teacher" :href="'/teacher/teacherInfo?teacher_id=' + item.teacher_id" >
+                <div class="lf_avatarbox">
+                    <div class="avatar_icon">
+                        <img class="avatar" :src="item.head_img"></img>
+                        <img class="sex_img" src="/img/sex_icon.png" mode="">
+                        </img>
+                    </div>
+                    <div class="teace_login">
+                        <text>最近登录</text>
+                        <text>{{item.login_time}}</text>
+                    </div>
+                </div>
+                <div class="rf_user_info">
+                    <div class="list_namebox">
+                        <span class="name_text">{{item.name}}（{{item.gender_str}}）</span>
+                        <span class="type">{{item.teacher_identity_str}}</span>
+                        <div class="numinfo">
+                            <span class="color_num">{{item.teach_num}}</span>
+                            <span class="num_text">次任教</span>
+                        </div>
+                    </div>
+
+                    <div class="user_typeli">
+                        <span class="shcol_text">{{item.school}}</span>
+                        <span class="type_stu">{{item.specialty}}</span>
+                    </div>
+                    <div class="botm_mesttype">
+                        <div class="list_mu_type_one">
+                            <span class="type_title">科目：</span>
+                            <span class="type_text" v-for="(i, d) in item.subject_names" :key="d">{{i.name}}</span>
+                        </div>
+
+                        <div class="list_mu_type_two" style="height: 20px">
+                            <text class="type_title">地区：</text>
+                            <text class="type_text" v-for="(i, d) in item.area" :key="d">{{i.name}}</text>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+</div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="/js/vue.js"></script>
+
+</html>
+<script type="text/javascript">
+    var data = {
+        loading: true, //loading
+        pageData: [],//接口返回列表数据
+        nextpage: true,//是否下一页
+        params: {
+            //传给接口的参数
+            page: 1,
+            limit: 10,
+        },
+
+    }
+
+    var vm = new Vue({
+        el: "#app",
+        data: data,
+
+        mounted() {
+            this.getPage(this.params)//数据
+            window.addEventListener('scroll', this.windowScroll, true)//监听滚动条事件
+        },
+        methods: {
+            //请求接口方法  常规的ajax方式(用这种需要引用jquery)
+            getPage(params) {
+                $.ajax({
+                    url: '/user/collect',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    data: params,
+                    type: 'POST',
+                    dataType: 'JSON',
+                    success: res => {
+                        this.loading = false
+                        if (res.status == 200) {
+                            if (res.data.length > 0) {
+                                console.log('加载下一页')
+                                let listData = this.pageData.concat(res.data);
+                                this.pageData = listData
+
+                                console.log(this.pageData);
+                                this.params.page += 1;
+                                //加载数据可以触发
+                                this.isRefreshLock = true
+
+                            } else {
+                                this.nextpage = false;
+                            }
+
+                        } else {
+                            console.log('200以外的情况 处理逻辑')
+                        }
+                    },
+                })
+            },
+
+            //滚动条事件
+            windowScroll(e) {
+                //滚动条滚动时距离顶部的距离
+                let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                //可视区的高度
+                let windowHeight =
+                    document.documentElement.clientHeight || document.body.clientHeight;
+                //滚动条的总高度
+                let scrollHeight =
+                    document.documentElement.scrollHeight || document.body.scrollHeight;
+                //滚动条到底部的条件
+                // console.log(scrollTop + windowHeight + "--" + scrollHeight);
+                if (scrollTop + windowHeight >= scrollHeight - 200 && this.isRefreshLock) {
+                    console.log('滑动触发加载');
+                    if (this.nextpage) {
+                        // false防止多次触发加载数据
+                        this.isRefreshLock = false;
+                        this.getPage(this.params)
+                    } else {
+                        console.log('没有更多数据了')
+                    }
+                }
+            },
+
+        },
+
+        beforeDestroy() {
+            console.log('beforeDestroy')
+            //销毁页面时移除监听事件
+            window.removeEventListener('scroll', this.windowScroll)
+        }
+
+    });
+</script>

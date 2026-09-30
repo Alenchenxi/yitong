@@ -1,0 +1,147 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="ibox-content"> 
+				<div class="row row-lg"> 
+					<div class="col-sm-12"> 
+						<div class="row" id="searchGroup">
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">老师id</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="teacher_id" placeholder="老师id" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">老师姓名</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="teacher_name" placeholder="老师姓名" />
+								</div>
+							</div>
+							<div class="col-sm-3">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">下线时间范围</button>
+									</div>
+									<input type="text" autocomplete="off" placeholder="时间范围" class="form-control" id="create_time">
+								</div>
+							</div>
+							<!-- search end -->
+							<div class="col-sm-1">
+								<button type="button" class="btn btn-success " onclick="CodeGoods.search()" id="">
+									<i class="fa fa-search"></i>&nbsp;搜索
+								</button>
+							</div>
+						</div>
+						<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+						</div>
+						<table id="CodeGoodsTable" data-mobile-responsive="true" data-click-to-select="true">
+							<thead><tr><th data-field="selectItem" data-checkbox="true"></th></tr></thead>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	var CodeGoods = {id: "CodeGoodsTable",seItem: null,table: null,layerIndex: -1};
+
+	CodeGoods.initColumn = function () {
+ 		return [
+ 			{field: 'selectItem', checkbox: true},
+ 			{title: '编号', field: 'offline_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '会员id', field: 'mid', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '老师id', field: 'teacher_id', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.teacher_idFormatter},
+ 			{title: '老师姓名', field: 'teacher_name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '老师电话', field: 'mobile', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '下线时间', field: 'create_time', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.create_timeFormatter},
+ 		];
+ 	};
+
+	CodeGoods.create_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.teacher_idFormatter = function(value,row,index) {
+		if(value){
+			return '<button type="button" class="btn btn-primary btn-xs" title="查看老师详情"  onclick="CodeGoods.viewTeacher('+row.teacher_id+')">'+value+'</button>&nbsp;';
+		}
+	}
+
+	CodeGoods.formParams = function() {
+		var queryData = {};
+		queryData['offset'] = 0;
+		queryData['teacher_id'] = $("#teacher_id").val();
+		queryData['teacher_name'] = $("#teacher_name").val();
+		queryData['create_time_start'] = $("#create_time").val().split(" - ")[0];
+		queryData['create_time_end'] = $("#create_time").val().split(" - ")[1];
+		return queryData;
+	}
+
+	CodeGoods.check = function () {
+		var selected = $('#' + this.id).bootstrapTable('getSelections');
+		if(selected.length == 0){
+			Feng.info("请先选中表格中的某一记录！");
+			return false;
+		}else{
+			CodeGoods.seItem = selected;
+			return true;
+		}
+	};
+
+	CodeGoods.viewTeacher = function (value) {
+		if(value){
+			var queryData = {};
+			queryData['teacher_id'] = value;
+			var index = layer.open({type: 2,title: '查看老师详情',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + 'Teacher/view?'+Feng.parseParam(queryData)});
+			this.layerIndex = index;
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.offline_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var queryData = {};
+				queryData['offline_id'] = idx;
+				var index = layer.open({type: 2,title: '查看老师详情',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + 'Teacher/view?'+Feng.parseParam(queryData)});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.search = function() {
+		CodeGoods.table.refresh({query : CodeGoods.formParams()});
+	};
+
+	$(function() {
+		var defaultColunms = CodeGoods.initColumn();
+		var url = location.search;
+		var table = new BSTable(CodeGoods.id, Feng.ctxPath+"/Offline/index"+url,defaultColunms,20);
+		table.setPaginationType("server");
+		table.setQueryParams(CodeGoods.formParams());
+		CodeGoods.table = table.init();
+	});
+	laydate.render({elem: '#create_time',type: 'datetime',range:true,
+		ready: function(date){
+			$(".layui-laydate-footer [lay-type='datetime'].laydate-btns-time").click();
+			$(".laydate-main-list-1 .layui-laydate-content li ol li:last-child").click();
+			$(".layui-laydate-footer [lay-type='date'].laydate-btns-time").click();
+		}
+	});
+</script>
+{/block}

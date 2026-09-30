@@ -1,0 +1,329 @@
+.t_library {
+  width: 100%;
+  min-height: 100vh;
+  background-image: linear-gradient(to bottom, #F6EFE6, #F8F8F8);
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.t_library .tab_type {
+  width: 100%;
+  position: sticky;
+  padding: 10px 0;
+  background-color: #F6EFE6;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+}
+.t_library .tab_type .lfserach {
+  width: 75%;
+  display: flex;
+  justify-content: space-between;
+}
+.t_library .tab_type .lfserach .list_tab {
+  width: 25%;
+}
+.t_library .tab_type .lfserach .list_tab .center_auto {
+  display: flex;
+  margin: auto;
+}
+.t_library .tab_type .lfserach .list_tab .center_auto img {
+  width: 18px;
+  height: 18px;
+  margin: auto 0;
+}
+.t_library .tab_type .lfserach .list_tab .center_auto input {
+  margin: auto 0;
+  max-width: 70%;
+  color: #000;
+  font-size: 14px;
+  text-align: center;
+}
+.t_library .tab_type .lfserach .list_tab .center_auto text {
+  margin: auto 0;
+  max-width: 80%;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  text-align: center;
+}
+.t_library .tab_type .rf_btn {
+  width: 15%;
+  display: flex;
+  margin: auto 0;
+}
+.t_library .tab_type .rf_btn text {
+  margin: auto;
+  text-align: center;
+  font-size: 14px;
+  color: #999;
+}
+.t_library .teacher_databox {
+  padding: 0 3%;
+}
+.t_library .teacher_databox .list_teacher {
+  background-color: #fff;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 9px;
+  display: flex;
+  justify-content: space-between;
+  box-shadow: 0 0 3px #eee;
+}
+.t_library .teacher_databox .list_teacher .lf_avatarbox {
+  width: 20%;
+}
+.t_library .teacher_databox .list_teacher .lf_avatarbox .avatar_icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 15px;
+  position: relative;
+}
+.t_library .teacher_databox .list_teacher .lf_avatarbox .avatar_icon .avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 100%;
+}
+.t_library .teacher_databox .list_teacher .lf_avatarbox .avatar_icon .avatar img {
+  width: 52px;
+  height: 52px;
+}
+.t_library .teacher_databox .list_teacher .lf_avatarbox .avatar_icon .sex_img img {
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  top: 7px;
+  right: -10px;
+}
+.t_library .teacher_databox .list_teacher .lf_avatarbox .teace_login {
+  display: flex;
+  flex-direction: column;
+}
+.t_library .teacher_databox .list_teacher .lf_avatarbox .teace_login div {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info {
+  width: 75%;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .list_namebox {
+  display: flex;
+  justify-content: space-between;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .list_namebox .name_text {
+  margin: auto 0;
+  font-size: 15px;
+  color: #000;
+  font-weight: 600;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .list_namebox .type {
+  margin: auto 0;
+  background-color: #FFCE27;
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 3px;
+  display: block;
+  font-size: 12px;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .list_namebox .numinfo {
+  margin: auto 0;
+  display: flex;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .list_namebox .numinfo .color_num {
+  color: #F89CA1;
+  font-size: 13px;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .list_namebox .numinfo .num_text {
+  font-size: 13px;
+  color: #000;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .user_typeli {
+  display: flex;
+  margin: 5px 0;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .user_typeli .shcol_text {
+  margin: auto 10px auto 0;
+  background-color: #6C7DC6;
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 3px;
+  display: block;
+  font-size: 12px;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .user_typeli .type_stu {
+  margin: auto 0;
+  background-color: #F89CA1;
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 3px;
+  display: block;
+  font-size: 12px;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype {
+  width: 100%;
+  margin-top: 15px;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_one {
+  width: 100%;
+  display: flex;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_one .type_title {
+  white-space: nowrap;
+  font-size: 14px;
+  color: #6C7DC6;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_one .type_text {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: center;
+  width: 30%;
+  color: #000;
+  font-weight: 600;
+  display: block;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_one .lang_text text {
+  white-space: nowrap;
+  font-size: 13px;
+  color: #999;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_two {
+  width: 100%;
+  display: flex;
+  margin: auto 0;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_two .type_title {
+  white-space: nowrap;
+  font-size: 12px;
+  color: #6C7DC6;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_two .type_text {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 30%;
+  color: #000;
+  text-align: center;
+  display: block;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_two .lang_text {
+  margin: auto 0 auto 15px;
+  display: flex;
+}
+.t_library .teacher_databox .list_teacher .rf_user_info .botm_mesttype .list_mu_type_two .lang_text text {
+  margin: auto;
+  white-space: nowrap;
+  font-size: 24px;
+  color: #999;
+}
+.t_library .search_popbox {
+  padding: 15px;
+}
+.t_library .search_popbox .phone_box {
+  width: 100%;
+  padding: 10px 0;
+}
+.t_library .search_popbox .phone_box .list_phone_text {
+  width: 100%;
+  display: flex;
+  padding: 14px 0;
+  justify-content: space-between;
+}
+.t_library .search_popbox .phone_box .list_phone_text .lf_text {
+  font-size: 14px;
+  color: #000;
+  display: block;
+  width: 22%;
+  margin: auto 0;
+  text-align: right;
+}
+.t_library .search_popbox .phone_box .list_phone_text .rf_input {
+  background-color: #F5E7DB;
+  width: 70%;
+  padding: 0 10px;
+  border-radius: 6px;
+  display: flex;
+}
+.t_library .search_popbox .phone_box .list_phone_text .rf_input input {
+  width: 100%;
+  height: 31px;
+  font-size: 12px;
+}
+.t_library .search_popbox .phone_box .list_phone_text .rf_input .get_num {
+  white-space: nowrap;
+  margin: auto 0;
+  font-size: 13px;
+  color: #6C7DC6;
+}
+.t_library .search_popbox .subbutonbox {
+  padding: 5px 10px;
+}
+.t_library .search_popbox .subbutonbox button {
+  font-size: 14px;
+  color: #fff;
+  background-color: #FB7206;
+  border-radius: 15px;
+  width: 50%;
+  border: none;
+}
+.t_library .search_popbox .subbutonbox button::after {
+  border: none;
+}
+.t_library .subject_popbox {
+  width: 100%;
+  padding: 15px;
+}
+.t_library .subject_popbox .subjuc_title {
+  font-size: 14px;
+  color: #000;
+  font-weight: 600;
+  text-align: center;
+  display: block;
+}
+.t_library .subject_popbox .tab_container {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+}
+.t_library .subject_popbox .tab_container .list_tab {
+  width: 30%;
+  margin: 5px;
+  border: 1px solid rgba(156, 81, 15, 0.3);
+  background-color: #F5E5D8;
+  border-radius: 16px;
+  padding: 24px 0;
+}
+.t_library .subject_popbox .tab_container .list_tab text {
+  text-align: center;
+  font-size: 14px;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  font-weight: 500;
+}
+.t_library .subject_popbox .tab_container .active_border {
+  border: 1px solid #9c510f !important;
+  box-shadow: 0 0 5px #9c510f;
+}
+.t_library .subject_popbox .bottom_sure {
+  width: 100%;
+  padding: 15px 15px 10px;
+}
+.t_library .subject_popbox .bottom_sure button {
+  width: 100%;
+  padding: 5px 0;
+  border-radius: 25px;
+  background-color: #FB7206;
+  color: #fff;
+  font-size: 14px;
+}
+.t_library .subject_popbox .bottom_sure button::after {
+  border: none;
+}

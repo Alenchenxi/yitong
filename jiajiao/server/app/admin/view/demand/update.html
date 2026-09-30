@@ -1,0 +1,383 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='demand_id' id='demand_id' value="{$info.demand_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+				 	<div class="form-group">
+						<label class="col-sm-2 control-label">外部编号：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="ext_no" value="{$info.ext_no}" name="ext_no" class="form-control" placeholder="请输入外部编号">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">订单编号：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="sn" value="{$info.sn}" name="sn" class="form-control" placeholder="请输入订单编号">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">姓名：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="name" value="{$info.name}" name="name" class="form-control" placeholder="请输入姓名">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">联系方式：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mobile" value="{$info.mobile}" name="mobile" class="form-control" placeholder="请输入联系方式">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">邮箱：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mail" value="{$info.mail}" name="mail" class="form-control" placeholder="请输入邮箱">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">授课方式：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['teaching_way'])){ $info['teaching_way'] = '1'; }; ?>
+							<input name="teaching_way" value="1" type="radio" {if condition="$info.teaching_way eq '1'"}checked{/if} title="上门授课">
+							<input name="teaching_way" value="2" type="radio" {if condition="$info.teaching_way eq '2'"}checked{/if} title="在线授课">
+							<input name="teaching_way" value="3" type="radio" {if condition="$info.teaching_way eq '3'"}checked{/if} title="均可">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">分类id：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="category_id" class="form-control" id="category_id">
+								<option value="">请选择</option>
+								{sql connect="mysql" query="select category_id,name from cd_category"}
+									<option value="{$sql.category_id}" {if condition="$info.category_id eq $sql.category_id"}selected{/if}>{$sql.name}</option>
+								{/sql}
+							</select>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">年级id：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="grade_id" class="form-control" id="grade_id">
+								<option value="">请选择</option>
+								<!--{sql connect="mysql" query="select grade_id,name from cd_grade"}
+									<option value="{$sql.grade_id}" {if condition="$info.grade_id eq $sql.grade_id"}selected{/if}>{$sql.name}</option>
+								{/sql}-->
+							</select>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">任教科目id：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="subject_id" class="form-control" id="subject_id">
+								<option value="">请选择</option>
+								<!--{sql connect="mysql" query="select subject_id,name from cd_subject"}
+									<option value="{$sql.subject_id}" {if condition="$info.subject_id eq $sql.subject_id"}selected{/if}>{$sql.name}</option>
+								{/sql}-->
+							</select>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label">课时费：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="price" value="{$info.price}" name="mail" class="form-control" placeholder="请输入课时费">
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label">在读学校：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="school" value="{$info.school}" name="school" class="form-control" placeholder="请输入在读学校">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">性别：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['gender'])){ $info['gender'] = '1'; }; ?>
+							<input name="gender" value="1" type="radio" {if condition="$info.gender eq '1'"}checked{/if} title="男">
+							<input name="gender" value="2" type="radio" {if condition="$info.gender eq '2'"}checked{/if} title="女">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">学员概况：</label>
+						<div class="col-sm-9">
+							<textarea id="gai_kuang" name="gai_kuang"  class="form-control" placeholder="请输入学员概况">{$info.gai_kuang}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">任教城市/区域：</label>
+						<div class="distpicker5">
+							<div class="col-sm-3">
+								<select lay-ignore id="province" class="form-control" data-province="{$info.province}"></select>
+							</div>
+							<div class="col-sm-3">
+								<select lay-ignore id="city" class="form-control" data-city="{$info.city}"></select>
+							</div>
+							<div class="col-sm-3">
+								<select lay-ignore id="area" class="form-control" data-district="{$info.area}"></select>
+							</div>
+						</div>
+					</div>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.data.js"></script>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.js"></script>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/main.js"></script>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">详细地址：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="address" value="{$info.address}" name="address" class="form-control" placeholder="请输入详细地址">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">试课时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" value="{if condition="$info.trial_time neq 0"}{$info.trial_time|date='Y-m-d H:i:s'}{/if}" name="trial_time"  placeholder="请输入试课时间" class="form-control" id="trial_time">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">教员性别：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['teacher_gender'])){ $info['teacher_gender'] = '1'; }; ?>
+							<input name="teacher_gender" value="1" type="radio" {if condition="$info.teacher_gender eq '1'"}checked{/if} title="男">
+							<input name="teacher_gender" value="2" type="radio" {if condition="$info.teacher_gender eq '2'"}checked{/if} title="女">
+							<input name="teacher_gender" value="3" type="radio" {if condition="$info.teacher_gender eq '3'"}checked{/if} title="不限">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">教师身份：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['teacher_identity'])){ $info['teacher_identity'] = '1'; }; ?>
+							<input name="teacher_identity" value="1" type="radio" {if condition="$info.teacher_identity eq '1'"}checked{/if} title="大学生教员">
+							<input name="teacher_identity" value="2" type="radio" {if condition="$info.teacher_identity eq '2'"}checked{/if} title="专职教员">
+							<input name="teacher_identity" value="3" type="radio" {if condition="$info.teacher_identity eq '3'"}checked{/if} title="不限">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">教员要求：</label>
+						<div class="col-sm-9">
+							<textarea id="teacher_require" name="teacher_require"  class="form-control" placeholder="请输入教员要求">{$info.teacher_require}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">创建时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" value="{if condition="$info.create_time neq 0"}{$info.create_time|date='Y-m-d H:i:s'}{/if}" name="create_time"  placeholder="请输入创建时间" class="form-control" id="create_time">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">状态：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['status'])){ $info['status'] = '0'; }; ?>
+							<input name="status" value="0" type="radio" {if condition="$info.status eq '0'"}checked{/if} title="待审核">
+							<input name="status" value="1" type="radio" {if condition="$info.status eq '1'"}checked{/if} title="已通过">
+							<input name="status" value="2" type="radio" {if condition="$info.status eq '2'"}checked{/if} title="已完成">
+							<input name="status" value="3" type="radio" {if condition="$info.status eq '3'"}checked{/if} title="已关闭">
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label">获取经纬度：</label>
+						<div class="col-sm-9">
+							<button type="button" class="btn btn-primary" >
+								<a href="https://lbs.qq.com/getPoint/" target="_blank" style="color: white"><i class="fa fa-check"></i>&nbsp;获取经纬度</a>
+							</button>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label">经度：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="longitude" value="{$info.longitude}" name="longitude" class="form-control" placeholder="请输入经度">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">纬度：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="latitude" value="{$info.latitude}" name="latitude" class="form-control" placeholder="请输入纬度">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">会员单：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['kefu_direct'])){ $info['kefu_direct'] = '0'; }; ?>
+							<input name="kefu_direct" value="0" type="radio" {if condition="$info.kefu_direct eq '0'"}checked{/if} title="是">
+							<input name="kefu_direct" value="1" type="radio" {if condition="$info.kefu_direct eq '1'"}checked{/if} title="否">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){
+
+	var category_id = "{$info.category_id}";
+	var grade_id = "{$info.grade_id}";
+	var subject_id = "{$info.subject_id}";
+	if(category_id){
+		getGradeList(category_id,grade_id)
+	}
+	if(grade_id){
+		getSubjectList(grade_id,subject_id)
+	}
+
+	$('#category_id').change(function () {
+		category_id = $('#category_id').val();
+
+		$('#grade_id').val('');
+		$('#subject_id').val('');
+		if(category_id){
+			getGradeList(category_id)
+		}
+
+	});
+
+	$('#grade_id').change(function () {
+		grade_id = $('#grade_id').val();
+		$('#subject_id').val('');
+		if(grade_id){
+			getSubjectList(grade_id)
+		}
+	});
+
+
+	$('#grade_id').click(function () {
+		if(!category_id){
+			return Feng.error("请先选择分类！",1000);
+		}
+	});
+
+	$('#subject_id').click(function () {
+		if(!grade_id){
+			return Feng.error("请先选择年级！",1000);
+		}
+	});
+
+	//获取年级列表
+	function getGradeList(category_id,grade_id){
+		var ajax = new $ax(Feng.ctxPath + "/Teacher/getGradeList", function (data) {
+			if ('00' === data.status) {
+				console.log(data);
+				var list = data.data;
+				var starthtml = '<option value="">请选择</option>';
+				for (var i=0;i<list.length;i++){
+					var selected = '';
+					if(list[i]['grade_id']==grade_id){
+						selected = 'selected';
+					}
+
+					starthtml += '<option value="'+list[i]['grade_id']+'"  '+selected+'>'+list[i]['name']+'</option>'
+				}
+				$('#grade_id').html(starthtml);
+				console.log(starthtml);
+			} else {
+				Feng.error(data.msg);
+			}
+		},function (res) {
+			Feng.error(res.msg);
+		});
+		ajax.set('category_id', category_id);
+		ajax.start();
+	}
+
+	//获取学科列表
+	function getSubjectList(grade_id,subject_id){
+		var ajax = new $ax(Feng.ctxPath + "/Teacher/getSubjectList", function (data) {
+			if ('00' === data.status) {
+				console.log(data);
+				var list = data.data;
+				var arrivethtml = '<option value="">请选择</option>';
+				for (var i=0;i<list.length;i++){
+					var selected = '';
+					if(list[i]['subject_id']==subject_id){
+						selected = 'selected';
+					}
+
+					arrivethtml += '<option value="'+list[i]['subject_id']+'"  '+selected+'>'+list[i]['name']+'</option>'
+				}
+				$('#subject_id').html(arrivethtml);
+				console.log(arrivethtml);
+			} else {
+				Feng.error(data.msg);
+			}
+		},function (res) {
+			Feng.error(res.msg);
+		});
+		ajax.set('grade_id', grade_id);
+		ajax.start();
+	}
+
+});
+laydate.render({elem: '#create_time',type: 'datetime',trigger:'click'});
+laydate.render({elem: '#trial_time',type: 'datetime',trigger:'click'});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+		mobile: {
+			validators: {
+				notEmpty: {
+					message: '联系方式不能为空'
+	 			},
+	 		}
+	 	},
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('demand_id').set('sn').set('name').set('mobile').set('mail').set('age').set('category_id').set('grade_id').set('subject_id').set('price').set('school').set('gai_kuang')
+	.set('ext_no').set('province').set('city').set('area').set('address').set('trial_time').set('teacher_require').set('mid').set('create_time').set('longitude').set('latitude')
+	.set('qrcode').set('poster');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var teaching_way = $("input[name = 'teaching_way']:checked").val();
+	 var gender = $("input[name = 'gender']:checked").val();
+	 var teacher_gender = $("input[name = 'teacher_gender']:checked").val();
+	 var teacher_identity = $("input[name = 'teacher_identity']:checked").val();
+	 var status = $("input[name = 'status']:checked").val();
+	 var kefu_direct = $("input[name = 'kefu_direct']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/Demand/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('teaching_way',teaching_way);
+	 ajax.set('gender',gender);
+	 ajax.set('teacher_gender',teacher_gender);
+	 ajax.set('teacher_identity',teacher_identity);
+	 ajax.set('status',status);
+	 ajax.set('kefu_direct',kefu_direct);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

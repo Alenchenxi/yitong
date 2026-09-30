@@ -1,0 +1,117 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">配置名称：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="title" value="{$info.title}" name="title" class="form-control" placeholder="请输入配置名称">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">缩图开关：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['thumb_status'])){ $info['thumb_status'] = 1; }; ?>
+							<input name="thumb_status" value="1" type="radio" {if condition="$info.thumb_status eq '1'"}checked{/if} title="开启">
+							<input name="thumb_status" value="0" type="radio" {if condition="$info.thumb_status eq '0'"}checked{/if} title="关闭">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">覆盖同名文件：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['upload_replace'])){ $info['upload_replace'] = 1; }; ?>
+							<input name="upload_replace" value="1" type="radio" {if condition="$info.upload_replace eq '1'"}checked{/if} title="开启">
+							<input name="upload_replace" value="0" type="radio" {if condition="$info.upload_replace eq '0'"}checked{/if} title="关闭">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">缩放宽度：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="thumb_width" value="" name="thumb_width" class="form-control" placeholder="请输入缩放宽度">
+							<span class="help-block m-b-none">单位px</span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">缩放高度：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="thumb_height" value="" name="thumb_height" class="form-control" placeholder="请输入缩放高度">
+							<span class="help-block m-b-none">单位px</span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">缩图方式：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['thumb_type'])){ $info['thumb_type'] = ''; }; ?>
+							<select lay-ignore name="thumb_type" class="form-control" id="thumb_type">
+								<option value="">请选择</option>
+								<option value="1" {if condition="$info.thumb_type eq '1'"}selected{/if}>等比例缩放</option>
+								<option value="2" {if condition="$info.thumb_type eq '2'"}selected{/if}>缩放后填充</option>
+								<option value="3" {if condition="$info.thumb_type eq '3'"}selected{/if}>居中裁剪</option>
+								<option value="4" {if condition="$info.thumb_type eq '4'"}selected{/if}>左上角裁剪</option>
+								<option value="5" {if condition="$info.thumb_type eq '5'"}selected{/if}>右下角裁剪</option>
+								<option value="6" {if condition="$info.thumb_type eq '6'"}selected{/if}>固定尺寸缩放</option>
+							</select>
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.add()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('id').set('title').set('thumb_width').set('thumb_height').set('thumb_type');
+};
+
+CodeInfoDlg.add = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var thumb_status = $("input[name = 'thumb_status']:checked").val();
+	 var upload_replace = $("input[name = 'upload_replace']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/UploadConfig/add", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('thumb_status',thumb_status);
+	 ajax.set('upload_replace',upload_replace);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

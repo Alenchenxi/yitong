@@ -1,0 +1,104 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='study_room_id' id='study_room_id' value="{$info.study_room_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">省市区：</label>
+						<div class="distpicker5">
+							<div class="col-sm-3">
+								<select lay-ignore id="province" class="form-control" data-province="{$info.province}"></select>
+							</div>
+							<div class="col-sm-3">
+								<select lay-ignore id="city" class="form-control" data-city="{$info.city}"></select>
+							</div>
+							<div class="col-sm-3">
+								<select lay-ignore id="area" class="form-control" data-district="{$info.area}"></select>
+							</div>
+						</div>
+					</div>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.data.js"></script>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.js"></script>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/main.js"></script>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">详细地址：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="address" value="{$info.address}" name="address" class="form-control" placeholder="请输入详细地址">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">联系人：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="linkman" value="{$info.linkman}" name="linkman" class="form-control" placeholder="请输入联系人">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">电话：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mobile" value="{$info.mobile}" name="mobile" class="form-control" placeholder="请输入电话">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="price" value="{$info.price}" name="price" class="form-control" placeholder="请输入价格">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('study_room_id').set('province').set('city').set('area').set('address').set('linkman').set('mobile').set('price');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var ajax = new $ax(Feng.ctxPath + "/StudyRoom/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

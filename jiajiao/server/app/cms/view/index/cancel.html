@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>注销账号</title>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/cancel.css"/>
+</head>
+
+<body>
+<div class="logout">
+    <div class="submit_infocontainer">
+        <form action="#" method="post" class="layui-form contact_from">
+            <div class="head_text">
+                <text class="instru_title">注销账号</text>
+            </div>
+            <div class="areate_box">
+                <textarea maxlength="-1" name="content" lay-verify="required" placeholder="请填写您的注销原因"
+                          class="uni-textarea-textarea">
+
+                </textarea>
+            </div>
+            <div class="buton_submit">
+                <button type="button"  lay-submit="" lay-filter="submitMsg">提交</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+</html>
+<script type="text/javascript">
+    layui.use(['form'], function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.$;
+
+        form.on('submit(submitMsg)',function (data) {
+
+            $.ajax({
+                url : '/user/cancel',
+                type : 'post',
+                dataType : 'json',
+                data : data.field,
+                success : function (res) {
+                    console.log(res);
+                    if(res.status==200){
+                        layer.msg(res.msg,{time: 1000},function(){
+                            window.location.reload();
+                        });
+                    }else{
+                        layer.msg(res.msg);
+                    }
+                }
+            })
+            return false;
+        })
+    });
+
+
+</script>

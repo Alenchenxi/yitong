@@ -1,0 +1,362 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="ibox-content"> 
+				<div class="row row-lg"> 
+					<div class="col-sm-12"> 
+						<div class="row" id="searchGroup">
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">老师电话</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="teacher_mobile" placeholder="老师电话" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">学生手机号</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="stu_mobile" placeholder="学生手机号" />
+								</div>
+							</div>
+							<div class="col-sm-3">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">创建时间范围</button>
+									</div>
+									<input type="text" autocomplete="off" placeholder="时间范围" class="form-control" id="create_time">
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">订单编号</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="sn" placeholder="订单编号" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">状态</button>
+									</div>
+									<select class="form-control" id="status">
+										<option value="">请选择</option>
+										<option value="0">已预约</option>
+										<option value="1">待支付(预约成功)</option>
+										<option value="2">已完成</option>
+										<option value="3">预约失败</option>
+									</select>
+								</div>
+							</div>
+							<!-- search end -->
+							<div class="col-sm-1">
+								<button type="button" class="btn btn-success " onclick="CodeGoods.search()" id="">
+									<i class="fa fa-search"></i>&nbsp;搜索
+								</button>
+							</div>
+						</div>
+						<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+						{if condition="in_array('admin/Appointment/add',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="add" class="btn btn-primary button-margin" onclick="CodeGoods.add()">
+						<i class="fa fa-plus"></i>&nbsp;添加
+						</button>
+						{/if}
+						{if condition="in_array('admin/Appointment/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="update" class="btn btn-success button-margin" onclick="CodeGoods.update()">
+						<i class="fa fa-pencil"></i>&nbsp;修改
+						</button>
+						{/if}
+						{if condition="in_array('admin/Appointment/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="delete" class="btn btn-danger button-margin" onclick="CodeGoods.delete()">
+						<i class="fa fa-trash"></i>&nbsp;删除
+						</button>
+						{/if}
+						{if condition="in_array('adminteacher/view',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="viewTeacher" class="btn btn-primary button-margin" onclick="CodeGoods.viewTeacher()">
+						<i class="fa fa-plus"></i>&nbsp;查看教师
+						</button>
+						{/if}
+						{if condition="in_array('admindemand/view',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="viewDemand" class="btn btn-primary button-margin" onclick="CodeGoods.viewDemand()">
+							<i class="fa fa-plus"></i>&nbsp;查看家长
+						</button>
+						{/if}
+						</div>
+						<table id="CodeGoodsTable" data-mobile-responsive="true" data-click-to-select="true">
+							<thead><tr><th data-field="selectItem" data-checkbox="true"></th></tr></thead>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	var CodeGoods = {id: "CodeGoodsTable",seItem: null,table: null,layerIndex: -1};
+
+	CodeGoods.initColumn = function () {
+ 		return [
+ 			{field: 'selectItem', checkbox: true},
+ 			{title: '编号', field: 'appointment_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '会员id', field: 'mid', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '教师id', field: 'teacher_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '老师姓名', field: 'teacher_name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '老师电话', field: 'teacher_mobile', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '老师微信', field: 'teacher_wechat', visible: true, align: 'center', valign: 'middle',sortable: true},
+			{title: '家长发布id', field: 'demand_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '学生姓名', field: 'stu_name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '学生手机号', field: 'stu_mobile', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '学生年级id', field: 'grade_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '学生年级', field: 'grade_name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '学生科目id', field: 'subject_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '学生科目', field: 'subject_name', visible: true, align: 'center', valign: 'middle',sortable: true},
+			{title: '省市区', field: 'province|city|area', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.provincecityareaFormatter },
+			{title: '详细地址', field: 'address', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '创建时间', field: 'create_time', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.create_timeFormatter},
+ 			{title: '订单编号', field: 'sn', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '订单金额', field: 'amount', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '支付时间', field: 'pay_time', visible: false, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.pay_timeFormatter},
+ 			{title: '状态', field: 'status', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.statusFormatter},
+ 			{title: '操作', field: '', visible: true, align: 'center', valign: 'middle',formatter: 'CodeGoods.buttonFormatter'},
+ 		];
+ 	};
+
+	CodeGoods.buttonFormatter = function(value,row,index) {
+		if(row.appointment_id){
+			var str= '';
+			{if condition="in_array('admin/Appointment/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-success btn-xs" title="修改"  onclick="CodeGoods.update('+row.appointment_id+')"><i class="fa fa-pencil"></i>&nbsp;修改</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admin/Appointment/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-danger btn-xs" title="删除"  onclick="CodeGoods.delete('+row.appointment_id+')"><i class="fa fa-trash"></i>&nbsp;删除</button>&nbsp;';
+			{/if}
+			{if condition="in_array('adminteacher/view',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-primary btn-xs" title="查看教师"  onclick="CodeGoods.viewTeacher('+row.teacher_id+')"><i class="fa fa-plus"></i>&nbsp;查看教师</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admindemand/view',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-primary btn-xs" title="查看家长"  onclick="CodeGoods.viewDemand('+row.demand_id+')"><i class="fa fa-plus"></i>&nbsp;查看家长</button>&nbsp;';
+			{/if}
+			return str;
+		}
+	}
+
+	CodeGoods.create_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.pay_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.provincecityareaFormatter = function(value,row,index) {
+		var areaStr = '';
+		if(row.province){
+			areaStr += "-"+row.province;
+		}
+		if(row.city){
+			areaStr += "-"+row.city;
+		}
+		if(row.area){
+			areaStr += "-"+row.area;
+		}
+		areaStr = areaStr.substr(1);
+		return areaStr;
+	}
+
+	CodeGoods.statusFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '0':
+					return '<span class="label label-primary">已预约</span>';
+				break;
+				case '1':
+					return '<span class="label label-info">待支付(预约成功)</span>';
+				break;
+				case '2':
+					return '<span class="label label-success">已完成</span>';
+				break;
+				case '3':
+					return '<span class="label label-danger">预约失败</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.formParams = function() {
+		var queryData = {};
+		queryData['offset'] = 0;
+		queryData['teacher_mobile'] = $("#teacher_mobile").val();
+		queryData['stu_mobile'] = $("#stu_mobile").val();
+		queryData['create_time_start'] = $("#create_time").val().split(" - ")[0];
+		queryData['create_time_end'] = $("#create_time").val().split(" - ")[1];
+		queryData['sn'] = $("#sn").val();
+		queryData['status'] = $("#status").val();
+		return queryData;
+	}
+
+	CodeGoods.check = function () {
+		var selected = $('#' + this.id).bootstrapTable('getSelections');
+		if(selected.length == 0){
+			Feng.info("请先选中表格中的某一记录！");
+			return false;
+		}else{
+			CodeGoods.seItem = selected;
+			return true;
+		}
+	};
+
+	CodeGoods.add = function (value) {
+		var url = location.search;
+		console.log(url);
+		var index = layer.open({type: 2,title: '添加',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Appointment/add'+url});
+		this.layerIndex = index;
+		if(!IsPC()){layer.full(index)}
+	}
+
+
+	CodeGoods.update = function (value) {
+		if(value){
+			var index = layer.open({type: 2,title: '修改',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Appointment/update?appointment_id='+value});
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.appointment_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var index = layer.open({type: 2,title: '修改',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Appointment/update?appointment_id='+idx});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.delete = function (value) {
+		if(value){
+			Feng.confirm("是否删除选中项？", function () {
+				var ajax = new $ax(Feng.ctxPath + "/Appointment/delete", function (data) {
+					if ('00' === data.status) {
+						Feng.success(data.msg);
+						CodeGoods.table.refresh();
+					} else {
+						Feng.error(data.msg);
+					}
+				});
+				ajax.set('appointment_id', value);
+				ajax.start();
+			});
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.appointment_id;
+				});
+				idx = idx.substr(1);
+				Feng.confirm("是否删除选中项？", function () {
+					var ajax = new $ax(Feng.ctxPath + "/Appointment/delete", function (data) {
+						if ('00' === data.status) {
+							Feng.success(data.msg,1000);
+							CodeGoods.table.refresh();
+						} else {
+							Feng.error(data.msg,1000);
+						}
+					});
+					ajax.set('appointment_id', idx);
+					ajax.start();
+				});
+			}
+		}
+	}
+
+
+	CodeGoods.viewTeacher = function (value) {
+		if(value){
+			var queryData = {};
+			queryData['teacher_id'] = value;
+			var index = layer.open({type: 2,title: '查看教师',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'teacher/view?'+Feng.parseParam(queryData)});
+			this.layerIndex = index;
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.teacher_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var queryData = {};
+				queryData['teacher_id'] = idx;
+				var index = layer.open({type: 2,title: '查看教师',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'teacher/view?'+Feng.parseParam(queryData)});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+	CodeGoods.viewDemand = function (value) {
+		if(value){
+			var queryData = {};
+			queryData['demand_id'] = value;
+			var index = layer.open({type: 2,title: '查看家长',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'demand/view?'+Feng.parseParam(queryData)});
+			this.layerIndex = index;
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var queryData = {};
+				queryData['demand_id'] = idx;
+				var index = layer.open({type: 2,title: '查看家长',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'demand/view?'+Feng.parseParam(queryData)});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.search = function() {
+		CodeGoods.table.refresh({query : CodeGoods.formParams()});
+	};
+
+	$(function() {
+		var defaultColunms = CodeGoods.initColumn();
+		var url = location.search;
+		var table = new BSTable(CodeGoods.id, Feng.ctxPath+"/Appointment/index"+url,defaultColunms,20);
+		table.setPaginationType("server");
+		table.setQueryParams(CodeGoods.formParams());
+		CodeGoods.table = table.init();
+	});
+	laydate.render({elem: '#create_time',type: 'datetime',range:true,
+		ready: function(date){
+			$(".layui-laydate-footer [lay-type='datetime'].laydate-btns-time").click();
+			$(".laydate-main-list-1 .layui-laydate-content li ol li:last-child").click();
+			$(".layui-laydate-footer [lay-type='date'].laydate-btns-time").click();
+		}
+	});
+</script>
+{/block}

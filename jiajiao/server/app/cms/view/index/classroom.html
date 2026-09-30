@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>自习教室</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="/css/classroom.css" />
+</head>
+
+<body>
+    <div class="study_house">
+        <div class="head_addresss" v-if="address_textinfo!=''" onclick="location.href='/index/city'">
+            <text>{$city}</text>
+            <img class="bottomarrow" src="/img/botm_arrow.png" mode=""></img>
+        </div>
+        <div class="study_box">
+            {volist name="list" id="vo"}
+            <div class="list_study" v-if="page_datalist.length>0" v-for="(item,i) in page_datalist">
+                <div class="typemest_two">
+                    <div class="lf_infomesagebox">
+                        <div class="adres_info">
+                            <div class="imglogintext">
+                                <img src="/img/stu_adresicon.png" mode=""></img>
+                                <text>{$vo.province} {$vo.city} {$vo.area} {$vo.address}</text>
+                            </div>
+                            <!-- <text class="lan_text">{{item.lang_text}}km</text> -->
+                        </div>
+                        <div class="phone_nametext">
+                            <text class="phone_number">{$vo.linkman}&nbsp;&nbsp;{$vo.mobile}</text>
+                            <text class="price_number">({$vo.price}元/小时)</text>
+                        </div>
+                    </div>
+                    <div class="rf_contactbtn">
+                        <div class="call_img" @click="call_phone(item.mobile)">
+                            <img src="/img/server_call.png" mode=""></img>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {/volist}
+
+            <div class="no_datamest" v-if="page_datalist.length==0">
+                <div class="center_empty">
+                    <u-empty text="暂无信息" mode="data"></u-empty>
+                </div>
+            </div>
+        </div>
+        <u-picker v-model="show_picker" confirm-color='#fbcab1' @confirm='confirm_region' mode="region"></u-picker>
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+
+</html>
+<script type="text/javascript">
+</script>

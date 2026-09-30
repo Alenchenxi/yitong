@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>教员中心</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="/css/teacher_center.css" />
+</head>
+
+<body>
+   <div class="faculy_centerindex" id="app">
+        <!-- 头部header -->
+       <!--  <div class="headerbox">
+            <div class="top_imgboxs" :style="'padding-top:'+statusBarHeight+'rpx'">
+                <div class="header_context">
+
+                    <div class="back_imgbox" @click="back_page">
+                        <image src="/img/left_arrow.png" mode=""></image>
+                    </div>
+                    <text>教员中心</text>
+                </div>
+            </div>
+        </div> -->
+        <div class="page_continer" :style="'padding-top:'+(statusBarHeight+88)+'rpx'">
+            <div class="content_box">
+                <div class="user_head">
+                    <image  src="{$teacher_info.head_img}" mode=""></image>
+                    <span>{$teacher_info.name}</span>
+                </div>
+                <div class="resumebox">
+                    <div class="resume_center" @click='jump_btn({$teacher_info.is_on_off},{$teacher_info.status})'>
+                        <div class="lf_textbox">
+                            <span>我的简历</span>
+                            <image src="/img/caret-right.png" mode=""></image>
+                        </div>
+                     {if $teacher_info.is_on_off==1}
+                        <div class="righ_conttinar"  >
+                            <div class="right_radiusbox">
+                                <div class="radius_box">
+
+                                    {if $teacher_info.status==0}
+                                    <span >审核中</span>
+                                    {elseif $teacher_info.status==1}
+                                    <span >已通过</span>
+                                    {else}
+                                    <span>未通过</span>
+                                    {/if}
+                                </div>
+                            </div>
+                        </div>
+                         {else}
+                        <div class="righ_conttinar" >
+                            <div class="right_radiusbox">
+                                <div class="radius_box">
+                                    <span>已下线</span>
+                                </div>
+                            </div>
+                        </div>
+                        {/if}
+                    </div>
+                </div>
+                <div class="order_jumpbox">
+                    <div class="order_box">
+                        <span class="order_title">我的订单</span>
+                        <!--//order_state 状态  已购|1|success,待付|2|warning,已完成|3|success  不传默认0-->
+                        <div class="order_typebox">
+                            <div class="list_orderbar" onclick="location.href='/teacher/yyOrder'">
+                                <image src="/img/set_icon1.png" mode=""></image>
+                                <span>预约订单</span>
+                            </div>
+                            <div class="list_orderbar" onclick="location.href='/teacher/myOrder?order_state=2'">
+                                <image src="/img/set_icon3.png" mode=""></image>
+                                <span>待付订单</span>
+                            </div>
+                            <div class="list_orderbar" onclick="location.href='/teacher/myOrder?order_state=1'">
+                                <image src="/img/set_icon2.png" mode=""></image>
+                                <span>已购订单</span>
+                            </div>
+                            <!-- <div class="list_orderbar" @click="order_jump(2)">
+                                <image src="/img/set_icon3.png" mode=""></image>
+                                <text>待退订单</text>
+                            </div> -->
+                            <div class="list_orderbar" onclick="location.href='/teacher/myOrder?order_state=3'">
+                                <image src="/img/set_icon4.png" mode=""></image>
+                                <span>完成订单</span>
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div class="jump_pagebox">
+                        <!-- <div class="list_jump" @click='jump_btn(0)'>
+                            <div class="lf_info">
+                                <image style="height: 40rpx;" src="/img/user_tab1.png" mode=""></image>
+                                <text>我的简历</text>
+                            </div>
+                            <image class="rf_arrow" src="/img/main_jumparrow.png" mode=""></image>
+                        </div> -->
+                        <!--<div class="list_jump">
+                            <div class="lf_info">
+                                <image src="/img/user_tab2.png" mode=""></image>
+                                <text>在线客服</text>
+                            </div>
+                            <image class="rf_arrow" src="/img/main_jumparrow.png" mode=""></image>
+                            <button open-type="contact"></button>
+                        </div>-->
+                        <!--    <div class="list_jump" @click='jump_btn(2)'>
+                            <div class="lf_info">
+                                <image src="/img/user_tab3.png" mode=""></image>
+                                <text>修改密码</text>
+                            </div>
+                            <image class="rf_arrow" src="/img/main_jumparrow.png" mode=""></image>
+                        </div> -->
+                        <div class="list_jump" onclick="location.href='/teacher/teacherCommentList'">
+                            <div class="lf_info">
+                                <image src="/img/main_bar4.png" mode=""></image>
+                                <span>我的评价</span>
+                            </div>
+                            <image class="rf_arrow" src="/img/main_jumparrow.png" mode=""></image>
+                        </div>
+
+                        <div class="list_jump" onclick="location.href='/teacher/getTakeOrderSm'">
+                            <div class="lf_info">
+                                <image src="/img/main_bar2.png" mode=""></image>
+                                <span>接单说明</span>
+                            </div>
+                            <image class="rf_arrow" src="/img/main_jumparrow.png" mode=""></image>
+                        </div>
+
+                        <div class="list_jump" onclick="location.href='/user/cancel'" style="border: none;" >
+                            <div class="lf_info">
+                                <image src="/img/main_bar7.png" mode=""></image>
+                                <span>注销账号</span>
+                            </div>
+                            <image class="rf_arrow" src="/img/main_jumparrow.png" mode=""></image>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tan1"  style="display:none">
+            <div class="apply_container">
+                <span class="head_title">提示</span>
+                <div class="teacher_content">
+                    <span style="line-height: 100rpx;">简历已违规下线，需购买后上线</span>
+                </div>
+                <div class="sure_buton">
+                    <button @click="pay_is_linefun">立即购买</button>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="tan2"  style="display:none">
+            <div class="apply_container">
+                <span class="head_title">审核原因</span>
+                <div class="teacher_content">
+                    <span>{$teacher_info.cause}</span>
+                </div>
+                <div class="sure_buton">
+                    <button onclick="location.href='/teacher/myResume'">去修改</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+</html>
+<script type="text/javascript">
+ var layer;
+ layui.use(['layer'], function(){
+      layer = layui.layer;
+ })
+
+var vm = new Vue({
+    el: '#app',
+    data: {
+        out_linepop: false,
+        cause_pop: false,
+        statusBarHeight: 0,
+        user_info: {},
+        teacher_id:{$teacher_info.teacher_id}
+    },
+    methods: {
+       // 已下线支付
+            pay_is_linefun() {
+                $.ajax({
+                    url: "/order/createBackOnlineOrder",
+                    type: 'post',
+                    data: {},
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.state == 200) {
+                            layer.msg(res.msg,{time: 1000},function(){
+                                //做 h5支付逻辑
+                                window.location.hreflang = res.data;
+                            });
+                        } else {
+                            layer.msg(res.msg)
+                        }
+                    },
+                    error: function() {
+                        console.log("出错了");
+                    }
+                });
+            },
+            get_userinfo(type) {
+                let token = uni.getStorageSync("token")
+                this.http.post_request("/user/getUserInfo", {}, token).then(res => {
+                    if (res.status == 200) {
+                        uni.setStorageSync("user_info", res.data)
+                        this.user_info = res.data
+                    }
+                })
+            },
+
+            look_cause() {
+                if (this.user_info.teacher_info.status != 2) {
+                    uni.navigateTo({
+                        url: "../my_resume/my_resume"
+                    })
+                    return false
+                }
+                this.cause_pop = true;
+            },
+
+            back_page() {
+                uni.switchTab({
+                    url: "../../pages/main/main"
+                })
+            },
+
+            order_jump(n) {
+                uni.navigateTo({
+                    url: "../teacher_order/teacher_order?type=" + n
+                })
+            },
+            jump_set() {
+                this.cause_pop = false;
+                uni.navigateTo({
+                    url: "../my_resume/my_resume"
+                })
+
+            },
+            jump_btn(n,k) {
+                if(n==1){
+                    if(k==2){
+                        layer.open({
+                          type: 1,
+                          title: false,
+                          closeBtn: 0,
+                          area: ['90%'],
+                          shadeClose: true,
+                          content: $('#tan2')
+                        });
+                    }else{
+                        window.location.href="/teacher/myResume";
+                    }
+
+                }else{
+                    layer.open({
+                          type: 1,
+                          title: false,
+                          closeBtn: 0,
+                          area: ['90%'],
+                          shadeClose: true,
+                          content: $('#tan1')
+                        });
+                }
+            }
+    }
+})
+</script>

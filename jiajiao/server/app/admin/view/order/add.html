@@ -1,0 +1,212 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">订单编号：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="sn" value="" name="sn" class="form-control" placeholder="请输入订单编号">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">会员id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mid" value="" name="mid" class="form-control" placeholder="请输入会员id">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">教师id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="teacher_id" value="" name="teacher_id" class="form-control" placeholder="请输入教师id">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">任教方式：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['teaching_way'])){ $info['teaching_way'] = '1'; }; ?>
+							<input name="teaching_way" value="1" type="radio" {if condition="$info.teaching_way eq '1'"}checked{/if} title="上门授课">
+							<input name="teaching_way" value="2" type="radio" {if condition="$info.teaching_way eq '2'"}checked{/if} title="在线授课">
+							<input name="teaching_way" value="3" type="radio" {if condition="$info.teaching_way eq '3'"}checked{/if} title="均可">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">联系人：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="linkman" value="" name="linkman" class="form-control" placeholder="请输入联系人">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">手机号：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mobile" value="" name="mobile" class="form-control" placeholder="请输入手机号">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">省市区：</label>
+						<div class="distpicker5">
+							<div class="col-sm-3">
+								<select lay-ignore id="province" class="form-control" data-province="{$info.province}"></select>
+							</div>
+							<div class="col-sm-3">
+								<select lay-ignore id="city" class="form-control" data-city="{$info.city}"></select>
+							</div>
+							<div class="col-sm-3">
+								<select lay-ignore id="area" class="form-control" data-district="{$info.area}"></select>
+							</div>
+						</div>
+					</div>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.data.js"></script>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.js"></script>
+					<script src="__PUBLIC__/static/js/plugins/shengshiqu/main.js"></script>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">详细地址：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="address" value="" name="address" class="form-control" placeholder="请输入详细地址">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">选择老师授教科目：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="teaching_subject_id" value="" name="teaching_subject_id" class="form-control" placeholder="请输入选择老师授教科目">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">年级id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="grade_id" value="" name="grade_id" class="form-control" placeholder="请输入年级id">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">科目id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="subject_id" value="" name="subject_id" class="form-control" placeholder="请输入科目id">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">年级：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="grade_name" value="" name="grade_name" class="form-control" placeholder="请输入年级">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">科目：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="subject_name" value="" name="subject_name" class="form-control" placeholder="请输入科目">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">单课时价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="price" value="0" name="price" class="form-control" placeholder="请输入单课时价格">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">课时：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="hour" value="0" name="hour" class="form-control" placeholder="请输入课时">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">剩余课时：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="remain_hour" value="0" name="remain_hour" class="form-control" placeholder="请输入剩余课时">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">订单金额：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="amount" value="0" name="amount" class="form-control" placeholder="请输入订单金额">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">上课时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="weeks" value="" name="weeks" class="form-control" placeholder="请输入上课时间">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">创建时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" value="{:date('Y-m-d H:i:s')}" name="create_time"  placeholder="请输入创建时间" class="form-control" id="create_time">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">状态：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['status'])){ $info['status'] = '0'; }; ?>
+							<input name="status" value="0" type="radio" {if condition="$info.status eq '0'"}checked{/if} title="未完成">
+							<input name="status" value="1" type="radio" {if condition="$info.status eq '1'"}checked{/if} title="已支付">
+							<input name="status" value="2" type="radio" {if condition="$info.status eq '2'"}checked{/if} title="已完成">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">支付时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" value="{:date('Y-m-d H:i:s')}" name="pay_time"  placeholder="请输入支付时间" class="form-control" id="pay_time">
+							<span class="help-block m-b-none">支付时间/退款时间</span>
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.add()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+laydate.render({elem: '#create_time',type: 'datetime',trigger:'click'});
+laydate.render({elem: '#pay_time',type: 'datetime',trigger:'click'});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('order_id').set('sn').set('mid').set('teacher_id').set('linkman').set('mobile').set('province').set('city').set('area').set('address').set('teaching_subject_id').set('grade_id').set('subject_id').set('grade_name').set('subject_name').set('price').set('hour').set('remain_hour').set('amount').set('weeks').set('create_time').set('pay_time');
+};
+
+CodeInfoDlg.add = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var teaching_way = $("input[name = 'teaching_way']:checked").val();
+	 var status = $("input[name = 'status']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/Order/add", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('teaching_way',teaching_way);
+	 ajax.set('status',status);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

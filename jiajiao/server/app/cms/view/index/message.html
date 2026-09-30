@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>我的消息</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="/css/message.css" />
+</head>
+
+<body>
+    <div class="message_page">
+        <div class="mesage_container">
+            {volist name="list" id="vo"}
+            <a href="/news/{$vo.content_id}.html" class="list_mesage" >
+                <div class="lf_info">
+                    <div class="lf_icon">
+                        <image src="/img/laba.png" mode=""></image>
+                    </div>
+                    <div class="mesage_content">
+                        <text class="head_name">系统消息</text>
+                        <div class="info_content">{$vo.title}</div>
+                    </div>
+                </div>
+                <div class="rf_teme_num" >
+                    <text class="time_text">{$vo.create_time}</text>
+
+                    {if $vo.is_read==0 }
+                    <text class="num_dot" ></text>
+                    {/if}
+                </div>
+            </a>
+            {/volist}
+
+        </div>
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+
+</html>
+<script type="text/javascript">
+</script>

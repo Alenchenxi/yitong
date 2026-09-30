@@ -1,0 +1,39 @@
+{extend name='common/_container'} 
+{block name="content"} 
+<div class="ibox float-e-margins"> 
+	<div class="ibox-content"> 
+		<table class="table table-bordered" style="word-break:break-all;"> 
+			<tbody> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">订单号：</td> 
+					<td>{$info.sn}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">会员id：</td> 
+					<td>{$info.mid}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">购买次数：</td> 
+					<td>{$info.dial_num}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">金额：</td> 
+					<td>{$info.amount}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">创建时间：</td> 
+					<td>{if $info.create_time}{$info.create_time|date='Y-m-d H:i:s'}{/if}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">支付时间：</td> 
+					<td>{if $info.pay_time}{$info.pay_time|date='Y-m-d H:i:s'}{/if}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">状态：</td> 
+					<td><?php echo getFieldVal($info["status"],"已支付|1|success,未支付|0|danger,已退款|2| warning");?></td>   
+				</tr> 
+			</tbody> 
+		</table> 
+	</div> 
+</div> 
+{/block} 

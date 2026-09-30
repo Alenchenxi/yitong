@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>教员中心</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="/css/myResume.css" />
+</head>
+
+<body>
+    <div class="resume_page" id="app">
+        <div class="page_continer">
+            <div class="teach_info">
+                <div class="lf_messsage" onclick="location.href='/teacher/updateResume?type=1'">
+                    <!-- <div class="head_text">个人信息</div> -->
+                    <div class="name_set">
+                        <div>个人信息</div>
+                        <image src="/img/set_icon.png" mode=""></image>
+                    </div>
+                    <div class="delt_info">{{user_info.name}}</div>
+                    <div
+                        class="delt_info">{{user_info.gender==1?'男':'女'}}</div>
+                    <div class="delt_info">{{user_info.age}}岁</div>
+                    <div class="delt_info">教龄{{user_info.teaching_age}}年</div>
+                    <div
+                        class="delt_info">（{{user_info.teacher_identity==1?'大学生教员':user_info.teacher_identity==2?'普通教员': user_info.teacher_identity==3?'专业教员':'不限'}})</div>
+                </div>
+                <div class="rf_avatar"  >
+                    <image  :src="user_info.head_img" mode=""></image>
+                </div>
+
+            </div>
+            <div class="family_stuinfo" onclick="location.href='/teacher/updateResume?type=2'">
+                <div class="rf_mest_box">
+                    <div class="title_set">
+                        <div>家教信息</div>
+                        <image src="/img/set_icon.png" mode=""></image>
+                    </div>
+                    <div class="mest_textbox">
+                        <div class="delt_infotext"
+                            v-for="(info,n) in user_info.subject_names">{{info.name}}</div>
+                        <div class="delt_infotext" v-if="user_info.teaching_way==(t+1)"
+                            v-for="(item,t) in teaching_typelist">{{item}}</div>
+                    </div>
+                </div>
+                <div class="rf_addicon">
+                    <image src="/img/add_icon.png" mode=""></image>
+                </div>
+            </div>
+
+            <div class="family_stuinfo" onclick="location.href='/teacher/updateResume?type=3'">
+                <div class="title_set">
+                    <div>证书上传</div>
+                    <image src="/img/set_icon.png" mode=""></image>
+                </div>
+                <div class="rf_addicon">
+                    <image src="/img/add_icon.png" mode=""></image>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom_btnbox">
+            <div class="buton_container">
+                <div class="list_btn" onclick="location.href='/teacher/resumeView'">
+                    <image src="/img/set_btn1.png" mode=""></image>
+                    <div>简历预览</div>
+                </div>
+                <div class="list_btn" @click="refresh()">
+                    <image src="/img/set_btn2.png" mode=""></image>
+                    <div>简历刷新</div>
+                </div>
+                <div class="list_btn" onclick="zhiding()" >
+                    <image src="/img/set_btn3.png" mode=""></image>
+                    <div>简历置顶</div>
+                </div>
+                <div class="list_btn" v-if="user_info.is_hide==0" @click="hideOrOpenResume()">
+                    <image src="/img/set_btn4.png" mode=""></image>
+                    <div>简历隐藏</div>
+                </div>
+                 <div class="list_btn" v-else @click="hideOrOpenResume()">
+                    <image src="/img/set_btn4.png" mode=""></image>
+                    <div>简历开启</div>
+                </div>
+            </div>
+        </div>
+
+        
+            <div class="popup_container"  style="display:none" >
+                <div class="pop_title">选择套餐</div>
+                <div :class="active==i?'list_info active_border':'list_info'" v-for="(item,i) in setMeallist"
+                    @click="choose_active(i)"  >
+                    <div class="lf_infotext">
+                        <div class="mst_text">简历置顶 {{item.stick_days}} 天</div>
+                        <div class="symble">+</div>
+                        <div class="big_text">赠{{item.give_days}}天</div>
+                    </div>
+                    <div class="rf_pricetext">
+                        <div class="price_sym">￥</div>
+                        <div class="price_number">{{item.price}}</div>
+                    </div>
+                </div>
+
+                <div class="pay_btnbox">
+                    <div @click="pay_mealfun">立即支付￥{{setMeallist[active].price}}元</div>
+                </div>
+            </div>
+
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+</html>
+<script type="text/javascript">
+var vm = new Vue({
+    el: '#app',
+    data: {
+       but_list: [],
+                 pic_url: "https://wx.xrkjj.net/",
+                teaching_typelist:  ['教员上门', '学生上门', '网上辅导', '住家辅导'],
+                user_info: {},
+                // pop 是否显示
+                center_popshow: false,
+                // 第几个套餐
+                active: 0,
+
+                // // 简历是否隐藏
+                // hidden_show: false,
+                // 套餐列表
+                setMeallist: [],
+
+    },
+    methods: {
+        init: function() {
+            $.ajax({
+                url: "/teacher/myResume",
+                type: 'post',
+                data: {  },
+                dataType: 'json',
+                success: function(data) {
+                    if (data.status == 404) {
+                        // layer.msg(data.msg, { icon: 5 });
+                    } else {
+                        vm.user_info = data.data;
+                    }
+                },
+                error: function() {
+                    console.log("出错了");
+                }
+            });
+        },
+        Meallist(){
+            $.ajax({
+                url: "/teacher/getSetMeal",
+                type: 'post',
+                data: {  },
+                dataType: 'json',
+                success: function(data) {
+                    if (data.status == 404) {
+                        // layer.msg(data.msg, { icon: 5 });
+                    } else {
+                        vm.setMeallist = data.data;
+                    }
+                },
+                error: function() {
+                    console.log("出错了");
+                }
+            });
+        },
+       // 支付简历置顶
+            pay_mealfun() {
+                let data = {
+                    set_meal_id: this.setMeallist[this.active].set_meal_id
+                }
+                $.ajax({
+                    url : '/order/createTcOrder',
+                    type : 'post',
+                    dataType : 'json',
+                    data : data,
+                    success : function (res) {
+                        console.log(res);
+                        if(res.status==200){
+                            layer.msg(res.msg,{time: 1000},function(){
+                                //做 h5支付逻辑
+                                window.location.hreflang = res.data;
+                            });
+                        }else{
+                            layer.msg(res.msg);
+                        }
+                    }
+                })
+
+            },
+            // 底部按钮
+            bottom_btn(n) {
+                switch (n) {
+                    case 0:
+                        uni.navigateTo({
+                            url: "../look_detail/look_detail"
+                        })
+                        break;
+                    case 1:
+                        let num = uni.getStorageSync("user_info").teacher_info.is_day_ref;
+                        
+                        if (num == 1) {
+                            uni.showToast({
+                                title: "今天已刷新!",
+                                icon: "none"
+                            })
+                            return false
+                        }
+
+                        uni.showLoading({
+                            title: "刷新中..."
+                        })
+                        this.get_newlistfun()
+                        
+                        this.get_userinfo()
+                        setTimeout(() => {
+                            uni.hideLoading()
+                        }, 3000)
+
+                        break;
+                    case 2:
+                        this.center_popshow = true;
+                        break;
+                    case 3:
+                        // this.hidden_show = !this.hidden_show
+                        // uni.showToast({
+                        //  title: "简历隐藏成功",
+                        //  icon: "none"
+                        // })
+                        this.hider_orshowResumefun()
+                        break;
+                    case 4:
+                        // this.hidden_show = !this.hidden_show
+                        // uni.showToast({
+                        //  title: "简历开启成功",
+                        //  icon: "none"
+                        // })
+                        this.hider_orshowResumefun()
+                        break;
+                }
+            },
+
+            // 隐藏或者开启简历
+            hider_orshowResumefun() {
+                let data = {
+                    teacher_id: this.user_info.teacher_id,
+                }
+                $.ajax({
+                    url: "/user/hideOrOpenResume",
+                    type: 'post',
+                    data: data,
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status == 200) {
+                            this.get_userinfo(1)
+                        }
+                    },
+                    error: function() {
+                        console.log("出错了");
+                    }
+                });
+            },
+            // 修改头像
+            set_head_iimg() {
+                let that = this;
+                uni.chooseImage({
+                    count: 1, //默认9
+                    sizeType: ['original', 'compressed'], //可以指定是原图还是压缩图，默认二者都有
+                    sourceType: ['album'], //从相册选择                  
+                    success: function(res) {
+                        console.log(res)
+                        let imginfolist = res.tempFilePaths[0];
+                        uni.showLoading({
+                            title: "请稍后..."
+                        })
+                        wx.uploadFile({
+                            url: that.pic_url + '/Base/upload',
+                            filePath: imginfolist,
+                            name: 'file',
+                            formData: {
+                                user: 'data'
+                            },
+                            success(result) {
+                                let imgdata = JSON.parse(result.data);
+                                // that.uploadiimglist.push(imgdata.data)
+                                // that.get_userinfo()
+                                that.submit_datafun(imgdata.data)
+                                uni.hideLoading()
+                            },
+                            fail(err) {
+                                console.log(err)
+                            }
+                        });
+
+
+                    }
+                });
+
+            },
+
+            // 提交头像
+            submit_datafun(img) {
+                let data = {
+                    head_img: img,
+                }
+                let token = uni.getStorageSync("token")
+                this.http.post_request("/user/teacherReg", data, token).then(res => {
+                    console.log(res)
+                    if (res.status == 200) {
+                        uni.showToast({
+                            title: "修改成功",
+                            icon: "none"
+                        })
+                        this.get_userinfo()
+                        return false
+
+                    } else {
+                        uni.showToast({
+                            title: res.msg,
+                            icon: "none"
+                        })
+                        return false
+                    }
+                })
+            },
+
+            get_userinfo(type) {
+                let token = uni.getStorageSync("token")
+                this.http.post_request("/user/getUserInfo", {}, token).then(res => {
+                    console.log(res)
+                    if (res.status == 200) {
+                        uni.setStorageSync("user_info", res.data)
+                        this.user_info = res.data;
+                        if (type == 1) {
+                            if (res.data.teacher_info.is_hide == 0) {
+                                uni.showToast({
+                                    title: "简历开启成功"
+                                })
+                            } else {
+                                uni.showToast({
+                                    title: "简历隐藏成功"
+                                })
+                            }
+                        }
+                    }
+                })
+            },
+
+            // 刷新简历
+            get_newlistfun() {
+                let token = uni.getStorageSync("token")
+                this.http.post_request("/user/refreshCv", token).then(res => {
+                    console.log(res)
+                    if (res.status == 200) {
+                        uni.hideLoading()
+                        uni.showToast({
+                            title: "刷新成功",
+                            icon: "none"
+                        })
+                        this.but_list = [{
+                                text: "简历置顶",
+                                num: 2,
+                                icon: "../../static/set_btn3.png"
+                            },
+                            {
+                                text: "简历刷新",
+                                num: 1,
+                                icon: "../../static/set_btn2.png"
+                            },
+
+                        ]
+
+
+
+
+                    } else {
+                        uni.showToast({
+                            title: res.msg,
+                            icon: "none"
+                        })
+                    }
+                })
+            },
+            // 选择套餐
+            choose_active(n) {
+                this.active = n
+            },
+
+            // 修改信息
+            set_user_info(n) {
+                uni.navigateTo({
+                    url: "../set_teacher_info/set_teacher_info?type=" + n
+                })
+            },
+            // 获取套餐
+            get_SetMeallistfun() {
+                this.http.post_request("/index/getSetMeal").then(res => {
+                    console.log(res)
+                    if (res.status == 200) {
+                        this.setMeallist = res.data;
+                    }
+                })
+            }
+
+    }
+})
+ vm.Meallist();
+ vm.init();
+
+ var layer;
+ layui.use(['layer'], function(){
+      layer = layui.layer;
+ })
+
+//置顶
+ function zhiding(){
+    layer.open({
+      type: 1,
+      title: false,
+      closeBtn: 0,
+      area: ['90%'],
+      shadeClose: true,
+      content: $('.popup_container')
+    });
+ }
+
+//刷新
+function refresh() {
+    $.ajax({
+        url : '/teacher/refreshCv',
+        type : 'post',
+        dataType : 'json',
+        data : {},
+        success : function (res) {
+            console.log(res);
+            if(res.status==200){
+                layer.msg(res.msg,{time: 1000},function(){
+                    //刷新当前页
+                    window.location.reload();
+
+                });
+            }else{
+                layer.msg(res.msg);
+            }
+        }
+    })
+}
+
+
+
+//修改简历状态
+function hideOrOpenResume() {
+    $.ajax({
+        url : '/teacher/hideOrOpenResume',
+        type : 'post',
+        dataType : 'json',
+        data : {},
+        success : function (res) {
+            console.log(res);
+            if(res.status==200){
+                layer.msg(res.msg,{time: 1000},function(){
+                    //刷新当前页
+                    window.location.reload();
+
+                });
+            }else{
+                layer.msg(res.msg);
+            }
+        }
+    })
+}
+
+</script>

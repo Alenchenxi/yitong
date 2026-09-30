@@ -1,0 +1,211 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='teaching_subject_id' id='teaching_subject_id' value="{$info.teaching_subject_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">分类id：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="category_id" class="form-control" id="category_id">
+								<option value="">请选择</option>
+								{sql connect="mysql" query="select category_id,name from cd_category"}
+									<option value="{$sql.category_id}" {if condition="$info.category_id eq $sql.category_id"}selected{/if}>{$sql.name}</option>
+								{/sql}
+							</select>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">年级id：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="grade_id" class="form-control" id="grade_id">
+								<option value="">请选择</option>
+								<!--{sql connect="mysql" query="select grade_id,name from cd_grade"}
+									<option value="{$sql.grade_id}" {if condition="$info.grade_id eq $sql.grade_id"}selected{/if}>{$sql.name}</option>
+								{/sql}-->
+							</select>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">科目id：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="subject_id" class="form-control" id="subject_id">
+								<option value="">请选择</option>
+								<!--{sql connect="mysql" query="select subject_id,name from cd_subject"}
+									<option value="{$sql.subject_id}" {if condition="$info.subject_id eq $sql.subject_id"}selected{/if}>{$sql.name}</option>
+								{/sql}-->
+							</select>
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">是否是主授：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['is_main'])){ $info['is_main'] = '0'; }; ?>
+							<input name="is_main" value="1" type="radio" {if condition="$info.is_main eq '1'"}checked{/if} title="是">
+							<input name="is_main" value="0" type="radio" {if condition="$info.is_main eq '0'"}checked{/if} title="否">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">价格：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="price" value="{$info.price}" name="price" class="form-control" placeholder="请输入价格">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){
+
+	var category_id = "{$info.category_id}";
+	var grade_id = "{$info.grade_id}";
+	var subject_id = "{$info.subject_id}";
+	if(category_id){
+		getGradeList(category_id,grade_id)
+	}
+	if(grade_id){
+		getSubjectList(grade_id,subject_id)
+	}
+
+	$('#category_id').change(function () {
+		category_id = $('#category_id').val();
+
+		$('#grade_id').val('');
+		$('#subject_id').val('');
+		if(category_id){
+			getGradeList(category_id)
+		}
+
+	});
+
+	$('#grade_id').change(function () {
+		grade_id = $('#grade_id').val();
+		$('#subject_id').val('');
+		if(grade_id){
+			getSubjectList(grade_id)
+		}
+	});
+
+
+	$('#grade_id').click(function () {
+		if(!category_id){
+			return Feng.error("请先选择分类！",1000);
+		}
+	});
+
+	$('#subject_id').click(function () {
+		if(!grade_id){
+			return Feng.error("请先选择年级！",1000);
+		}
+	});
+
+	//获取年级列表
+	function getGradeList(category_id,grade_id){
+		var ajax = new $ax(Feng.ctxPath + "/Teacher/getGradeList", function (data) {
+			if ('00' === data.status) {
+				console.log(data);
+				var list = data.data;
+				var starthtml = '<option value="">请选择</option>';
+				for (var i=0;i<list.length;i++){
+					var selected = '';
+					if(list[i]['grade_id']==grade_id){
+						selected = 'selected';
+					}
+
+					starthtml += '<option value="'+list[i]['grade_id']+'"  '+selected+'>'+list[i]['name']+'</option>'
+				}
+				$('#grade_id').html(starthtml);
+				console.log(starthtml);
+			} else {
+				Feng.error(data.msg);
+			}
+		},function (res) {
+			Feng.error(res.msg);
+		});
+		ajax.set('category_id', category_id);
+		ajax.start();
+	}
+
+	//获取学科列表
+	function getSubjectList(grade_id,subject_id){
+		var ajax = new $ax(Feng.ctxPath + "/Teacher/getSubjectList", function (data) {
+			if ('00' === data.status) {
+				console.log(data);
+				var list = data.data;
+				var arrivethtml = '<option value="">请选择</option>';
+				for (var i=0;i<list.length;i++){
+					var selected = '';
+					if(list[i]['subject_id']==subject_id){
+						selected = 'selected';
+					}
+
+					arrivethtml += '<option value="'+list[i]['subject_id']+'"  '+selected+'>'+list[i]['name']+'</option>'
+				}
+				$('#subject_id').html(arrivethtml);
+				console.log(arrivethtml);
+			} else {
+				Feng.error(data.msg);
+			}
+		},function (res) {
+			Feng.error(res.msg);
+		});
+		ajax.set('grade_id', grade_id);
+		ajax.start();
+	}
+
+
+});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('teaching_subject_id').set('category_id').set('grade_id').set('subject_id').set('price');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var is_main = $("input[name = 'is_main']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/TeachingSubject/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('is_main',is_main);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

@@ -1,0 +1,479 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='teacher_id' id='teacher_id' value="{$info.teacher_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">联系方式：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mobile" value="{$info.mobile}" name="mobile" class="form-control" placeholder="请输入联系方式">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">微信号：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="wechat" value="{$info.wechat}" name="wechat" class="form-control" placeholder="请输入微信号">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">微信昵称：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="nickname" value="{$info.nickname}" name="nickname" class="form-control" placeholder="请输入微信昵称">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">真实姓名：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="name" value="{$info.name}" name="name" class="form-control" placeholder="请输入真实姓名">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">身份证号码：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="id_number" value="{$info.id_number}" name="id_number" class="form-control" placeholder="请输入身份证号码">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">性别：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['gender'])){ $info['gender'] = '1'; }; ?>
+							<input name="gender" value="1" type="radio" {if condition="$info.gender eq '1'"}checked{/if} title="男">
+							<input name="gender" value="2" type="radio" {if condition="$info.gender eq '2'"}checked{/if} title="女">
+							<input name="gender" value="3" type="radio" {if condition="$info.gender eq '3'"}checked{/if} title="不限">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">年龄：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="age" value="{$info.age}" name="age" class="form-control" placeholder="请输入年龄">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">邮箱：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mail" value="{$info.mail}" name="mail" class="form-control" placeholder="请输入邮箱">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">身份证正面：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="id_card_zheng" value="{$info.id_card_zheng}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="id_card_zheng" class="form-control" placeholder="请输入身份证正面">
+							<span class="help-block m-b-none id_card_zheng_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="id_card_zheng_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">身份证反面：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="id_card_fan" value="{$info.id_card_fan}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="id_card_fan" class="form-control" placeholder="请输入身份证反面">
+							<span class="help-block m-b-none id_card_fan_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="id_card_fan_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">学生证：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="student_card_img" value="{$info.student_card_img}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="student_card_img" class="form-control" placeholder="请输入学生证">
+							<span class="help-block m-b-none student_card_img_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="student_card_img_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">学历证：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="diploma_img" value="{$info.diploma_img}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="diploma_img" class="form-control" placeholder="请输入学历证">
+							<span class="help-block m-b-none diploma_img_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="diploma_img_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">教师证：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="itic_img" value="{$info.itic_img}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="itic_img" class="form-control" placeholder="请输入教师证">
+							<span class="help-block m-b-none itic_img_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="itic_img_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">头像：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="head_img" value="{$info.head_img}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="head_img" class="form-control" placeholder="请输入头像">
+							<span class="help-block m-b-none head_img_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="head_img_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">教龄：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="teaching_age" value="{$info.teaching_age}" name="teaching_age" class="form-control" placeholder="请输入教龄">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">学校：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="school" value="{$info.school}" name="school" class="form-control" placeholder="请输入学校">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">籍贯：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="birthplace" value="{$info.birthplace}" name="birthplace" class="form-control" placeholder="请输入籍贯">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">学校就读开始时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="school_start_time" value="{$info.school_start_time}" name="school_start_time" class="form-control" placeholder="请输入学校就读开始时间">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">学校就读结束时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="school_end_time" value="{$info.school_end_time}" name="school_end_time" class="form-control" placeholder="请输入学校就读结束时间">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">学历：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="education" value="{$info.education}" name="education" class="form-control" placeholder="请输入学历">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">专业：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="specialty" value="{$info.specialty}" name="specialty" class="form-control" placeholder="请输入专业">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">教师身份：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['teacher_identity'])){ $info['teacher_identity'] = '1'; }; ?>
+							<input name="teacher_identity" value="1" type="radio" {if condition="$info.teacher_identity eq '1'"}checked{/if} title="大学生教员">
+							<input name="teacher_identity" value="2" type="radio" {if condition="$info.teacher_identity eq '2'"}checked{/if} title="专职教员">
+							<input name="teacher_identity" value="3" type="radio" {if condition="$info.teacher_identity eq '3'"}checked{/if} title="不限">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">任教方式：</label>
+						<div class="col-sm-9">
+							<select lay-ignore name="teaching_way" class="form-control chosen" multiple data-placeholder='请选择任教方式'  id="teaching_way">
+								<option value="1" {if in_array("1",explode(',',$info.teaching_way))}selected{/if}>上门授课</option>
+								<option value="2" {if in_array("2",explode(',',$info.teaching_way))}selected{/if}>在线授课</option>
+								<option value="3" {if in_array("3",explode(',',$info.teaching_way))}selected{/if}>均可</option>
+							</select>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">任教省份：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="province" value="{$info.province}" name="province" class="form-control" placeholder="请输入任教省份">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">任教城市：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="city" value="{$info.city}" name="city" class="form-control" placeholder="请输入任教城市">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">任教区域：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="area" value="{$info.area}" name="area" class="form-control" placeholder="请输入任教区域">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">任教经验：</label>
+						<div class="col-sm-9">
+							<textarea id="experience" name="experience"  class="form-control" placeholder="请输入任教经验">{$info.experience}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">家教经验：</label>
+						<div class="col-sm-9">
+							<textarea id="successful_case" name="successful_case"  class="form-control" placeholder="请输入家教经验">{$info.successful_case}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">自我介绍：</label>
+						<div class="col-sm-9">
+							<textarea id="introduction" name="introduction"  class="form-control" placeholder="请输入自我介绍">{$info.introduction}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">奖励荣誉：</label>
+						<div class="col-sm-9">
+							<textarea id="honor" name="honor"  class="form-control" placeholder="请输入奖励荣誉">{$info.honor}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">奖励荣誉图片：</label>
+						<div class="col-sm-6">
+							<div class="honor_img pic_list">
+								<li id="honor_img_upload"></li>
+							</div>
+							<div style="clear:both"></div>
+							<span class="help-block m-b-none honor_img_process"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">教师职称：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="teacher_title" value="{$info.teacher_title}" name="teacher_title" class="form-control" placeholder="请输入教师职称">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">教师职称证书：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="teacher_title_img" value="{$info.teacher_title_img}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="teacher_title_img" class="form-control" placeholder="请输入教师职称证书">
+							<span class="help-block m-b-none teacher_title_img_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="teacher_title_img_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">学信网截图：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="chsi_img" value="{$info.chsi_img}" {if condition="config('my.img_show_status') eq true"}onmousemove="showBigPic(this.value)" onmouseout="closeimg()"{/if} name="chsi_img" class="form-control" placeholder="请输入学信网截图">
+							<span class="help-block m-b-none chsi_img_process"></span>
+						</div>
+						<div class="col-sm-2" style="position:relative; right:30px;">
+							<span id="chsi_img_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">个人标签：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" class="form-control" data-role="tagsinput" id="label" value="{$info.label}" name="label"  >
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">个人照片：</label>
+						<div class="col-sm-6">
+							<div class="photos pic_list">
+								<li id="photos_upload"></li>
+							</div>
+							<div style="clear:both"></div>
+							<span class="help-block m-b-none photos_process"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">个人作品：</label>
+						<div class="col-sm-6">
+							<input type="text" autocomplete="off" id="works" value="{$info.works}" name="works" class="form-control" placeholder="请输入个人作品">
+							<span class="help-block m-b-none works_process"></span>
+						</div>
+						<div class="col-sm-3" style="position:relative; right:30px;">
+							<span id="works_upload"></span>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">收藏数：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="collect_num" value="{$info.collect_num}" name="collect_num" class="form-control" placeholder="请输入收藏数">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">任教次数：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="teach_num" value="{$info.teach_num}" name="teach_num" class="form-control" placeholder="请输入任教次数">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">预约数：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="yuyue_num" value="{$info.yuyue_num}" name="yuyue_num" class="form-control" placeholder="请输入预约数">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">平均分：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="avg_score" value="{$info.avg_score}" name="avg_score" class="form-control" placeholder="请输入平均分">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">是否隐藏：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['is_hide'])){ $info['is_hide'] = '0'; }; ?>
+							<input name="is_hide" value="1" type="radio" {if condition="$info.is_hide eq '1'"}checked{/if} title="是">
+							<input name="is_hide" value="0" type="radio" {if condition="$info.is_hide eq '0'"}checked{/if} title="否">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">状态：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['status'])){ $info['status'] = '0'; }; ?>
+							<input name="status" value="0" type="radio" {if condition="$info.status eq '0'"}checked{/if} title="待审核">
+							<input name="status" value="1" type="radio" {if condition="$info.status eq '1'"}checked{/if} title="审核通过">
+							<input name="status" value="2" type="radio" {if condition="$info.status eq '2'"}checked{/if} title="审核未通过">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">上线/下线：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['is_on_off'])){ $info['is_on_off'] = '1'; }; ?>
+							<input name="is_on_off" value="1" type="radio" {if condition="$info.is_on_off eq '1'"}checked{/if} title="上线">
+							<input name="is_on_off" value="2" type="radio" {if condition="$info.is_on_off eq '2'"}checked{/if} title="下线">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">下线次数：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="offline_num" value="{$info.offline_num}" name="offline_num" class="form-control" placeholder="请输入下线次数">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">原因：</label>
+						<div class="col-sm-9">
+							<textarea id="cause" name="cause"  class="form-control" placeholder="请输入原因">{$info.cause}</textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">经度：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="longitude" value="{$info.longitude}" name="longitude" class="form-control" placeholder="请输入经度">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">纬度：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="latitude" value="{$info.latitude}" name="latitude" class="form-control" placeholder="请输入纬度">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">星级：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['star_level'])){ $info['star_level'] = '1'; }; ?>
+							<input name="star_level" value="1" type="radio" {if condition="$info.star_level eq '1'"}checked{/if} title="1星">
+							<input name="star_level" value="2" type="radio" {if condition="$info.star_level eq '2'"}checked{/if} title="2星">
+							<input name="star_level" value="3" type="radio" {if condition="$info.star_level eq '3'"}checked{/if} title="3星">
+							<input name="star_level" value="4" type="radio" {if condition="$info.star_level eq '4'"}checked{/if} title="4星">
+							<input name="star_level" value="5" type="radio" {if condition="$info.star_level eq '5'"}checked{/if} title="5星">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">多少课时起购：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="min_hour" value="{$info.min_hour}" name="min_hour" class="form-control" placeholder="请输入多少课时起购">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<link href='__PUBLIC__/static/js/plugins/chosen/chosen.min.css' rel='stylesheet'/>
+<script src='__PUBLIC__/static/js/plugins/chosen/chosen.jquery.js'></script>
+<link rel='stylesheet' href='__PUBLIC__/static/js/plugins/tagsinput/tagsinput.css'>
+<script src='__PUBLIC__/static/js/plugins/tagsinput/tagsinput.min.js'></script>
+<script src='__PUBLIC__/static/js/plugins/paixu/jquery-migrate-1.1.1.js'></script>
+<script src='__PUBLIC__/static/js/plugins/paixu/jquery.dragsort-0.5.1.min.js'></script>
+<script>
+$(function(){
+	$(".filelist").dragsort({dragSelector: "img",dragBetween: true ,dragEnd:function(){}});
+	$(".filelist").dragsort({dragSelector: "img",dragBetween: true ,dragEnd:function(){}});
+});
+layui.use(['form'],function(){});
+uploader('id_card_zheng_upload','id_card_zheng','image',false,'','{:getUploadServerUrl()}');
+uploader('id_card_fan_upload','id_card_fan','image',false,'','{:getUploadServerUrl()}');
+uploader('student_card_img_upload','student_card_img','image',false,'','{:getUploadServerUrl()}');
+uploader('diploma_img_upload','diploma_img','image',false,'','{:getUploadServerUrl()}');
+uploader('itic_img_upload','itic_img','image',false,'','{:getUploadServerUrl()}');
+uploader('head_img_upload','head_img','image',false,'','{:getUploadServerUrl()}');
+uploader('honor_img_upload','honor_img','image',true,'{$info.honor_img}','{:getUploadServerUrl()}');
+setUploadButton('honor_img_upload');
+uploader('teacher_title_img_upload','teacher_title_img','image',false,'','{:getUploadServerUrl()}');
+uploader('chsi_img_upload','chsi_img','image',false,'','{:getUploadServerUrl()}');
+uploader('photos_upload','photos','image',true,'{$info.photos}','{:getUploadServerUrl()}');
+setUploadButton('photos_upload');
+uploader('works_upload','works','file',false,'','{:getUploadServerUrl()}');
+$(function(){$('.chosen').chosen({search_contains: true})})
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('teacher_id').set('mobile').set('wechat').set('nickname').set('name').set('id_number').set('age').set('mail').set('id_card_zheng').set('id_card_fan').set('student_card_img').set('diploma_img').set('itic_img').set('head_img').set('teaching_age').set('school').set('birthplace').set('school_start_time').set('school_end_time').set('education').set('specialty').set('teaching_way').set('province').set('city').set('area').set('experience').set('successful_case').set('introduction').set('honor').set('teacher_title').set('teacher_title_img').set('chsi_img').set('label').set('works').set('collect_num').set('teach_num').set('yuyue_num').set('avg_score').set('offline_num').set('cause').set('longitude').set('latitude').set('min_hour');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var gender = $("input[name = 'gender']:checked").val();
+	 var teacher_identity = $("input[name = 'teacher_identity']:checked").val();
+	 var honor_img = {};
+	 $(".honor_img li").each(function() {
+		if($(this).find('img').attr('src')){
+	 		honor_img[$(this).index()] = {'url':$(this).find('img').attr('src'),'title':$(this).find('input').val()};
+		}
+	 });
+	 var photos = {};
+	 $(".photos li").each(function() {
+		if($(this).find('img').attr('src')){
+	 		photos[$(this).index()] = {'url':$(this).find('img').attr('src'),'title':$(this).find('input').val()};
+		}
+	 });
+	 var is_hide = $("input[name = 'is_hide']:checked").val();
+	 var status = $("input[name = 'status']:checked").val();
+	 var is_on_off = $("input[name = 'is_on_off']:checked").val();
+	 var star_level = $("input[name = 'star_level']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/Teacher/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('gender',gender);
+	 ajax.set('teacher_identity',teacher_identity);
+	 ajax.set('honor_img',(JSON.stringify(honor_img) == '{}' || JSON.stringify(honor_img) == '{"":""}') ? '' : JSON.stringify(honor_img));
+	 ajax.set('photos',(JSON.stringify(photos) == '{}' || JSON.stringify(photos) == '{"":""}') ? '' : JSON.stringify(photos));
+	 ajax.set('is_hide',is_hide);
+	 ajax.set('status',status);
+	 ajax.set('is_on_off',is_on_off);
+	 ajax.set('star_level',star_level);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

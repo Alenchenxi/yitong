@@ -1,0 +1,67 @@
+{extend name='common/_container'} 
+{block name="content"} 
+<div class="ibox float-e-margins"> 
+	<div class="ibox-content"> 
+		<table class="table table-bordered" style="word-break:break-all;"> 
+			<tbody> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">昵称：</td> 
+					<td>{$info.nickname}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">头像：</td> 
+					<td><a href="javascript:void(0)"  onclick="openImg('{$info.avatar}')"><img height="75" src="{$info.avatar}"></a></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">手机：</td> 
+					<td>{$info.mobile}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">性别：</td> 
+					<td><?php echo getFieldVal($info["gender"],"男|1|success,女|2|warning,不限|3|warning");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">账户余额：</td> 
+					<td>{$info.amount}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">已提现金额：</td> 
+					<td>{$info.withdrawn_amount}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">状态：</td> 
+					<td><?php echo getFieldVal($info["status"],"正常|1|success,禁用|0|danger");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">身份：</td> 
+					<td><?php echo getFieldVal($info["groupid"],"游客|0|primary,学生|1|success,老师|2|danger");?></td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">openid：</td> 
+					<td>{$info.openid}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">抖音openid：</td> 
+					<td>{$info.dy_openid}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">百度openid ：</td> 
+					<td>{$info.bd_openid}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">登陆时间：</td> 
+					<td>{if $info.login_time}{$info.login_time|date='Y-m-d H:i:s'}{/if}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">我的消息已读：</td> 
+					<td>{$info.is_read}</td>   
+				</tr> 
+				<tr> 
+					<td style="background-color:#F5F5F6; font-weight:bold; text-align:right" width="15%">剩余联系次数：</td> 
+					<td>{$info.dial_num}</td>   
+				</tr> 
+			</tbody> 
+		</table> 
+	</div> 
+</div> 
+{/block} 

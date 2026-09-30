@@ -1,0 +1,112 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+<input type="hidden" name='dial_order_id' id='dial_order_id' value="{$info.dial_order_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="CodeInfoForm">
+			<div class="row">
+				<div class="col-sm-12">
+				<!-- form start -->
+					<div class="form-group">
+						<label class="col-sm-2 control-label">订单号：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="sn" value="{$info.sn}" name="sn" class="form-control" placeholder="请输入订单号">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">会员id：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="mid" value="{$info.mid}" name="mid" class="form-control" placeholder="请输入会员id">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">购买次数：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="dial_num" value="{$info.dial_num}" name="dial_num" class="form-control" placeholder="请输入购买次数">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">金额：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" id="amount" value="{$info.amount}" name="amount" class="form-control" placeholder="请输入金额">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">创建时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" value="{if condition="$info.create_time neq ''"}{$info.create_time|date='Y-m-d H:i:s'}{/if}" name="create_time"  placeholder="请输入创建时间" class="form-control" id="create_time">
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label">支付时间：</label>
+						<div class="col-sm-9">
+							<input type="text" autocomplete="off" value="{if condition="$info.pay_time neq 0"}{$info.pay_time|date='Y-m-d H:i:s'}{/if}" name="pay_time"  placeholder="请输入支付时间" class="form-control" id="pay_time">
+						</div>
+					</div>
+					<div class="form-group layui-form">
+						<label class="col-sm-2 control-label">状态：</label>
+						<div class="col-sm-9">
+							<?php if(!isset($info['status'])){ $info['status'] = '0'; }; ?>
+							<input name="status" value="1" type="radio" {if condition="$info.status eq '1'"}checked{/if} title="已支付">
+							<input name="status" value="0" type="radio" {if condition="$info.status eq '0'"}checked{/if} title="未支付">
+							<input name="status" value="2" type="radio" {if condition="$info.status eq '2'"}checked{/if} title="已退款">
+						</div>
+					</div>
+				<!-- form end -->
+				</div>
+			</div>
+			<div class="hr-line-dashed"></div>
+			<div class="row btn-group-m-t">
+				<div class="col-sm-9 col-sm-offset-1">
+					<button type="button" class="btn btn-primary" onclick="CodeInfoDlg.update()" id="ensure">
+						<i class="fa fa-check"></i>&nbsp;确认提交
+					</button>
+					<button type="button" class="btn btn-danger" onclick="CodeInfoDlg.close()" id="cancel">
+						<i class="fa fa-eraser"></i>&nbsp;取消
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+laydate.render({elem: '#create_time',type: 'datetime',trigger:'click'});
+laydate.render({elem: '#pay_time',type: 'datetime',trigger:'click'});
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+CodeInfoDlg.collectData = function () {
+	this.set('dial_order_id').set('sn').set('mid').set('dial_num').set('amount').set('create_time').set('pay_time');
+};
+
+CodeInfoDlg.update = function () {
+	 this.clearData();
+	 this.collectData();
+	 if (!this.validate()) {
+	 	return;
+	 }
+	 var status = $("input[name = 'status']:checked").val();
+	 var ajax = new $ax(Feng.ctxPath + "/DialOrder/update", function (data) {
+	 	if ('00' === data.status) {
+	 		Feng.success(data.msg,1000);
+	 		window.parent.CodeGoods.table.refresh();
+	 		CodeInfoDlg.close();
+	 	} else {
+	 		Feng.error(data.msg + "！",1000);
+		 }
+	 })
+	 ajax.set('status',status);
+	 ajax.set(this.CodeInfoData);
+	 ajax.start();
+};
+
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+{/block}

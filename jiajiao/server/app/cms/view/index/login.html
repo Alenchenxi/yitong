@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>登录</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课"/>
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台"/>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/login.css"/>
+</head>
+
+<body>
+<div class="login_phonebox">
+    <div class="container_box">
+
+        <div class="page_boxone">
+
+            <div class="page_auto">
+                <form action="#" method="post" class="layui-form contact_from">
+                    <text class="title">手机号：</text>
+                    <div class="input_box">
+                        <input type="number" name="mobile" id="mobile" placeholder="请输入手机号" lay-verify="required"
+                               placeholder-style="font-size:28rpx;color:#999;">
+                    </div>
+                    <text class="title">验证码：</text>
+                    <div class="input_box">
+                        <input type="number" name="verify" id="verify" placeholder="请输入验证码" lay-verify="required"
+                               placeholder-style="font-size:28rpx;color:#999;">
+                        <text onclick="getVerify()">获取验证码</text>
+                        <!-- <text v-if="show_s">s</text> -->
+                    </div>
+                    <div class="submt_btn">
+                        <button type="button" lay-submit="" lay-filter="submitMsg">立即登录</button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
+    </div>
+    <div class="bottom_messagebox">
+        <div class="center_mesg">
+            <div class="aduio_chose" onclick="diji()">
+                <text id="xieyi"  class=''></text><!--audio_dot-->
+            </div>
+            <text class='text_info'>登陆即同意</text>
+            <text class='mest_text' @click='look_info(0)'>《用户协议》</text>
+            <text class='mest_text' @click='look_info(1)'>《免责声明》</text>
+            <text class='mest_text' @click='look_info(2)'>《隐私保护》</text>
+        </div>
+    </div>
+</div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+</html>
+<script type="text/javascript">
+    var is_checked = 0;
+    layui.use(['form'], function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.$;
+
+        //自定义验证规则
+        /*form.verify({
+            mobile: function (mobile) {
+                // 对手机号的验证
+                var myreg=/^[1][3,4,5,7,8,9][0-9]{9}$/;
+                if (!myreg.test(mobile)) {
+                    return layer.msg('请填写正确的手机号码');
+                }
+            }
+        });*/
+
+        form.on('submit(submitMsg)',function (data) {
+            if(is_checked==0){
+                return layer.msg('请勾选用户协议');
+            }
+
+            $.ajax({
+                url : '/login/mobileLogin',
+                type : 'post',
+                dataType : 'json',
+                data : data.field,
+                success : function (res) {
+                    console.log(res);
+                    if(res.status==200){
+                        layer.msg(res.msg,{time: 1000},function(){
+                            /*window.location.reload();//刷新父页面*/
+                            window.location.href = document.referrer;
+
+                        });
+                    }else{
+                        layer.msg(res.msg);
+                    }
+                }
+            })
+            return false;
+        })
+    });
+
+
+    function diji(){
+        if(is_checked==0){
+            is_checked = 1;
+            $('#xieyi').attr('class','audio_dot')
+        }else{
+            is_checked = 0;
+            $('#xieyi').attr('class','')
+        }
+
+        console.log(is_checked);
+    }
+
+    function getVerify(){
+
+        var mobile = $('#mobile').val();
+        if(!mobile){
+            return layer.msg('请输入手机号');
+        }
+        $.ajax({
+            url : '/login/sendMobileCode',
+            type : 'post',
+            dataType : 'json',
+            data : {mobile:mobile},
+            success : function (res) {
+                console.log(res);
+                layer.msg(res.msg);
+            }
+        })
+        return false;
+    }
+
+
+</script>

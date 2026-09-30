@@ -1,0 +1,71 @@
+{extend name='common/_container'}
+{block name="content"}
+<div class="ibox float-e-margins">
+	<input type="hidden" name='demand_id' id='demand_id' value="{$info.demand_id}" />
+	<div class="ibox-content">
+		<div class="form-horizontal" id="BrowseHistoryForm">
+			{if condition="count($info.list) == 0"}
+				<div class="row">
+					<div>没有浏览历史</div>
+				</div>
+			{else}
+				<div class="row p_row p_flex">
+					<div class="col-sm-12 p_label">教师编号</div>
+					<div class="col-sm-12 p_label">教师姓名</div>
+					<div class="col-sm-12 p_label">浏览时间</div>
+				</div>
+				{volist name="info.list" id="item"}
+				<div class="row p_row p_flex">
+					<div class="col-sm-12 p_label p_link" onclick="BrowseHistoryDlg.openTeacher({$item.teacher_id})">{$item.teacher_id}</div>
+					<div class="col-sm-12 p_label">{$item.name}</div>
+					<div class="col-sm-12 p_label">{$item.view_time}</div>
+				</div>
+				{/volist}
+			{/if}
+		</div>
+	</div>
+</div>
+<script src="__PUBLIC__/static/js/upload.js" charset="utf-8"></script>
+<script src="__PUBLIC__/static/js/plugins/layui/layui.js" charset="utf-8"></script>
+<script>
+layui.use(['form'],function(){});
+
+var BrowseHistoryDlg = {
+};
+BrowseHistoryDlg.openTeacher = function (teacher_id) {
+	console.log('=====> openTeacher ' + teacher_id);
+	var queryData = {};
+	queryData['teacher_id'] = teacher_id;
+	var index = layer.open({type: 2,title: '查看老师详情',area: ['800px', '80%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Teacher/view?'+Feng.parseParam(queryData)});
+	this.layerIndex = index;
+	if(!IsPC()){layer.full(index)}
+};
+var CodeInfoDlg = {
+	CodeInfoData: {},
+	validateFields: {
+	 }
+}
+
+</script>
+<script src="__PUBLIC__/static/js/base.js" charset="utf-8"></script>
+<style>
+	.p_label{
+		width: 120px;
+	}
+	.p_flex{
+		display: flex;
+		align-items: center;
+	}
+	.p_row{
+		padding: 6px;
+	}
+	.p_link{
+		color: #007BFF;
+		text-decoration: underline;
+	}
+	.p_link:hover{
+		color: #333333;
+		cursor: pointer;
+	}
+</style>
+{/block}

@@ -1,0 +1,824 @@
+{extend name='common/_container'} {block name="content"}
+<div class="row">
+	<div class="col-sm-12">
+		<div class="ibox float-e-margins">
+			<div class="ibox-content"> 
+				<div class="row row-lg"> 
+					<div class="col-sm-12"> 
+						<div class="row" id="searchGroup">
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">外部编号</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="ext_no" placeholder="外部编号" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">订单编号</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="sn" placeholder="订单编号" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">姓名</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="name_s" placeholder="姓名" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">联系方式</button>
+									</div>
+									<input type="text" autocomplete="off" class="form-control" id="mobile" placeholder="联系方式" />
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">授课方式</button>
+									</div>
+									<select class="form-control" id="teaching_way">
+										<option value="">请选择</option>
+										<option value="1">上门授课</option>
+										<option value="2">在线授课</option>
+										<option value="3">均可</option>
+									</select>
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">分类id</button>
+									</div>
+									<select class="form-control" id="category_id">
+										<option value="">请选择</option>
+										{sql connect="mysql" query="select category_id,name from cd_category"}
+										<option value="{$sql.category_id}">{$sql.name}</option>
+										{/sql}
+									</select>
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">年级id</button>
+									</div>
+									<select class="form-control" id="grade_id">
+										<option value="">请选择</option>
+										<!--{sql connect="mysql" query="select grade_id,name from cd_grade"}
+										<option value="{$sql.grade_id}">{$sql.name}</option>
+										{/sql}-->
+									</select>
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">任教科目id</button>
+									</div>
+									<select class="form-control" id="subject_id">
+										<option value="">请选择</option>
+										<!--{sql connect="mysql" query="select subject_id,name from cd_subject"}
+										<option value="{$sql.subject_id}">{$sql.name}</option>
+										{/sql}-->
+									</select>
+								</div>
+							</div>
+							<div class="distpicker5">
+								<div class="col-sm-2">
+									<div class="input-group">
+										<div class="input-group-btn">
+											<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">省</button>
+										</div>
+										<select lay-ignore id="province" class="form-control" ></select>
+									</div>
+								</div>
+								<div class="col-sm-2">
+									<div class="input-group">
+										<div class="input-group-btn">
+											<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">市</button>
+										</div>
+										<select lay-ignore id="city" class="form-control" ></select>
+									</div>
+								</div>
+								<div class="col-sm-2">
+									<div class="input-group">
+										<div class="input-group-btn">
+											<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">区</button>
+										</div>
+										<select lay-ignore id="area" class="form-control" ></select>
+									</div>
+								</div>
+							</div>
+							<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.data.js"></script>
+							<script src="__PUBLIC__/static/js/plugins/shengshiqu/distpicker.js"></script>
+							<script src="__PUBLIC__/static/js/plugins/shengshiqu/main.js"></script>
+							<div class="col-sm-3">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">创建时间范围</button>
+									</div>
+									<input type="text" autocomplete="off" placeholder="时间范围" class="form-control" id="create_time">
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">普通订单状态</button>
+									</div>
+									<select class="form-control" id="status">
+										<option value="">请选择</option>
+										<option value="0">待审核</option>
+										<option value="1">已通过</option>
+										<option value="2">已完成</option>
+										<option value="3">已关闭</option>
+									</select>
+								</div>
+							</div>
+							<div class="col-sm-2">
+								<div class="input-group">
+									<div class="input-group-btn">
+										<button data-toggle="dropdown" class="btn btn-white dropdown-toggle" type="button">是否置顶</button>
+									</div>
+									<select class="form-control" id="is_stick">
+										<option value="">请选择</option>
+										<option value="1">是</option>
+										<option value="0">否</option>
+									</select>
+								</div>
+							</div>
+							<!-- search end -->
+							<div class="col-sm-1">
+								<button type="button" class="btn btn-success " onclick="CodeGoods.search()" id="">
+									<i class="fa fa-search"></i>&nbsp;搜索
+								</button>
+							</div>
+						</div>
+						<div class="btn-group-sm" id="CodeGoodsTableToolbar" role="group">
+						{if condition="in_array('admin/Demand/add',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="add" class="btn btn-primary button-margin" onclick="CodeGoods.add()">
+						<i class="fa fa-plus"></i>&nbsp;添加
+						</button>
+						{/if}
+						{if condition="in_array('admin/Demand/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="update" class="btn btn-success button-margin" onclick="CodeGoods.update()">
+						<i class="fa fa-pencil"></i>&nbsp;修改
+						</button>
+						{/if}
+						{if condition="in_array('admin/Demand/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="delete" class="btn btn-danger button-margin" onclick="CodeGoods.delete()">
+						<i class="fa fa-trash"></i>&nbsp;删除
+						</button>
+						{/if}
+						{if condition="in_array('admin/Demand/refreshDemand',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="refreshDemand" class="btn btn-primary button-margin" onclick="CodeGoods.refreshDemand()">
+						<i class="fa fa-refresh"></i>&nbsp;刷新
+						</button>
+						{/if}
+						{if condition="in_array('adminappointment/index',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="viewAppointment" class="btn btn-primary button-margin" onclick="CodeGoods.viewAppointment()">
+						<i class="fa fa-plus"></i>&nbsp;查看预约
+						</button>
+						{/if}
+						{if condition="in_array('adminschooltime/index',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="schoolTime" class="btn btn-primary button-margin" onclick="CodeGoods.schoolTime()">
+						<i class="fa fa-plus"></i>&nbsp;上课时间
+						</button>
+						{/if}
+						{if condition="in_array('admin/Demand/setStick',session('admin.nodes')) || session('admin.role_id') eq 1"}
+						<button type="button" id="setStick" class="btn btn-primary button-margin" onclick="CodeGoods.setStick()">
+						<i class="fa fa-edit"></i>&nbsp;置顶
+						</button>
+						{/if}
+						</div>
+						<table id="CodeGoodsTable" data-mobile-responsive="true" data-click-to-select="true">
+							<thead><tr><th data-field="selectItem" data-checkbox="true"></th></tr></thead>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	var CodeGoods = {id: "CodeGoodsTable",seItem: null,table: null,layerIndex: -1};
+
+	CodeGoods.initColumn = function () {
+ 		return [
+ 			{field: 'selectItem', checkbox: true},
+			{title: '编号', field: 'demand_id', visible: true, align: 'center', valign: 'middle',sortable: true},
+			{title: '外部编号', field: 'ext_no', visible: true, align: 'center', valign: 'middle',sortable: true},
+			{title: '会员单', field: 'kefu_direct', visible: true, align: 'center', valign: 'middle',sortable: true, formatter:CodeGoods.kefu_directFormatter},
+ 			{title: '订单编号', field: 'sn', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '姓名', field: 'name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '联系方式', field: 'mobile', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '邮箱', field: 'mail', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '授课方式', field: 'teaching_way', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.teaching_wayFormatter},
+ 			{title: '分类id', field: 'category_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '年级id', field: 'grade_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '年级', field: 'grade_name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '任教科目id', field: 'subject_id', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '任教科目', field: 'subject_name', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '课时费', field: 'price', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '在读学校', field: 'school', visible: true, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '性别', field: 'gender', visible: false, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.genderFormatter},
+ 			{title: '学员概况', field: 'gai_kuang', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '详细地址', field: 'address', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '试课时间', field: 'trial_time', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.trial_timeFormatter},
+ 			{title: '教员性别', field: 'teacher_gender', visible: false, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.teacher_genderFormatter},
+ 			{title: '教师身份', field: 'teacher_identity', visible: false, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.teacher_identityFormatter},
+ 			{title: '教员要求', field: 'teacher_require', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '会员id', field: 'mid', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '创建时间', field: 'create_time', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.create_timeFormatter},
+ 			{title: '普通订单状态', field: 'status', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.statusFormatter},
+ 			{title: '经度', field: 'longitude', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '纬度', field: 'latitude', visible: false, align: 'center', valign: 'middle',sortable: true},
+ 			{title: '是否置顶', field: 'is_stick', visible: true, align: 'center', valign: 'middle',sortable: true,formatter:CodeGoods.is_stickFormatter},
+ 			{title: '操作', field: '', visible: true, align: 'center', valign: 'middle',formatter: 'CodeGoods.buttonFormatter'},
+ 		];
+ 	};
+
+	CodeGoods.buttonFormatter = function(value,row,index) {
+		if(row.demand_id){
+			var str= '';
+			{if condition="in_array('admin/Demand/update',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-success btn-xs" title="修改"  onclick="CodeGoods.update('+row.demand_id+')"><i class="fa fa-pencil"></i>&nbsp;修改</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admin/Demand/delete',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-danger btn-xs" title="删除"  onclick="CodeGoods.delete('+row.demand_id+')"><i class="fa fa-trash"></i>&nbsp;删除</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admin/Demand/refreshDemand',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-primary btn-xs" title="刷新"  onclick="CodeGoods.refreshDemand('+row.demand_id+')"><i class="fa fa-refresh"></i>&nbsp;刷新</button>&nbsp;';
+			{/if}
+			{if condition="in_array('adminappointment/index',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-primary btn-xs" title="查看预约"  onclick="CodeGoods.viewAppointment('+row.demand_id+')"><i class="fa fa-plus"></i>&nbsp;查看预约</button>&nbsp;';
+			{/if}
+			{if condition="in_array('adminschooltime/index',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-primary btn-xs" title="上课时间"  onclick="CodeGoods.schoolTime('+row.demand_id+')"><i class="fa fa-plus"></i>&nbsp;上课时间</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admin/Demand/setStick',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-primary btn-xs" title="置顶"  onclick="CodeGoods.setStick('+row.demand_id+')"><i class="fa fa-edit"></i>&nbsp;置顶</button>&nbsp;';
+			{/if}
+			{if condition="in_array('admin/Demand/browseHistory',session('admin.nodes')) || session('admin.role_id') eq 1"}
+			str += '<button type="button" class="btn btn-primary btn-xs" title="浏览历史"  onclick="CodeGoods.browseHistory('+row.demand_id+')"><i class="fa fa-edit"></i>&nbsp;浏览历史</button>&nbsp;';
+			{/if}
+			return str;
+		}
+	}
+
+	CodeGoods.teaching_wayFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-primary">上门授课</span>';
+				break;
+				case '2':
+					return '<span class="label label-success">在线授课</span>';
+				break;
+				case '3':
+					return '<span class="label label-info">均可</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.genderFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-success">男</span>';
+				break;
+				case '2':
+					return '<span class="label label-warning">女</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.trial_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.teacher_genderFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-success">男</span>';
+				break;
+				case '2':
+					return '<span class="label label-warning">女</span>';
+				break;
+				case '3':
+					return '<span class="label label-info">不限</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.teacher_identityFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-primary">大学生教员</span>';
+				break;
+				case '2':
+					return '<span class="label label-success">专职教员</span>';
+				break;
+				case '3':
+					return '<span class="label label-info">不限</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.create_timeFormatter = function(value,row,index) {
+		if(value){
+			return formatDateTime(value,'Y-m-d H:i:s');	
+		}
+	}
+
+	CodeGoods.statusFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '0':
+					return '<span class="label label-success">待审核</span>';
+				break;
+				case '1':
+					return '<span class="label label-primary">已通过</span>';
+				break;
+				case '2':
+					return '<span class="label label-info">已完成</span>';
+				break;
+				case '3':
+					return '<span class="label label-danger">已关闭</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.is_stickFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-primary">是</span>';
+				break;
+				case '0':
+					return '<span class="label label-success">否</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.kefu_directFormatter = function(value,row,index) {
+		if(value !== null){
+			var value = value.toString();
+			switch(value){
+				case '1':
+					return '<span class="label label-primary">否</span>';
+				break;
+				case '0':
+					return '<span class="label label-success">是</span>';
+				break;
+			}
+		}
+	}
+
+	CodeGoods.formParams = function() {
+		var queryData = {};
+		queryData['offset'] = 0;
+		queryData['ext_no'] = $("#ext_no").val();
+		queryData['sn'] = $("#sn").val();
+		queryData['name_s'] = $("#name_s").val();
+		queryData['mobile'] = $("#mobile").val();
+		queryData['teaching_way'] = $("#teaching_way").val();
+		queryData['category_id'] = $("#category_id").val();
+		queryData['grade_id'] = $("#grade_id").val();
+		queryData['subject_id'] = $("#subject_id").val();
+		queryData['province'] = $("#province").val();
+		queryData['city'] = $("#city").val();
+		queryData['area'] = $("#area").val();
+		queryData['create_time_start'] = $("#create_time").val().split(" - ")[0];
+		queryData['create_time_end'] = $("#create_time").val().split(" - ")[1];
+		queryData['status'] = $("#status").val();
+		queryData['is_stick'] = $("#is_stick").val();
+		return queryData;
+	}
+
+	CodeGoods.check = function () {
+		var selected = $('#' + this.id).bootstrapTable('getSelections');
+		if(selected.length == 0){
+			Feng.info("请先选中表格中的某一记录！");
+			return false;
+		}else{
+			CodeGoods.seItem = selected;
+			return true;
+		}
+	};
+
+	CodeGoods.add = function (value) {
+		var url = location.search;
+		var index = layer.open({type: 2,title: '添加',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/add'+url});
+		this.layerIndex = index;
+		if(!IsPC()){layer.full(index)}
+	}
+
+
+	CodeGoods.update = function (value) {
+		if(value){
+			var index = layer.open({type: 2,title: '修改',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/update?demand_id='+value});
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var index = layer.open({type: 2,title: '修改',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/update?demand_id='+idx});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.delete = function (value) {
+		if(value){
+			Feng.confirm("是否删除选中项？", function () {
+				var ajax = new $ax(Feng.ctxPath + "/Demand/delete", function (data) {
+					if ('00' === data.status) {
+						Feng.success(data.msg);
+						CodeGoods.table.refresh();
+					} else {
+						Feng.error(data.msg);
+					}
+				});
+				ajax.set('demand_id', value);
+				ajax.start();
+			});
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				Feng.confirm("是否删除选中项？", function () {
+					var ajax = new $ax(Feng.ctxPath + "/Demand/delete", function (data) {
+						if ('00' === data.status) {
+							Feng.success(data.msg,1000);
+							CodeGoods.table.refresh();
+						} else {
+							Feng.error(data.msg,1000);
+						}
+					});
+					ajax.set('demand_id', idx);
+					ajax.start();
+				});
+			}
+		}
+	}
+
+
+	CodeGoods.view = function (value) {
+		if(value){
+			var index = layer.open({type: 2,title: '查看详情',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/view?demand_id='+value});
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var index = layer.open({type: 2,title: '查看详情',area: ['800px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/view?demand_id='+idx});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.qryOrder = function (value) {
+		if(value){
+			var queryData = {};
+			queryData['demand_id'] = value;
+			var index = layer.open({type: 2,title: '查看订单',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'Order/index?'+Feng.parseParam(queryData)});
+			this.layerIndex = index;
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var queryData = {};
+				queryData['demand_id'] = idx;
+				var index = layer.open({type: 2,title: '查看订单',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'Order/index?'+Feng.parseParam(queryData)});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.refund = function (value) {
+		if(value){
+			Feng.confirm("是否退款选中项？", function () {
+				var ajax = new $ax(Feng.ctxPath + "/Demand/refund", function (data) {
+					if ('00' === data.status) {
+						Feng.success(data.msg);
+						CodeGoods.table.refresh();
+					} else {
+						Feng.error(data.msg);
+					}
+				});
+				ajax.set('demand_id', value);
+				ajax.start();
+			});
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				Feng.confirm("是否退款选中项？", function () {
+					var ajax = new $ax(Feng.ctxPath + "/Demand/refund", function (data) {
+						if ('00' === data.status) {
+							Feng.success(data.msg,1000);
+							CodeGoods.table.refresh();
+						} else {
+							Feng.error(data.msg,1000);
+						}
+					});
+					ajax.set('demand_id', idx);
+					ajax.start();
+				});
+			}
+		}
+	}
+
+
+	CodeGoods.refreshDemand = function (value) {
+		if(value){
+			Feng.confirm("是否刷新选中项？", function () {
+				var ajax = new $ax(Feng.ctxPath + "/Demand/refreshDemand", function (data) {
+					if ('00' === data.status) {
+						Feng.success(data.msg);
+						CodeGoods.table.refresh();
+					} else {
+						Feng.error(data.msg);
+					}
+				});
+				ajax.set('demand_id', value);
+				ajax.start();
+			});
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				Feng.confirm("是否刷新选中项？", function () {
+					var ajax = new $ax(Feng.ctxPath + "/Demand/refreshDemand", function (data) {
+						if ('00' === data.status) {
+							Feng.success(data.msg,1000);
+							CodeGoods.table.refresh();
+						} else {
+							Feng.error(data.msg,1000);
+						}
+					});
+					ajax.set('demand_id', idx);
+					ajax.start();
+				});
+			}
+		}
+	}
+
+
+	CodeGoods.viewAppointment = function (value) {
+		if(value){
+			var queryData = {};
+			queryData['demand_id'] = value;
+			var index = layer.open({type: 2,title: '查看预约',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'appointment/index?'+Feng.parseParam(queryData)});
+			this.layerIndex = index;
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var queryData = {};
+				queryData['demand_id'] = idx;
+				var index = layer.open({type: 2,title: '查看预约',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'appointment/index?'+Feng.parseParam(queryData)});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.schoolTime = function (value) {
+		if(value){
+			var queryData = {};
+			queryData['demand_id'] = value;
+			var index = layer.open({type: 2,title: '上课时间',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'schooltime/index?'+Feng.parseParam(queryData)});
+			this.layerIndex = index;
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var queryData = {};
+				queryData['demand_id'] = idx;
+				var index = layer.open({type: 2,title: '上课时间',area: ['90%', '90%'],fix: false, maxmin: true,content: Feng.ctxPath + 'schooltime/index?'+Feng.parseParam(queryData)});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.setStick = function (value) {
+		if(value){
+			var index = layer.open({type: 2,title: '置顶',area: ['600px', '350px'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/setStick?demand_id='+value});
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var index = layer.open({type: 2,title: '置顶',area: ['600px', '350px'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/setStick?demand_id='+idx});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+	CodeGoods.browseHistory = function (value) {
+		if(value){
+			var index = layer.open({type: 2,title: '浏览历史',area: ['1080px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/browseHistory?demand_id='+value});
+			if(!IsPC()){layer.full(index)}
+		}else{
+			if (this.check()) {
+				var idx = '';
+				$.each(CodeGoods.seItem, function() {
+					idx += ',' + this.demand_id;
+				});
+				idx = idx.substr(1);
+				if(idx.indexOf(",") !== -1){
+					Feng.info("请选择单条数据！");
+					return false;
+				}
+				var index = layer.open({type: 2,title: '浏览历史',area: ['1080px', '100%'],fix: false, maxmin: true,content: Feng.ctxPath + '/Demand/browseHistory?demand_id='+idx});
+				this.layerIndex = index;
+				if(!IsPC()){layer.full(index)}
+			}
+		}
+	}
+
+
+	CodeGoods.search = function() {
+		CodeGoods.table.refresh({query : CodeGoods.formParams()});
+	};
+
+	$(function() {
+		var defaultColunms = CodeGoods.initColumn();
+		var url = location.search;
+		var table = new BSTable(CodeGoods.id, Feng.ctxPath+"/Demand/index"+url,defaultColunms,20);
+		table.setPaginationType("server");
+		table.setQueryParams(CodeGoods.formParams());
+		CodeGoods.table = table.init();
+
+
+		var category_id = 0;
+		var grade_id = 0;
+
+		$('#category_id').change(function () {
+			category_id = $('#category_id').val();
+
+			$('#grade_id').val('');
+			$('#subject_id').val('');
+
+			if(category_id){
+				var ajax = new $ax(Feng.ctxPath + "/Teacher/getGradeList", function (data) {
+					if ('00' === data.status) {
+						console.log(data);
+						var list = data.data;
+						var starthtml = '<option value="">请选择</option>';
+						for (var i=0;i<list.length;i++){
+							starthtml += '<option value="'+list[i]['grade_id']+'">'+list[i]['name']+'</option>'
+						}
+						$('#grade_id').html(starthtml);
+						console.log(starthtml);
+					} else {
+						Feng.error(data.msg);
+					}
+				},function (res) {
+					Feng.error(res.msg);
+				});
+				ajax.set('category_id', category_id);
+				ajax.start();
+			}
+
+		});
+
+		$('#grade_id').change(function () {
+			grade_id = $('#grade_id').val();
+			$('#subject_id').val('');
+			if(grade_id){
+				var ajax = new $ax(Feng.ctxPath + "/Teacher/getSubjectList", function (data) {
+					if ('00' === data.status) {
+						console.log(data);
+						var list = data.data;
+						var arrivethtml = '<option value="">请选择</option>';
+						for (var i=0;i<list.length;i++){
+							arrivethtml += '<option value="'+list[i]['subject_id']+'">'+list[i]['name']+'</option>'
+						}
+						$('#subject_id').html(arrivethtml);
+						console.log(arrivethtml);
+					} else {
+						Feng.error(data.msg);
+					}
+				},function (res) {
+					Feng.error(res.msg);
+				});
+				ajax.set('grade_id', grade_id);
+				ajax.start();
+			}
+
+		});
+
+
+		$('#grade_id').click(function () {
+			if(!category_id){
+				return Feng.error("请先选择分类！",1000);
+			}
+
+		});
+
+		$('#subject_id').click(function () {
+			if(!grade_id){
+				return Feng.error("请先选择年级！",1000);
+			}
+
+		});
+
+	});
+	laydate.render({elem: '#create_time',type: 'datetime',range:true,
+		ready: function(date){
+			$(".layui-laydate-footer [lay-type='datetime'].laydate-btns-time").click();
+			$(".laydate-main-list-1 .layui-laydate-content li ol li:last-child").click();
+			$(".layui-laydate-footer [lay-type='date'].laydate-btns-time").click();
+		}
+	});
+</script>
+{/block}

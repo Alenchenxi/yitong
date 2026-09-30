@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>教员注册</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="/css/register.css" />
+    <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.0.1/weui.min.css">
+    <!--<link rel="stylesheet" href="/static/css/plugins/layui/layui.css">-->
+    <style type="text/css">
+        .weui-half-screen-dialog__ft{position: absolute;top: 10px;right: 0px;padding: 0}
+        .weui-btn_primary:not(.weui-btn_disabled):active{background:none;}
+        .weui-btn{color: #db7b7b}
+        .weui-btn_primary{background: none}
+    </style>
+</head>
+
+<body>
+<div class="teacher_register" id="app">
+
+    <div class="containe_box">
+
+        <!-- 第三步 -->
+        <div class="list_meagethree"
+             :style="page_num==0?'margin-left:200%;':page_num==1?'margin-left:100%;':'margin-left:0%;'">
+            <div class="content_info">
+                <div class="head_text">
+                    <div>证书上传</div>
+                </div>
+                <div class="img_contenbox">
+                    <div class="idcardbox">
+                        <div class="head_img_box">
+                            <div class="lf_text">简历照片上传:</div>
+                            <div class="rf_img dtusc" v-if="head_img==''" data-value="4">
+                                <img src="/img/add_icon.png" mode="">
+                            </div>
+                            <div class="rf_upload dtusc" v-else data-value="4">
+                                <img :src="pic_url+head_img" mode="">
+                            </div>
+
+                        </div>
+
+
+                        <div class="id_card_headtitle">
+                            <div class="head_text">身份证上传</div>
+                            <div class="color_text">(必填)</div>
+                        </div>
+                        <div class="id_cardimgbox">
+                            <div class="list_img dtusc" data-value="5">
+                                <img v-if="id_card_zheng==''" src="/img/id_card_zheng.png"
+                                     mode="widthFix">
+
+                                <img v-else :src="pic_url+id_card_zheng" mode="">
+                            </div>
+                            <div class="list_img dtusc" data-value="6">
+                                <img v-if="id_card_fan==''" src="/img/id_card_fan.png" mode="widthFix">
+
+                                <img v-else :src="pic_url+id_card_fan" mode="">
+                            </div>
+                        </div>
+
+                        <div class="list_phone_text">
+                            <div class="lf_text">证书上传:</div>
+                            <div class="rf_input" onclick="selectCertificate()">
+                                <input type="text" v-model="certificate_list[certificate_num]"
+                                       placeholder="请选择要上传的证书" disabled="disabled">
+                                <img class="arrowimg" src="/img/botm_arrow.png" mode="">
+                            </div>
+
+                        </div>
+                        <div class="certificate_imgbox">
+                            <div class="certitl_bottitl">
+                                <div class="certilf_title">请上传证书</div>
+                                <div class="certilf_sym">*</div>
+                            </div>
+                            <div class="rf_upiimg dtusc" :data-value="certificate_num">
+                                <div class="show_img">
+                                    <img v-if="student_cardimg==''&&diploma_img==''&& itic_img==''"
+                                         src="/img/up_chufang.png" mode="widthFix">
+                                    <img v-if="student_cardimg!=''" :src="pic_url+student_cardimg" mode="">
+
+                                    <img v-if="diploma_img!=''" :src="pic_url+diploma_img" mode="">
+                                    <img v-if="itic_img!=''" :src="pic_url+itic_img" mode="">
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="next_btn_box">
+                    <button @click="updateTeacherInfo()">立即提交</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+{include file="index/footer"}
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+<script src="https://res.wx.qq.com/t/wx_fed/cdn_libs/res/weui/1.2.8/weui.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+</html>
+<script type="text/javascript">
+    layui.use(['upload', 'element', 'layer','form'], function(){
+        var $ = layui.$ //只有执行了这一步，部分表单元素才会自动修饰成功
+            ,upload = layui.upload
+            ,form = layui.form;
+
+        //图片上传
+        var up_that;
+        $(".dtusc").click(function () {
+            up_that = this;
+        })
+        //常规使用 - 普通图片上传
+        var uploadInst = upload.render({
+            elem: '.dtusc'
+            ,url: '/Base/upload' //此处用的是第三方的 http 请求演示，实际使用时改成您自己的上传接口即可。
+            ,done: function(result){
+                // n==1 教师证 n== 2 学生证 n==3 学历证 n==4 头像
+                var n = $(up_that).attr('data-value');
+                console.log(n);
+
+                if(result.status==200){
+                    if (n == 0) {
+                        vm.student_cardimg = result.data
+                    }
+                    if (n == 1) {
+                        vm.diploma_img = result.data
+                    }
+                    if (n == 2) {
+                        vm.itic_img = result.data
+                    }
+                    if (n == 4) {
+                        vm.head_img = result.data;
+                    }
+
+                    if (n == 5) {
+                        vm.id_card_zheng = result.data
+                    }
+
+                    if (n == 6){
+                        vm.id_card_fan = result.data
+                    }
+
+                }
+            }
+
+        });
+
+
+    });
+    var vm = new Vue({
+        el: '#app',
+        data: {
+
+            set_phone: "",
+            show_set_phone: false,
+
+            school_pciker: false,
+            school_textlist: [],
+            school_datalist: [],
+
+            pic_url: "{$pic_url}",
+            page_num: 2,
+            head_img: '{$info.head_img}',
+
+            sex_pickershow: false,
+            sex_pickerlist: ['男', '女'],
+            sex_text: "{$info.gender_str}",
+            sex_num: "{$info.gender}",
+
+            // 性别 0 男 1 女
+            sex: 0,
+            // 年龄
+            age_num: "{$info.age}",
+            age_picker: false,
+            age_picker_list: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+                40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60
+            ],
+
+
+            // 选择身份picker
+            identity_show: false,
+            identity_show_list: ['大学生教员', '普通教员', '专业教员'],
+            identity_text: "{$info.teacher_identity_str}",
+            identity_num: "{$info.teacher_identity}",
+            // 选择教龄picker
+            education_age: false,
+            education_age_list: ['暂无', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, '半年',
+            ],
+            education_age_text: "",
+            education_age_num: '{$info.teaching_age}',
+
+
+            subject_popup: false,
+            subject_popdatalist: ['{$info.subject_id}'],
+            subject_popidlist: ['{$info.subject_id}'],
+
+            // 任教科目一级
+            subjects_show: false,
+            subjects_list: [],
+            subjects_text_namelist: [],
+            subjects_text: "",
+
+            subject_numtext: "{$info.subject_names_str}",
+
+            // 任教方式
+            teaching_type: false,
+            teaching_typelist: teaching_typelist = ['教员上门', '学生上门', '网上辅导', '住家辅导'],
+            teaching_typelistpop: [],
+            teaching_typelistpop_arr: [],
+            teachimg_num_arr: ['{$info.teaching_way}'],
+            teaching_text: "{$info.teaching_way_str}",
+            teachimg_num: '',
+
+            // 任教区域
+            region: false,
+            region_datalist: [],
+            region_list: [],
+            region_namelist: ['{$info.area}'],
+            region_namedatalist: ['{$info.area}'],
+            region_text: "",
+            // 薪酬
+            salary: false,
+            salary_datalist: [],
+            salary_list: [],
+            salary_text: '{$info.salary}',
+            salery_num: "",
+
+
+            // 证书
+            certificate_show: false,
+            certificate_list: ['学生证照片', '学历证照片', '教师证照片',],
+            certificate_num: "{$info.certificate_num}",
+            certificate_img: '',
+
+            // 身份证正
+            id_card_zheng: '{$info.id_card_zheng}',
+            // 身份证反
+            id_card_fan: '{$info.id_card_fan}',
+            // 学生证书
+            student_cardimg: '{$info.student_card_img}',
+            // 学历证
+            diploma_img: "{$info.diploma_img}",
+            // 教师证书
+            itic_img: "{$info.itic_img}",
+
+
+            // 第一页数据
+            time_mest: "获取验证码",
+            // 联系人
+            link_name: "{$info.name}",
+            // 手机号
+            link_phone: "{$info.mobile ? $info.mobile : $user_info.mobile}",
+            // 验证码
+            yzm_text: '',
+
+            // 身份正
+            id_cardtext: "{$info.id_number}",
+
+            // 学校
+            school_text: "{$info.school}",
+            // 专业
+            specialty_text: "{$info.specialty}",
+            // 自我描述
+            teacher_desc: "{$info.self_desc}",
+
+            //任教经验
+            experience_text: "{$info.experience}",
+
+            // 所获证书描述
+            certificate_text: "{$info.certificate}",
+        },
+        methods: {
+
+            updateTeacherInfo() {
+                if (this.id_card_zheng == '') {
+                    return layer.msg('请上传身份证正面');
+                }
+
+                if (this.id_card_fan == '') {
+                    return layer.msg('请上传身份证反面');
+                }
+
+                if (this.certificate_num == -1) {
+                    return layer.msg('请选择证书类型');
+                }
+
+
+                if (this.certificate_num == 0 && this.student_cardimg == '') {
+                    return layer.msg('请上传学生证');
+                }
+
+                if (this.certificate_num == 1 && this.diploma_img == '') {
+                    return layer.msg('请上传学历证');
+                }
+
+                if (this.certificate_num == 2 && this.itic_img == '') {
+                    return layer.msg('请上传教师证');
+                }
+
+                let data = {
+                    head_img: this.head_img,
+                    id_card_zheng: this.id_card_zheng,
+                    id_card_fan: this.id_card_fan,
+                    student_card_img: this.student_cardimg,
+                    diploma_img: this.diploma_img,
+                    itic_img: this.itic_img,
+                }
+                console.log(data)
+
+
+                $.ajax({
+                    url: '/teacher/teacherReg',
+                    type: 'post',
+                    dataType: 'json',
+                    data: data,
+                    success: function (res) {
+                        console.log(res);
+                        if (res.status == 200) {
+                            layer.msg(res.msg, {time: 1000}, function () {
+                                location.href = '/user/teacherCenter'
+                            });
+                        } else {
+                            layer.msg(res.msg);
+                        }
+                    }
+                })
+                return false;
+            },
+
+        }
+    })
+
+    //选择证书
+    function selectCertificate(){
+        weui.picker([{
+                label: '学生证照片',
+                value: 0
+            }, {
+                label: '学历证照片',
+                value: 1
+            }, {
+                label: '教师证照片',
+                value: 2
+            }],
+            {
+                defaultValue: [0],
+                /*onChange: function (result) {
+                    console.log(result);
+                },*/
+                onConfirm: function (result) {
+                    console.log(result);
+                    //给证书 数值 评价重新赋值
+                    vm.certificate_num = result[0].value;
+                },
+            });
+    }
+
+</script>

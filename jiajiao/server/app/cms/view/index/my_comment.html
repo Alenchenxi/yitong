@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width,user-scalable=no" name="viewport">
+    <title>我的评价</title>
+    <meta name="keywords" content="重庆家教、重庆私教、重庆一对一、重庆补课" />
+    <meta name="description" content="向日葵家教，重庆家教/私教/一对一补课，人人都请得起的家教平台" />
+    <link rel="stylesheet" type="text/css" href="/css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="/css/estimate.css" />
+</head>
+
+<body>
+    <div class="my_estimate" id="app">
+        <div class="rate_infobox">
+            <div class="list_ratebox" v-for="(item,i) in estimatelist">
+                <div class="lf_avatar">
+                    <image :src="item.avatar" mode=""></image>
+                </div>
+                <div class="rate_mesage">
+                    <div class="teact_nametext">
+                        <div class="name_info">
+                            <div class="tea_name">{{item.nickname}}</div>
+                            <div class="obj_s">
+                                <div>{{item.subject_name}}</div>
+                            </div>
+                            <div class="rate_time">{{item.create_time}}</div>
+                        </div>
+                    </div>
+                    <div class="rate_mestinfo">
+                        <div class="rate_desc">{{item.content}}</div>
+                        <div class="rate_imglist">
+                            <!-- 多张图片 -->
+                           <!-- <div class="rata_img" v-if="item.pics.length!=4">
+                                <image v-for="(info,i) in item.pics" :src="pic_url+info" mode=""></image>
+                            </div>-->
+                            <!-- 四张图片 -->
+                            <div class="imglistfour" v-else>
+                                <image v-for="(info,i) in item.pics" :src="pic_url+info" mode=""></image>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="addrate_box">
+                        <div class="list_addbox" v-for="(meage,j) in item.list">
+                            <div class="add_time">{{meage.create_time}} 追评</div>
+                            <div class="rate_mestinfo">
+                                <div class="rate_desc">{{meage.content}}</div>
+                                <div class="rate_imglist">
+                                    <!-- 多张图片 -->
+                                    <!--<div class="rata_img" v-if="meage.pics.length!=4">
+                                        <image v-for="(img,i) in meage.pics" :src="pic_url+img" mode="">
+                                        </image>
+                                    </div>-->
+                                    <!-- 四张图片 -->
+                                    <div class="imglistfour" v-else>
+                                        <image v-for="(img,i) in meage.pics" :src="pic_url+img" mode="">
+                                        </image>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="jump_top">
+                        <div class="end_boxtop" @click="jump_top(item.comment_id)">
+                            <image src="/img/jump_top.png" mode=""></image>
+                            <span>立即置顶</span>
+                        </div>
+                    </div>
+                    <!--    <div class="rate_btnbox">
+                        <text @click="jump_rate(item)">立即追评</text>
+                    </div> -->
+                </div>
+            </div>
+            <div class="no_datamest" v-if="estimatelist.length==0">
+                <div class="autobox">
+                    <u-empty text="暂无评价" mode="list"></u-empty>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.2/vue.min.js"></script>
+<script src="/static/js/plugins/layui/layui.js"></script>
+
+</html>
+<script type="text/javascript">
+    layui.use(['form'], function(){
+        var form = layui.form; //只有执行了这一步，部分表单元素才会自动修饰成功
+        var $ = layui.$;
+    });
+
+    var vm = new Vue({
+    el: '#app',
+    data: {
+        page: 1,
+        pic_url: "https://wx.xrkjj.net/",
+        down: 0,
+        estimatelist: [],
+
+    },
+    methods: {
+        init: function(page) {
+            $.ajax({
+                url: "/teacher/teacherCommentList",
+                type: 'post',
+                data: { "page": page },
+                dataType: 'json',
+                success: function(data) {
+                    if (data.status == 404) {
+                        // layer.msg(data.msg, { icon: 5 });
+                    } else {
+                        console.log(data.data);
+                        vm.estimatelist = data.data;
+                    }
+                },
+                error: function() {
+                    console.log("出错了");
+                }
+            });
+        },
+        show: function(id) {
+            window.location.href = "/show/" + id
+        },
+
+        jump_top: function(comment_id) {
+            $.ajax({
+                url: "/teacher/stickComment",
+                type: 'post',
+                data: { "comment_id": comment_id },
+                dataType: 'json',
+                success: function(res) {
+                    if(res.status==200){
+                        layer.msg(res.msg,{time: 1000},function(){
+                            //window.location.reload();
+                        });
+                    }else{
+                        layer.msg(res.msg);
+                    }
+                },
+                error: function() {
+                    console.log("出错了");
+                }
+            });
+        },
+    }
+})
+vm.init(1);
+</script>
