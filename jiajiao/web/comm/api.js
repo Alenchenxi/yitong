@@ -1,5 +1,5 @@
 const Config = {
-	active: 'prod',
+	active: 'dev',
 	dev: {
 		url: 'http://localhost:8080/api',
 		ossHost: 'http://localhost:8080'

@@ -7,7 +7,8 @@ server/runtime/
 server/untime/
 web/unpackage/
 
-# 本地密钥备份（不入 git）
+# 本地环境配置 / 密钥备份（不入 git）
+server/.env
 server/config/secrets.local.md
 
 # os / ide

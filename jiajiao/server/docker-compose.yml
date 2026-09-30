@@ -1,11 +1,11 @@
-version: '3.8'
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: yantong-app
+    container_name: jiajiao-app
+    depends_on:
+      - mysql
     ports:
       - "8080:80"
     volumes:
@@ -14,7 +14,24 @@ services:
       # 开发阶段可取消下面注释，直接挂载代码热更新
       # - .:/var/www/html
     environment:
-      - APP_ENV=production
+      - APP_ENV=local
+    restart: unless-stopped
+    networks:
+      - yantong-net
+
+  mysql:
+    image: mysql:5.7
+    container_name: jiajiao-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=jiajiao_root
+      - MYSQL_DATABASE=jiajiao
+      - MYSQL_USER=jiajiao
+      - MYSQL_PASSWORD=jiajiao_pass
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    volumes:
+      - jiajiao-mysql-data:/var/lib/mysql
     restart: unless-stopped
     networks:
       - yantong-net
@@ -22,3 +39,6 @@ services:
 networks:
   yantong-net:
     driver: bridge
+
+volumes:
+  jiajiao-mysql-data:
