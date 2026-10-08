@@ -12,6 +12,8 @@ interface SecCheckResp {
 // 内容安全：封装微信 msgSecCheck（文本）/ imgSecCheck（图片）。
 // 命中违规抛 BizException(90002)，由全局 AllExceptionsFilter 统一返回。
 // 设计：仅 'risky' 判违规并拦截；'review'（需人工复审）只记录不拦截，留给后续 moderation 队列。
+// 不可用口径（请求失败 / 非 200 / 响应非 JSON / errcode 业务错误 / 缺 suggest）：
+// 生产 fail-closed 抛 90003，非生产 fail-open 仅告警——未拿到明确审核结论不默认放行。
 @Injectable()
 export class ModerationService {
   private readonly logger = new Logger(ModerationService.name);
@@ -40,8 +42,7 @@ export class ModerationService {
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
-      // 内容安全接口故障时「失败放行 + 告警」，避免微信侧抖动导致全员无法发帖；
-      // 生产化后可改为可配置 fail-open/fail-closed（见后续待做）。
+      // 接口故障/响应异常时：生产 fail-closed（90003 稍后重试），非生产 fail-open + 告警。
       this.handleCheckUnavailable('msgSecCheck request failed');
       return;
     }
@@ -49,8 +50,26 @@ export class ModerationService {
       this.handleCheckUnavailable(`msgSecCheck HTTP ${res.status}`);
       return;
     }
-    const data = (await res.json()) as SecCheckResp;
-    const suggest = data.result?.suggest ?? data.detail?.[0]?.suggest ?? 'pass';
+    let data: SecCheckResp;
+    try {
+      data = (await res.json()) as SecCheckResp;
+    } catch {
+      this.handleCheckUnavailable('msgSecCheck invalid JSON response');
+      return;
+    }
+    if (data.errcode !== undefined && data.errcode !== 0) {
+      // HTTP 200 但微信返回业务错误（如 40001 token 失效），不得当作审核通过
+      this.handleCheckUnavailable(
+        `msgSecCheck errcode ${data.errcode} (${data.errmsg ?? 'no errmsg'})`,
+      );
+      return;
+    }
+    // 拿不到明确审核结论（缺 result/detail.suggest）不得默认放行（原 `?? 'pass'` fail-open 弱点已加固）
+    const suggest = data.result?.suggest ?? data.detail?.[0]?.suggest;
+    if (!suggest) {
+      this.handleCheckUnavailable('msgSecCheck response missing suggest');
+      return;
+    }
     if (suggest === 'risky') {
       throw new BizException(90002, '内容包含违规信息，请修改后重试');
     }
@@ -87,8 +106,26 @@ export class ModerationService {
       this.handleCheckUnavailable(`imgSecCheck HTTP ${res.status}`);
       return;
     }
-    const data = (await res.json()) as SecCheckResp;
-    const suggest = data.result?.suggest ?? 'pass';
+    let data: SecCheckResp;
+    try {
+      data = (await res.json()) as SecCheckResp;
+    } catch {
+      this.handleCheckUnavailable('imgSecCheck invalid JSON response');
+      return;
+    }
+    if (data.errcode !== undefined && data.errcode !== 0) {
+      // 同 checkText：HTTP 200 业务错误不当作审核通过
+      this.handleCheckUnavailable(
+        `imgSecCheck errcode ${data.errcode} (${data.errmsg ?? 'no errmsg'})`,
+      );
+      return;
+    }
+    // 同 checkText：缺审核结论不默认放行
+    const suggest = data.result?.suggest;
+    if (!suggest) {
+      this.handleCheckUnavailable('imgSecCheck response missing suggest');
+      return;
+    }
     if (suggest === 'risky') {
       throw new BizException(90002, '图片包含违规内容，请更换后重试');
     }
