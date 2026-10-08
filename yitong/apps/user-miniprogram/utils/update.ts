@@ -9,6 +9,9 @@ import {
 // P2-82 弹窗前拉更新说明的超时（ms）：拿到数据再弹窗，弱网不能把弹窗拖到微信默认 60s
 const NOTES_FETCH_TIMEOUT_MS = 5000;
 
+// P2-84 静默升级告知的上次所见版本基线
+const LAST_SEEN_MP_VERSION_KEY = 'yitong_last_seen_mp_version';
+
 /** 升级弹窗状态（utils 层无页面上下文，经订阅广播驱动各页面里的 <update-modal /> 实例） */
 export interface UpdateModalState {
   show: boolean;
@@ -117,6 +120,27 @@ async function showUpdateModal(): Promise<void> {
 }
 
 /**
+ * P2-84 静默升级告知：微信可能在会话销毁后的冷启动直接换包（onUpdateReady 无机会触发，
+ * 升级弹窗必然错过），启动时对比当前版本与 storage 基线，不一致则轻提示一次。
+ * 注意升级已发生、无选择权，只做知情；首次使用（无基线）只落基线不提示。
+ */
+function notifySilentUpdate(): void {
+  const version = wx.getAccountInfoSync().miniProgram.version;
+  // 开发/体验版无版本号：不提示也不落基线，避免空串污染正式版首启判断
+  if (!version) return;
+  const lastSeen = wx.getStorageSync(LAST_SEEN_MP_VERSION_KEY);
+  wx.setStorageSync(LAST_SEEN_MP_VERSION_KEY, version);
+  if (typeof lastSeen === 'string' && lastSeen && lastSeen !== version) {
+    wx.showModal({
+      title: '已更新至新版本',
+      content: buildUpdateLogs(readMpReleaseNotesCache()).join('\n'),
+      showCancel: false,
+      confirmText: '知道了',
+    });
+  }
+}
+
+/**
  * P2-78/P2-79/P2-81 注册小程序版本更新监听（app.ts onLaunch 调一次）。
  *
  * 微信在冷启动时自动向后台检测已发布新版本并后台下载（UpdateManager 机制）：
@@ -124,6 +148,7 @@ async function showUpdateModal(): Promise<void> {
  *   用户点「重新加载」→ applyUpdate() 立即以新包重启小程序（相当于重新进入，运行时缓存全刷新）；
  * - 用户点「稍后」不强弹：本次运行不再重复弹出，已下载的新包下次冷启动由微信自动应用；
  * - onUpdateFailed：新包下载失败 → 提示网络原因，下次启动自动重试（低频兜底仍用原生弹窗）。
+ * - 会话销毁后微信冷启动静默换包（onUpdateReady 无机会触发）→ P2-84 版本对比轻提示告知已升级。
  *
  * P2-79/P2-82 弹窗更新项来自管理端配置的「版本更新说明」：onUpdateReady 先拉接口
  * （5s 超时）拿到数据再弹窗、成功同时落缓存；拉取失败 toast 提示后回落缓存说明
@@ -131,6 +156,8 @@ async function showUpdateModal(): Promise<void> {
  * refreshUpdateModalLogs 对仍显示中的弹窗原位刷新。
  */
 export function setupUpdateManager(): void {
+  // 静默升级告知不依赖 UpdateManager API（平台换包在任何 JS 之前已发生），先于低版本守卫执行
+  notifySilentUpdate();
   // 低版本基础库（<2.3.0）无此 API：静默跳过，仍走微信默认的冷启动整包更新
   if (!wx.canIUse('getUpdateManager')) return;
   const manager = wx.getUpdateManager();
