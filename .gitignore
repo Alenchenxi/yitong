@@ -6,3 +6,6 @@
 Thumbs.db
 .idea/
 .vscode/
+
+# 生产服务器 postgres 活数据 bind mount（/home/yitongxiaoyuanyun/pgdata，位于服务器仓库工作树根；仅忽略条目，目录本身严禁删除）
+/pgdata/
