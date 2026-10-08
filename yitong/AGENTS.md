@@ -77,11 +77,12 @@
   git bundle list-heads yitong-main.bundle
   ```
 - `git bundle verify` 必须通过，且 `git bundle list-heads yitong-main.bundle` 中的 `refs/heads/main` 必须与当前 `git rev-parse main` 完全一致。
-- 校验通过后，必须执行以下命令将 bundle 上传到服务器：
+- 校验通过后，必须执行以下命令将 bundle 上传到服务器（部署根 `/home/yitongxiaoyuanyun/yitong/`，2026-10-08 起随 9-30 仓库目录迁移切换；官方脚本 `PROJECT_DIR` 默认值已同步）：
   ```bash
-  scp yitong-main.bundle root@121.40.26.41:/home/yitongxiaoyuanyun/
+  scp yitong-main.bundle root@121.40.26.41:/home/yitongxiaoyuanyun/yitong/
   ```
 - 只有 `scp` 退出码为 0 才可报告后端部署包交付完成。上传失败时必须保留本地 bundle、报告失败原因并重试或等待用户处理，不得把“已生成”写成“已上传”。
+- 服务器布局与部署细节见 `docs/开发记录/部署.md`「生产服务器布局」一节。
 - 不需要重新部署后端的纯前端或文档修改不触发本条。
 
 ---
