@@ -11,7 +11,8 @@ import {
 const FALLBACK_MOODS = ['开心', 'emo', '吐槽', '求安慰', '学习', '恋爱', '迷茫'];
 const MAX_IMAGE_COUNT = 9; // P2-83 对齐表白墙九图（原 3）
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const MAX_VIDEO_DURATION = 60; // P2-83 视频最长 60s，与表白墙发布一致
+const MAX_VIDEO_DURATION = 120; // P2-83 视频最长 120s（2 分钟内），相册/拍摄统一以回调 duration 校验
+const CAMERA_MAX_DURATION = 60; // 微信 chooseMedia 拍摄时长 API 上限 60s（< 2 分钟，天然满足）
 
 interface VideoDraft {
   localPath: string;
@@ -110,11 +111,15 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['video'],
-      maxDuration: MAX_VIDEO_DURATION,
+      maxDuration: CAMERA_MAX_DURATION,
       sourceType: ['album', 'camera'],
       success: ({ tempFiles }) => {
         const f = tempFiles[0];
         if (!f) return;
+        if ((f.duration ?? 0) > MAX_VIDEO_DURATION) {
+          wx.showToast({ title: '视频不能超过 2 分钟', icon: 'none' });
+          return;
+        }
         this.setData({
           video: {
             localPath: f.tempFilePath,

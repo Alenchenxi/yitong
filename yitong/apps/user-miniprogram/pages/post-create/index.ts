@@ -6,6 +6,9 @@ import {
   unbindAnonymousContentVisibility,
 } from '../../utils/anonymous-content';
 
+const MAX_VIDEO_DURATION = 120; // P2-83 视频最长 120s（2 分钟内，与树洞发布一致），相册/拍摄统一以回调 duration 校验
+const CAMERA_MAX_DURATION = 60; // 微信 chooseMedia 拍摄时长 API 上限 60s（< 2 分钟，天然满足）
+
 interface TagItem {
   name: string;
   selected: boolean;
@@ -268,11 +271,15 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['video'],
-      maxDuration: 60,
+      maxDuration: CAMERA_MAX_DURATION,
       sourceType: ['album', 'camera'],
       success: (res) => {
         const f = res.tempFiles[0];
         if (!f) return;
+        if ((f.duration ?? 0) > MAX_VIDEO_DURATION) {
+          wx.showToast({ title: '视频不能超过 2 分钟', icon: 'none' });
+          return;
+        }
         this.setData({
           video: {
             localPath: f.tempFilePath,
