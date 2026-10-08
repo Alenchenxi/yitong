@@ -42,20 +42,9 @@
   <view class="tags" wx:if="{{!anonymous && post.tags.length}}">
     <text class="tag" wx:for="{{post.tags}}" wx:key="*this">#{{item}}</text>
   </view>
-  <video wx:if="{{!anonymous && post.videoUrl}}" class="video" src="{{post.videoUrl}}" poster="{{post.videoCover}}" object-fit="cover" controls></video>
-  <view class="images images-{{imgLayout}}" wx:elif="{{!anonymous && imgLayout}}">
-    <image
-      wx:for="{{post.images}}"
-      wx:key="*this"
-      class="img img-{{imgLayout}}"
-      src="{{item}}"
-      mode="aspectFill"
-      data-src="{{item}}"
-      catchtap="previewImage"
-    ></image>
-  </view>
-  <!-- CR-001 匿名模式：图片仍展示（树洞帖也支持图片） -->
-  <view class="images images-{{imgLayout}}" wx:elif="{{anonymous && imgLayout}}">
+  <!-- P2-83 视频对匿名帖开放（树洞视频帖）；图片/视频互斥由发布端与服务端保证 -->
+  <video wx:if="{{post.videoUrl}}" class="video" src="{{post.videoUrl}}" poster="{{post.videoCover}}" object-fit="cover" controls></video>
+  <view class="images images-{{imgLayout}}" wx:elif="{{imgLayout}}">
     <image
       wx:for="{{post.images}}"
       wx:key="*this"

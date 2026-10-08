@@ -348,6 +348,8 @@ export class SquareService {
       anonId: string;
       content: string;
       images: string[];
+      videoUrl?: string | null; // P2-83 视频发布（存量行可能未带字段，可选入参）
+      videoCover?: string | null;
       mood: string | null;
       likeCount: number;
       viewCount: number;
@@ -364,6 +366,8 @@ export class SquareService {
       anonId: p.anonId,
       content: p.content,
       images: p.images,
+      videoUrl: p.videoUrl ?? null,
+      videoCover: p.videoCover ?? null,
       mood: p.mood,
       likeCount: p.likeCount,
       commentCount: p._count?.comments ?? 0,

@@ -6,6 +6,8 @@ export interface AnonPostVo {
   platformPublished: boolean;
   content: string;
   images: string[];
+  videoUrl: string | null; // P2-83 视频发布（与图片互斥）
+  videoCover: string | null;
   mood: string | null;
   likeCount: number;
   liked: boolean; // 当前用户是否已赞；anonToken 缺失时为 false

@@ -34,11 +34,11 @@
     >{{item}}</view>
   </view>
 
-  <!-- 媒体：图片或视频（互斥） -->
+  <!-- 媒体：图片或视频（互斥）；P2-83 朋友圈式：长按媒体呼出右上角删除，删除后自动重排 -->
   <view class="images" wx:if="{{!video}}">
-    <view class="img-box" wx:for="{{images}}" wx:key="*this">
+    <view class="img-box" wx:for="{{images}}" wx:key="*this" bindlongpress="toggleDelete">
       <image class="img" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewImage"></image>
-      <view class="img-del" data-idx="{{index}}" catchtap="removeImage">×</view>
+      <view class="img-del" wx:if="{{showDelete}}" data-idx="{{index}}" catchtap="removeImage">×</view>
     </view>
     <view class="img-add" wx:if="{{images.length < 9}}" bindtap="chooseImage">
       <text class="plus">＋</text>
@@ -50,9 +50,9 @@
     </view>
   </view>
 
-  <view class="video-box" wx:if="{{video}}">
+  <view class="video-box" wx:if="{{video}}" bindlongpress="toggleDelete">
     <video class="video" src="{{video.localPath}}" poster="{{video.coverLocalPath}}" object-fit="cover" controls></video>
-    <view class="img-del video-del" catchtap="removeVideo">×</view>
+    <view class="img-del video-del" wx:if="{{showDelete}}" catchtap="removeVideo">×</view>
   </view>
 
   <!-- 标签 -->

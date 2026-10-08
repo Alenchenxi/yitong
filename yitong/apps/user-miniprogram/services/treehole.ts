@@ -9,6 +9,8 @@ export interface AnonPostVo {
   anonId: string;
   content: string;
   images: string[];
+  videoUrl: string | null; // P2-83 视频发布（与图片互斥）
+  videoCover: string | null;
   mood: string | null; // P0-13 情绪分类
   likeCount: number;
   liked: boolean;
@@ -246,7 +248,13 @@ export function startAnonAuthorChat(targetAnonId: string): Promise<MatchResp> {
   });
 }
 
-export function createPost(data: { content: string; images?: string[]; mood?: string }): Promise<AnonPostVo> {
+export function createPost(data: {
+  content: string;
+  images?: string[];
+  mood?: string;
+  videoUrl?: string; // P2-83 与图片互斥（服务端强校验）
+  videoCover?: string;
+}): Promise<AnonPostVo> {
   return anonRequest({ url: '/treehole/posts', method: 'POST', data });
 }
 

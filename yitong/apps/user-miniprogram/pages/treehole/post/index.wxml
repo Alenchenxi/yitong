@@ -1,10 +1,11 @@
 <view class="page">
   <view class="composer">
     <textarea class="textarea" placeholder="匿名说点什么…（不会暴露你的身份）" value="{{content}}" bindinput="onInput" maxlength="500" auto-height show-confirm-bar="{{false}}" />
-    <view class="image-grid">
-      <view class="image-item" wx:for="{{imagePaths}}" wx:key="*this">
+    <!-- P2-83 媒体区：图片/视频互斥，朋友圈式九宫格（长按媒体呼出右上角删除，删除后自动重排） -->
+    <view class="image-grid" wx:if="{{!video}}">
+      <view class="image-item" wx:for="{{imagePaths}}" wx:key="*this" bindlongpress="toggleDelete">
         <image class="selected-image" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewImage" />
-        <view class="remove-image" data-index="{{index}}" catchtap="removeImage" aria-role="button" aria-label="删除图片">×</view>
+        <view class="remove-image" wx:if="{{showDelete}}" data-index="{{index}}" catchtap="removeImage" aria-role="button" aria-label="删除图片">×</view>
       </view>
       <view
         wx:if="{{imagePaths.length < maxImageCount}}"
@@ -16,6 +17,21 @@
       >
         <text class="add-image-icon">＋</text>
       </view>
+      <view
+        wx:if="{{imagePaths.length === 0}}"
+        class="add-image"
+        bindtap="chooseVideo"
+        aria-role="button"
+        aria-label="添加视频"
+        hover-class="add-image-pressed"
+      >
+        <text class="add-image-icon">▶</text>
+        <text class="add-image-tip">视频</text>
+      </view>
+    </view>
+    <view class="video-box" wx:if="{{video}}" bindlongpress="toggleDelete">
+      <video class="video" src="{{video.localPath}}" poster="{{video.coverLocalPath}}" object-fit="cover" controls></video>
+      <view class="remove-image video-del" wx:if="{{showDelete}}" catchtap="removeVideo" aria-role="button" aria-label="删除视频">×</view>
     </view>
     <view class="composer-count">{{content.length}}/500</view>
   </view>

@@ -60,6 +60,18 @@
 }
 .add-image-pressed { background: var(--yt-disabled-bg); }
 .add-image-icon { font-size: 52rpx; font-weight: 300; line-height: 1; }
+.add-image-tip { margin-top: 6rpx; font-size: 22rpx; line-height: 1; }
+
+/* P2-83 视频盒（与图片互斥，长按呼出删除） */
+.video-box {
+  position: relative;
+  margin-top: 24rpx;
+  overflow: hidden;
+  border-radius: 12rpx;
+  background: #000;
+}
+.video { display: block; width: 100%; height: 400rpx; }
+.video-del { top: 12rpx; right: 12rpx; }
 .composer-count {
   margin-top: 18rpx;
   color: var(--yt-text-sub);

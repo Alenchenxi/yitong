@@ -56,6 +56,8 @@
 .post-content { font-size: 29rpx; line-height: 1.65; color: #1D2129; white-space: pre-wrap; word-break: break-word; }
 .post-images { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8rpx; margin-top: 18rpx; }
 .post-image { width: 100%; height: 190rpx; border-radius: 8rpx; background: #F2F3F5; }
+/* P2-83 视频帖 */
+.post-video { width: 100%; height: 360rpx; margin-top: 18rpx; border-radius: 8rpx; background: #000; }
 .post-foot { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-top: 20rpx; }
 .post-time { flex-shrink: 0; font-size: 22rpx; color: #86909C; }
 .post-stats { display: flex; align-items: center; justify-content: flex-end; gap: 18rpx; font-size: 22rpx; color: #86909C; }

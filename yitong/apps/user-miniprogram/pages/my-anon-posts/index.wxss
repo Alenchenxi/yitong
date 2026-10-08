@@ -10,6 +10,8 @@
 }
 .post-images-1 { grid-template-columns: 1fr; width: 66%; }
 .post-images-2 { grid-template-columns: repeat(2, 1fr); }
+/* P2-83 视频帖 */
+.post-video { width: 100%; height: 360rpx; margin-top: 16rpx; border-radius: 8rpx; background: #000; }
 .post-image {
   display: block;
   width: 100%;

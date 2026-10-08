@@ -8,7 +8,7 @@ export class CreateAnonPostDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(3)
+  @ArrayMaxSize(9)
   @IsString({ each: true })
   images?: string[];
 
@@ -17,4 +17,15 @@ export class CreateAnonPostDto {
   @IsString()
   @MaxLength(12)
   mood?: string;
+
+  /** P2-83 树洞视频发布（与图片互斥，服务端 createPost 强校验）；表白墙同款契约 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  videoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  videoCover?: string;
 }

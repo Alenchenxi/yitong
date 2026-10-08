@@ -29,6 +29,7 @@ interface PageData {
   showEmoji: boolean; // P0-09 表情面板
   emojis: string[];
   video: { localPath: string; coverLocalPath: string; duration: number } | null; // P0-09 视频（与图片互斥）
+  showDelete: boolean; // P2-83 朋友圈式：长按媒体呼出/收起右上角删除按钮
   editId: string; // P1-10 编辑模式：被编辑帖子 id（空=新建）
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT'; // P1-11 可见性选择
   scheduleEnabled: boolean; // P2-06 定时发布开关
@@ -65,6 +66,7 @@ Page({
     showEmoji: false,
     emojis: EMOJIS,
     video: null,
+    showDelete: false,
     editId: '',
     visibility: 'PUBLIC',
     scheduleEnabled: false,
@@ -219,6 +221,11 @@ Page({
     this.setData({ isAnonymous: !this.data.isAnonymous });
   },
 
+  // P2-83 长按任意媒体：切换删除态（右上角删除按钮显隐，删除后网格自动重排）
+  toggleDelete() {
+    this.setData({ showDelete: !this.data.showDelete });
+  },
+
   // 图片选择（与视频互斥）
   chooseImage() {
     if (this.data.video) {
@@ -277,7 +284,7 @@ Page({
     });
   },
   removeVideo() {
-    this.setData({ video: null });
+    this.setData({ video: null, showDelete: false });
   },
 
   async submit() {

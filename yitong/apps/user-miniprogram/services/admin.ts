@@ -157,6 +157,10 @@ export interface AdminAnonPostVo {
   content: string;
   anonId: string;
   status: string;
+  images: string[];
+  videoUrl: string | null; // P2-83 视频发布（管理端 UI 渲染后续接入）
+  videoCover: string | null;
+  mood: string | null;
   createdAt: string;
   communityId: string;
   publisherScope: AdminModerationScope;

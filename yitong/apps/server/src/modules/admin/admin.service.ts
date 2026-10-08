@@ -177,6 +177,10 @@ export class AdminService {
         content: p.content,
         anonId: p.anonId,
         status: p.status,
+        images: p.images,
+        videoUrl: p.videoUrl, // P2-83 视频发布字段透出（管理端 UI 渲染后续接入）
+        videoCover: p.videoCover,
+        mood: p.mood,
         communityId: p.communityId,
         publisherScope: p.publisherScope,
         moderationAuthority: p.moderationAuthority,

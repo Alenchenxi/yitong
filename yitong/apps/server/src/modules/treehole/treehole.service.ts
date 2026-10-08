@@ -25,7 +25,7 @@ import {
   type QuestionnaireType,
 } from './questionnaire-bank';
 
-// 错误码 3xxxx 树洞段（API §3）：30001 匿名态失效 / 30002 匹配无可用对象
+// 错误码 3xxxx 树洞段（API §3）：30001 匿名态失效 / 30002 匹配无可用对象 / 30005 图片与视频互斥（P2-83）
 // P1-17 限时聊天有效期（毫秒）：默认 24 小时
 const MATCH_TTL_MS = parseInt(process.env.TREEHOLE_MATCH_TTL_MS || `${24 * 60 * 60 * 1000}`, 10);
 const NICK_A = ['星河', '南门', '月光', '晚风', '深海', '森林', '云端', '陌路', '拾光', '孤岛'];
@@ -271,9 +271,21 @@ export class TreeholeService {
       throw new BizException(30001, '匿名身份已失效', HttpStatus.UNAUTHORIZED);
     }
 
+    // P2-83 图片与视频互斥：服务端强校验（前端发布页同为互斥交互），有视频时忽略 images
+    if (dto.videoUrl && (dto.images?.length ?? 0) > 0) {
+      throw new BizException(30005, '图片与视频不能同时发布', HttpStatus.BAD_REQUEST);
+    }
+    const images = dto.videoUrl ? [] : dto.images ?? [];
+
     await this.moderation.checkText(dto.content);
-    for (const url of dto.images ?? []) {
+    for (const url of images) {
       await this.moderation.checkImage(url);
+    }
+    if (dto.videoUrl) {
+      this.moderation.checkVideoStub(dto.videoUrl);
+    }
+    if (dto.videoCover) {
+      await this.moderation.checkImage(dto.videoCover);
     }
     // P1-13：发帖 mood 从标签库校验
     if (dto.mood) {
@@ -295,7 +307,9 @@ export class TreeholeService {
           communityId,
           anonId,
           content: dto.content,
-          images: dto.images ?? [],
+          images,
+          videoUrl: dto.videoUrl ?? null,
+          videoCover: dto.videoCover ?? null,
           mood: dto.mood ?? null,
           status: PostStatus.APPROVED,
           publisherScope,
@@ -1455,6 +1469,8 @@ export class TreeholeService {
     anonId: string;
     content: string;
     images: string[];
+    videoUrl?: string | null; // P2-83 视频发布（存量行可能未带字段，可选入参）
+    videoCover?: string | null;
     mood: string | null;
     status: PostStatus;
     likeCount: number;
@@ -1470,6 +1486,8 @@ export class TreeholeService {
       anonId: p.anonId,
       content: p.content,
       images: p.images,
+      videoUrl: p.videoUrl ?? null,
+      videoCover: p.videoCover ?? null,
       mood: p.mood,
       likeCount: p.likeCount,
       liked: (p.likes?.length ?? 0) > 0,

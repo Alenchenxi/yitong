@@ -355,6 +355,8 @@ model AnonymousPost {
   anonId              String                 @map("anon_id")
   content             String
   images              String[]
+  videoUrl            String?                @map("video_url") // P2-83 树洞视频发布（与图片互斥，对齐表白墙 Post）
+  videoCover          String?                @map("video_cover")
   mood                String?                @map("mood") // P0-13 情绪分类：开心/emo/吐槽/求安慰/学习/恋爱/迷茫
   status              PostStatus             @default(PENDING)
   createdAt           DateTime               @default(now()) @map("created_at")

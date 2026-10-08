@@ -42,6 +42,8 @@
     <view class="post-list" wx:if="{{posts.length > 0}}">
       <view class="post-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
         <view class="post-content"><text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text>{{item.content}}</view>
+        <!-- P2-83 视频帖（与图片互斥） -->
+        <video wx:if="{{item.videoUrl}}" class="post-video" src="{{item.videoUrl}}" poster="{{item.videoCover}}" object-fit="cover" controls></video>
         <view class="post-images" wx:if="{{item.images.length > 0}}">
           <image class="post-image" wx:for="{{item.images}}" wx:key="*this" src="{{item}}" mode="aspectFill"></image>
         </view>

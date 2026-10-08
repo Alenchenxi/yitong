@@ -184,6 +184,11 @@ export class ConfessionService {
       }
     }
 
+    // P2-83 图片与视频互斥：服务端强校验（前端发布页同为互斥交互），有视频时忽略 images
+    if (dto.videoUrl && (dto.images?.length ?? 0) > 0) {
+      throw new BizException(20003, '图片与视频不能同时发布', HttpStatus.BAD_REQUEST);
+    }
+
     const isAnonymous = !!dto.isAnonymous && !isDraftOrPrivate; // 匿名仅用于公开发布
 
     // 圈子：发帖归属当前圈子（单真相源 = active community）+ 动态数 postCount++
@@ -388,6 +393,10 @@ export class ConfessionService {
     await this.publicationPolicy.assertCommunityInteractionAllowed(uid, post.communityId);
 
     // P1-10 编辑仍走内容安全 + 图片/视频审核
+    // P2-83 图片与视频互斥：服务端强校验（与 createPost 同口径），有视频时忽略 images
+    if (dto.videoUrl && (dto.images?.length ?? 0) > 0) {
+      throw new BizException(20003, '图片与视频不能同时发布', HttpStatus.BAD_REQUEST);
+    }
     await this.moderation.checkText(dto.content, openid);
     for (const url of dto.images ?? []) await this.moderation.checkImage(url);
     if (dto.videoCover) await this.moderation.checkImage(dto.videoCover);
