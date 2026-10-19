@@ -1,9 +1,12 @@
 import { BizException } from '../../src/common/exceptions/biz.exception';
 import { ModerationService } from '../../src/modules/moderation/moderation.service';
+import Jimp from 'jimp';
 
 // 内容安全 fail-closed 加固单测：
-// 核心口径——未从微信拿到明确审核结论（errcode 业务错误 / 缺 suggest / 响应非 JSON / 请求失败）时，
+// 核心口径——未从微信拿到明确审核结论（文本缺 suggest / 图片缺 errcode / errcode 业务错误 /
+// 响应非 JSON / 请求失败 / 图片下载或规范化失败）时，
 // 生产环境必须抛 90003 拒绝发布（fail-closed），不得像旧实现那样 `?? 'pass'` 默认放行。
+// 图片 v1 口径：errcode 0=通过、87014=违规；请求体为二进制（先下载图片规范化）。
 
 type SecCheckJson = Record<string, unknown>;
 
@@ -15,14 +18,34 @@ function buildService(): ModerationService {
   return new ModerationService(wxToken as never);
 }
 
-function mockFetchJson(payload: SecCheckJson): void {
-  const fetchMock = jest.fn();
-  fetchMock.mockResolvedValueOnce({
+// 生成一张合法的极小 JPEG（供图片下载 mock 使用，jimp 可解析）
+async function tinyJpeg(): Promise<Buffer> {
+  const image = await Jimp.create(4, 4, 0xff0000ff);
+  return image.getBufferAsync(Jimp.MIME_JPEG);
+}
+
+function imageDownloadResponse(jpeg: Buffer): Record<string, unknown> {
+  const bytes = new Uint8Array(jpeg);
+  return {
     ok: true,
     status: 200,
-    json: async () => payload,
-  });
+    arrayBuffer: async () => bytes.buffer,
+  };
+}
+
+function jsonApiResponse(payload: SecCheckJson): Record<string, unknown> {
+  return { ok: true, status: 200, json: async () => payload };
+}
+
+function mockFetchSequence(responses: Array<Record<string, unknown>>): jest.Mock {
+  const fetchMock = jest.fn();
+  for (const r of responses) fetchMock.mockResolvedValueOnce(r);
   (globalThis as { fetch: unknown }).fetch = fetchMock;
+  return fetchMock;
+}
+
+function mockFetchJson(payload: SecCheckJson): void {
+  mockFetchSequence([jsonApiResponse(payload)]);
 }
 
 function mockFetchHttpError(status: number): void {
@@ -125,28 +148,90 @@ describe('ModerationService fail-closed 加固', () => {
     });
   });
 
-  describe('checkImage（图片）', () => {
-    it('明确 suggest=risky 时抛 90002', async () => {
+  describe('checkImage（图片，v1 二进制协议）', () => {
+    it('errcode=87014（违规）时抛 90002', async () => {
       process.env.NODE_ENV = 'production';
-      mockFetchJson({ errcode: 0, result: { suggest: 'risky', label: 20001 } });
+      const jpeg = await tinyJpeg();
+      const fetchMock = mockFetchSequence([
+        imageDownloadResponse(jpeg),
+        jsonApiResponse({ errcode: 87014, errmsg: 'risky content' }),
+      ]);
       await expectBizCode(buildService().checkImage('https://cos.example/x.jpg'), 90002);
+      // 第二次 fetch（img_sec_check）应以二进制提交，而非 JSON media_url
+      const call = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+      expect(String(call[0])).toContain('/wxa/img_sec_check');
+      expect(call[1]?.headers).toMatchObject({ 'Content-Type': 'application/octet-stream' });
     });
 
-    it('明确 suggest=pass 时放行', async () => {
+    it('errcode=0 时放行', async () => {
       process.env.NODE_ENV = 'production';
-      mockFetchJson({ errcode: 0, result: { suggest: 'pass', label: 100 } });
+      const jpeg = await tinyJpeg();
+      mockFetchSequence([
+        imageDownloadResponse(jpeg),
+        jsonApiResponse({ errcode: 0, errmsg: 'ok' }),
+      ]);
       await expect(buildService().checkImage('https://cos.example/x.jpg')).resolves.toBeUndefined();
     });
 
     it('HTTP 200 + errcode=40001 生产环境抛 90003', async () => {
       process.env.NODE_ENV = 'production';
-      mockFetchJson({ errcode: 40001, errmsg: 'invalid credential' });
+      const jpeg = await tinyJpeg();
+      mockFetchSequence([
+        imageDownloadResponse(jpeg),
+        jsonApiResponse({ errcode: 40001, errmsg: 'invalid credential' }),
+      ]);
       await expectBizCode(buildService().checkImage('https://cos.example/x.jpg'), 90003);
     });
 
-    it('errcode=0 但缺 suggest 生产环境抛 90003', async () => {
+    it('errcode 缺失（非标准响应）生产环境抛 90003，不默认放行', async () => {
       process.env.NODE_ENV = 'production';
-      mockFetchJson({ errcode: 0, errmsg: 'ok' });
+      const jpeg = await tinyJpeg();
+      mockFetchSequence([
+        imageDownloadResponse(jpeg),
+        jsonApiResponse({ errmsg: 'ok' }),
+      ]);
+      await expectBizCode(buildService().checkImage('https://cos.example/x.jpg'), 90003);
+    });
+
+    it('响应体非 JSON 生产环境抛 90003', async () => {
+      process.env.NODE_ENV = 'production';
+      const jpeg = await tinyJpeg();
+      mockFetchSequence([
+        imageDownloadResponse(jpeg),
+        {
+          ok: true,
+          status: 200,
+          json: async () => {
+            throw new Error('Unexpected token < in JSON');
+          },
+        },
+      ]);
+      await expectBizCode(buildService().checkImage('https://cos.example/x.jpg'), 90003);
+    });
+
+    it('图片下载失败（非 200）生产环境抛 90003', async () => {
+      process.env.NODE_ENV = 'production';
+      mockFetchSequence([{ ok: false, status: 404 }]);
+      await expectBizCode(buildService().checkImage('https://cos.example/x.jpg'), 90003);
+    });
+
+    it('图片内容非法（jimp 无法解析）生产环境抛 90003', async () => {
+      process.env.NODE_ENV = 'production';
+      const junk = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]);
+      mockFetchSequence([
+        { ok: true, status: 200, arrayBuffer: async () => junk.buffer },
+        jsonApiResponse({ errcode: 0 }),
+      ]);
+      await expectBizCode(buildService().checkImage('https://cos.example/x.jpg'), 90003);
+    });
+
+    it('API 请求网络失败生产环境抛 90003', async () => {
+      process.env.NODE_ENV = 'production';
+      const jpeg = await tinyJpeg();
+      const fetchMock = jest.fn();
+      fetchMock.mockResolvedValueOnce(imageDownloadResponse(jpeg));
+      fetchMock.mockRejectedValueOnce(new Error('network down'));
+      (globalThis as { fetch: unknown }).fetch = fetchMock;
       await expectBizCode(buildService().checkImage('https://cos.example/x.jpg'), 90003);
     });
   });
