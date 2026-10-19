@@ -35,6 +35,18 @@
     </view>
     <view class="composer-count">{{content.length}}/500</view>
   </view>
+  <!-- CR-006 发布地：地图选点，可选不强制；选中显示地点名，× 清除 -->
+  <view class="location-section">
+    <view class="location-entry" bindtap="pickLocation" wx:if="{{!chosenLocation}}" aria-role="button" aria-label="添加所在位置">
+      <text class="location-icon">📍</text>
+      <text class="location-text">所在位置</text>
+    </view>
+    <view class="location-entry chosen" wx:else>
+      <text class="location-icon">📍</text>
+      <text class="location-text loc-chosen">{{chosenLocation.name}}</text>
+      <text class="location-clear" catchtap="clearLocation" aria-role="button" aria-label="清除位置">×</text>
+    </view>
+  </view>
   <view class="mood-section">
     <view class="mood-label">心情（可选）</view>
     <view class="mood-chips">

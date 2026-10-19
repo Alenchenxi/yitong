@@ -28,4 +28,10 @@ export class CreateAnonPostDto {
   @IsString()
   @MaxLength(2048)
   videoCover?: string;
+
+  /** CR-006 发布地：选点地址文本（服务端解析市/区落库，不存坐标——匿名红线） */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  locationAddress?: string;
 }

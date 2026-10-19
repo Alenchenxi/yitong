@@ -81,6 +81,18 @@
 }
 
 .mood-section { margin-top: 20rpx; background: #fff; border-radius: 16rpx; padding: 24rpx; }
+/* CR-006 发布地：与 mood-section 同卡片体系，一行式入口/已选态 */
+.location-section { margin-top: 20rpx; background: #fff; border-radius: 16rpx; padding: 24rpx; }
+.location-entry { display: flex; align-items: center; gap: 8rpx; }
+.location-entry.chosen { padding-right: 8rpx; }
+.location-icon { font-size: 26rpx; }
+.location-text { font-size: 26rpx; color: #4E5969; }
+.location-text.loc-chosen { color: #1D2129; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.location-clear {
+  margin-left: auto;
+  width: 40rpx; height: 40rpx; line-height: 36rpx; text-align: center;
+  border-radius: 50%; background: #F2F3F5; color: #86909C; font-size: 28rpx;
+}
 .mood-label { font-size: 28rpx; font-weight: 600; color: #1D2129; margin-bottom: 20rpx; }
 .mood-chips { display: flex; flex-wrap: wrap; gap: 16rpx; }
 .mood-chip {

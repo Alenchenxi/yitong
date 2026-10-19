@@ -358,6 +358,8 @@ model AnonymousPost {
   videoUrl            String?                @map("video_url") // P2-83 树洞视频发布（与图片互斥，对齐表白墙 Post）
   videoCover          String?                @map("video_cover")
   mood                String?                @map("mood") // P0-13 情绪分类：开心/emo/吐槽/求安慰/学习/恋爱/迷茫
+  locationCity        String?                @map("location_city") // CR-006 发布地·市（地址文本解析，纯展示；不存坐标——匿名红线：精确坐标可用于去匿名化）
+  locationDistrict    String?                @map("location_district") // CR-006 发布地·区（可空：地址无区县命中时为 null）
   status              PostStatus             @default(PENDING)
   createdAt           DateTime               @default(now()) @map("created_at")
   likeCount           Int                    @default(0) @map("like_count")

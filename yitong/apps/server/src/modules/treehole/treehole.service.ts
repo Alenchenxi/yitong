@@ -16,6 +16,7 @@ import { ImService } from '../chat/im.service';
 import { ChatService } from '../chat/chat.service';
 import { CommunityService, DEFAULT_COMMUNITY_ID } from '../community/community.service';
 import { PublicationPolicyService } from '../publication/publication-policy.service';
+import { LocationService } from '../job/location.service';
 import type { CreateAnonPostDto } from './dto/create-anon-post.dto';
 import type { UpdateAnonProfileDto } from './dto/update-anon-profile.dto';
 import type { AnonCommentVo } from './types';
@@ -71,6 +72,7 @@ export class TreeholeService {
     private readonly chat: ChatService,
     private readonly community: CommunityService,
     private readonly publicationPolicy: PublicationPolicyService,
+    private readonly location: LocationService,
   ) {}
 
   // 换匿名 token：find/create AnonymousProfile（userId->anonId，后台可追溯），签 anonToken（含 anonId，不含 uid）
@@ -307,6 +309,13 @@ export class TreeholeService {
     if (dto.mood) {
       await this.assertTagsInLibrary('mood', [dto.mood]);
     }
+    // CR-006 发布地：地址文本解析市/区（纯函数，解析失败均为 null 不阻断发帖）
+    const locationCity = dto.locationAddress
+      ? this.location.parseCityFromAddress(dto.locationAddress)
+      : null;
+    const locationDistrict = dto.locationAddress
+      ? this.location.parseDistrictFromAddress(locationCity, dto.locationAddress)
+      : null;
     const post = await this.prisma.$transaction(async (tx) => {
       await this.publicationPolicy.assertOwnerCanManageInTransaction(
         tx,
@@ -327,6 +336,9 @@ export class TreeholeService {
           videoUrl: dto.videoUrl ?? null,
           videoCover: dto.videoCover ?? null,
           mood: dto.mood ?? null,
+          // CR-006 发布地：地址文本解析市/区（纯展示文本，不存坐标——匿名红线）；解析失败置 null 不阻断发帖
+          locationCity: locationCity,
+          locationDistrict: locationDistrict,
           status: PostStatus.APPROVED,
           publisherScope,
           // 树洞内容在所有圈子共用一条记录，避免复制后点赞、评论和审核状态漂移。
@@ -1488,6 +1500,8 @@ export class TreeholeService {
     videoUrl?: string | null; // P2-83 视频发布（存量行可能未带字段，可选入参）
     videoCover?: string | null;
     mood: string | null;
+    locationCity?: string | null; // CR-006 发布地·市（存量行可能未带字段，可选入参）
+    locationDistrict?: string | null; // CR-006 发布地·区
     status: PostStatus;
     likeCount: number;
     publisherScope: PublicationScope;
@@ -1505,6 +1519,8 @@ export class TreeholeService {
       videoUrl: p.videoUrl ?? null,
       videoCover: p.videoCover ?? null,
       mood: p.mood,
+      locationCity: p.locationCity ?? null,
+      locationDistrict: p.locationDistrict ?? null,
       likeCount: p.likeCount,
       liked: (p.likes?.length ?? 0) > 0,
       platformPublished: p.publisherScope === PublicationScope.PLATFORM,

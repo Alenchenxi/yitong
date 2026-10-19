@@ -111,6 +111,8 @@ export class ModerationService {
     try {
       bytes = await this.fetchNormalizedImage(imageUrl);
     } catch (e) {
+      // 确定性拒绝（超限/不可解码）直接透传具体文案（不区分环境，同 90002 口径）；瞬态失败走不可用
+      if (e instanceof BizException) throw e;
       this.handleCheckUnavailable(
         `imgSecCheck image fetch/normalize failed: ${e instanceof Error ? e.message : 'unknown'}`,
       );
@@ -151,14 +153,21 @@ export class ModerationService {
     }
   }
 
-  // 下载图片并规范化到 img_sec_check 限制内：像素超限先 scaleToFit；格式/体积不满足时 JPEG 重编码
+  // 下载图片并规范化到 img_sec_check 限制内：像素超限先 scaleToFit；格式/体积不满足时 JPEG 重编码。
+  // 两类确定性失败直抛 90003 细分文案（用户可自助换图解决）；下载失败仍抛普通 Error 走瞬态不可用。
   private async fetchNormalizedImage(imageUrl: string): Promise<Buffer> {
     const res = await fetch(imageUrl, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) {
       throw new Error(`image HTTP ${res.status}`);
     }
     const raw = Buffer.from(await res.arrayBuffer());
-    const image = await Jimp.read(raw);
+    let image: Jimp;
+    try {
+      image = await Jimp.read(raw);
+    } catch {
+      // webp 等不可解码格式：用户换图即可解决，报具体原因
+      throw new BizException(90003, '图片格式不支持安全审核，请更换图片后重试');
+    }
     const oversizePixels = image.getWidth() > IMG_MAX_WIDTH || image.getHeight() > IMG_MAX_HEIGHT;
     if (!oversizePixels && raw.length <= IMG_MAX_BYTES && this.isJpegOrPng(raw)) {
       return raw;
@@ -171,7 +180,7 @@ export class ModerationService {
       out = await image.quality(IMG_JPEG_QUALITY_FALLBACK).getBufferAsync(Jimp.MIME_JPEG);
     }
     if (out.length > IMG_MAX_BYTES) {
-      throw new Error(`image exceeds ${IMG_MAX_BYTES} bytes after normalize`);
+      throw new BizException(90003, '图片过大，无法完成安全审核，请更换图片后重试');
     }
     return out;
   }

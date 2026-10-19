@@ -28,6 +28,24 @@ const PROVINCE_NEEDLES: Array<{ needle: string; province: string }> = provinces
   .map((item) => ({ needle: normalizeName(item.name).replace(/省$/u, ''), province: item.province }))
   .filter((item) => item.needle.length > 0);
 
+interface DistrictNeedle {
+  needle: string; // 归一化区县名(剥「市/区/县」等后缀),includes 匹配用
+  official: string; // 官方全名(「西湖区」),解析命中返回它
+  province: string; // 省级行政区码,跨省同名消歧
+  city: string; // 市级行政区码,跨市同名区县消歧(朝阳区:北京/长春)
+}
+
+// 区县静态 needle 表:全量区县,按 needle 长度降序(长名优先,防「XX区」短名抢先命中)
+const DISTRICT_NEEDLES: DistrictNeedle[] = areas
+  .map((item) => ({
+    needle: normalizeName(item.name),
+    official: item.name,
+    province: item.province,
+    city: item.city,
+  }))
+  .filter((item) => item.needle.length > 0)
+  .sort((a, b) => b.needle.length - a.needle.length);
+
 // 模块级静态表:全量 337 地级市 + 4 直辖市(cities 数据不含直辖市,从 provinces 补),按 needle 长度降序
 const CITY_NEEDLES: CityNeedle[] = [
   ...provinces
@@ -64,6 +82,32 @@ export class LocationService {
     const matchedProvince = PROVINCE_NEEDLES.find((p) => p.needle.length >= 2 && text.includes(p.needle));
     const hit = CITY_NEEDLES.find(
       (c) => text.includes(c.needle) && (!matchedProvince || c.province === matchedProvince.province),
+    );
+    return hit ? hit.official : null;
+  }
+
+  // 从地址文本解析区县(CR-006 树洞发布地):先锁定 city 的省/市码,再在市内区县 needle 中
+  // includes 匹配(长度降序取最长)。跨市同名区县(朝阳区:北京/长春)必须靠 city 参数消歧——
+  // city 无法解析(未知/空)时返回 null。不设区的市(东莞/中山)自然无命中。
+  parseDistrictFromAddress(city: string | null | undefined, address: string | null | undefined): string | null {
+    const text = (address ?? '').trim();
+    if (!text || !city) return null;
+    const normalizedCity = this.normalizeAdministrativeName(city);
+    const matchedCity = cities.find((item) => this.normalizeAdministrativeName(item.name) === normalizedCity);
+    let provinceCode = '';
+    let cityCode = '';
+    if (matchedCity) {
+      provinceCode = matchedCity.province;
+      cityCode = matchedCity.city;
+    } else {
+      const municipality = provinces.find(
+        (item) => this.normalizeAdministrativeName(item.name) === normalizedCity,
+      );
+      if (!municipality) return null;
+      provinceCode = municipality.province;
+    }
+    const hit = DISTRICT_NEEDLES.find(
+      (d) => text.includes(d.needle) && d.province === provinceCode && (!cityCode || d.city === cityCode),
     );
     return hit ? hit.official : null;
   }

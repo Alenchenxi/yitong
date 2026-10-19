@@ -9,7 +9,7 @@
 
   <block wx:else>
     <view wx:if="{{post}}" class="card">
-      <view class="anon" catchtap="goAuthor">树洞 {{post.anonShort}}<text wx:if="{{post.platformPublished}}" class="yt-platform-badge">平台发布</text><text class="boost-badge" wx:if="{{post.boosted}}">推广</text></view>
+      <view class="anon" catchtap="goAuthor">树洞 {{post.anonShort}}<text wx:if="{{post.platformPublished}}" class="yt-platform-badge">平台发布</text><text wx:if="{{post.locationCity}}" class="loc-badge">📍{{post.locationCity}}{{post.locationDistrict ? ' · ' + post.locationDistrict : ''}}</text><text class="boost-badge" wx:if="{{post.boosted}}">推广</text></view>
       <view class="content">{{post.content}}</view>
       <!-- P2-83 视频帖（与图片互斥） -->
       <video wx:if="{{post.videoUrl}}" class="video" src="{{post.videoUrl}}" poster="{{post.videoCover}}" object-fit="cover" controls></video>

@@ -1,6 +1,7 @@
 import type { AppInstance } from '../../../app';
 import { hasAnonToken, getAnonymousToken, createPost, getAnonTags } from '../../../services/treehole';
 import { uploadImages, uploadImage, uploadVideo } from '../../../services/upload';
+import { chooseLocation } from '../../../utils/choose-location';
 import {
   bindAnonymousContentPageGuard,
   requireAnonymousContentVisibility,
@@ -30,6 +31,7 @@ Page({
     maxImageCount: MAX_IMAGE_COUNT,
     video: null as VideoDraft | null, // P2-83 视频（与图片互斥）
     showDelete: false, // P2-83 朋友圈式：长按媒体呼出/收起右上角删除按钮
+    chosenLocation: null as { name: string; address: string } | null, // CR-006 发布地（可选）
   },
 
   async onLoad() {
@@ -62,6 +64,18 @@ Page({
   pickMood(e: WechatMiniprogram.TouchEvent) {
     const mood = e.currentTarget.dataset.mood as string;
     this.setData({ selectedMood: mood === this.data.selectedMood ? '' : mood });
+  },
+
+  // CR-006 发布地：地图选点（复用 P2-80 封装，取消/失败静默）；可清除，不选则不带位置
+  async pickLocation() {
+    const loc = await chooseLocation();
+    if (loc) {
+      this.setData({ chosenLocation: { name: loc.name, address: loc.address } });
+    }
+  },
+
+  clearLocation() {
+    this.setData({ chosenLocation: null });
   },
 
   // P2-83 长按任意媒体：切换删除态（右上角删除按钮显隐，删除后网格自动重排）
@@ -179,7 +193,15 @@ Page({
         images = await uploadImages(this.data.imagePaths, 'anon');
       }
       wx.showLoading({ title: '发布中...', mask: true });
-      await createPost({ content, mood: this.data.selectedMood || undefined, images, videoUrl, videoCover });
+      await createPost({
+        content,
+        mood: this.data.selectedMood || undefined,
+        images,
+        videoUrl,
+        videoCover,
+        // CR-006 发布地：仅选中时提交地址文本（服务端解析市/区；不存坐标）
+        locationAddress: this.data.chosenLocation?.address,
+      });
       published = true;
     } catch (e) {
       // 服务层已 toast，但会被下方 hideLoading 吞掉（toast/loading 共用原生视图）——hideLoading 后补一次提示

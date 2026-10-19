@@ -78,6 +78,16 @@ async function expectBizCode(promise: Promise<void>, code: number): Promise<void
   expect((caught as BizException).bizCode).toBe(code);
 }
 
+// 捕获 BizException 本体（断言 message 用）；未抛出返回 undefined
+async function captureBiz(promise: Promise<void>): Promise<BizException | undefined> {
+  try {
+    await promise;
+  } catch (err) {
+    return err as BizException;
+  }
+  return undefined;
+}
+
 describe('ModerationService fail-closed 加固', () => {
   const originalEnv = process.env.NODE_ENV;
 
@@ -222,7 +232,22 @@ describe('ModerationService fail-closed 加固', () => {
         { ok: true, status: 200, arrayBuffer: async () => junk.buffer },
         jsonApiResponse({ errcode: 0 }),
       ]);
-      await expectBizCode(buildService().checkImage('https://cos.example/x.jpg'), 90003);
+      const err = await captureBiz(buildService().checkImage('https://cos.example/x.jpg'));
+      expect(err?.bizCode).toBe(90003);
+      // CR-006 确定性拒绝：报具体原因而非笼统「服务不可用」
+      expect(err?.message).toBe('图片格式不支持安全审核，请更换图片后重试');
+    });
+
+    it('不可解码图片非生产环境同样确定性拒绝（直抛不区分环境，同 90002 口径）', async () => {
+      process.env.NODE_ENV = 'test';
+      const junk = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]);
+      mockFetchSequence([
+        { ok: true, status: 200, arrayBuffer: async () => junk.buffer },
+        jsonApiResponse({ errcode: 0 }),
+      ]);
+      const err = await captureBiz(buildService().checkImage('https://cos.example/x.jpg'));
+      expect(err?.bizCode).toBe(90003);
+      expect(err?.message).toBe('图片格式不支持安全审核，请更换图片后重试');
     });
 
     it('API 请求网络失败生产环境抛 90003', async () => {

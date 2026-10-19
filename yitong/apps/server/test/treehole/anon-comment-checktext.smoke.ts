@@ -13,6 +13,7 @@ import { ModerationService } from '../../src/modules/moderation/moderation.servi
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { ImService } from '../../src/modules/chat/im.service';
 import { ChatService } from '../../src/modules/chat/chat.service';
+import { LocationService } from '../../src/modules/job/location.service';
 import { CommunityService } from '../../src/modules/community/community.service';
 import { PublicationPolicyService } from '../../src/modules/publication/publication-policy.service';
 
@@ -96,6 +97,7 @@ function newService(fake: FakePrisma, moderation: ModerationService): TreeholeSe
       anonymousPostVisibilityFilter: () => ({}),
       assertAnonCommunityInteractionAllowed: async () => undefined,
     } as unknown as PublicationPolicyService,
+    new LocationService(),
   );
 }
 

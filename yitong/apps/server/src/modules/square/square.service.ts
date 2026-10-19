@@ -351,6 +351,8 @@ export class SquareService {
       videoUrl?: string | null; // P2-83 视频发布（存量行可能未带字段，可选入参）
       videoCover?: string | null;
       mood: string | null;
+      locationCity?: string | null; // CR-006 发布地·市（存量行可能未带字段，可选入参）
+      locationDistrict?: string | null; // CR-006 发布地·区
       likeCount: number;
       viewCount: number;
       publisherScope: PublicationScope;
@@ -369,6 +371,8 @@ export class SquareService {
       videoUrl: p.videoUrl ?? null,
       videoCover: p.videoCover ?? null,
       mood: p.mood,
+      locationCity: p.locationCity ?? null,
+      locationDistrict: p.locationDistrict ?? null,
       likeCount: p.likeCount,
       commentCount: p._count?.comments ?? 0,
       viewCount: p.viewCount,

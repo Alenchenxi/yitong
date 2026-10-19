@@ -12,6 +12,8 @@ export interface AnonPostVo {
   videoUrl: string | null; // P2-83 视频发布（与图片互斥）
   videoCover: string | null;
   mood: string | null; // P0-13 情绪分类
+  locationCity: string | null; // CR-006 发布地·市（纯展示文本，服务端从选点地址解析；不存坐标）
+  locationDistrict: string | null; // CR-006 发布地·区（地址无区县命中时 null）
   likeCount: number;
   liked: boolean;
   commentCount: number; // 评论数（动态 _count）
@@ -254,6 +256,7 @@ export function createPost(data: {
   mood?: string;
   videoUrl?: string; // P2-83 与图片互斥（服务端强校验）
   videoCover?: string;
+  locationAddress?: string; // CR-006 发布地：选点地址文本（服务端解析市/区）
 }): Promise<AnonPostVo> {
   return anonRequest({ url: '/treehole/posts', method: 'POST', data });
 }

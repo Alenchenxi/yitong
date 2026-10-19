@@ -73,6 +73,16 @@
   font-size: 20rpx;
   font-weight: 400;
 }
+/* CR-006 发布地：市·区（与 post-mood 同灰阶体系） */
+.post-loc {
+  margin-left: 12rpx;
+  padding: 2rpx 14rpx;
+  border-radius: 999rpx;
+  background: var(--yt-disabled-bg);
+  color: var(--yt-text-sub);
+  font-size: 20rpx;
+  font-weight: 400;
+}
 .post-boost {
   margin-left: 12rpx;
   padding: 2rpx 14rpx;

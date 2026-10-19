@@ -114,6 +114,13 @@
   font-weight: 500;
 }
 
+/* CR-006 发布地：市·区（灰阶，弱于 mood 品牌色） */
+.tag-loc {
+  background: var(--yt-disabled-bg);
+  color: var(--yt-text-sub);
+  font-weight: 400;
+}
+
 .video {
   width: 100%;
   height: 380rpx;

@@ -39,6 +39,10 @@
   <view class="tags" wx:if="{{post.mood}}">
     <text class="tag tag-mood">{{post.mood}}</text>
   </view>
+  <!-- CR-006 发布地：市·区（仅匿名/树洞卡展示；存量帖无位置不渲染） -->
+  <view class="tags" wx:if="{{post.locationCity}}">
+    <text class="tag tag-loc">📍{{post.locationCity}}{{post.locationDistrict ? ' · ' + post.locationDistrict : ''}}</text>
+  </view>
   <view class="tags" wx:if="{{!anonymous && post.tags.length}}">
     <text class="tag" wx:for="{{post.tags}}" wx:key="*this">#{{item}}</text>
   </view>

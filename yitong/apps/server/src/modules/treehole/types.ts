@@ -9,6 +9,8 @@ export interface AnonPostVo {
   videoUrl: string | null; // P2-83 视频发布（与图片互斥）
   videoCover: string | null;
   mood: string | null;
+  locationCity: string | null; // CR-006 发布地·市（纯展示文本；不存坐标——匿名红线）
+  locationDistrict: string | null; // CR-006 发布地·区（地址无区县命中时 null）
   likeCount: number;
   liked: boolean; // 当前用户是否已赞；anonToken 缺失时为 false
   commentCount: number; // 评论数（动态 _count）

@@ -53,7 +53,7 @@
   <!-- 广场列表 -->
   <view class="list" wx:if="{{activeTab !== 'nearby' && posts.length > 0}}">
     <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
-      <view class="anon" data-anon-id="{{item.anonId}}" catchtap="goAuthor">🌙 {{item.anonShort}}<text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text><text wx:if="{{item.mood}}" class="post-mood">{{item.mood}}</text><text wx:if="{{item.boosted}}" class="post-boost">推广</text></view>
+      <view class="anon" data-anon-id="{{item.anonId}}" catchtap="goAuthor">🌙 {{item.anonShort}}<text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text><text wx:if="{{item.mood}}" class="post-mood">{{item.mood}}</text><text wx:if="{{item.locationCity}}" class="post-loc">📍{{item.locationCity}}{{item.locationDistrict ? ' · ' + item.locationDistrict : ''}}</text><text wx:if="{{item.boosted}}" class="post-boost">推广</text></view>
       <view class="content">{{item.content}}</view>
       <!-- P2-83 视频帖（与图片互斥） -->
       <video wx:if="{{item.videoUrl}}" class="post-video" src="{{item.videoUrl}}" poster="{{item.videoCover}}" object-fit="cover" controls></video>

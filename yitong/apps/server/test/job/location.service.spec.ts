@@ -87,4 +87,41 @@ describe('LocationService 本地地理能力（P2-79）', () => {
       expect(service.listDistricts('不存在市')).toEqual([]);
     });
   });
+
+  describe('parseDistrictFromAddress（CR-006 树洞发布地）', () => {
+    it.each([
+      ['北京市', '北京市朝阳区望京街道', '朝阳区'], // 直辖市
+      ['杭州市', '浙江省杭州市西湖区文一路', '西湖区'], // 全前缀
+      ['杭州市', '杭州西湖区文一路', '西湖区'], // 无省名
+      ['杭州市', '浙江省杭州市桐庐县某镇', '桐庐县'], // 县
+      ['泉州市', '福建省泉州市鲤城区某路', '鲤城区'],
+      ['长春市', '吉林省长春市朝阳区某街', '朝阳区'], // 跨市同名区县:限定长春市内匹配
+    ])('(%s, %s) → %s', (city, address, expected) => {
+      expect(service.parseDistrictFromAddress(city, address)).toBe(expected);
+    });
+
+    it('跨市同名区县按 city 参数消歧（朝阳区在北京/长春均存在，各自命中）', () => {
+      expect(service.parseDistrictFromAddress('北京市', '北京市朝阳区某地')).toBe('朝阳区');
+      expect(service.parseDistrictFromAddress('长春市', '长春市朝阳区某地')).toBe('朝阳区');
+    });
+
+    it('市内无区县命中 → null（仅街道/POI 文本）', () => {
+      expect(service.parseDistrictFromAddress('杭州市', '大学生活动中心')).toBeNull();
+    });
+
+    it('未知城市 / 空 city → null（无法消歧）', () => {
+      expect(service.parseDistrictFromAddress('不存在市', '杭州市西湖区')).toBeNull();
+      expect(service.parseDistrictFromAddress(null, '北京市朝阳区')).toBeNull();
+      expect(service.parseDistrictFromAddress(undefined, '北京市朝阳区')).toBeNull();
+    });
+
+    it('空 / null 地址 → null', () => {
+      expect(service.parseDistrictFromAddress('北京市', null)).toBeNull();
+      expect(service.parseDistrictFromAddress('北京市', '   ')).toBeNull();
+    });
+
+    it('不设区的市（东莞）→ null', () => {
+      expect(service.parseDistrictFromAddress('东莞市', '广东省东莞市某镇')).toBeNull();
+    });
+  });
 });

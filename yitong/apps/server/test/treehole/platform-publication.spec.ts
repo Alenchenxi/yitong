@@ -4,6 +4,7 @@ import {
   PublicationScope,
 } from '@prisma/client';
 import { TreeholeService } from '../../src/modules/treehole/treehole.service';
+import { LocationService } from '../../src/modules/job/location.service';
 
 const now = new Date('2026-09-04T08:00:00.000Z');
 
@@ -87,6 +88,7 @@ function buildService(interactionError?: Error, transactionError?: Error) {
     {} as never,
     community as never,
     publicationPolicy as never,
+    new LocationService(),
   );
   return {
     service,
@@ -135,6 +137,78 @@ describe('TreeholeService 平台发布治理', () => {
     expect(result).not.toHaveProperty('userId');
     expect(result).not.toHaveProperty('openid');
     expect(result).not.toHaveProperty('adminId');
+  });
+
+  describe('发布地（CR-006 树洞发布地）', () => {
+    it('locationAddress 解析市/区落库并透出 VO', async () => {
+      const { service, create } = buildService();
+
+      const result = await service.createPost('anon_1', {
+        content: '带位置的树洞',
+        locationAddress: '浙江省杭州市西湖区文一路',
+      });
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            locationCity: '杭州市',
+            locationDistrict: '西湖区',
+          }),
+        }),
+      );
+      expect(result.locationCity).toBe('杭州市');
+      expect(result.locationDistrict).toBe('西湖区');
+    });
+
+    it('直辖市地址解析市/区', async () => {
+      const { service, create } = buildService();
+
+      const result = await service.createPost('anon_1', {
+        content: '北京树洞',
+        locationAddress: '北京市朝阳区望京街道',
+      });
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            locationCity: '北京市',
+            locationDistrict: '朝阳区',
+          }),
+        }),
+      );
+      expect(result.locationDistrict).toBe('朝阳区');
+    });
+
+    it('不传 locationAddress → 字段落 null，VO 为 null', async () => {
+      const { service, create } = buildService();
+
+      const result = await service.createPost('anon_1', { content: '无位置树洞' });
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ locationCity: null, locationDistrict: null }),
+        }),
+      );
+      expect(result.locationCity).toBeNull();
+      expect(result.locationDistrict).toBeNull();
+    });
+
+    it('地址无法解析（无城市命中）→ 字段 null 且不阻断发帖', async () => {
+      const { service, create } = buildService();
+
+      const result = await service.createPost('anon_1', {
+        content: '解析失败树洞',
+        locationAddress: '大学生活动中心',
+      });
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ locationCity: null, locationDistrict: null }),
+        }),
+      );
+      expect(result.id).toBe('anon_post_1');
+      expect(result.locationCity).toBeNull();
+    });
   });
 
   it('树洞列表应使用全圈共享内容过滤条件', async () => {
