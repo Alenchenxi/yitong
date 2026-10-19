@@ -242,6 +242,7 @@ describe('CommunityService 圈子图片内容安全', () => {
       ...dto,
     };
     const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ openid: 'openid_user_a' }) },
       community: { findUnique: jest.fn().mockResolvedValue(community) },
       $transaction: jest.fn(),
     };

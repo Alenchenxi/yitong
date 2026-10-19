@@ -223,6 +223,7 @@ function buildService(
     },
   };
   const prisma = {
+    user: { findUnique: jest.fn().mockResolvedValue({ openid: 'openid_actor' }) },
     jobApplication: { findUnique: jest.fn().mockResolvedValue(app) },
     jobConversation: {
       upsert: jest.fn().mockResolvedValue(conversation),

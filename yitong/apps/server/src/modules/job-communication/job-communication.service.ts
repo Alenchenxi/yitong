@@ -188,7 +188,9 @@ export class JobCommunicationService {
     if (!text) throw new BizException(40006, "消息不能为空", HttpStatus.BAD_REQUEST);
     const normalizedClientMessageId = this.normalizeClientMessageId(clientMessageId);
 
-    await this.moderation.checkText(text);
+    // msgSecCheck v2 必传 openid（缺失被微信 40003 拒绝 → 生产 fail-closed 90003）
+    const actorUser = await this.prisma.user.findUnique({ where: { id: actorId }, select: { openid: true } });
+    await this.moderation.checkText(text, actorUser?.openid);
 
     const result = await this.prisma.$transaction(async (tx) => {
       await this.lockApplication(tx, conversation.applicationId);
@@ -498,7 +500,9 @@ export class JobCommunicationService {
     this.assertWritable(app.status);
     const normalized = this.normalizeInterviewInvitation(dto);
 
-    await this.moderation.checkText([normalized.title, normalized.interviewerName].join(" "));
+    // msgSecCheck v2 必传 openid（缺失被微信 40003 拒绝 → 生产 fail-closed 90003）
+    const merchantUser = await this.prisma.user.findUnique({ where: { id: actorId }, select: { openid: true } });
+    await this.moderation.checkText([normalized.title, normalized.interviewerName].join(" "), merchantUser?.openid);
 
     const result = await this.prisma.$transaction(async (tx) => {
       await this.lockApplication(tx, applicationId);

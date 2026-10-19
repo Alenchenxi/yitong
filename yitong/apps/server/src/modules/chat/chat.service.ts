@@ -43,6 +43,21 @@ export class ChatService {
     private readonly gateway: ChatGateway,
   ) {}
 
+  // 内容安全：msgSecCheck v2 必传 openid（缺失被微信以 40003 拒绝 → 生产 fail-closed 90003）。
+  // 聊天链路 fromId 为 anonId，经 AnonymousProfile.userId → User.openid 解析，仅服务端审核使用。
+  private async resolveAnonOpenid(anonId: string): Promise<string | undefined> {
+    const profile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { userId: true },
+    });
+    if (!profile) return undefined;
+    const user = await this.prisma.user.findUnique({
+      where: { id: profile.userId },
+      select: { openid: true },
+    });
+    return user?.openid;
+  }
+
   // 发消息：存 ChatMessage + 双向更新 ChatSession（双方都能看到）
   // P1-18 voice：duration 为秒（1-60），语音不做内联文本/图片审核（异步语音审核留 P3-06）
   async sendMessage(
@@ -68,7 +83,7 @@ export class ChatService {
     if (msgType === 'image') {
       await this.moderation.checkImage(content);
     } else if (msgType === 'text') {
-      await this.moderation.checkText(content);
+      await this.moderation.checkText(content, await this.resolveAnonOpenid(fromId));
     }
     const result = await this.prisma.$transaction(async (tx) => {
       const m = await tx.chatMessage.create({
@@ -172,7 +187,7 @@ export class ChatService {
     if (msgType === 'image') {
       await this.moderation.checkImage(content);
     } else {
-      await this.moderation.checkText(content);
+      await this.moderation.checkText(content, await this.resolveAnonOpenid(fromId));
     }
     const m = await this.prisma.chatMessage.create({
       data: { fromId, toId: null, groupId, content, type: msgType },

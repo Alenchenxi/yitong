@@ -563,12 +563,17 @@ export class JobService {
     if (customCategory && item.category !== JobCategory.LONG_TERM) {
       throw new BizException(40003, '自定义岗位类型仅可用于自定义岗位', HttpStatus.BAD_REQUEST);
     }
+    // msgSecCheck v2 必传 openid（缺失被微信 40003 拒绝 → 生产 fail-closed 90003）
+    const merchantUser = await this.prisma.user.findUnique({
+      where: { id: merchant.userId },
+      select: { openid: true },
+    });
     await Promise.all([
-      this.moderation.checkText(item.title),
-      this.moderation.checkText(item.description),
-      this.moderation.checkText(item.salary),
-      this.moderation.checkText(item.location),
-      ...(customCategory ? [this.moderation.checkText(customCategory)] : []),
+      this.moderation.checkText(item.title, merchantUser?.openid),
+      this.moderation.checkText(item.description, merchantUser?.openid),
+      this.moderation.checkText(item.salary, merchantUser?.openid),
+      this.moderation.checkText(item.location, merchantUser?.openid),
+      ...(customCategory ? [this.moderation.checkText(customCategory, merchantUser?.openid)] : []),
     ]);
     const communityId = item.communityId?.trim() || DEFAULT_COMMUNITY_ID;
     const community = await this.prisma.community.findUnique({

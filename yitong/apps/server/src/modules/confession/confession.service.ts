@@ -1217,7 +1217,9 @@ export class ConfessionService {
     let failed = 0;
     for (const post of due) {
       try {
-        await this.moderation.checkText(post.content);
+        // msgSecCheck v2 必传 openid（缺失被微信 40003 拒绝 → 生产 fail-closed 90003，定时帖将永远发不出）
+        const author = await this.prisma.user.findUnique({ where: { id: post.authorId }, select: { openid: true } });
+        await this.moderation.checkText(post.content, author?.openid);
         for (const url of post.images) {
           await this.moderation.checkImage(url);
         }

@@ -58,6 +58,7 @@ function buildService(options: {
   const update = jest.fn().mockResolvedValue(postRow());
   const scheduledUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
   const prisma = {
+    user: { findUnique: jest.fn().mockResolvedValue({ openid: 'openid_user_1' }) },
     circle: { findUnique: jest.fn().mockResolvedValue({ id: 'circle_1' }) },
     post: {
       create,
@@ -233,7 +234,7 @@ describe('ConfessionService 平台发布治理', () => {
 
     await expect(service.publishScheduledPosts()).resolves.toEqual({ published: 0, failed: 1 });
 
-    expect(moderation.checkText).toHaveBeenCalledWith('平台公告');
+    expect(moderation.checkText).toHaveBeenCalledWith('平台公告', 'openid_user_1');
     expect(publicationPolicy.assertOwnerCanManageInTransaction).toHaveBeenCalledWith(
       expect.anything(),
       'user_1',

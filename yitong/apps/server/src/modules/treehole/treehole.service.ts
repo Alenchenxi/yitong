@@ -255,6 +255,21 @@ export class TreeholeService {
     };
   }
 
+  // 内容安全：msgSecCheck v2 必传 openid（缺失被微信以 40003 invalid openid 拒绝 → 生产 fail-closed 90003）。
+  // 匿名链路经 AnonymousProfile.userId → User.openid 解析，仅服务端审核调用使用，不落树洞表/响应（匿名红线）。
+  private async resolveAnonOpenid(anonId: string): Promise<string | undefined> {
+    const profile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { userId: true },
+    });
+    if (!profile) return undefined;
+    const user = await this.prisma.user.findUnique({
+      where: { id: profile.userId },
+      select: { openid: true },
+    });
+    return user?.openid;
+  }
+
   async createPost(anonId: string, dto: CreateAnonPostDto) {
     // 真实用户映射只在服务端策略层使用，树洞响应始终只暴露 anonId。
     const communityId = await this.resolveInteractionCommunity(anonId);
@@ -270,6 +285,7 @@ export class TreeholeService {
     if (!ownerProfile) {
       throw new BizException(30001, '匿名身份已失效', HttpStatus.UNAUTHORIZED);
     }
+    const ownerOpenid = await this.resolveAnonOpenid(anonId);
 
     // P2-83 图片与视频互斥：服务端强校验（前端发布页同为互斥交互），有视频时忽略 images
     if (dto.videoUrl && (dto.images?.length ?? 0) > 0) {
@@ -277,7 +293,7 @@ export class TreeholeService {
     }
     const images = dto.videoUrl ? [] : dto.images ?? [];
 
-    await this.moderation.checkText(dto.content);
+    await this.moderation.checkText(dto.content, ownerOpenid);
     for (const url of images) {
       await this.moderation.checkImage(url);
     }
@@ -994,7 +1010,7 @@ export class TreeholeService {
     if (group.memberCount >= group.maxMembers) throw new BizException(30008, '群聊已满员', HttpStatus.CONFLICT);
     const existingMember = await this.getMember(groupId, anonId);
     if (existingMember) throw new BizException(30009, '已加入该群', HttpStatus.CONFLICT);
-    if (message) await this.moderation.checkText(message);
+    if (message) await this.moderation.checkText(message, await this.resolveAnonOpenid(anonId));
     try {
       return await this.prisma.anonGroupJoinRequest.create({
         data: { groupId, anonId, message: message ?? null },
@@ -1071,7 +1087,7 @@ export class TreeholeService {
   async reportGroup(anonId: string, groupId: string, reason?: string) {
     const group = await this.prisma.anonGroup.findUnique({ where: { id: groupId } });
     if (!group || group.status === 'DISBANDED') throw new BizException(30010, '群聊不存在');
-    if (reason) await this.moderation.checkText(reason);
+    if (reason) await this.moderation.checkText(reason, await this.resolveAnonOpenid(anonId));
     await this.prisma.moderationRecord.create({
       data: {
         targetType: 'anon-group',
@@ -1239,7 +1255,7 @@ export class TreeholeService {
     if (await this.isBlockedEither(anonId, post.anonId)) {
       throw new BizException(30005, '内容不可见', HttpStatus.FORBIDDEN);
     }
-    await this.moderation.checkText(content);
+    await this.moderation.checkText(content, await this.resolveAnonOpenid(anonId));
     const comment = await this.prisma.anonComment.create({
       data: { postId, anonId, content },
     });
@@ -1524,9 +1540,10 @@ export class TreeholeService {
       throw new BizException(30004, '人数上限无效（2-500）', HttpStatus.BAD_REQUEST);
     }
     // 内容安全：群名/简介/公告
-    await this.moderation.checkText(name);
-    if (dto.description) await this.moderation.checkText(dto.description);
-    if (dto.announcement) await this.moderation.checkText(dto.announcement);
+    const ownerOpenid = await this.resolveAnonOpenid(anonId);
+    await this.moderation.checkText(name, ownerOpenid);
+    if (dto.description) await this.moderation.checkText(dto.description, ownerOpenid);
+    if (dto.announcement) await this.moderation.checkText(dto.announcement, ownerOpenid);
 
     const group = await this.prisma.anonGroup.create({
       data: {

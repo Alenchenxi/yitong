@@ -330,6 +330,8 @@ Page({
       }
       publishAtIso = t.toISOString();
     }
+    let successToast = '';
+    let failedMessage = '';
     try {
       // R2 按 originalImages 身份分区：已上传 URL 透传，仅本地路径上传（编辑模式 images 混存 URL+本地路径，
       //    旧逻辑对全数组调 uploadImages 会把 URL 当 filePath 传给 wx.uploadFile 必败；且旧 finalImages 会拼重复）
@@ -373,7 +375,7 @@ Page({
           visibility: this.data.visibility,
         });
         const t = this.data.visibility === 'DRAFT' ? '已存为草稿' : this.data.visibility === 'PRIVATE' ? '已存为私密' : '已保存';
-        wx.showToast({ title: t, icon: 'success' });
+        successToast = t;
       } else {
         await createPost(this.data.selectedCircleId, {
           content,
@@ -388,8 +390,17 @@ Page({
         const t = publishAtIso
           ? '已设置定时发布'
           : this.data.visibility === 'DRAFT' ? '已存为草稿' : this.data.visibility === 'PRIVATE' ? '已存为私密' : '发布成功';
-        wx.showToast({ title: t, icon: 'success' });
+        successToast = t;
       }
+    } catch (e) {
+      // 服务层已 toast，但会被下方 hideLoading 吞掉（toast/loading 共用原生视图）——hideLoading 后补一次提示
+      failedMessage = e instanceof Error && e.message ? e.message : '发布失败，请稍后重试';
+    } finally {
+      wx.hideLoading();
+      this.setData({ submitting: false, uploading: false });
+    }
+    if (successToast) {
+      wx.showToast({ title: successToast, icon: 'success' });
       // 返回上一页并刷新
       setTimeout(() => {
         const pages = getCurrentPages();
@@ -399,11 +410,8 @@ Page({
         }
         wx.navigateBack();
       }, 600);
-    } catch {
-      // 已 toast
-    } finally {
-      wx.hideLoading();
-      this.setData({ submitting: false, uploading: false });
+    } else if (failedMessage) {
+      wx.showToast({ title: failedMessage, icon: 'none' });
     }
   },
 });

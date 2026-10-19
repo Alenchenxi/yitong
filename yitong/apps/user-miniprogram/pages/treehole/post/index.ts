@@ -163,6 +163,7 @@ Page({
       mask: true,
     });
     let published = false;
+    let failedMessage = '';
     try {
       // P2-83 图片/视频互斥：有视频只传视频 + 封面，否则传图片
       let images: string[] | undefined;
@@ -180,8 +181,9 @@ Page({
       wx.showLoading({ title: '发布中...', mask: true });
       await createPost({ content, mood: this.data.selectedMood || undefined, images, videoUrl, videoCover });
       published = true;
-    } catch {
-      /* toast */
+    } catch (e) {
+      // 服务层已 toast，但会被下方 hideLoading 吞掉（toast/loading 共用原生视图）——hideLoading 后补一次提示
+      failedMessage = e instanceof Error && e.message ? e.message : '发布失败，请稍后重试';
     } finally {
       wx.hideLoading();
       this.setData({ submitting: false });
@@ -189,6 +191,8 @@ Page({
     if (published) {
       wx.showToast({ title: '发布成功', icon: 'success' });
       setTimeout(() => wx.navigateBack(), 600);
+    } else if (failedMessage) {
+      wx.showToast({ title: failedMessage, icon: 'none' });
     }
   },
 });

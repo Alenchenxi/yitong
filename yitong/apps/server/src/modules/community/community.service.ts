@@ -378,8 +378,10 @@ export class CommunityService {
       throw new BizException(ERR_RESUBMIT_BAD_STATE, '仅被拒圈子可重新提交', HttpStatus.BAD_REQUEST);
     }
     // 重跑内容审核（防历史脏词 + 防 admin 上次拒后才发违规内容仍残留）
-    await this.moderation.checkText(c.name);
-    if (c.description) await this.moderation.checkText(c.description);
+    // msgSecCheck v2 必传 openid（缺失被微信 40003 拒绝 → 生产 fail-closed 90003）
+    const owner = await this.prisma.user.findUnique({ where: { id: uid }, select: { openid: true } });
+    await this.moderation.checkText(c.name, owner?.openid);
+    if (c.description) await this.moderation.checkText(c.description, owner?.openid);
     await Promise.all(
       [c.logo, c.backgroundImage]
         .filter((url): url is string => Boolean(url))

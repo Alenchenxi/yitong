@@ -37,6 +37,7 @@ function buildService(interactionError?: Error, transactionError?: Error) {
   );
   const findMany = jest.fn().mockResolvedValue([]);
   const prisma = {
+    user: { findUnique: jest.fn().mockResolvedValue({ openid: 'openid_user_1' }) },
     anonymousProfile: {
       findUnique: jest.fn().mockResolvedValue({ userId: 'user_1' }),
     },
