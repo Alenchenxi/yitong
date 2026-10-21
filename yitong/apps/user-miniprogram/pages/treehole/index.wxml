@@ -51,6 +51,7 @@
   </scroll-view>
 
   <!-- 广场列表 -->
+  <single-page-guide wx:if="{{singlePage}}" />
   <view class="list" wx:if="{{activeTab !== 'nearby' && posts.length > 0}}">
     <view class="card yt-card" wx:for="{{posts}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view class="anon" data-anon-id="{{item.anonId}}" catchtap="goAuthor">🌙 {{item.anonShort}}<text wx:if="{{item.platformPublished}}" class="yt-platform-badge">平台发布</text><text wx:if="{{item.mood}}" class="post-mood">{{item.mood}}</text><text wx:if="{{item.locationCity}}" class="post-loc">📍{{item.locationCity}}{{item.locationDistrict ? ' · ' + item.locationDistrict : ''}}</text><text wx:if="{{item.boosted}}" class="post-boost">推广</text></view>
@@ -87,13 +88,13 @@
     <view class="tip" wx:elif="{{!hasMore}}">没有更多了</view>
   </view>
 
-  <view class="yt-empty" wx:elif="{{activeTab !== 'nearby' && !loading}}">
+  <view class="yt-empty" wx:elif="{{activeTab !== 'nearby' && !loading && !singlePage}}">
     <view class="yt-empty-emoji">🌙</view>
     <view class="yt-empty-text">树洞空空的，说点什么吧</view>
   </view>
 
   <!-- 发动态 FAB -->
-  <view wx:if="{{activeTab !== 'nearby'}}" class="fab" bindtap="goPost">
+  <view wx:if="{{activeTab !== 'nearby' && !singlePage}}" class="fab" bindtap="goPost">
     <text class="fab-plus">＋</text>
   </view>
 </view>

@@ -1,3 +1,4 @@
+<single-page-guide wx:if="{{singlePage}}" />
 <view class="page" wx:if="{{post}}">
   <!-- 详情头：头像昵称时间 + 正文 + 图 -->
   <view class="detail-card">

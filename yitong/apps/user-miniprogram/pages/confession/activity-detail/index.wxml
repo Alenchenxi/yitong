@@ -1,3 +1,4 @@
+<single-page-guide wx:if="{{singlePage}}" />
 <view class="page" wx:if="{{topic}}">
   <view class="header">
     <image wx:if="{{topic.coverUrl}}" class="cover" src="{{topic.coverUrl}}" mode="aspectFill"></image>

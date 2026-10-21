@@ -18,6 +18,7 @@ import {
   requireAnonymousContentVisibility,
   unbindAnonymousContentVisibility,
 } from '../../../utils/anonymous-content';
+import { isSinglePageMode } from '../../../utils/single-page';
 
 type AnonCommentView = AnonCommentVo & { timeText: string; anonShort: string };
 
@@ -37,10 +38,15 @@ Page({
     sendingComment: false,
     commentFocus: false, // focus=1 落地时聚焦评论区输入条
     needAnon: false, // 无 anonToken 时显示匿名引导（不再静默签发）
+    singlePage: false, // 朋友圈单页模式（scene 1154）：展示兜底引导
   },
 
   async onLoad(query: Record<string, string | undefined>) {
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    if (isSinglePageMode()) {
+      this.setData({ singlePage: true });
+      return;
+    }
     if (!await requireAnonymousContentVisibility()) return;
     bindAnonymousContentPageGuard(this);
     const id = query.id ?? '';

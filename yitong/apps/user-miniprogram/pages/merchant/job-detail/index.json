@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "职位详情"
+  "navigationBarTitleText": "职位详情",
+  "usingComponents": {
+    "single-page-guide": "/components/single-page-guide/index"
+  }
 }

@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "活动专题",
   "usingComponents": {
-    "post-card": "/components/post-card/post-card"
+    "post-card": "/components/post-card/post-card",
+    "single-page-guide": "/components/single-page-guide/index"
   }
 }

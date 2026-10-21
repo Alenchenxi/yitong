@@ -9,6 +9,7 @@ import {
 } from '../../services/treehole';
 import { formatTime } from '../../utils/auth';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
+import { isSinglePageMode } from '../../utils/single-page';
 
 type Tab = 'recommend' | 'latest' | 'mood' | 'nearby';
 
@@ -27,11 +28,16 @@ Page({
     activeTab: 'recommend' as Tab,
     moods: [] as string[], // E3 从标签库动态拉取（getAnonTags.mood）
     selectedMood: '',
+    singlePage: false, // 朋友圈单页模式（scene 1154）：展示兜底引导
   },
 
   async onShow() {
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     syncCustomTabBar(this, '/pages/treehole/index');
+    if (isSinglePageMode()) {
+      this.setData({ singlePage: true });
+      return;
+    }
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!(await app.getAnonymousContentVisibility())) {
@@ -120,6 +126,7 @@ Page({
   },
 
   switchTab(e: WechatMiniprogram.TouchEvent) {
+    if (this.data.singlePage) return; // 单页模式禁跳转，避免无效请求与误导 toast
     const tab = (e.currentTarget.dataset.tab as Tab) ?? 'recommend';
     if (tab === this.data.activeTab) return;
     this.setData({ activeTab: tab });
@@ -132,6 +139,7 @@ Page({
 
   // P0-13 情绪分类筛选（mood tab 下选情绪）
   pickMood(e: WechatMiniprogram.TouchEvent) {
+    if (this.data.singlePage) return;
     const mood = e.currentTarget.dataset.mood as string;
     this.setData({ selectedMood: mood === this.data.selectedMood ? '' : mood });
     this.reload();

@@ -1,0 +1,6 @@
+<!-- 朋友圈单页模式兜底：未登录上下文拿不到内容，引导用户去小程序，替代误导性空态 -->
+<view class="sp-guide">
+  <view class="sp-emoji">📱</view>
+  <view class="sp-title">当前为朋友圈预览模式</view>
+  <view class="sp-desc">完整内容需在小程序内查看，请点击右上角「前往小程序」继续</view>
+</view>

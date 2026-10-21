@@ -3,6 +3,7 @@
   "enablePullDownRefresh": true,
   "usingComponents": {
     "tab-page-header": "/components/tab-page-header/index",
-    "nearby-people": "/components/nearby-people/index"
+    "nearby-people": "/components/nearby-people/index",
+    "single-page-guide": "/components/single-page-guide/index"
   }
 }

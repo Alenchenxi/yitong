@@ -4,6 +4,7 @@ import {
   bindAnonymousContentVisibility,
   unbindAnonymousContentVisibility,
 } from '../../../utils/anonymous-content';
+import { isSinglePageMode } from '../../../utils/single-page';
 
 Page({
   data: {
@@ -15,11 +16,16 @@ Page({
     hasMore: true,
     loading: false,
     anonymousContentEnabled: false,
+    singlePage: false, // 朋友圈单页模式（scene 1154）：展示兜底引导
   },
   topicId: '',
 
   onLoad(options: { id?: string }) {
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    if (isSinglePageMode()) {
+      this.setData({ singlePage: true });
+      return;
+    }
     bindAnonymousContentVisibility(this, (enabled) => {
       const changed = enabled !== this.data.anonymousContentEnabled;
       this.updateAnonymousContentVisibility(enabled);

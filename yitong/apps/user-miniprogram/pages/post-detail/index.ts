@@ -16,6 +16,7 @@ import {
 import { checkFavorite, toggleFavorite } from '../../services/favorite';
 import { toggleFollow } from '../../services/follow';
 import { formatTime } from '../../utils/auth';
+import { isSinglePageMode } from '../../utils/single-page';
 
 type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three'; favorited?: boolean; following?: boolean };
 
@@ -99,6 +100,7 @@ Page({
     reply: null,
     anchorId: '',
     isAuthor: false,
+    singlePage: false, // 朋友圈单页模式（scene 1154）：展示兜底引导
   } as PageData,
 
   postId: '',
@@ -106,6 +108,10 @@ Page({
 
   onLoad(options: { id?: string; focus?: string; commentId?: string }) {
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    if (isSinglePageMode()) {
+      this.setData({ singlePage: true });
+      return;
+    }
     if (!options?.id) {
       wx.showToast({ title: '参数错误', icon: 'none' });
       return;

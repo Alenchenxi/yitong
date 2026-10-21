@@ -6,6 +6,7 @@ import {
   bindAnonymousContentVisibility,
   unbindAnonymousContentVisibility,
 } from '../../utils/anonymous-content';
+import { isSinglePageMode } from '../../utils/single-page';
 
 type MainTab = 'recommend' | 'latest' | 'hot' | 'follow' | 'nearby';
 
@@ -22,6 +23,7 @@ interface PageData {
   activeMainTab: MainTab;
   announcements: AnnouncementVo[];
   anonymousContentEnabled: boolean;
+  singlePage: boolean;
 }
 
 Page({
@@ -33,6 +35,7 @@ Page({
     activeMainTab: 'recommend',
     announcements: [],
     anonymousContentEnabled: false,
+    singlePage: false, // 朋友圈单页模式（scene 1154）：展示兜底引导
   } as PageData,
 
   onLoad() {
@@ -57,6 +60,10 @@ Page({
 
   async onShow() {
     syncCustomTabBar(this, '/pages/confession/index');
+    if (isSinglePageMode()) {
+      this.setData({ singlePage: true });
+      return;
+    }
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
@@ -115,6 +122,7 @@ Page({
   },
 
   switchMainTab(e: WechatMiniprogram.TouchEvent) {
+    if (this.data.singlePage) return; // 单页模式禁跳转，避免无效请求与误导 toast
     const tab = (e.currentTarget.dataset.tab as MainTab) ?? 'recommend';
     if (tab === this.data.activeMainTab) return;
     this.setData({ activeMainTab: tab });

@@ -1,4 +1,5 @@
 <view class="page">
+  <single-page-guide wx:if="{{singlePage}}" />
   <!-- 无 anonToken：显式初始化匿名身份引导（不再静默签发） -->
   <view wx:if="{{needAnon}}" class="anon-guide">
     <view class="anon-guide-emoji">🌙</view>
@@ -34,7 +35,7 @@
       </view>
     </view>
 
-    <view wx:elif="{{!loading}}" class="empty">
+    <view wx:elif="{{!loading && !singlePage}}" class="empty">
       <view class="empty-title">帖子不存在或已下架</view>
     </view>
 

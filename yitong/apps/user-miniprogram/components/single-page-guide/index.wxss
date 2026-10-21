@@ -1,0 +1,19 @@
+.sp-guide {
+  text-align: center;
+  padding: 200rpx 80rpx 0;
+}
+.sp-emoji {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+}
+.sp-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: var(--yt-text-main, #333);
+  margin-bottom: 12rpx;
+}
+.sp-desc {
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: var(--yt-text-sub, #999);
+}

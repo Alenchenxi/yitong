@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "树洞详情"
+  "navigationBarTitleText": "树洞详情",
+  "usingComponents": {
+    "single-page-guide": "/components/single-page-guide/index"
+  }
 }

@@ -2,6 +2,7 @@
   "navigationBarTitleText": "话题",
   "enablePullDownRefresh": true,
   "usingComponents": {
-    "post-card": "/components/post-card/post-card"
+    "post-card": "/components/post-card/post-card",
+    "single-page-guide": "/components/single-page-guide/index"
   }
 }

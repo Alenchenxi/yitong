@@ -13,6 +13,7 @@ import {
   type PostChipLabels,
   type DashboardRange,
 } from '../../../services/job';
+import { isSinglePageMode } from '../../../utils/single-page';
 
 const STATUS_TEXT: Record<JobPostVo['status'], string> = {
   PENDING: '待发布',
@@ -38,6 +39,7 @@ Page({
     statsExposure: '--',
     statsApplication: '--',
     statsConversion: '--',
+    singlePage: false, // 朋友圈单页模式（scene 1154）：展示兜底引导
   },
 
   postId: '',
@@ -45,6 +47,10 @@ Page({
 
   onLoad(options: { id?: string }) {
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    if (isSinglePageMode()) {
+      this.setData({ singlePage: true });
+      return;
+    }
     if (!options?.id) {
       wx.showToast({ title: '参数错误', icon: 'none' });
       return;

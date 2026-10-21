@@ -1,3 +1,4 @@
+<single-page-guide wx:if="{{singlePage}}" />
 <view class="page" wx:if="{{topic}}">
   <view class="header">
     <view class="name">#{{topic.name}}</view>

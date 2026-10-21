@@ -1,5 +1,6 @@
 import type { AppInstance } from '../../../app';
 import { bindJobModulePageGuard, requireJobModuleVisibility } from '../../../utils/job-module';
+import { isSinglePageMode } from '../../../utils/single-page';
 import {
   getJobPost,
   listPostReviews,
@@ -51,11 +52,16 @@ Page({
     reviewContent: '',
     reviewSubmitting: false,
     reviewedIds: [] as string[], // 已评过的报名 id 前端隐去按钮
+    singlePage: false, // 朋友圈单页模式（scene 1154）：展示兜底引导
   },
   postId: '',
 
   onLoad(options: { id?: string }) {
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+    if (isSinglePageMode()) {
+      this.setData({ singlePage: true });
+      return;
+    }
     // 兼职板块平台开关：关闭时 user 角色退出本页（商家查看报名不受影响）
     bindJobModulePageGuard(this);
     if (!options?.id) {
