@@ -30,6 +30,7 @@ Page({
   },
 
   async onShow() {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     syncCustomTabBar(this, '/pages/treehole/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
@@ -187,6 +188,11 @@ Page({
       title: '树洞匿名分享',
       path: id ? `/pages/treehole/detail/index?id=${id}` : '/pages/treehole/index',
     };
+  },
+
+  // 分享到朋友圈：仅 Android 右上角入口，打开为单页模式
+  onShareTimeline() {
+    return { title: '树洞匿名分享', query: '' };
   },
 
   // 转发按钮 catchtap 吞冒泡（防卡片 onTap 跳详情）

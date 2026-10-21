@@ -55,6 +55,7 @@ Page({
   postId: '',
 
   onLoad(options: { id?: string }) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     // 兼职板块平台开关：关闭时 user 角色退出本页（商家查看报名不受影响）
     bindJobModulePageGuard(this);
     if (!options?.id) {
@@ -216,6 +217,15 @@ Page({
     return {
       title: post ? `${post.title} · ${post.salary}` : '燚桐兼职',
       path: `/pages/job/detail/index?id=${this.postId}`,
+    };
+  },
+
+  // 分享到朋友圈：仅 Android 右上角入口，打开为单页模式
+  onShareTimeline() {
+    const post = this.data.post;
+    return {
+      title: post ? `${post.title} · ${post.salary}` : '燚桐兼职',
+      query: `id=${this.postId}`,
     };
   },
 

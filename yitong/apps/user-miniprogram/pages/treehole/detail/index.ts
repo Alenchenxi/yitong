@@ -40,6 +40,7 @@ Page({
   },
 
   async onLoad(query: Record<string, string | undefined>) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     if (!await requireAnonymousContentVisibility()) return;
     bindAnonymousContentPageGuard(this);
     const id = query.id ?? '';
@@ -256,6 +257,15 @@ Page({
     return {
       title: post ? post.content.slice(0, 20) : '树洞匿名分享',
       path: `/pages/treehole/detail/index?id=${this.data.id}`,
+    };
+  },
+
+  // 分享到朋友圈：仅 Android 右上角入口，打开为单页模式
+  onShareTimeline() {
+    const post = this.data.post;
+    return {
+      title: post ? post.content.slice(0, 20) : '树洞匿名分享',
+      query: `id=${this.data.id}`,
     };
   },
 });

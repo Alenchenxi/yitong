@@ -44,6 +44,7 @@ Page({
   loading: false,
 
   onLoad(options: { id?: string }) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     if (!options?.id) {
       wx.showToast({ title: '参数错误', icon: 'none' });
       return;
@@ -200,6 +201,15 @@ Page({
     return {
       title: post ? `${post.title} · ${post.salary}` : '燚桐兼职',
       path: `/pages/merchant/job-detail/index?id=${this.postId}`,
+    };
+  },
+
+  // 分享到朋友圈：仅 Android 右上角入口，打开为单页模式
+  onShareTimeline() {
+    const post = this.data.post;
+    return {
+      title: post ? `${post.title} · ${post.salary}` : '燚桐兼职',
+      query: `id=${this.postId}`,
     };
   },
 

@@ -17,6 +17,7 @@ Page({
   },
 
   async onLoad() {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     bindAnonymousContentVisibility(this, (enabled) => {
@@ -104,6 +105,11 @@ Page({
       title: '今日上头 · 表白墙',
       path: id ? `/pages/post-detail/index?id=${id}` : '/pages/confession/today-hit/index',
     };
+  },
+
+  // 分享到朋友圈：仅 Android 右上角入口，打开为单页模式
+  onShareTimeline() {
+    return { title: '今日上头 · 表白墙', query: '' };
   },
 
   _anonymousContentVisibilityReady: false,

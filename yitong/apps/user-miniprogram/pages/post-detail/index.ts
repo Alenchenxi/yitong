@@ -105,6 +105,7 @@ Page({
   anchorCommentId: '',
 
   onLoad(options: { id?: string; focus?: string; commentId?: string }) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     if (!options?.id) {
       wx.showToast({ title: '参数错误', icon: 'none' });
       return;
@@ -502,6 +503,15 @@ Page({
     return {
       title: p ? p.content.slice(0, 20) : '表白墙',
       path: `/pages/post-detail/index?id=${this.postId}`,
+    };
+  },
+
+  // 分享到朋友圈：仅 Android 右上角入口，打开为单页模式
+  onShareTimeline() {
+    const p = this.data.post;
+    return {
+      title: p ? p.content.slice(0, 20) : '表白墙',
+      query: `id=${this.postId}`,
     };
   },
 });

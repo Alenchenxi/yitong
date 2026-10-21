@@ -19,6 +19,7 @@ Page({
   topicId: '',
 
   onLoad(options: { id?: string }) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     bindAnonymousContentVisibility(this, (enabled) => {
       const changed = enabled !== this.data.anonymousContentEnabled;
       this.updateAnonymousContentVisibility(enabled);
@@ -109,6 +110,14 @@ Page({
     return {
       title: this.data.topic ? `#${this.data.topic.name}#` : '校园话题',
       path: id ? `/pages/post-detail/index?id=${id}` : `/pages/confession/topic-detail/index?id=${this.topicId}`,
+    };
+  },
+
+  // 分享到朋友圈：仅 Android 右上角入口，打开为单页模式
+  onShareTimeline() {
+    return {
+      title: this.data.topic ? `#${this.data.topic.name}#` : '校园话题',
+      query: `id=${this.topicId}`,
     };
   },
 });

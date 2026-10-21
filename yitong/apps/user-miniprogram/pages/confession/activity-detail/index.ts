@@ -15,6 +15,7 @@ Page({
   topicId: '',
 
   onLoad(options: { id?: string }) {
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
     bindAnonymousContentVisibility(this, (enabled) => {
       this.updateAnonymousContentVisibility(enabled);
     });
@@ -83,6 +84,14 @@ Page({
     return {
       title: this.data.topic?.title ? `#${this.data.topic.title}#` : '活动专题',
       path: id ? `/pages/post-detail/index?id=${id}` : `/pages/confession/activity-detail/index?id=${this.topicId}`,
+    };
+  },
+
+  // 分享到朋友圈：仅 Android 右上角入口，打开为单页模式
+  onShareTimeline() {
+    return {
+      title: this.data.topic?.title ? `#${this.data.topic.title}#` : '活动专题',
+      query: `id=${this.topicId}`,
     };
   },
 });
