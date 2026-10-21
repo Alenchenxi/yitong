@@ -10,6 +10,10 @@ import {
 import { formatTime } from '../../utils/auth';
 import { syncCustomTabBar } from '../../utils/custom-tabbar';
 import { isSinglePageMode } from '../../utils/single-page';
+import {
+  bindAnonymousContentPageGuard,
+  unbindAnonymousContentVisibility,
+} from '../../utils/anonymous-content';
 
 type Tab = 'recommend' | 'latest' | 'mood' | 'nearby';
 
@@ -29,6 +33,16 @@ Page({
     moods: [] as string[], // E3 从标签库动态拉取（getAnonTags.mood）
     selectedMood: '',
     singlePage: false, // 朋友圈单页模式（scene 1154）：展示兜底引导
+  },
+
+  onLoad() {
+    // 平台开关关闭时立即退出树洞（tab 页常驻，onLoad 绑一次；对齐详情页与 job/index 守卫）；
+    // 单页模式禁跳转，绑定无意义且回放会触发无效 switchTab，跳过
+    if (!isSinglePageMode()) bindAnonymousContentPageGuard(this);
+  },
+
+  onUnload() {
+    unbindAnonymousContentVisibility(this);
   },
 
   async onShow() {
