@@ -1,0 +1,5 @@
+FROM node:20-alpine
+WORKDIR /app
+COPY . .
+EXPOSE 8090
+CMD ["node", "src/app.js"]

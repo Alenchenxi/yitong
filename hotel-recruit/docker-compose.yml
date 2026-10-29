@@ -1,0 +1,10 @@
+services:
+  hotel-recruit:
+    build: .
+    container_name: hotel-recruit
+    # host 网络：这台服务器 docker 新建 bridge 挂不上 veth（宿主 ping 不通容器），bridge 模式不可用
+    network_mode: host
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

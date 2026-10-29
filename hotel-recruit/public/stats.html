@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>推广转化报表</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font: 15px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f6f8; color: #222; min-height: 100vh; }
+  .hd { background: linear-gradient(135deg, #1d3f66, #155e4c); color: #fff; text-align: center; padding: 30px 20px 24px; }
+  .hd h1 { font-size: 22px; }
+  .hd p { font-size: 13px; opacity: .85; margin-top: 4px; }
+  .card { background: #fff; border-radius: 12px; padding: 18px; margin: 16px 12px; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  .field label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+  .field input { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; font-size: 15px; background: #fafafa; }
+  .field input:focus { outline: none; border-color: #2c9678; }
+  .field { margin-bottom: 12px; }
+  .err { color: #d33; font-size: 13px; min-height: 18px; margin-bottom: 6px; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 8px; background: #2c9678; color: #fff; font-size: 16px; padding: 11px 0; cursor: pointer; }
+  .btn:active { opacity: .85; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; margin: 0 12px 14px; }
+  .tile { background: #fff; border-radius: 10px; padding: 14px 4px; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  .tile b { display: block; font-size: 24px; color: #2c9678; }
+  .tile span { font-size: 12px; color: #888; }
+  .bar { display: flex; align-items: center; gap: 10px; margin: 0 12px 10px; font-size: 13px; color: #888; }
+  .bar .mini { border: 1px solid #d5e5df; background: #fff; color: #2c9678; border-radius: 8px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+  .bar a.mini { text-decoration: none; display: inline-block; }
+  .twrap { overflow-x: auto; background: #fff; border-radius: 12px; margin: 0 12px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 780px; }
+  th, td { padding: 9px 12px; text-align: center; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+  th { background: #f7f9f8; color: #666; font-weight: 600; position: sticky; top: 0; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .aplink { color: #2c9678; text-decoration: underline; cursor: pointer; }
+  .amask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9; align-items: center; justify-content: center; padding: 20px; }
+  .amask.show { display: flex; }
+  .asheet { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; max-height: 76vh; display: flex; flex-direction: column; overflow: hidden; }
+  .ahd { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #eee; }
+  .alist { overflow-y: auto; padding: 4px 16px 16px; }
+  .alist table { min-width: 0; }
+  .rank { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: #eef2f1; color: #888; font-size: 12px; }
+  .rank.top { background: #ffd28a; color: #5b2d00; font-weight: 700; }
+  .ck { width: 34px; text-align: center; }
+  .mini.warn { color: #d95f76; border-color: #f0d3d8; }
+  .trash-title { margin: 0 12px 8px; font-size: 14px; color: #666; font-weight: 600; }
+  @media (min-width: 768px) { .trash-title { max-width: 980px; margin-left: auto; margin-right: auto; } }
+  .tip { text-align: center; font-size: 12px; color: #999; padding: 0 0 30px; }
+  .loading { text-align: center; padding: 70px 0; color: #888; font-size: 14px; }
+  .loading::before { content: ''; display: block; width: 28px; height: 28px; margin: 0 auto 12px; border: 3px solid #d5e5df; border-top-color: #2c9678; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (min-width: 768px) {
+    .twrap, .tiles, .bar { max-width: 980px; margin-left: auto; margin-right: auto; }
+    .card { max-width: 460px; margin: 26px auto; }
+  }
+</style>
+</head>
+<body>
+<div class="hd"><h1>推广转化报表</h1><p>各推广员访问 / 报名 / 转化率 · 结算依据</p></div>
+
+<div class="card" id="tcard">
+  <div class="field"><label>管理令牌（ADMIN_TOKEN）</label><input id="tToken" type="password" placeholder="仅管理员使用"></div>
+  <div class="err" id="tErr"></div>
+  <button class="btn" id="tBtn">查看报表</button>
+</div>
+<div class="loading" id="autoLoading" style="display:none">正在加载报表…</div>
+
+<div id="report" style="display:none">
+  <div class="tiles">
+    <div class="tile"><b id="sCnt">-</b><span>推广员数</span></div>
+    <div class="tile"><b id="sVisits">-</b><span>总访问</span></div>
+    <div class="tile"><b id="sApplies">-</b><span>报名总人数</span></div>
+  </div>
+  <div class="bar"><span id="updAt"></span><button class="mini" id="refreshBtn">刷新</button><a class="mini feishu" id="feishuLink" target="_blank" rel="noopener" style="display:none">去飞书查看明细</a><button class="mini warn" id="batchDel" style="display:none">删除选中</button><button class="mini" id="trashBtn">回收站</button></div>
+  <div class="twrap">
+    <table>
+      <thead><tr><th class="ck"><input type="checkbox" id="ckAll"></th><th>#</th><th>推广员姓名</th><th>来源</th><th>推广码</th><th>手机号</th><th class="num">访问人数</th><th class="num">推广人数</th><th class="num">转化率</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="tip">报名总人数为飞书按手机号去重后的人数；明细去飞书 Base 查看。</div>
+
+  <div id="trashWrap" style="display:none">
+    <div class="trash-title">回收站（删除的推广员可恢复原码，老链接/海报直接复活）</div>
+    <div class="twrap">
+      <table>
+        <thead><tr><th>姓名</th><th>推广码</th><th>手机号</th><th>删除时间</th><th>操作</th></tr></thead>
+        <tbody id="trashBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="amask" id="amask">
+  <div class="asheet">
+    <div class="ahd"><b id="alTitle">报名列表</b><button class="mini" id="alClose">关闭</button></div>
+    <div class="alist" id="alBody"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var err = document.getElementById('tErr'), gate = document.getElementById('tcard'), report = document.getElementById('report');
+  var m = location.search.match(/[?&]token=([A-Za-z0-9]{4,64})/);
+  var token = (m && m[1]) || localStorage.getItem('adminToken') || '';
+
+  var lastTrash = {};
+  function renderTrash() {
+    var keys = Object.keys(lastTrash);
+    document.getElementById('trashBtn').textContent = '回收站(' + keys.length + ')';
+    document.getElementById('trashBody').innerHTML = keys.map(function (code) {
+      var v = lastTrash[code];
+      return '<tr><td>' + (v.name || '-') + '</td><td>' + code + '</td><td>' + (v.phone || '-') + '</td>' +
+        '<td>' + (v.delTs ? new Date(v.delTs).toLocaleString('zh-CN', { hour12: false }) : '-') + '</td>' +
+        '<td><button class="mini" data-act="restore" data-code="' + code + '">恢复</button> <button class="mini warn" data-act="purge" data-code="' + code + '">彻底删除</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:#999">回收站是空的</td></tr>';
+  }
+  function render(j) {
+    document.getElementById('autoLoading').style.display = 'none';
+    var rows = j.rows || [];
+    var tv = 0;
+    rows.forEach(function (r) { tv += r.visits; });
+    document.getElementById('sCnt').textContent = rows.length;
+    document.getElementById('sVisits').textContent = tv;
+    document.getElementById('sApplies').textContent = j.totalPhones != null ? j.totalPhones : '-';
+    if (j.base) { var fl = document.getElementById('feishuLink'); fl.href = j.base; fl.style.display = ''; }
+    var tb = document.getElementById('tbody');
+    tb.innerHTML = rows.map(function (r, i) {
+      var ck = r.code && r.code !== '-' && r.phone ? '<input type="checkbox" class="ckRow" data-code="' + r.code + '">' : '';
+      var ap = r.applies > 0 ? '<a href="javascript:;" class="aplink" data-code="' + r.code + '" data-name="' + (r.name || '-') + '">' + r.applies + '</a>' : r.applies;
+      return '<tr><td class="ck">' + ck + '</td><td><span class="rank' + (i < 3 ? ' top' : '') + '">' + (i + 1) + '</span></td>' +
+        '<td>' + (r.name || '-') + '</td><td>' + (r.source || '-') + '</td><td>' + (r.code || '-') + '</td><td>' + (r.phone || '-') + '</td>' +
+        '<td class="num">' + r.visits + '</td><td class="num">' + ap + '</td><td class="num">' + r.rate + '</td></tr>';
+    }).join('');
+    lastTrash = j.trash || {};
+    renderTrash();
+    syncBatchBtn();
+    document.getElementById('updAt').textContent = '更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    gate.style.display = 'none';
+    report.style.display = '';
+  }
+  function load(t) {
+    err.textContent = '';
+    fetch('api/stats?token=' + encodeURIComponent(t))
+      .then(function (r) { return r.json().then(function (j) { return { code: r.status, j: j }; }); })
+      .then(function (r) {
+        if (r.code === 200 && r.j.ok) {
+          token = t;
+          try { localStorage.setItem('adminToken', t); } catch (e) {}
+          render(r.j);
+        } else {
+          document.getElementById('autoLoading').style.display = 'none';
+          report.style.display = 'none'; gate.style.display = '';
+          err.textContent = r.j && r.j.msg ? r.j.msg : '令牌错误或已过期';
+        }
+      })
+      .catch(function () {
+        document.getElementById('autoLoading').style.display = 'none';
+        gate.style.display = '';
+        err.textContent = '网络异常，请稍后再试';
+      });
+  }
+  document.getElementById('tBtn').onclick = function () { load(document.getElementById('tToken').value.trim()); };
+  document.getElementById('tToken').addEventListener('keydown', function (e) { if (e.key === 'Enter') load(this.value.trim()); });
+  document.getElementById('refreshBtn').onclick = function () { if (token) load(token); };
+  // 批量选择与删除 / 回收站恢复 / 彻底删除（全部走 token 保护的 admin 接口）
+  function selectedCodes() {
+    var out = [];
+    document.querySelectorAll('#tbody .ckRow:checked').forEach(function (c) { out.push(c.getAttribute('data-code')); });
+    return out;
+  }
+  function syncBatchBtn() {
+    var n = selectedCodes().length;
+    var b = document.getElementById('batchDel');
+    b.style.display = n ? '' : 'none';
+    b.textContent = '删除选中(' + n + ')';
+  }
+  function act(path, codes, confirmMsg) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    fetch('api/' + path + '?token=' + encodeURIComponent(token), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ codes: codes })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j.ok) load(token);
+      else alert((j.msg || '操作失败') + (j.skip && j.skip.length ? '，跳过: ' + j.skip.join(',') : ''));
+    }).catch(function () { alert('网络异常，操作失败'); });
+  }
+  document.getElementById('tbody').addEventListener('change', function (e) {
+    if (e.target.classList && e.target.classList.contains('ckRow')) syncBatchBtn();
+  });
+  document.getElementById('ckAll').addEventListener('change', function () {
+    var on = this.checked;
+    document.querySelectorAll('#tbody .ckRow').forEach(function (c) { c.checked = on; });
+    syncBatchBtn();
+  });
+  document.getElementById('batchDel').onclick = function () {
+    var codes = selectedCodes();
+    if (codes.length) act('promoter/del', codes, '确定删除选中的 ' + codes.length + ' 个推广员？\n删除后其推广链接立即失效，可在回收站恢复。');
+  };
+  document.getElementById('trashBtn').onclick = function () {
+    var w = document.getElementById('trashWrap');
+    w.style.display = w.style.display === 'none' ? '' : 'none';
+  };
+  document.getElementById('trashBody').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button[data-act]') : null;
+    if (!b) return;
+    var code = b.getAttribute('data-code');
+    if (b.getAttribute('data-act') === 'restore') act('promoter/restore', [code], null);
+    else act('promoter/purge', [code], '彻底删除 ' + code + '？不可恢复（飞书历史报名记录仍保留）。');
+  });
+  // 推广人数弹层：点数字拉取该推广员的报名明细，滚动查看
+  var amask = document.getElementById('amask'), alBody = document.getElementById('alBody');
+  function openApplies(code, name) {
+    document.getElementById('alTitle').textContent = name + '（' + code + '）的报名列表';
+    alBody.innerHTML = '<p style="text-align:center;color:#999;padding:24px 0">加载中…</p>';
+    amask.classList.add('show');
+    fetch('api/applies?token=' + encodeURIComponent(token) + '&code=' + encodeURIComponent(code))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { alBody.innerHTML = '<p style="text-align:center;color:#d33;padding:24px 0">' + (j.msg || '加载失败，请稍后再试') + '</p>'; return; }
+        var items = j.items || [];
+        alBody.innerHTML = items.length
+          ? '<table><thead><tr><th>#</th><th>姓名</th><th>性别</th><th>学校</th><th>报名酒店</th><th>手机号</th></tr></thead><tbody>' +
+            items.map(function (it, i) {
+              return '<tr><td>' + (i + 1) + '</td><td>' + (it.name || '-') + '</td><td>' + (it.gender || '-') + '</td><td>' + (it.school || '-') + '</td><td>' + (it.hotel || '-') + '</td><td>' + (it.phone || '-') + '</td></tr>';
+            }).join('') + '</tbody></table>'
+          : '<p style="text-align:center;color:#999;padding:24px 0">暂无报名记录</p>';
+      })
+      .catch(function () { alBody.innerHTML = '<p style="text-align:center;color:#d33;padding:24px 0">网络异常，请稍后再试</p>'; });
+  }
+  document.getElementById('tbody').addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('.aplink') : null;
+    if (a) openApplies(a.getAttribute('data-code'), a.getAttribute('data-name'));
+  });
+  document.getElementById('alClose').onclick = function () { amask.classList.remove('show'); };
+  amask.addEventListener('click', function (e) { if (e.target === amask) amask.classList.remove('show'); });
+  if (token) { // 自动登录：转圈过渡，成功进报表，失败回令牌卡片
+    gate.style.display = 'none';
+    document.getElementById('autoLoading').style.display = '';
+    load(token);
+  }
+})();
+</script>
+</body>
+</html>

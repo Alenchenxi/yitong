@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>2027年酒店寒假工招聘</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font: 15px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f6f8; color: #222; }
+  /* 首屏海报 */
+  .hero { position: relative; min-height: min(66vh, 640px); display: flex; align-items: center; justify-content: center; text-align: center; color: #fff; overflow: hidden; background: linear-gradient(135deg, #1d3f66, #155e4c); }
+  .hero-bg { position: absolute; inset: 0; }
+  .hero-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.2s; }
+  .hero-bg img.on { opacity: 1; }
+  .hero-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(12,28,48,.5), rgba(12,28,48,.78)); }
+  .hero-in { position: relative; z-index: 1; padding: 52px 20px 44px; width: 100%; }
+  .hero-chip { display: inline-block; font-size: 12px; padding: 3px 12px; border: 1px solid rgba(255,255,255,.45); border-radius: 20px; background: rgba(255,255,255,.12); letter-spacing: 1px; }
+  .hero h1 { font-size: 30px; letter-spacing: 2px; margin: 12px 0 4px; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+  .hero-sub { font-size: 13px; opacity: .88; }
+  .hero-pay { margin-top: 18px; font-size: 14px; }
+  .hero-pay b { font-size: 30px; color: #ffd28a; font-family: -apple-system, sans-serif; padding: 0 2px; }
+  .hero-pay .ny { margin-left: 16px; }
+  .hero-tags { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .hero-tags span { font-size: 12px; padding: 3px 11px; border-radius: 14px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.22); }
+  .hero-cd { margin-top: 16px; font-size: 13px; color: rgba(255,255,255,.88); }
+  .hero-cd b { color: #ffd28a; font-size: 16px; padding: 0 2px; }
+  .hero-btn { margin-top: 22px; border: 0; cursor: pointer; background: linear-gradient(135deg, #ffc46b, #ff9d4d); color: #5b2d00; font-size: 16px; font-weight: 700; padding: 12px 38px; border-radius: 24px; box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+  .hero-btn:active { opacity: .85; }
+  .hero-cnt { margin-top: 12px; font-size: 12px; color: #9fe3c8; }
+  .wrap { margin: 0 auto; padding: 0 12px 40px; }
+  .region-head { display: flex; align-items: center; gap: 8px; margin: 18px 2px 10px; cursor: pointer; user-select: none; }
+  .region-head .arrow { margin-left: auto; color: #b5b5b5; font-size: 14px; }
+  .region-head .bar { width: 5px; height: 18px; border-radius: 3px; }
+  .region-head h2 { font-size: 17px; }
+  .region-head .cnt { font-size: 12px; color: #999; }
+  .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.05); display: flex; flex-direction: column; height: 320px; }
+  .clamp1, .clamp2, .clamp3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+  .clamp1 { -webkit-line-clamp: 1; }
+  .clamp2 { -webkit-line-clamp: 2; }
+  .clamp3 { -webkit-line-clamp: 3; }
+  .region-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .region-body .card { margin-bottom: 0; }
+  .card-top { display: flex; gap: 12px; height: 96px; overflow: hidden; }
+  .thumb-wrap { position: relative; width: 92px; height: 92px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: #eee; cursor: pointer; }
+  .thumb-scroll { display: flex; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .thumb-scroll::-webkit-scrollbar { display: none; }
+  .thumb-scroll .thumb { width: 92px; height: 92px; object-fit: cover; flex-shrink: 0; scroll-snap-align: start; }
+  .img-cnt { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.45); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 8px; pointer-events: none; }
+  .ph { display: flex; align-items: center; justify-content: center; width: 92px; height: 92px; color: #fff; font-size: 34px; font-weight: 700; }
+  .info { flex: 1; min-width: 0; overflow: hidden; }
+  .hname { font-size: 17px; font-weight: 600; margin-bottom: 2px; line-height: 1.3; }
+  .rtag { display: inline-block; font-size: 10px; font-weight: 400; color: #fff; padding: 0 6px; border-radius: 8px; margin-right: 6px; vertical-align: 2px; }
+  .payline { font-size: 13px; color: #666; margin-bottom: 2px; line-height: 1.3; }
+  .payline b { color: #d95f2b; font-size: 19px; }
+  .meta { font-size: 12px; color: #888; line-height: 1.4; }
+  .joined { font-size: 11px; color: #e07b39; margin-top: 3px; }
+  .row { font-size: 13px; color: #555; margin-top: 8px; }
+  .row .lab { color: #2c9678; font-weight: 600; margin-right: 4px; }
+  .addr { font-size: 12px; color: #999; margin-top: 6px; margin-bottom: 12px; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 8px; background: #2c9678; color: #fff; font-size: 16px; padding: 10px 0; margin-top: auto; }
+  .btn:active { opacity: .85; }
+  .btn[disabled] { background: #aaa; }
+  .tip { font-size: 13px; color: #888; text-align: center; padding: 30px 0; }
+  /* 表单弹层 */
+  .mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 10; }
+  .sheet { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; background: #fff; border-radius: 16px 16px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); max-height: 88vh; overflow-y: auto; }
+  .sheet.show, .mask.show { display: block; }
+  .sheet h3 { font-size: 17px; margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+  .field input, .field select { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; font-size: 15px; background: #fafafa; }
+  .field input:focus, .field select:focus { outline: none; border-color: #2c9678; }
+  .sms-row { display: flex; gap: 8px; }
+  .sms-row input { flex: 1; min-width: 0; }
+  .sms-btn { flex: 0 0 auto; border: none; border-radius: 8px; padding: 0 14px; font-size: 14px; background: var(--green); color: #fff; cursor: pointer; white-space: nowrap; }
+  .sms-btn:disabled { opacity: .55; cursor: default; }
+  .fixed-hotel { border: 1px solid #d7ece6; background: #eef8f4; border-radius: 8px; padding: 10px 12px; font-size: 15px; color: #1d7a63; font-weight: 600; }
+  .radio { display: flex; gap: 24px; padding: 8px 2px; }
+  .radio label { font-size: 15px; color: #222; display: flex; align-items: center; gap: 5px; }
+  .close { float: right; border: 0; background: none; font-size: 20px; color: #999; padding: 0 4px; }
+  .err { color: #d33; font-size: 13px; min-height: 18px; margin-bottom: 6px; }
+  .ok-view { text-align: center; padding: 20px 0; }
+  .ok-view .big { font-size: 40px; }
+  .ok-view p { color: #666; font-size: 14px; margin-top: 8px; }
+  /* 图片查看器 */
+  .viewer { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 99; align-items: center; justify-content: center; cursor: zoom-out; touch-action: none; }
+  .viewer.show { display: flex; }
+  .viewer img { max-width: 92vw; max-height: 92vh; object-fit: contain; }
+  .pv-btn { position: absolute; top: 50%; transform: translateY(-50%); font-size: 46px; color: #fff; padding: 10px 20px; cursor: pointer; user-select: none; }
+  .pv-btn.prev { left: 10px; }
+  .pv-btn.next { right: 10px; }
+  .pv-close { position: absolute; top: 14px; right: 20px; color: #fff; font-size: 26px; cursor: pointer; }
+  .pv-n { position: absolute; bottom: 18px; left: 0; right: 0; text-align: center; color: #ddd; font-size: 14px; }
+  /* 推广海报 */
+  .promo-fab { position: fixed; right: 14px; bottom: 26px; z-index: 9; border: 0; border-radius: 22px; background: linear-gradient(135deg, #ffc46b, #ff9d4d); color: #5b2d00; font-size: 13px; font-weight: 700; padding: 10px 16px; box-shadow: 0 4px 14px rgba(0,0,0,.25); cursor: pointer; }
+  .poster { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 98; align-items: center; justify-content: center; flex-direction: column; }
+  .poster.show { display: flex; }
+  .poster img { max-width: min(86vw, 430px); max-height: 74vh; border-radius: 10px; }
+  .poster .p-tip { color: #ffd28a; font-size: 14px; margin: 14px 0 4px; }
+  .poster .p-save { color: #bbb; font-size: 13px; }
+  .poster .p-close { position: absolute; top: 14px; right: 20px; color: #fff; font-size: 26px; cursor: pointer; }
+  /* 推广员注册 */
+  .promo-link { text-align: center; font-size: 13px; color: #2c9678; padding: 10px 0 26px; cursor: pointer; }
+  .promo-desc { font-size: 13px; color: #888; margin-bottom: 14px; }
+  .promo-next { font-size: 12px; color: #999; margin-top: 12px; }
+  .ok-extra { font-size: 13px; color: #666; margin-top: 16px; }
+  .ok-extra span { color: #2c9678; font-weight: 600; cursor: pointer; }
+  /* PC 端适配 */
+  @media (min-width: 768px) {
+    .hero-in { padding: 80px 20px 64px; }
+    .hero h1 { font-size: 38px; }
+    .hero-pay b { font-size: 36px; }
+    /* 不设 max-width：列数由 auto-fill 网格按实际宽度自动算，卡片宽度恒定（最小320px），任意分辨率都自适应 */
+    .wrap { padding: 0 clamp(16px, 3vw, 64px) 60px; }
+    .region-head { margin-top: 26px; }
+    .region-head h2 { font-size: 19px; }
+    .sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: 430px; border-radius: 16px; max-height: 86vh; padding-bottom: 20px; }
+  }
+
+  /* 2027 招聘信息版：以岗位比较为主，装饰保持克制 */
+  :root { --green: #0b5c53; --green-2: #16766a; --ink: #18302d; --muted: #687a76; --line: #dbe5e1; --paper: #fff; --bg: #f4f7f5; --orange: #f28c28; --warn: #b5473c; }
+  body { background: var(--bg); color: var(--ink); letter-spacing: 0; }
+  button, input { font: inherit; letter-spacing: 0; }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid rgba(242,140,40,.45); outline-offset: 2px; }
+  .hero { min-height: min(68vh, 620px); background: var(--green); }
+  .hero-bg::after { background: linear-gradient(180deg, rgba(4,38,36,.38), rgba(4,38,36,.86)); }
+  .hero h1 { letter-spacing: 0; }
+  .hero h1 { font-size: 26px; line-height: 1.3; max-width: 350px; margin-left: auto; margin-right: auto; word-break: break-all; }
+  .hero-pay { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 16px; }
+  .hero-pay .pay-item { display: inline-flex; flex-basis: 100%; justify-content: center; align-items: baseline; white-space: nowrap; }
+  .hero-pay .pay-item small { font-size: 13px; margin-left: 3px; }
+  .hero-pay .ny { margin-left: 0; }
+  .hero-chip { letter-spacing: 0; }
+  .hero-btn, .promo-fab { background: var(--orange); color: #301b08; border-radius: 8px; box-shadow: 0 5px 18px rgba(0,0,0,.22); }
+  .wrap { max-width: 1240px; padding: 0 14px 52px; }
+  .jobs-head { padding: 26px 2px 16px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 6px; }
+  .jobs-head h2 { font-size: 24px; line-height: 1.25; }
+  .jobs-head p { color: var(--muted); font-size: 13px; margin-top: 5px; }
+  .result-count { color: var(--green); font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .filter-shell { position: sticky; top: 0; z-index: 8; background: rgba(244,247,245,.96); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 10px 0; margin-bottom: 18px; backdrop-filter: blur(10px); }
+  .filter-label { font-size: 11px; color: var(--muted); font-weight: 700; margin-bottom: 7px; }
+  .filter-row { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-btn { flex: 0 0 auto; border: 1px solid #c9d7d2; background: #fff; color: #40524e; border-radius: 6px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
+  .filter-btn[aria-pressed="true"] { background: var(--green); color: #fff; border-color: var(--green); font-weight: 700; }
+  .job-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .card { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 0; margin: 0; box-shadow: 0 4px 16px rgba(22,61,55,.06); display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+  .thumb-wrap { width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 0; background: #dfe8e4; cursor: zoom-in; }
+  .thumb-scroll .thumb { width: 100%; height: 100%; }
+  .ph { width: 100%; height: auto; aspect-ratio: 16 / 9; font-size: 48px; }
+  .img-cnt { right: 9px; bottom: 9px; border-radius: 4px; padding: 3px 7px; font-size: 11px; }
+  .card-content { padding: 15px; display: flex; flex: 1; flex-direction: column; }
+  .card-heading { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .hname { font-size: 18px; margin: 0; line-height: 1.35; }
+  .rtag { border-radius: 4px; font-size: 11px; padding: 2px 6px; vertical-align: 2px; }
+  .joined { flex: 0 0 auto; font-size: 11px; color: #b85c20; margin: 3px 0 0; }
+  .condition-strip { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .8fr); border: 1px solid var(--line); border-width: 1px 0; margin: 13px 0 10px; }
+  .condition-cell { padding: 9px 8px 8px 0; min-width: 0; }
+  .condition-cell + .condition-cell { border-left: 1px solid var(--line); padding-left: 10px; }
+  .condition-cell small { display: block; color: var(--muted); font-size: 10px; }
+  .condition-cell strong { display: block; color: var(--ink); font-size: 13px; line-height: 1.35; margin-top: 2px; overflow-wrap: anywhere; }
+  .condition-cell.pay strong { color: #c95e18; font-size: 17px; }
+  .highlight { font-size: 13px; line-height: 1.45; color: var(--green); background: #edf7f3; border-left: 3px solid var(--green-2); padding: 7px 9px; margin-bottom: 9px; }
+  .highlight.warn { color: var(--warn); background: #fff3f1; border-left-color: var(--warn); }
+  .new-year { color: #5b4430; font-size: 12px; line-height: 1.45; margin-bottom: 8px; }
+  .addr { margin: 0 0 13px; line-height: 1.5; min-height: 36px; color: var(--muted); }
+  .card-actions { display: grid; grid-template-columns: 112px 1fr; gap: 8px; margin-top: auto; }
+  .btn { border-radius: 6px; background: var(--green); margin: 0; cursor: pointer; }
+  .btn.secondary { background: #fff; color: var(--green); border: 1px solid #aac7c0; }
+  .detail-sheet { width: min(680px, 100%); }
+  .detail-title { padding-right: 30px; margin-bottom: 4px !important; }
+  .detail-sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+  .detail-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 16px; }
+  .detail-gallery button { border: 0; background: #e3ebe8; aspect-ratio: 4 / 3; overflow: hidden; cursor: zoom-in; padding: 0; border-radius: 4px; }
+  .detail-gallery img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .detail-pay { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+  .detail-pay strong { font-size: 24px; color: #c95e18; }
+  .detail-pay span { color: var(--muted); font-size: 13px; }
+  .detail-grid { display: grid; grid-template-columns: 1fr; gap: 0; margin: 8px 0 16px; }
+  .detail-row { display: grid; grid-template-columns: 72px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid #edf1ef; font-size: 13px; }
+  .detail-row dt { color: var(--muted); }
+  .detail-row dd { margin: 0; color: var(--ink); }
+  .detail-actions { position: sticky; bottom: -20px; background: #fff; padding: 10px 0 2px; }
+  .trust-band { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 34px 0 20px; padding: 24px 2px; }
+  .trust-band h2 { font-size: 20px; margin-bottom: 16px; }
+  .trust-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  .trust-item h3 { font-size: 14px; color: var(--green); margin-bottom: 5px; }
+  .trust-item p, .trust-item li { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .trust-item ol { padding-left: 18px; }
+  .contact-link { color: var(--green); font-weight: 700; }
+  .promo-tools { border-top: 1px solid var(--line); padding: 18px 0 4px; text-align: center; }
+  .promo-tools a { color: var(--green); font-weight: 700; }
+  .promo-apply { border-top: 1px solid var(--line); padding: 20px 2px 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .promo-apply[hidden] { display: none; }
+  .promo-apply strong { display: block; font-size: 14px; }
+  .promo-apply p { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .promo-apply-btn { width: 100%; flex: 0 0 auto; border: 1px solid var(--green); border-radius: 6px; background: #fff; color: var(--green); font-size: 13px; font-weight: 700; padding: 9px 13px; cursor: pointer; }
+  .form-notice { background: #edf7f3; border-left: 3px solid var(--green); padding: 10px 11px; margin-bottom: 14px; color: #375a53; font-size: 12px; line-height: 1.6; }
+  .consent { display: flex; align-items: flex-start; gap: 8px; color: #526762; font-size: 12px; line-height: 1.5; margin: 4px 0 12px; }
+  .consent input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--green); flex: 0 0 auto; }
+  .promo-fab { right: 12px; bottom: calc(16px + env(safe-area-inset-bottom)); background: #0b5c53; color: #fff; border: 1px solid rgba(255,255,255,.72); }
+  @media (min-width: 680px) {
+    .hero-pay .pay-item { flex-basis: auto; }
+    .jobs-head { flex-direction: row; align-items: end; gap: 18px; }
+    .job-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .trust-grid { grid-template-columns: repeat(3, 1fr); }
+    .detail-grid { grid-template-columns: 1fr 1fr; column-gap: 20px; }
+    .sheet.detail-sheet { width: min(680px, calc(100vw - 40px)); }
+    .promo-apply { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
+    .promo-apply-btn { width: auto; }
+  }
+  @media (min-width: 1100px) {
+    .job-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<section class="hero">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-in">
+    <div class="hero-chip" id="heroChip">寒假工 · 多店联合直招</div>
+    <h1 id="bTitle">酒店寒假工招聘</h1>
+    <p class="hero-sub" id="bSub">多家酒店联合招聘 · 包吃包住</p>
+    <div class="hero-pay" id="heroPay"></div>
+    <div class="hero-tags" id="heroTags"></div>
+    <div class="hero-cd" id="heroCd"></div>
+    <button class="hero-btn" id="heroBtn">查看在招岗位 ↓</button>
+    <div class="hero-cnt" id="heroCnt"></div>
+  </div>
+</section>
+<div class="wrap">
+  <div class="jobs-head" id="jobsStart">
+    <div><h2>选择适合你的酒店</h2><p>实拍环境与待遇条件均来自当前招聘资料</p></div>
+    <div class="result-count" id="resultCount"></div>
+  </div>
+  <div class="filter-shell" id="filterShell" style="display:none">
+    <div class="filter-label">按地区查看</div>
+    <div class="filter-row" id="filterRow" role="group" aria-label="按地区筛选酒店"></div>
+  </div>
+  <div class="tip" id="tip">正在加载岗位…</div>
+  <div class="job-grid" id="list"></div>
+  <section class="trust-band" aria-labelledby="trustTitle">
+    <h2 id="trustTitle">报名之前，你需要知道</h2>
+    <div class="trust-grid">
+      <div class="trust-item"><h3>报名流程</h3><ol><li>选择酒店并提交信息</li><li>招聘专员电话确认岗位</li><li>确认排班后按通知到岗</li></ol></div>
+      <div class="trust-item"><h3>费用与年龄</h3><p><strong>报名不收取任何费用。</strong><br><span id="ageNote">报名者需在上岗时年满16周岁。</span></p></div>
+      <div class="trust-item"><h3>招聘咨询</h3><p id="contactText">提交报名后，招聘专员会通过你填写的手机号联系。</p></div>
+    </div>
+  </section>
+  <div class="promo-apply" id="promoApply">
+    <div><strong>想把岗位分享给同学？</strong><p>注册后可生成专属链接与推广海报</p></div>
+    <button class="promo-apply-btn" id="promoEntry" type="button">申请成为推广员</button>
+  </div>
+  <div class="promo-tools" id="promoTools" hidden><a href="mine.html">查看我的推广业绩</a></div>
+</div>
+
+<div class="poster" id="poster">
+  <span class="p-close" id="posterClose">✕</span>
+  <img id="posterImg" alt="推广海报">
+  <div class="p-tip">长按图片保存到手机，转发朋友圈 / 微信群</div>
+  <a class="p-save" id="posterSave" download="推广海报.png">电脑端点此保存海报</a>
+</div>
+
+<div class="mask" id="mask"></div>
+<div class="sheet" id="sheet">
+  <button class="close" id="closeBtn">✕</button>
+  <h3>报名信息</h3>
+  <div id="formView">
+    <div class="form-notice" id="formNotice"><strong>报名免费，不收取任何费用。</strong><br>报名信息仅用于本次招聘联系与岗位匹配。</div>
+    <div class="field"><label>报名酒店</label><div class="fixed-hotel" id="fHotel">—</div></div>
+    <div class="field"><label>姓名</label><input id="fName" maxlength="20" placeholder="请输入真实姓名"></div>
+    <div class="field"><label>性别</label>
+      <div class="radio">
+        <label><input type="radio" name="gender" value="男" checked>男</label>
+        <label><input type="radio" name="gender" value="女">女</label>
+      </div>
+    </div>
+    <div class="field"><label>电话</label><input id="fPhone" type="tel" maxlength="11" inputmode="numeric" placeholder="用于入职通知，请填本人号码"></div>
+    <div class="field"><label>验证码</label>
+      <div class="sms-row">
+        <input id="fSmsCode" maxlength="6" inputmode="numeric" placeholder="请输入验证码">
+        <button type="button" class="sms-btn" id="sendCodeBtn">发送验证码</button>
+      </div>
+    </div>
+    <div class="field"><label>学校</label><input id="fSchool" maxlength="40" placeholder="请输入学校名称"></div>
+    <div class="field"><label>出生年月</label><input id="fBirth" type="month" placeholder="如 2000-06"></div>
+    <div class="field"><label>是否有酒店工作经验 <input type="checkbox" id="fExpHas" style="width:16px;height:16px;accent-color:var(--green);vertical-align:-3px;margin-left:4px;"></label>
+      <select id="fExp" style="display:none">
+        <option value="">请选择工作时长</option>
+        <option value="15天以上">15天以上</option>
+        <option value="15天以下">15天以下</option>
+      </select>
+    </div>
+    <label class="consent"><input id="fConsent" type="checkbox"><span>我已阅读并知悉报名费用、年龄要求及信息用途说明。</span></label>
+    <div class="err" id="err"></div>
+    <button class="btn" id="submitBtn">确认并提交报名</button>
+  </div>
+  <div class="ok-view" id="okView" style="display:none">
+    <div class="big">✅</div>
+    <h3 id="okTitle">报名成功</h3>
+    <p id="okText"></p>
+  </div>
+</div>
+
+<div class="sheet detail-sheet" id="detailSheet" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+  <button class="close" id="detailClose" aria-label="关闭详情">✕</button>
+  <h3 class="detail-title" id="detailTitle"></h3>
+  <p class="detail-sub" id="detailSub"></p>
+  <div class="detail-gallery" id="detailGallery"></div>
+  <div class="detail-pay"><strong id="detailPay"></strong><span id="detailHours"></span></div>
+  <dl class="detail-grid" id="detailGrid"></dl>
+  <div class="detail-actions"><button class="btn" id="detailApply">报名这家酒店</button></div>
+</div>
+
+<div class="sheet" id="promoSheet">
+  <button class="close" id="promoClose">✕</button>
+  <h3>成为推广员</h3>
+  <div id="promoFormView">
+    <p class="promo-desc">转发你的专属链接或海报，同学通过链接报名即记你名下，按报名人数结算推广费。</p>
+    <div class="field"><label>姓名</label><input id="pName" maxlength="20" placeholder="真实姓名（用于结算）"></div>
+    <div class="field"><label>手机号</label><input id="pPhone" type="tel" maxlength="11" inputmode="numeric" placeholder="用于结算与通知"></div>
+    <div class="err" id="promoErr"></div>
+    <button class="btn" id="promoBtn">获取专属推广链接</button>
+  </div>
+  <div class="ok-view" id="promoOk" style="display:none">
+    <div class="big">🎉</div>
+    <h3>注册成功</h3>
+    <p id="promoResult"></p>
+    <button class="btn" id="copyLinkBtn">复制我的专属链接</button>
+    <p class="promo-next">无需重新打开专属链接。关闭此窗口后，直接点击当前页面右下角「生成推广海报」，即可生成并保存你的专属海报。</p>
+  </div>
+</div>
+
+<script src="qr.js"></script>
+<script>
+(function () {
+  // 渠道绑定：URL ?inviter=xxx，存 30 天，回访掉参也能归因
+  var m = location.search.match(/[?&]inviter=([a-zA-Z0-9]{1,16})/);
+  if (m) { localStorage.setItem('inviter', JSON.stringify({ c: m[1], t: Date.now() })); }
+  var inviter = '';
+  var promoterCode = '', promoLink = '';
+  try {
+    var saved = JSON.parse(localStorage.getItem('inviter') || 'null');
+    if (saved && Date.now() - saved.t < 30 * 864e5) inviter = saved.c;
+  } catch (e) {}
+  try {
+    var own = JSON.parse(localStorage.getItem('promoter_self') || 'null');
+    if (own && /^[a-zA-Z0-9]{1,16}$/.test(own.c || '')) promoterCode = own.c;
+  } catch (e) {}
+
+  fetch('api/visit', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviter: inviter }) }).catch(function () {});
+
+  var REGION_COLOR = { '瓯海区': '#4f7dd9', '瑞安市': '#d9a13b', '龙湾区': '#3ba776', '永嘉县': '#8b5fd1', '鹿城区': '#d95f76', '平阳县': '#c0504d' };
+  function regionColor(r) { return REGION_COLOR[r] || '#5a7d9a'; }
+
+  var OPEN_DATE = '2027-01-20', MIN_AGE = 16, PAGE_CONFIG = {}; // 由招聘配置覆盖
+  function fnum(s) { var m = String(s || '').match(/\d+/); return m ? +m[0] : 0; }
+
+  // 首屏海报：薪资区间/卖点标签全部从酒店数据算出，不硬编数字
+  var payInfo = null; // 算好的薪资/标签，推广海报复用
+  function heroFill() {
+    var pays = HOTELS.map(function (h) { return fnum(h.pay); }).filter(Boolean);
+    var ny = Math.max.apply(null, HOTELS.map(function (h) { return fnum(h.newYearPay); }).concat([0]));
+    var lo = 0, hi = 0, tags = [];
+    if (pays.length) {
+      lo = Math.min.apply(null, pays); hi = Math.max.apply(null, pays);
+      document.getElementById('heroPay').innerHTML = '<span class="pay-item">日薪 <b>' + (lo === hi ? lo : lo + '~' + hi) + '</b><small>元/天</small></span>' +
+        (ny > 0 ? '<span class="pay-item ny">过年最高 <b>' + ny + '</b><small>元/天</small></span>' : '');
+    }
+    var tags = [];
+    [['accommodation', '包吃', '包吃包住'], ['accommodation', '拎包', '拎包入住'], ['transport', '报销', '车费报销']].forEach(function (kv) {
+      var n = HOTELS.filter(function (h) { return (h[kv[0]] || '').indexOf(kv[1]) >= 0; }).length;
+      if (HOTELS.length && n / HOTELS.length >= 0.8) tags.push(kv[2]); // 8 成以上酒店都有才上首屏
+    });
+    payInfo = { lo: lo, hi: hi, ny: ny, tags: tags };
+    document.getElementById('heroTags').innerHTML = tags.map(function (t) { return '<span>' + t + '</span>'; }).join('');
+    var d = Math.ceil((new Date(OPEN_DATE) - Date.now()) / 864e5);
+    if (d > 0) document.getElementById('heroCd').innerHTML = '距寒假上岗约 <b>' + d + '</b> 天 · 名额有限，招满即止';
+  }
+
+  // 首屏背景：顺序探测前若干家酒店的实拍图，最多取 3 张轮播；一张都没有则保持渐变底
+  function initHeroBg() {
+    var bg = document.getElementById('heroBg'), found = 0, tries = 0;
+    var names = HOTELS.map(function (h) { return h.name; });
+    function startFade() {
+      var imgs = bg.querySelectorAll('img'), idx = 0;
+      setInterval(function () {
+        imgs[idx].classList.remove('on');
+        idx = (idx + 1) % imgs.length;
+        imgs[idx].classList.add('on');
+      }, 4000);
+    }
+    (function next() {
+      if (found >= 3 || tries >= names.length) { if (found > 1) startFade(); return; }
+      var img = new Image();
+      img.alt = '';
+      img.onload = function () { bg.appendChild(img); if (++found === 1) img.classList.add('on'); next(); };
+      img.onerror = next;
+      tries++;
+      img.src = 'img/' + encodeURIComponent(names[tries - 1]) + '-1.jpg';
+    })();
+  }
+
+  // 报名人数：真实统计，接口失败就不展示，不造假数字
+  var COUNT_BY_HOTEL = {};
+  function applyCountBadges() {
+    var sp = document.querySelectorAll('span.joined');
+    for (var i = 0; i < sp.length; i++) {
+      var n = COUNT_BY_HOTEL[sp[i].getAttribute('data-hotel')] || 0;
+      sp[i].textContent = n > 0 ? n + '人已报名' : '';
+      sp[i].style.display = n > 0 ? 'block' : 'none';
+    }
+  }
+  function loadCounts() {
+    fetch('api/counts').then(function (r) { return r.json(); }).then(function (c) {
+      if (!c.ok || !c.total) return;
+      document.getElementById('heroCnt').textContent = '已有 ' + c.total + ' 人报名';
+      COUNT_BY_HOTEL = c.byHotel || {};
+      applyCountBadges();
+    }).catch(function () {});
+  }
+
+  var HOTELS = [], currentHotel = '';
+  var list = document.getElementById('list'), tip = document.getElementById('tip');
+
+  function placeholderNode(h) {
+    var d = document.createElement('div');
+    d.className = 'ph';
+    d.style.background = 'linear-gradient(135deg,' + regionColor(h.region) + ',' + shade(regionColor(h.region)) + ')';
+    d.textContent = h.name.charAt(0);
+    return d;
+  }
+  // ---------- 图片查看器 ----------
+  var vMask = null, vImg = null, vUrls = [], vIdx = 0, vs = 1, vx = 0, vy = 0;
+  function vApply() { if (vImg) vImg.style.transform = 'translate(' + vx + 'px,' + vy + 'px) scale(' + vs + ')'; }
+  function vReset() { vs = 1; vx = vy = 0; vApply(); }
+  function vShow(i) {
+    vReset();
+    vIdx = (i + vUrls.length) % vUrls.length;
+    vImg.src = vUrls[vIdx];
+    vMask.querySelector('.pv-n').textContent = (vIdx + 1) + '/' + vUrls.length;
+    var one = vUrls.length < 2;
+    vMask.querySelector('.prev').style.display = vMask.querySelector('.next').style.display = one ? 'none' : '';
+  }
+  function vClose() { vMask.classList.remove('show'); document.body.style.overflow = ''; }
+  function openViewer(urls, idx) {
+    if (!vMask) {
+      vMask = document.createElement('div');
+      vMask.className = 'viewer';
+      vMask.innerHTML = '<img alt=""><span class="pv-btn prev">‹</span><span class="pv-btn next">›</span><span class="pv-close">✕</span><span class="pv-n"></span>';
+      document.body.appendChild(vMask);
+      vImg = vMask.querySelector('img');
+      vMask.querySelector('.prev').onclick = function (e) { e.stopPropagation(); vShow(vIdx - 1); };
+      vMask.querySelector('.next').onclick = function (e) { e.stopPropagation(); vShow(vIdx + 1); };
+      // 手势：单指滑动切图（仅原始大小）；捏合 1~4 倍缩放，放大后单指拖动平移
+      var swiped = false, tx = 0, ty = 0, pd = 0, ps = 1, pinch = false;
+      function vClamp() {
+        var mx = vImg.clientWidth * (vs - 1) / 2, my = vImg.clientHeight * (vs - 1) / 2;
+        vx = Math.max(-mx, Math.min(mx, vx)); vy = Math.max(-my, Math.min(my, vy));
+      }
+      function tDist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.hypot(dx, dy); }
+      vMask.addEventListener('touchstart', function (e) {
+        if (e.touches.length === 2) { pinch = true; pd = tDist(e.touches); ps = vs; }
+        else { tx = e.touches[0].clientX; ty = e.touches[0].clientY; swiped = false; }
+      }, { passive: true });
+      vMask.addEventListener('touchmove', function (e) {
+        if (pinch && e.touches.length === 2) {
+          e.preventDefault();
+          vs = Math.max(1, Math.min(4, ps * tDist(e.touches) / pd));
+          if (vs === 1) { vx = vy = 0; } else vClamp();
+          vApply();
+        } else if (e.touches.length === 1) {
+          var x = e.touches[0].clientX, y = e.touches[0].clientY;
+          if (vs > 1) {
+            e.preventDefault();
+            vx += x - tx; vy += y - ty; tx = x; ty = y; vClamp(); vApply();
+          } else if (Math.abs(x - tx) > 20) swiped = true;
+        }
+      }, { passive: false });
+      vMask.addEventListener('touchend', function (e) {
+        if (pinch && e.touches.length < 2) swiped = true; // 捏合结束不触发点击关闭
+        if (e.touches.length < 2) pinch = false;
+        if (e.touches.length === 1) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } // 捏合转单指平移时重置起点
+        if (e.touches.length) return;
+        var dx = e.changedTouches[0].clientX - tx;
+        if (vs === 1) {
+          if (dx > 40) vShow(vIdx - 1);
+          else if (dx < -40) vShow(vIdx + 1);
+        }
+      });
+      vMask.onclick = function () { if (!swiped) vClose(); swiped = false; };
+      document.addEventListener('keydown', function (e) {
+        if (!vMask.classList.contains('show')) return;
+        if (e.key === 'ArrowLeft') vShow(vIdx - 1);
+        else if (e.key === 'ArrowRight') vShow(vIdx + 1);
+        else if (e.key === 'Escape') vClose();
+      });
+    }
+    vUrls = urls;
+    vShow(idx || 0);
+    vMask.classList.add('show');
+    document.body.style.overflow = 'hidden'; // 锁背景滚动
+  }
+
+  // 酒店相册：img/酒店名-1.jpg ~ -3.jpg，可滑动；点击打开大图查看器；一张都没有则用区域色占位
+  function thumbNode(h) {
+    var wrap = document.createElement('div'); wrap.className = 'thumb-wrap';
+    var scroll = document.createElement('div'); scroll.className = 'thumb-scroll';
+    var badge = document.createElement('span'); badge.className = 'img-cnt';
+    var urls = [], settled = 0, loaded = 0;
+    function settle(ok, img) {
+      settled++;
+      if (ok) { urls[+img.dataset.i] = img.src; loaded++; }
+      else img.remove(); // 懒加载图必须先插入 DOM 才会开始加载，所以先全部插入，失败的再移除
+      if (settled < 3) return;
+      if (!loaded) { wrap.parentNode.replaceChild(placeholderNode(h), wrap); return; }
+      if (loaded > 1) { badge.textContent = loaded + '图'; wrap.appendChild(badge); }
+    }
+    for (var i = 1; i <= 3; i++) (function (i) {
+      var img = new Image();
+      img.className = 'thumb'; img.alt = h.name;
+      img.loading = i === 1 ? 'eager' : 'lazy'; // 第一张立即加载保证点开就有图，后两张懒加载
+      img.dataset.i = i - 1;
+      img.onload = function () { settle(true, img); };
+      img.onerror = function () { settle(false, img); };
+      img.src = 'img/' + encodeURIComponent(h.name) + '-' + i + '.jpg';
+      scroll.appendChild(img);
+    })(i);
+    wrap.onclick = function () {
+      var list = urls.filter(Boolean);
+      if (list.length) openViewer(list, 0);
+    };
+    wrap.appendChild(scroll);
+    return wrap;
+  }
+  function shade(hex) { // 简单变暗做渐变尾色
+    var n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return 'rgb(' + Math.round(r * .72) + ',' + Math.round(g * .72) + ',' + Math.round(b * .72) + ')';
+  }
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+  var ACTIVE_FILTER = '全部';
+  function filterKey(h) {
+    if (h.region === '瑞安市') return '瑞安';
+    if (h.region === '鹿城区') return '鹿城';
+    if (h.region === '瓯海区') return '瓯海';
+    return '其他';
+  }
+
+  function makeCard(h) {
+    var card = document.createElement('article');
+    card.className = 'card';
+    card.appendChild(thumbNode(h));
+    var content = document.createElement('div');
+    content.className = 'card-content';
+    content.innerHTML =
+      '<div class="card-heading"><h3 class="hname"><span class="rtag" style="background:' + regionColor(h.region) + '">' + esc(h.region) + '</span>' + esc(h.name) + '</h3>' +
+      '<span class="joined" data-hotel="' + esc(h.name) + '" style="display:none"></span></div>' +
+      '<div class="condition-strip">' +
+        '<div class="condition-cell pay"><small>日薪</small><strong>' + esc(h.pay) + '</strong></div>' +
+        '<div class="condition-cell"><small>工时</small><strong>' + esc(h.hours) + '</strong></div>' +
+        '<div class="condition-cell"><small>休息</small><strong>' + esc(h.rest) + '</strong></div>' +
+      '</div>' +
+      '<div class="highlight' + (h.warning ? ' warn' : '') + '">' + esc(h.highlight) + '</div>' +
+      '<div class="new-year"><strong>春节工资：</strong>' + esc(h.newYearPay) + '</div>' +
+      '<div class="addr">地址：' + esc(h.address) + '</div>';
+    var actions = document.createElement('div');
+    actions.className = 'card-actions';
+    var detail = document.createElement('button');
+    detail.className = 'btn secondary'; detail.textContent = '查看详情';
+    detail.onclick = function () { openDetails(h); };
+    var apply = document.createElement('button');
+    apply.className = 'btn'; apply.textContent = '立即报名';
+    apply.onclick = function () { openForm(h); };
+    actions.appendChild(detail); actions.appendChild(apply); content.appendChild(actions); card.appendChild(content);
+    return card;
+  }
+
+  function renderCards() {
+    list.innerHTML = '';
+    var shown = HOTELS.filter(function (h) { return ACTIVE_FILTER === '全部' || filterKey(h) === ACTIVE_FILTER; });
+    document.getElementById('resultCount').textContent = '共 ' + shown.length + ' 家在招';
+    shown.forEach(function (h) { list.appendChild(makeCard(h)); });
+    applyCountBadges();
+  }
+
+  function renderFilters() {
+    var defs = [
+      { key: '全部', label: '全部' }, { key: '瑞安', label: '瑞安' }, { key: '鹿城', label: '鹿城' },
+      { key: '瓯海', label: '瓯海' }, { key: '其他', label: '其他' }
+    ];
+    var row = document.getElementById('filterRow'); row.innerHTML = '';
+    defs.forEach(function (d) {
+      var n = d.key === '全部' ? HOTELS.length : HOTELS.filter(function (h) { return filterKey(h) === d.key; }).length;
+      var btn = document.createElement('button'); btn.className = 'filter-btn';
+      btn.textContent = d.label + ' ' + n; btn.setAttribute('aria-pressed', d.key === ACTIVE_FILTER ? 'true' : 'false');
+      btn.onclick = function () {
+        ACTIVE_FILTER = d.key;
+        Array.prototype.forEach.call(row.children, function (b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+        renderCards();
+      };
+      row.appendChild(btn);
+    });
+    document.getElementById('filterShell').style.display = '';
+  }
+
+  function renderTrust(cfg) {
+    var req = cfg.requirements || {};
+    document.getElementById('ageNote').textContent = req.ageNote || ('报名者需在上岗时年满' + MIN_AGE + '周岁。');
+    var contact = cfg.contact || {}, phone = String(contact.phone || '').replace(/[^\d+]/g, '');
+    var target = document.getElementById('contactText');
+    if (phone) target.innerHTML = esc(contact.note || '') + '<br><a class="contact-link" href="tel:' + esc(phone) + '">' + esc(contact.label || '联系电话') + '：' + esc(contact.phone) + '</a>';
+    else target.textContent = contact.note || '提交报名后，招聘专员会通过你填写的手机号联系。';
+    document.getElementById('formNotice').innerHTML = '<strong>报名免费，不收取任何费用。</strong><br>' + esc(req.ageNote || ('报名者需在上岗时年满' + MIN_AGE + '周岁。')) + '<br>报名信息仅用于本次招聘联系与岗位匹配。';
+  }
+
+  function render(cfg) {
+    PAGE_CONFIG = cfg;
+    document.getElementById('bTitle').textContent = cfg.title || '酒店寒假工招聘';
+    document.getElementById('bSub').textContent = cfg.subtitle || '';
+    OPEN_DATE = cfg.openDate || OPEN_DATE;
+    MIN_AGE = +(cfg.requirements && cfg.requirements.minAge) || MIN_AGE;
+    HOTELS = cfg.hotels || [];
+    if (!HOTELS.length) { tip.textContent = '暂无招聘岗位'; return; }
+    tip.style.display = 'none';
+    renderFilters(); renderCards(); renderTrust(cfg);
+    document.getElementById('heroBtn').textContent = '查看 ' + HOTELS.length + ' 家在招酒店';
+  }
+
+  fetch('api/config').then(function (r) { return r.json(); }).then(function (cfg) {
+    render(cfg);
+    heroFill();
+    initHeroBg();
+    loadCounts();
+  }).catch(function () { tip.textContent = '加载失败，请刷新重试'; });
+
+  document.getElementById('heroBtn').onclick = function () { document.getElementById('jobsStart').scrollIntoView({ behavior: 'smooth' }); };
+
+  // ---------- 酒店详情 ----------
+  var detailSheet = document.getElementById('detailSheet'), detailHotel = null;
+  function openDetails(h) {
+    detailHotel = h;
+    document.getElementById('detailTitle').textContent = h.name;
+    document.getElementById('detailSub').textContent = h.region + ' · ' + h.address;
+    document.getElementById('detailPay').textContent = h.pay;
+    document.getElementById('detailHours').textContent = h.hours + ' · ' + h.rest;
+    var gallery = document.getElementById('detailGallery'); gallery.innerHTML = '';
+    var urls = [1, 2, 3].map(function (i) { return 'img/' + encodeURIComponent(h.name) + '-' + i + '.jpg'; });
+    urls.forEach(function (u, i) {
+      var b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', '查看' + h.name + '第' + (i + 1) + '张照片');
+      var img = new Image(); img.alt = h.name + '实拍图' + (i + 1); img.loading = i ? 'lazy' : 'eager'; img.src = u;
+      img.onerror = function () { b.remove(); };
+      b.onclick = function () { openViewer(urls, i); }; b.appendChild(img); gallery.appendChild(b);
+    });
+    var rows = [
+      ['住宿餐食', h.accommodation], ['加班规则', h.overtime], ['春节工资', h.newYearPay],
+      ['月休', h.rest], ['车费', h.transport], ['额外提成', h.bonus], ['其他说明', h.note], ['工作地址', h.address]
+    ];
+    document.getElementById('detailGrid').innerHTML = rows.filter(function (r) { return r[1]; }).map(function (r) {
+      return '<div class="detail-row"><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>';
+    }).join('');
+    mask.classList.add('show'); detailSheet.classList.add('show'); detailSheet.scrollTop = 0;
+  }
+  function closeDetails() { detailSheet.classList.remove('show'); if (!sheet.classList.contains('show')) mask.classList.remove('show'); }
+  document.getElementById('detailClose').onclick = closeDetails;
+  document.getElementById('detailApply').onclick = function () { if (detailHotel) { closeDetails(); openForm(detailHotel); } };
+
+  // ---------- 表单 ----------
+  var mask = document.getElementById('mask'), sheet = document.getElementById('sheet'), err = document.getElementById('err');
+  var submitBtn = document.getElementById('submitBtn'), submitted = false;
+
+  function openForm(h) {
+    currentHotel = h.name;
+    document.getElementById('fHotel').textContent = h.name + '（' + h.region + '）';
+    err.textContent = ''; submitted = false; submitBtn.disabled = false; submitBtn.textContent = '确认并提交报名';
+    document.getElementById('formView').style.display = '';
+    document.getElementById('okView').style.display = 'none';
+    mask.classList.add('show'); sheet.classList.add('show');
+    sheet.scrollTop = 0;
+  }
+  function closeForm() { mask.classList.remove('show'); sheet.classList.remove('show'); }
+  document.getElementById('closeBtn').onclick = closeForm;
+  mask.onclick = function () { closeForm(); closePromo(); closeDetails(); };
+
+  // 勾选「有酒店工作经验」才出现时长下拉；取消勾选清空选择（按无经验提交）
+  document.getElementById('fExpHas').onchange = function () {
+    var s = document.getElementById('fExp');
+    s.style.display = this.checked ? '' : 'none';
+    if (!this.checked) s.value = '';
+  };
+
+  // 发送验证码：60s 倒计时防重发；发送成功才要求提交时带验证码
+  var codeSent = false;
+  document.getElementById('sendCodeBtn').onclick = function () {
+    var btn = this;
+    var phone = document.getElementById('fPhone').value.trim();
+    if (!/^1\d{10}$/.test(phone)) { err.textContent = '请先填写正确的 11 位手机号'; return; }
+    err.textContent = '';
+    btn.disabled = true; btn.textContent = '发送中…';
+    fetch('api/sms/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone })
+    }).then(function (r) { return r.json().then(function (j) { return { code: r.status, j: j }; }); }).then(function (r) {
+      if (r.code === 200 && r.j.ok) {
+        codeSent = true;
+        var left = 60;
+        btn.textContent = '60s后重发';
+        var t = setInterval(function () {
+          left--;
+          if (left <= 0) { clearInterval(t); btn.disabled = false; btn.textContent = '发送验证码'; }
+          else btn.textContent = left + 's后重发';
+        }, 1000);
+      } else {
+        btn.disabled = false; btn.textContent = '发送验证码';
+        err.textContent = (r.j && r.j.msg) || '发送失败，请稍后再试';
+      }
+    }).catch(function () {
+      btn.disabled = false; btn.textContent = '发送验证码';
+      err.textContent = '网络异常，请稍后再试';
+    });
+  };
+
+  submitBtn.onclick = function () {
+    if (submitted || !currentHotel) return;
+    err.textContent = '';
+    var name = document.getElementById('fName').value.trim();
+    var gender = (document.querySelector('input[name=gender]:checked') || {}).value || '';
+    var phone = document.getElementById('fPhone').value.trim();
+    var school = document.getElementById('fSchool').value.trim();
+    var birth = document.getElementById('fBirth').value.trim();
+    var expHas = document.getElementById('fExpHas').checked;
+    var experience = expHas ? document.getElementById('fExp').value : '';
+    var smsCode = document.getElementById('fSmsCode').value.trim();
+    if (codeSent && !smsCode) { err.textContent = '请输入验证码'; return; }
+    if (!name) { err.textContent = '请填写姓名'; return; }
+    if (!/^1\d{10}$/.test(phone)) { err.textContent = '请填写正确的 11 位手机号'; return; }
+    if (!school) { err.textContent = '请填写学校'; return; }
+    if (!birth) { err.textContent = '请选择出生年月'; return; }
+    if (expHas && !experience) { err.textContent = '请选择工作时长'; return; }
+    var bm = birth.match(/^(\d{4})-(\d{2})$/), od = new Date(OPEN_DATE);
+    var ageMonths = bm ? od.getFullYear() * 12 + od.getMonth() - (+bm[1] * 12 + (+bm[2] - 1)) : -1;
+    if (ageMonths < MIN_AGE * 12) { err.textContent = '报名者需在上岗时年满' + MIN_AGE + '周岁'; return; }
+    if (!document.getElementById('fConsent').checked) { err.textContent = '请先阅读并确认报名说明'; return; }
+    submitted = true; submitBtn.disabled = true; submitBtn.textContent = '提交中…';
+    fetch('api/apply', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, gender: gender, phone: phone, school: school, birth: birth, hotel: currentHotel, inviter: inviter, experience: experience, smsCode: smsCode })
+    }).then(function (r) { return r.json().then(function (j) { return { code: r.status, j: j }; }); }).then(function (r) {
+      if (r.code === 200 && r.j.ok) {
+        document.getElementById('okTitle').textContent = r.j.updated ? '已将报名信息更新' : '报名成功';
+        document.getElementById('okText').textContent = r.j.updated
+          ? '报名酒店等最新信息已生效，我们会尽快与你电话联系'
+          : '我们会尽快通过电话与你联系；如需更换报名酒店，重新提交即可自动更新';
+        document.getElementById('formView').style.display = 'none';
+        document.getElementById('okView').style.display = '';
+      } else {
+        submitted = false; submitBtn.disabled = false; submitBtn.textContent = '确认并提交报名';
+        err.textContent = (r.j && r.j.msg) || '提交失败，请稍后再试';
+      }
+    }).catch(function () {
+      submitted = false; submitBtn.disabled = false; submitBtn.textContent = '确认并提交报名';
+      err.textContent = '网络异常，请稍后再试';
+    });
+  };
+
+  // ---------- 推广海报：底图 public/poster.png（1024x1536），生成时只替换二维码与邀请码 ----------
+  var POSTER_QR = { x: 148, y: 1264, s: 168 };            // 底图白卡内的二维码绘制区
+  var POSTER_CODE = { x: 350, y: 1440, w: 310, h: 42, cx: 505, by: 1472 }; // 邀请码覆盖区与文字中心/基线
+  var posterBg = null;
+  function drawPoster() {
+    var qr = qrcode(0, 'M');
+    qr.addData(location.origin + location.pathname + '?inviter=' + promoterCode);
+    qr.make();
+    return new Promise(function (resolve, reject) {
+      function stamp(bg) {
+        var c = document.createElement('canvas'); c.width = bg.naturalWidth; c.height = bg.naturalHeight;
+        var x = c.getContext('2d');
+        x.drawImage(bg, 0, 0);
+        var qi = new Image();
+        qi.onload = function () {
+          x.drawImage(qi, POSTER_QR.x, POSTER_QR.y, POSTER_QR.s, POSTER_QR.s);
+          // 邀请码：取覆盖区左侧同排像素做底色盖掉旧码，再写新码
+          var px = x.getImageData(POSTER_CODE.x - 8, POSTER_CODE.y + POSTER_CODE.h / 2, 1, 1).data;
+          x.fillStyle = 'rgb(' + px[0] + ',' + px[1] + ',' + px[2] + ')';
+          x.fillRect(POSTER_CODE.x, POSTER_CODE.y, POSTER_CODE.w, POSTER_CODE.h);
+          x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = '26px sans-serif';
+          x.fillText('—— 邀请码 ' + promoterCode + ' ——', POSTER_CODE.cx, POSTER_CODE.by);
+          resolve(c.toDataURL('image/png'));
+        };
+        qi.src = qr.createDataURL(8, 2); // gif data URL，不污染画布
+      }
+      if (posterBg) return stamp(posterBg); // 底图只加载一次
+      var img = new Image();
+      img.onload = function () { posterBg = img; stamp(img); };
+      img.onerror = function () { reject(new Error('poster.png 加载失败')); };
+      img.src = './poster.png';
+    });
+  }
+
+  function preloadPoster() { // 1.9MB 底图进页面就后台加载，首次点生成不用干等
+    if (posterBg) return;
+    var img = new Image();
+    img.onload = function () { posterBg = img; };
+    img.src = './poster.png';
+  }
+
+  var fabDone = false;
+  function ensurePromoFab() { // 仅本机已注册过推广员时显示本人推广工具
+    preloadPoster();
+    document.getElementById('promoApply').hidden = true;
+    document.getElementById('promoTools').hidden = false;
+    if (fabDone) return; fabDone = true;
+    var poster = document.getElementById('poster');
+    var fab = document.createElement('button');
+    fab.className = 'promo-fab'; fab.textContent = '生成推广海报';
+    fab.onclick = function () {
+      fab.disabled = true; fab.textContent = '海报生成中…';
+      function done() { fab.disabled = false; fab.textContent = '生成推广海报'; }
+      drawPoster().then(function (u) {
+        done();
+        document.getElementById('posterImg').src = u;
+        document.getElementById('posterSave').href = u;
+        poster.classList.add('show');
+      }).catch(function () { done(); alert('海报底图加载失败，请稍后再试'); });
+    };
+    document.getElementById('posterClose').onclick = function () { poster.classList.remove('show'); };
+    document.getElementById('posterImg').onclick = function (e) { e.stopPropagation(); }; // 长按保存时不被点空白关闭干扰
+    poster.onclick = function () { poster.classList.remove('show'); };
+    document.body.appendChild(fab);
+  }
+  if (promoterCode) {
+    promoLink = location.origin + location.pathname + '?inviter=' + promoterCode;
+    ensurePromoFab();
+  }
+
+  // ---------- 推广员自助注册 ----------
+  var promoSheet = document.getElementById('promoSheet'), promoErr = document.getElementById('promoErr');
+  function openPromo() {
+    promoErr.textContent = '';
+    promoSheet.classList.add('show'); mask.classList.add('show');
+    promoSheet.scrollTop = 0;
+  }
+  function closePromo() {
+    promoSheet.classList.remove('show');
+    if (!sheet.classList.contains('show')) mask.classList.remove('show');
+  }
+  document.getElementById('promoEntry').onclick = openPromo;
+  document.getElementById('promoClose').onclick = closePromo;
+
+  document.getElementById('promoBtn').onclick = function () {
+    var btn = this;
+    if (btn.disabled) return;
+    promoErr.textContent = '';
+    var name = document.getElementById('pName').value.trim();
+    var phone = document.getElementById('pPhone').value.trim();
+    if (name.length < 2) { promoErr.textContent = '请填写真实姓名'; return; }
+    if (!/^1\d{10}$/.test(phone)) { promoErr.textContent = '请填写正确的 11 位手机号'; return; }
+    btn.disabled = true; btn.textContent = '提交中…';
+    fetch('api/promoter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, phone: phone }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        btn.disabled = false; btn.textContent = '获取专属推广链接';
+        if (!j.ok) { promoErr.textContent = j.msg || '提交失败，请稍后再试'; return; }
+        promoterCode = j.code;
+        promoLink = location.origin + location.pathname + '?inviter=' + promoterCode;
+        localStorage.setItem('promoter_self', JSON.stringify({ c: promoterCode }));
+        localStorage.setItem('myPromo', JSON.stringify({ c: promoterCode, p: phone })); // mine.html 查询页回填用，注册完点进去直接能查
+        ensurePromoFab(); // 本机立即获得推广身份，海报按钮马上可用；原报名归因保持不变
+        document.getElementById('promoResult').textContent = (j.existed ? '你已注册过，链接不变：' : '你的推广码 ' + j.code + '，专属链接：') + promoLink;
+        document.getElementById('promoFormView').style.display = 'none';
+        document.getElementById('promoOk').style.display = '';
+      })
+      .catch(function () {
+        btn.disabled = false; btn.textContent = '获取专属推广链接';
+        promoErr.textContent = '网络异常，请稍后再试';
+      });
+  };
+  document.getElementById('copyLinkBtn').onclick = function () {
+    var btn = this;
+    function done() { btn.textContent = '✅ 已复制，快去转发吧'; }
+    function fallback() { // 微信老内核没有 clipboard API
+      var i = document.createElement('input'); i.value = promoLink; document.body.appendChild(i);
+      i.select(); document.execCommand('copy'); document.body.removeChild(i); done();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(promoLink).then(done, fallback);
+    else fallback();
+  };
+})();
+</script>
+</body>
+</html>
