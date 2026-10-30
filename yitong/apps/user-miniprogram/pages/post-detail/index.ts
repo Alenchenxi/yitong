@@ -18,7 +18,7 @@ import { toggleFollow } from '../../services/follow';
 import { formatTime } from '../../utils/auth';
 import { isSinglePageMode } from '../../utils/single-page';
 
-type PostVoView = PostVo & { timeText: string; imgLayout: '' | 'one' | 'two' | 'three'; favorited?: boolean; following?: boolean };
+type PostVoView = PostVo & { timeText: string; updatedText: string; imgLayout: '' | 'one' | 'two' | 'three'; favorited?: boolean; following?: boolean };
 
 // P1-01 回复分页：replyPage=下一个待加载页（1=尚未展开，先拉第 1 页替换预览）；replyLoading=展开加载中
 interface CommentView {
@@ -72,7 +72,14 @@ function calcImgLayout(n: number): '' | 'one' | 'two' | 'three' {
 }
 
 function toPostView(p: PostVo, favorited?: boolean): PostVoView {
-  return { ...p, favorited, timeText: formatTime(p.createdAt), imgLayout: calcImgLayout(p.images.length) };
+  const isUpdated = !!p.updatedAt && p.updatedAt !== p.createdAt;
+  return {
+    ...p,
+    favorited,
+    timeText: formatTime(p.createdAt),
+    updatedText: isUpdated && p.updatedAt ? formatTime(p.updatedAt) : '', // CR-008 编辑过的帖子所有人可见更新时间
+    imgLayout: calcImgLayout(p.images.length),
+  };
 }
 
 function toCommentView(c: CommentVo): CommentView {

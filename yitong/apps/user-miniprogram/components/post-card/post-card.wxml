@@ -16,7 +16,7 @@
             {{post.anonNickname || '匿名用户'}}
             <text class="anon-badge">匿名</text>
           </view>
-          <view class="time">{{timeText}}</view>
+          <view class="time">{{timeText}}<text wx:if="{{isUpdated}}" class="updated-tag">已更新</text></view>
         </view>
       </view>
     </block>
@@ -29,7 +29,7 @@
             {{post.authorNickname}}
             <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
           </view>
-          <view class="time">{{timeText}}</view>
+          <view class="time">{{timeText}}<text wx:if="{{isUpdated}}" class="updated-tag">已更新</text></view>
         </view>
       </view>
     </block>

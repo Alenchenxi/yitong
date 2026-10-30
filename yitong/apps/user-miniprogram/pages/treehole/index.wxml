@@ -72,7 +72,7 @@
         />
       </view>
       <view class="row">
-        <text class="time">{{item.timeText}}</text>
+        <text class="time">{{item.timeText}}<text wx:if="{{item.isUpdated}}" class="updated-tag">已更新</text></text>
         <view class="row-stats">
           <text class="stat">💬 {{item.commentCount || 0}}</text>
           <text class="stat">👁 {{item.viewCount || 0}}</text>

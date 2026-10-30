@@ -26,7 +26,7 @@ type AnonCommentView = AnonCommentVo & { timeText: string; anonShort: string };
 Page({
   data: {
     id: '',
-    post: null as (AnonPostVo & { timeText: string; anonShort: string }) | null,
+    post: null as (AnonPostVo & { timeText: string; updatedText: string; anonShort: string }) | null,
     isAuthor: false, // 当前匿名态是否为帖子作者
     loading: false,
     // 评论
@@ -88,10 +88,12 @@ Page({
     this.setData({ loading: true });
     try {
       const post = await getPost(this.data.id);
+      const isUpdated = !!post.updatedAt && post.updatedAt !== post.createdAt;
       this.setData({
         post: {
           ...post,
           timeText: formatTime(post.createdAt),
+          updatedText: isUpdated && post.updatedAt ? formatTime(post.updatedAt) : '', // CR-008 所有人可见更新时间
           anonShort: post.anonId.slice(0, 10),
         },
         isAuthor: getAnonId() === post.anonId,

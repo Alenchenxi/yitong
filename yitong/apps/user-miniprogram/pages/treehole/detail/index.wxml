@@ -24,7 +24,7 @@
         <button class="share-btn" open-type="share">↗ 转发</button>
       </view>
       <view class="row">
-        <text class="time">{{post.timeText}}<text wx:if="{{post.editedAt && isAuthor}}" class="edited-tip"> · 已编辑</text></text>
+        <text class="time">{{post.timeText}}<text wx:if="{{post.updatedText}}" class="edited-tip"> · 已更新于 {{post.updatedText}}</text></text>
         <view class="actions">
           <!-- CR-007 仅发布者可见：编辑 / 删除 -->
           <view class="edit" wx:if="{{isAuthor}}" catchtap="onEdit">编辑</view>

@@ -23,6 +23,7 @@ export interface AnonPostVo {
   boosted: boolean; // 内容推广：付费置顶曝光中
   boostUntil: string | null; // 推广到期时间 ISO
   createdAt: string;
+  updatedAt?: string; // CR-008 排序用更新时间（编辑时刷新；列表排序键）
   platformPublished: boolean;
 }
 

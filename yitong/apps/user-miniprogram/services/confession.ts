@@ -32,6 +32,7 @@ export interface PostVo {
   boostUntil: string | null; // 推广到期时间 ISO
   publishAt: string | null; // P2-06 定时发布时间
   createdAt: string;
+  updatedAt?: string; // CR-008 排序用更新时间（编辑时刷新；列表排序键）
   editedAt: string | null; // P1-10
   platformPublished: boolean;
 }

@@ -12,14 +12,14 @@
             <text class="yt-platform-badge" wx:if="{{post.platformPublished}}">平台发布</text>
             <text class="boost-badge" wx:if="{{post.boosted}}">推广</text>
           </view>
-          <view class="time">{{post.timeText}}</view>
+          <view class="time">{{post.timeText}}<text wx:if="{{post.updatedText}}" class="edited-tip"> · 已更新于 {{post.updatedText}}</text></view>
         </view>
       </view>
       <block wx:else>
         <view class="avatar avatar-ph">{{post.authorNickname[0]}}</view>
         <view class="meta">
           <view class="nickname">{{post.authorNickname}}<text class="anon-badge">匿名</text></view>
-          <view class="time">{{post.timeText}}</view>
+          <view class="time">{{post.timeText}}<text wx:if="{{post.updatedText}}" class="edited-tip"> · 已更新于 {{post.updatedText}}</text></view>
         </view>
       </block>
       <view class="follow-btn {{post.following ? 'followed' : ''}}" wx:if="{{!post.isAnonymous}}" catchtap="onFollow">{{post.following ? '已关注' : '关注'}}</view>
@@ -54,7 +54,7 @@
       <text class="author-btn" bindtap="onBoost">提升曝光</text>
       <text class="author-btn danger" bindtap="onDelete">删除</text>
     </view>
-    <view class="edited-tip" wx:if="{{post.editedAt && isAuthor}}">已编辑于 {{post.editedAt}}</view>
+    
   </view>
 
   <view class="comments">

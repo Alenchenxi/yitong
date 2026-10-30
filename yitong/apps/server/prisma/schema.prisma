@@ -274,6 +274,7 @@ model Post {
   activityTopics      ActivityTopicPost[]
 
   @@index([communityId, status, visibility, createdAt])
+  @@index([status, updatedAt]) // CR-008 最新流按 updated_at 排序
   @@index([circleId, status, createdAt])
   @@index([publisherScope, status, createdAt])
   @@index([visibilityScope, status, createdAt])
@@ -379,6 +380,7 @@ model AnonymousPost {
   comments            AnonComment[]
 
   @@index([communityId, status, createdAt])
+  @@index([status, updatedAt]) // CR-008 最新流按 updated_at 排序
   @@index([createdAt])
   @@index([mood, createdAt])
   @@index([publisherScope, status, createdAt])
@@ -861,6 +863,7 @@ model JobPost {
   @@index([communityId, status, createdAt])
   @@index([status, expireAt])
   @@index([status, createdAt])
+  @@index([status, updatedAt]) // CR-008 岗位列表按 updated_at 排序
   @@index([status, urgent, createdAt])
   @@index([publisherScope, status, createdAt])
   @@index([status, category, createdAt])

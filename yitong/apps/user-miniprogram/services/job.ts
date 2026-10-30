@@ -64,6 +64,7 @@ export interface JobPostVo {
   isExternalSource: boolean;
   status: 'PENDING' | 'PUBLISHED' | 'TAKEN_DOWN' | 'EXPIRED';
   createdAt: string;
+  updatedAt?: string; // CR-008 排序用更新时间（商家编辑刷新；岗位列表排序键）
   platformPublished: boolean;
   myApplication?: {
     id: string;

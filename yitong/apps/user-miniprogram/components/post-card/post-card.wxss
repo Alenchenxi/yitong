@@ -175,3 +175,10 @@
   color: var(--yt-text-sub);
 }
 .share-btn::after { border: none; }
+
+/* CR-008 编辑过的帖子：时间旁「已更新」小标 */
+.updated-tag {
+  margin-left: 8rpx;
+  font-size: 20rpx;
+  color: #C59A00;
+}

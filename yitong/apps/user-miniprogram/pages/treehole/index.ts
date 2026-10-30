@@ -24,7 +24,7 @@ interface NearbyPeopleComponent {
 
 Page({
   data: {
-    posts: [] as Array<AnonPostVo & { timeText: string; anonShort: string }>,
+    posts: [] as Array<AnonPostVo & { timeText: string; isUpdated: boolean; anonShort: string }>,
     nextCursor: null as string | null,
     hasMore: true,
     loading: false,
@@ -109,7 +109,9 @@ Page({
           ...this.data.posts,
           ...resp.list.map((p) => ({
             ...p,
-            timeText: formatTime(p.createdAt),
+            // CR-008 编辑过的帖子显示更新时间
+            timeText: formatTime(p.updatedAt && p.updatedAt !== p.createdAt ? p.updatedAt : p.createdAt),
+            isUpdated: !!p.updatedAt && p.updatedAt !== p.createdAt,
             anonShort: p.anonId.slice(0, 10),
           })),
         ],

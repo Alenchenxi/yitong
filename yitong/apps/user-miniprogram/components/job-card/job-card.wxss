@@ -50,6 +50,12 @@
   background: var(--yt-disabled-bg);
   color: var(--yt-text-sub);
 }
+/* CR-008 商家编辑过的岗位徽标 */
+.bd-updated {
+  background: #FFF7D1;
+  color: #735700;
+  border: 1rpx solid #E3BD22;
+}
 .shop {
   margin-top: 12rpx;
   font-size: 24rpx;

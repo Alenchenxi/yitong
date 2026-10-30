@@ -33,6 +33,7 @@ Component({
   },
   data: {
     timeText: '',
+    isUpdated: false, // CR-008 编辑过的帖子（updatedAt !== createdAt），列表显示更新时间 + 已更新标
     avatarChar: '',
     hasAvatar: false,
     // 图片九宫格布局：1 张大图 / 2-4 张 2 列 / 5-9 张 3 列
@@ -41,6 +42,7 @@ Component({
   observers: {
     'post, anonymous': function (p: {
       createdAt?: string;
+      updatedAt?: string;
       images?: string[];
       authorNickname?: string;
       authorAvatarUrl?: string | null;
@@ -48,8 +50,10 @@ Component({
     } | null) {
       if (!p) return;
       const isAnon = this.data.anonymous;
+      const isUpdated = !!p.updatedAt && !!p.createdAt && p.updatedAt !== p.createdAt;
       this.setData({
-        timeText: p.createdAt ? formatTime(p.createdAt) : '',
+        timeText: formatTime(isUpdated && p.updatedAt ? p.updatedAt : p.createdAt ?? ''),
+        isUpdated,
         avatarChar: isAnon ? '?' : ((p.authorNickname ?? '?').slice(0, 1)),
         hasAvatar: !isAnon && !!p.authorAvatarUrl,
         imgLayout: this.calcLayout(p.images?.length ?? 0),
