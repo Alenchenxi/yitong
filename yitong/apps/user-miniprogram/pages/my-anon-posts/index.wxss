@@ -21,8 +21,21 @@
   background: var(--yt-disabled-bg);
 }
 .post-images-1 .post-image { height: 300rpx; }
-.meta { display: flex; justify-content: space-between; margin-top: 16rpx; font-size: 22rpx; color: #999; }
+.meta { display: flex; justify-content: space-between; align-items: center; margin-top: 16rpx; font-size: 22rpx; color: #999; }
 .stats { color: #C59A00; }
+/* CR-007 本人编辑/删除入口 + 私密徽标 */
+.item-actions { display: flex; align-items: center; gap: 20rpx; }
+.action { color: #4E5969; }
+.action.danger { color: #E63946; }
+.private-badge {
+  margin-left: 12rpx;
+  padding: 0 10rpx;
+  font-size: 20rpx;
+  color: #86909C;
+  background: #F2F3F5;
+  border-radius: 999rpx;
+}
+.edited-tip { font-size: 20rpx; color: #bbb; }
 .empty { text-align: center; padding-top: 200rpx; color: #999; }
 .empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
 .empty-text { font-size: 28rpx; }

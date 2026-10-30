@@ -2,7 +2,7 @@
   <view class="composer">
     <textarea class="textarea" placeholder="匿名说点什么…（不会暴露你的身份）" value="{{content}}" bindinput="onInput" maxlength="500" auto-height show-confirm-bar="{{false}}" />
     <!-- P2-83 媒体区：图片/视频互斥，朋友圈式九宫格（长按媒体呼出右上角删除，删除后自动重排） -->
-    <view class="image-grid" wx:if="{{!video}}">
+    <view class="image-grid" wx:if="{{!video && !keptVideoUrl}}">
       <view class="image-item" wx:for="{{imagePaths}}" wx:key="*this" bindlongpress="toggleDelete">
         <image class="selected-image" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewImage" />
         <view class="remove-image" wx:if="{{showDelete}}" data-index="{{index}}" catchtap="removeImage" aria-role="button" aria-label="删除图片">×</view>
@@ -29,8 +29,8 @@
         <text class="add-image-tip">视频</text>
       </view>
     </view>
-    <view class="video-box" wx:if="{{video}}" bindlongpress="toggleDelete">
-      <video class="video" src="{{video.localPath}}" poster="{{video.coverLocalPath}}" object-fit="cover" controls></video>
+    <view class="video-box" wx:if="{{video || keptVideoUrl}}" bindlongpress="toggleDelete">
+      <video class="video" src="{{video ? video.localPath : keptVideoUrl}}" poster="{{video ? video.coverLocalPath : keptVideoCover}}" object-fit="cover" controls></video>
       <view class="remove-image video-del" wx:if="{{showDelete}}" catchtap="removeVideo" aria-role="button" aria-label="删除视频">×</view>
     </view>
     <view class="composer-count">{{content.length}}/500</view>
@@ -53,7 +53,16 @@
       <view class="mood-chip {{selectedMood === item ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this" data-mood="{{item}}" bindtap="pickMood">{{item}}</view>
     </view>
   </view>
-  <button class="submit" bindtap="submit" disabled="{{submitting}}" loading="{{submitting}}">{{submitting ? '发布中…' : '匿名发布'}}</button>
+  <!-- CR-007 可见性：公开 / 私密（私密仅作者可见，跳公开流；匿名开关关闭时整页不可达，私密选项天然隐藏） -->
+  <view class="visibility-section">
+    <view class="mood-label">发布到</view>
+    <view class="visibility-row">
+      <text class="visibility-btn {{visibility === 'PUBLIC' ? 'on' : ''}}" data-visibility="PUBLIC" catchtap="setVisibility">公开</text>
+      <text class="visibility-btn {{visibility === 'PRIVATE' ? 'on' : ''}}" data-visibility="PRIVATE" catchtap="setVisibility">仅自己可见（私密）</text>
+    </view>
+    <view class="visibility-tip">{{visibility === 'PUBLIC' ? '所有人可见，进入树洞广场/推荐' : '仅自己可见，不会出现在树洞广场/推荐/搜索'}}</view>
+  </view>
+  <button class="submit" bindtap="submit" disabled="{{submitting}}" loading="{{submitting}}">{{submitting ? (editId ? '保存中…' : '发布中…') : (editId ? '保存' : '匿名发布')}}</button>
 </view>
 
 <!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->

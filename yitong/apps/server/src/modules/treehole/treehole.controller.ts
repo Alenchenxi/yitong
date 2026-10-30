@@ -103,6 +103,24 @@ export class TreeholeController {
     return ok(await this.treehole.listMyAnonPosts(uid));
   }
 
+  // CR-007 编辑树洞帖（仅作者；anonToken 鉴权，anonId 比对；平台帖仅平台管理员）
+  @Public()
+  @UseGuards(AnonGuard)
+  @Put('posts/:id')
+  async editPost(@Param('id') id: string, @Body() dto: CreateAnonPostDto, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.editPost(anonId, id, dto));
+  }
+
+  // CR-007 作者删除树洞帖（软删；平台删除走 admin 接口）
+  @Public()
+  @UseGuards(AnonGuard)
+  @Delete('posts/:id')
+  async deletePost(@Param('id') id: string, @Req() req: Request) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.deletePost(anonId, id));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Get('posts/:id')

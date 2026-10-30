@@ -46,6 +46,12 @@
   flex-shrink: 0;
 }
 
+/* CR-007 删除入口（危险色，同表白墙详情 danger 口径） */
+.action.danger {
+  background: #FFF0F4;
+  color: #ff4d6d;
+}
+
 .empty { text-align: center; padding-top: 200rpx; color: #999; }
 .empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
 .empty-text { font-size: 28rpx; }

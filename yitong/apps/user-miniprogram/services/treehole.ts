@@ -14,6 +14,8 @@ export interface AnonPostVo {
   mood: string | null; // P0-13 情绪分类
   locationCity: string | null; // CR-006 发布地·市（纯展示文本，服务端从选点地址解析；不存坐标）
   locationDistrict: string | null; // CR-006 发布地·区（地址无区县命中时 null）
+  visibility: 'PUBLIC' | 'PRIVATE'; // CR-007 公开/私密（私密仅作者可见）
+  editedAt: string | null; // CR-007 最后编辑时间 ISO
   likeCount: number;
   liked: boolean;
   commentCount: number; // 评论数（动态 _count）
@@ -257,8 +259,30 @@ export function createPost(data: {
   videoUrl?: string; // P2-83 与图片互斥（服务端强校验）
   videoCover?: string;
   locationAddress?: string; // CR-006 发布地：选点地址文本（服务端解析市/区）
+  visibility?: 'PUBLIC' | 'PRIVATE'; // CR-007 公开/私密（私密仅作者可见）
 }): Promise<AnonPostVo> {
   return anonRequest({ url: '/treehole/posts', method: 'POST', data });
+}
+
+// CR-007 编辑树洞帖（仅作者；anonToken 鉴权；全量提交，未传 locationAddress 保持原值）
+export function updateAnonPost(
+  id: string,
+  data: {
+    content: string;
+    images?: string[];
+    mood?: string;
+    videoUrl?: string;
+    videoCover?: string;
+    locationAddress?: string;
+    visibility?: 'PUBLIC' | 'PRIVATE';
+  },
+): Promise<AnonPostVo> {
+  return anonRequest({ url: `/treehole/posts/${encodeURIComponent(id)}`, method: 'PUT', data });
+}
+
+// CR-007 删除树洞帖（仅作者软删）
+export function deleteAnonPost(id: string): Promise<{ deleted: boolean }> {
+  return anonRequest({ url: `/treehole/posts/${encodeURIComponent(id)}`, method: 'DELETE' });
 }
 
 export function matchAnon(): Promise<MatchResp> {

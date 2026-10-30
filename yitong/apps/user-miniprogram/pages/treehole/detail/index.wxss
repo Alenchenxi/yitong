@@ -21,6 +21,21 @@
 .actions { display: flex; align-items: center; }
 .boost { font-size: 26rpx; color: #C59A00; font-weight: 600; padding: 10rpx 24rpx 10rpx 0; }
 .block { font-size: 26rpx; color: #E63946; padding: 10rpx 24rpx 10rpx 0; }
+/* CR-007 发布者操作：编辑 / 删除（仅 isAuthor 可见） */
+.edit { font-size: 26rpx; color: #4E5969; padding: 10rpx 24rpx 10rpx 0; }
+.delete { font-size: 26rpx; color: #E63946; padding: 10rpx 24rpx 10rpx 0; }
+.edited-tip { font-size: 22rpx; color: #aaa; }
+/* CR-007 私密帖徽标（仅作者详情可见的灰色 chip） */
+.private-badge {
+  display: inline-block;
+  margin-left: 12rpx;
+  padding: 0 12rpx;
+  font-size: 20rpx;
+  color: #86909C;
+  background: #F2F3F5;
+  border-radius: 999rpx;
+  vertical-align: middle;
+}
 .like { font-size: 26rpx; color: #999; padding: 10rpx 0 10rpx 24rpx; }
 .like.liked { color: #C59A00; }
 .boost-badge {

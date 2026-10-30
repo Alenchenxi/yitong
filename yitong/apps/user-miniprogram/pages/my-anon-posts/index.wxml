@@ -18,8 +18,13 @@
         />
       </view>
       <view class="meta">
-        <text>{{item.timeText}}</text>
-        <text class="stats">♥ {{item.likeCount}}</text>
+        <text>{{item.timeText}}<text wx:if="{{item.editedAt}}" class="edited-tip"> · 已编辑</text><text wx:if="{{item.visibility === 'PRIVATE'}}" class="private-badge">私密</text></text>
+        <view class="item-actions">
+          <!-- CR-007 本人编辑/删除入口 -->
+          <text class="action" data-id="{{item.id}}" catchtap="onEditItem">编辑</text>
+          <text class="action danger" data-id="{{item.id}}" catchtap="onDeleteItem">删除</text>
+          <text class="stats">♥ {{item.likeCount}}</text>
+        </view>
       </view>
     </view>
   </view>

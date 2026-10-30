@@ -35,7 +35,7 @@
   </view>
 
   <!-- 媒体：图片或视频（互斥）；P2-83 朋友圈式：长按媒体呼出右上角删除，删除后自动重排 -->
-  <view class="images" wx:if="{{!video}}">
+  <view class="images" wx:if="{{!video && !keptVideoUrl}}">
     <view class="img-box" wx:for="{{images}}" wx:key="*this" bindlongpress="toggleDelete">
       <image class="img" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewImage"></image>
       <view class="img-del" wx:if="{{showDelete}}" data-idx="{{index}}" catchtap="removeImage">×</view>
@@ -50,8 +50,8 @@
     </view>
   </view>
 
-  <view class="video-box" wx:if="{{video}}" bindlongpress="toggleDelete">
-    <video class="video" src="{{video.localPath}}" poster="{{video.coverLocalPath}}" object-fit="cover" controls></video>
+  <view class="video-box" wx:if="{{video || keptVideoUrl}}" bindlongpress="toggleDelete">
+    <video class="video" src="{{video ? video.localPath : keptVideoUrl}}" poster="{{video ? video.coverLocalPath : keptVideoCover}}" object-fit="cover" controls></video>
     <view class="img-del video-del" wx:if="{{showDelete}}" catchtap="removeVideo">×</view>
   </view>
 
@@ -83,7 +83,8 @@
     <view class="section-title">发布到</view>
     <view class="visibility-row">
       <text class="visibility-btn {{visibility === 'PUBLIC' ? 'on' : ''}}" data-visibility="PUBLIC" catchtap="setVisibility">公开</text>
-      <text class="visibility-btn {{visibility === 'PRIVATE' ? 'on' : ''}}" data-visibility="PRIVATE" catchtap="setVisibility">仅自己可见（私密）</text>
+      <!-- CR-007 匿名内容关闭时隐藏私密选项（updateAnonymousContentVisibility 已同步重置状态） -->
+      <text wx:if="{{showAnonymousPublish}}" class="visibility-btn {{visibility === 'PRIVATE' ? 'on' : ''}}" data-visibility="PRIVATE" catchtap="setVisibility">仅自己可见（私密）</text>
       <text class="visibility-btn {{visibility === 'DRAFT' ? 'on' : ''}}" data-visibility="DRAFT" catchtap="setVisibility">草稿</text>
     </view>
     <view class="section-tip">

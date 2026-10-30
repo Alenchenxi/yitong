@@ -1,5 +1,5 @@
 import type { AppInstance } from '../../../app';
-import { hasAnonToken, getAnonymousToken, createPost, getAnonTags } from '../../../services/treehole';
+import { hasAnonToken, getAnonymousToken, createPost, updateAnonPost, getAnonTags, type AnonPostVo } from '../../../services/treehole';
 import { uploadImages, uploadImage, uploadVideo } from '../../../services/upload';
 import { chooseLocation } from '../../../utils/choose-location';
 import {
@@ -32,9 +32,14 @@ Page({
     video: null as VideoDraft | null, // P2-83 视频（与图片互斥）
     showDelete: false, // P2-83 朋友圈式：长按媒体呼出/收起右上角删除按钮
     chosenLocation: null as { name: string; address: string } | null, // CR-006 发布地（可选）
+    visibility: 'PUBLIC' as 'PUBLIC' | 'PRIVATE', // CR-007 公开/私密
+    editId: '', // CR-007 编辑模式（详情页/我的树洞带 editId 进入）
+    originalImages: [] as string[], // CR-007 编辑模式：已上传 URL 分区（透传，不重传）
+    keptVideoUrl: '', // CR-007 编辑模式：保留原视频（未替换则透传）
+    keptVideoCover: '',
   },
 
-  async onLoad() {
+  async onLoad(options: Record<string, string | undefined>) {
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
     if (!await requireAnonymousContentVisibility()) return;
@@ -42,15 +47,37 @@ Page({
     if (!hasAnonToken()) {
       try { await getAnonymousToken(); } catch { return; }
     }
+    let moods = FALLBACK_MOODS;
     // P1-13 从标签库拉 mood 选项
     try {
       const tags = await getAnonTags();
       if (tags.mood.length > 0) {
-        this.setData({ moods: tags.mood.map((t) => t.name) });
+        moods = tags.mood.map((t) => t.name);
       }
     } catch {
       /* 用 fallback */
     }
+    // CR-007 编辑模式：从 storage 取被编辑帖（详情页/我的树洞写入）
+    if (options.editId) {
+      const draft = wx.getStorageSync<AnonPostVo | null>('yitong_edit_anon_post_draft');
+      if (draft && draft.id === options.editId) {
+        if (draft.mood && !moods.includes(draft.mood)) {
+          moods = [...moods, draft.mood];
+        }
+        wx.setNavigationBarTitle({ title: '编辑动态' });
+        this.setData({
+          editId: draft.id,
+          content: draft.content,
+          selectedMood: draft.mood ?? '',
+          imagePaths: draft.images ?? [],
+          originalImages: [...(draft.images ?? [])],
+          keptVideoUrl: draft.videoUrl ?? '',
+          keptVideoCover: draft.videoCover ?? '',
+          visibility: draft.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC',
+        });
+      }
+    }
+    this.setData({ moods });
   },
 
   onUnload() {
@@ -64,6 +91,12 @@ Page({
   pickMood(e: WechatMiniprogram.TouchEvent) {
     const mood = e.currentTarget.dataset.mood as string;
     this.setData({ selectedMood: mood === this.data.selectedMood ? '' : mood });
+  },
+
+  // CR-007 公开/私密切换
+  setVisibility(e: WechatMiniprogram.TouchEvent) {
+    const v = e.currentTarget.dataset.visibility as 'PUBLIC' | 'PRIVATE';
+    this.setData({ visibility: v });
   },
 
   // CR-006 发布地：地图选点（复用 P2-80 封装，取消/失败静默）；可清除，不选则不带位置
@@ -85,7 +118,7 @@ Page({
 
   // 图片选择（与视频互斥）
   chooseImages() {
-    if (this.data.video) {
+    if (this.data.video || this.data.keptVideoUrl) {
       wx.showToast({ title: '视频与图片不可同时发布', icon: 'none' });
       return;
     }
@@ -140,6 +173,8 @@ Page({
             coverLocalPath: f.thumbTempFilePath ?? '',
             duration: f.duration ?? 0,
           },
+          keptVideoUrl: '', // CR-007 替换后不再保留原视频
+          keptVideoCover: '',
           showDelete: false,
         });
       },
@@ -160,7 +195,7 @@ Page({
   },
 
   removeVideo() {
-    this.setData({ video: null, showDelete: false });
+    this.setData({ video: null, keptVideoUrl: '', keptVideoCover: '', showDelete: false });
   },
 
   async submit() {
@@ -173,13 +208,21 @@ Page({
     this.setData({ submitting: true });
     const video = this.data.video;
     wx.showLoading({
-      title: video ? '上传视频...' : this.data.imagePaths.length > 0 ? '上传图片...' : '发布中...',
+      title: this.data.editId ? '保存中...' : video ? '上传视频...' : this.data.imagePaths.length > 0 ? '上传图片...' : '发布中...',
       mask: true,
     });
     let published = false;
     let failedMessage = '';
     try {
       // P2-83 图片/视频互斥：有视频只传视频 + 封面，否则传图片
+      // CR-007 编辑模式按 originalImages 分区：已上传 URL 透传，仅新选本地路径上传
+      const originalSet = new Set(this.data.originalImages);
+      const keptUrls: string[] = [];
+      const toUpload: string[] = [];
+      for (const img of this.data.imagePaths) {
+        if (originalSet.has(img)) keptUrls.push(img);
+        else toUpload.push(img);
+      }
       let images: string[] | undefined;
       let videoUrl: string | undefined;
       let videoCover: string | undefined;
@@ -189,11 +232,15 @@ Page({
           wx.showLoading({ title: '上传封面...', mask: true });
           videoCover = await uploadImage(video.coverLocalPath, 'anon');
         }
+      } else if (this.data.keptVideoUrl) {
+        // CR-007 编辑未替换视频：原视频透传
+        videoUrl = this.data.keptVideoUrl;
+        videoCover = this.data.keptVideoCover || undefined;
       } else if (this.data.imagePaths.length > 0) {
-        images = await uploadImages(this.data.imagePaths, 'anon');
+        images = [...keptUrls, ...(toUpload.length > 0 ? await uploadImages(toUpload, 'anon') : [])];
       }
-      wx.showLoading({ title: '发布中...', mask: true });
-      await createPost({
+      wx.showLoading({ title: this.data.editId ? '保存中...' : '发布中...', mask: true });
+      const payload = {
         content,
         mood: this.data.selectedMood || undefined,
         images,
@@ -201,7 +248,13 @@ Page({
         videoCover,
         // CR-006 发布地：仅选中时提交地址文本（服务端解析市/区；不存坐标）
         locationAddress: this.data.chosenLocation?.address,
-      });
+        visibility: this.data.visibility,
+      };
+      if (this.data.editId) {
+        await updateAnonPost(this.data.editId, payload);
+      } else {
+        await createPost(payload);
+      }
       published = true;
     } catch (e) {
       // 服务层已 toast，但会被下方 hideLoading 吞掉（toast/loading 共用原生视图）——hideLoading 后补一次提示
@@ -211,7 +264,7 @@ Page({
       this.setData({ submitting: false });
     }
     if (published) {
-      wx.showToast({ title: '发布成功', icon: 'success' });
+      wx.showToast({ title: this.data.editId ? '已保存' : '发布成功', icon: 'success' });
       setTimeout(() => wx.navigateBack(), 600);
     } else if (failedMessage) {
       wx.showToast({ title: failedMessage, icon: 'none' });

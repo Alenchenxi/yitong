@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateAnonPostDto {
   @IsString()
@@ -34,4 +34,9 @@ export class CreateAnonPostDto {
   @IsString()
   @MaxLength(200)
   locationAddress?: string;
+
+  /** CR-007 可见性：公开/私密（私密仅作者可见，跳内容审核；树洞无草稿，不支持 DRAFT） */
+  @IsOptional()
+  @IsIn(['PUBLIC', 'PRIVATE'])
+  visibility?: 'PUBLIC' | 'PRIVATE';
 }

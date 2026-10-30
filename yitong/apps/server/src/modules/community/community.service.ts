@@ -565,6 +565,8 @@ export class CommunityService {
       this.prisma.anonymousPost.count({
         where: {
           status: PostStatus.APPROVED,
+          visibility: PostVisibility.PUBLIC,
+          deletedAt: null,
           AND: [this.publicationPolicy.anonymousPostVisibilityFilter(communityId)],
         },
       }),
@@ -611,6 +613,8 @@ export class CommunityService {
         by: ['communityId', 'publisherScope', 'visibilityScope'],
         where: {
           status: PostStatus.APPROVED,
+          visibility: PostVisibility.PUBLIC,
+          deletedAt: null,
           OR: [
             {
               publisherScope: PublicationScope.COMMUNITY,

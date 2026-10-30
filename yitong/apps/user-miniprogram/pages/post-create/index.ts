@@ -32,6 +32,8 @@ interface PageData {
   showEmoji: boolean; // P0-09 表情面板
   emojis: string[];
   video: { localPath: string; coverLocalPath: string; duration: number } | null; // P0-09 视频（与图片互斥）
+  keptVideoUrl: string; // CR-007 编辑模式：保留原视频（未替换则透传，修复编辑丢视频）
+  keptVideoCover: string;
   showDelete: boolean; // P2-83 朋友圈式：长按媒体呼出/收起右上角删除按钮
   editId: string; // P1-10 编辑模式：被编辑帖子 id（空=新建）
   visibility: 'PUBLIC' | 'PRIVATE' | 'DRAFT'; // P1-11 可见性选择
@@ -69,6 +71,8 @@ Page({
     showEmoji: false,
     emojis: EMOJIS,
     video: null,
+    keptVideoUrl: '',
+    keptVideoCover: '',
     showDelete: false,
     editId: '',
     visibility: 'PUBLIC',
@@ -119,6 +123,9 @@ Page({
         initial.hasContent = draft.content.trim().length > 0;
         initial.images = draft.images ?? [];
         initial.originalImages = draft.images ?? [];
+        // CR-007 编辑模式保留原视频（未替换则透传，修复此前编辑保存丢视频）
+        initial.keptVideoUrl = draft.videoUrl ?? '';
+        initial.keptVideoCover = draft.videoCover ?? '';
         if (showAnonymousPublish) {
           initial.isAnonymous = !!draft.isAnonymous;
         }
@@ -143,6 +150,8 @@ Page({
     this.setData({
       showAnonymousPublish: enabled,
       ...(!enabled ? { isAnonymous: false } : {}),
+      // CR-007 匿名内容关闭时隐藏私密发布选项；已选私密则重置为公开
+      ...(!enabled && this.data.visibility === 'PRIVATE' ? { visibility: 'PUBLIC' } : {}),
     });
   },
 
@@ -231,7 +240,7 @@ Page({
 
   // 图片选择（与视频互斥）
   chooseImage() {
-    if (this.data.video) {
+    if (this.data.video || this.data.keptVideoUrl) {
       wx.showToast({ title: '视频与图片不可同时发布', icon: 'none' });
       return;
     }
@@ -286,12 +295,14 @@ Page({
             coverLocalPath: f.thumbTempFilePath ?? '',
             duration: f.duration ?? 0,
           },
+          keptVideoUrl: '', // CR-007 替换后不再保留原视频
+          keptVideoCover: '',
         });
       },
     });
   },
   removeVideo() {
-    this.setData({ video: null, showDelete: false });
+    this.setData({ video: null, keptVideoUrl: '', keptVideoCover: '', showDelete: false });
   },
 
   async submit() {
@@ -361,6 +372,10 @@ Page({
           videoCover = await uploadImage(this.data.video.coverLocalPath, 'posts');
         }
         this.setData({ uploading: false });
+      } else if (this.data.keptVideoUrl) {
+        // CR-007 编辑未替换视频：原视频透传（修复此前编辑保存丢视频）
+        videoUrl = this.data.keptVideoUrl;
+        videoCover = this.data.keptVideoCover || undefined;
       }
       wx.showLoading({ title: this.data.editId ? '保存中...' : '发布中...', mask: true });
       const selectedTagNames = this.data.tags.filter((t) => t.selected).map((t) => t.name);

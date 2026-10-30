@@ -172,6 +172,8 @@ export class SquareService {
     const cur = cursor ? this.decodeCursor(cursor) : null;
     const baseWhere: Prisma.AnonymousPostWhereInput = {
       status: PostStatus.APPROVED,
+      visibility: 'PUBLIC', // CR-007 公开流不含私密帖
+      deletedAt: null,
     };
     // P0-16 屏蔽隔离延续到广场 union 列表（仅当有 anonId 时计算）
     if (anonId) {
@@ -214,6 +216,8 @@ export class SquareService {
   private async fetchBoostedAnonPosts(anonId: string | null, take: number, communityId: string) {
     const where: Prisma.AnonymousPostWhereInput = {
       status: PostStatus.APPROVED,
+      visibility: 'PUBLIC', // CR-007 公开流不含私密帖
+      deletedAt: null,
       boostUntil: { gt: new Date() },
       AND: [this.publication.anonymousPostVisibilityFilter(communityId)],
     };
@@ -255,7 +259,7 @@ export class SquareService {
         : Promise.resolve([]),
       anonIds.length > 0
         ? this.prisma.anonymousPost.findMany({
-            where: { id: { in: anonIds }, status: PostStatus.APPROVED },
+            where: { id: { in: anonIds }, status: PostStatus.APPROVED, visibility: 'PUBLIC', deletedAt: null },
             include: anonId
               ? { likes: { where: { anonId }, select: { id: true }, take: 1 } }
               : undefined,

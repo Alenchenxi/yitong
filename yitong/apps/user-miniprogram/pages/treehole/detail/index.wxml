@@ -10,7 +10,7 @@
 
   <block wx:else>
     <view wx:if="{{post}}" class="card">
-      <view class="anon" catchtap="goAuthor">树洞 {{post.anonShort}}<text wx:if="{{post.platformPublished}}" class="yt-platform-badge">平台发布</text><text wx:if="{{post.locationCity}}" class="loc-badge">📍{{post.locationCity}}{{post.locationDistrict ? ' · ' + post.locationDistrict : ''}}</text><text class="boost-badge" wx:if="{{post.boosted}}">推广</text></view>
+      <view class="anon" catchtap="goAuthor">树洞 {{post.anonShort}}<text wx:if="{{post.visibility === 'PRIVATE'}}" class="private-badge">仅自己可见</text><text wx:if="{{post.platformPublished}}" class="yt-platform-badge">平台发布</text><text wx:if="{{post.locationCity}}" class="loc-badge">📍{{post.locationCity}}{{post.locationDistrict ? ' · ' + post.locationDistrict : ''}}</text><text class="boost-badge" wx:if="{{post.boosted}}">推广</text></view>
       <view class="content">{{post.content}}</view>
       <!-- P2-83 视频帖（与图片互斥） -->
       <video wx:if="{{post.videoUrl}}" class="video" src="{{post.videoUrl}}" poster="{{post.videoCover}}" object-fit="cover" controls></video>
@@ -24,8 +24,11 @@
         <button class="share-btn" open-type="share">↗ 转发</button>
       </view>
       <view class="row">
-        <text class="time">{{post.timeText}}</text>
+        <text class="time">{{post.timeText}}<text wx:if="{{post.editedAt && isAuthor}}" class="edited-tip"> · 已编辑</text></text>
         <view class="actions">
+          <!-- CR-007 仅发布者可见：编辑 / 删除 -->
+          <view class="edit" wx:if="{{isAuthor}}" catchtap="onEdit">编辑</view>
+          <view class="delete" wx:if="{{isAuthor}}" catchtap="onDelete">删除</view>
           <view class="boost" wx:if="{{isAuthor}}" catchtap="onBoost">提升曝光</view>
           <view class="block" catchtap="blockAuthor">屏蔽</view>
           <view class="like {{post.liked ? 'liked' : ''}}" catchtap="onLike">

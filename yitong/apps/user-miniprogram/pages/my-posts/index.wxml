@@ -27,6 +27,9 @@
         </view>
       </view>
       <text wx:if="{{activeTab === 'drafts'}}" class="action" data-id="{{item.id}}" catchtap="continueDraft">继续编辑</text>
+      <!-- CR-007 我的发布/私密 tab：本人编辑/删除入口 -->
+      <text wx:if="{{activeTab === 'posts' || activeTab === 'private'}}" class="action" data-id="{{item.id}}" catchtap="continueDraft">编辑</text>
+      <text wx:if="{{activeTab === 'posts' || activeTab === 'private'}}" class="action danger" data-id="{{item.id}}" catchtap="onDeletePost">删除</text>
     </view>
   </view>
   <view class="empty" wx:elif="{{!loading}}">

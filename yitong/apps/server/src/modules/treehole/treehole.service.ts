@@ -5,6 +5,7 @@ import {
   MatchKind,
   MatchStatus,
   PostStatus,
+  PostVisibility,
   Prisma,
   PublicationScope,
 } from '@prisma/client';
@@ -295,15 +296,19 @@ export class TreeholeService {
     }
     const images = dto.videoUrl ? [] : dto.images ?? [];
 
-    await this.moderation.checkText(dto.content, ownerOpenid);
-    for (const url of images) {
-      await this.moderation.checkImage(url);
-    }
-    if (dto.videoUrl) {
-      this.moderation.checkVideoStub(dto.videoUrl);
-    }
-    if (dto.videoCover) {
-      await this.moderation.checkImage(dto.videoCover);
+    // CR-007 私密帖不进公开流：跳内容安全审核（对齐表白墙 createPost PRIVATE 豁免），仅作者可见
+    const visibility = dto.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC';
+    if (visibility === 'PUBLIC') {
+      await this.moderation.checkText(dto.content, ownerOpenid);
+      for (const url of images) {
+        await this.moderation.checkImage(url);
+      }
+      if (dto.videoUrl) {
+        this.moderation.checkVideoStub(dto.videoUrl);
+      }
+      if (dto.videoCover) {
+        await this.moderation.checkImage(dto.videoCover);
+      }
     }
     // P1-13：发帖 mood 从标签库校验
     if (dto.mood) {
@@ -340,6 +345,7 @@ export class TreeholeService {
           locationCity: locationCity,
           locationDistrict: locationDistrict,
           status: PostStatus.APPROVED,
+          visibility,
           publisherScope,
           // 树洞内容在所有圈子共用一条记录，避免复制后点赞、评论和审核状态漂移。
           visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
@@ -350,12 +356,98 @@ export class TreeholeService {
     return this.toVo(post);
   }
 
+  // CR-007 编辑树洞帖（仅作者；anonId 比对 + 平台帖仅平台管理员；编辑重走全部内容审核）
+  async editPost(anonId: string, postId: string, dto: CreateAnonPostDto) {
+    const post = await this.prisma.anonymousPost.findFirst({
+      where: { id: postId, deletedAt: null },
+      select: { id: true, anonId: true, publisherScope: true, communityId: true },
+    });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (post.anonId !== anonId) throw new BizException(10003, '只有作者可编辑', HttpStatus.FORBIDDEN);
+    const ownerProfile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { userId: true },
+    });
+    if (!ownerProfile) throw new BizException(30001, '匿名身份已失效', HttpStatus.UNAUTHORIZED);
+    await this.publicationPolicy.assertOwnerCanManage(ownerProfile.userId, post.publisherScope);
+    await this.publicationPolicy.assertAnonCommunityInteractionAllowed(anonId, post.communityId);
+
+    // P2-83 图片与视频互斥（与 createPost 同口径），有视频时忽略 images
+    if (dto.videoUrl && (dto.images?.length ?? 0) > 0) {
+      throw new BizException(30005, '图片与视频不能同时发布', HttpStatus.BAD_REQUEST);
+    }
+    const images = dto.videoUrl ? [] : dto.images ?? [];
+    // 编辑重走内容安全（含私密帖，对齐表白墙 editPost）
+    await this.moderation.checkText(dto.content, await this.resolveAnonOpenid(anonId));
+    for (const url of images) {
+      await this.moderation.checkImage(url);
+    }
+    if (dto.videoUrl) {
+      this.moderation.checkVideoStub(dto.videoUrl);
+    }
+    if (dto.videoCover) {
+      await this.moderation.checkImage(dto.videoCover);
+    }
+    if (dto.mood) {
+      await this.assertTagsInLibrary('mood', [dto.mood]);
+    }
+    // CR-006 发布地：未传保持原值；传值重解析（纯文本不存坐标——匿名红线）
+    let locationCity: string | null | undefined;
+    let locationDistrict: string | null | undefined;
+    if (dto.locationAddress !== undefined) {
+      locationCity = dto.locationAddress ? this.location.parseCityFromAddress(dto.locationAddress) : null;
+      locationDistrict = dto.locationAddress
+        ? this.location.parseDistrictFromAddress(locationCity, dto.locationAddress)
+        : null;
+    }
+    const updated = await this.prisma.anonymousPost.update({
+      where: { id: postId },
+      data: {
+        content: dto.content,
+        images,
+        videoUrl: dto.videoUrl ?? null,
+        videoCover: dto.videoCover ?? null,
+        mood: dto.mood ?? null,
+        ...(locationCity !== undefined ? { locationCity } : {}),
+        ...(locationDistrict !== undefined ? { locationDistrict } : {}),
+        // 编辑可改可见性（私密改公开 / 公开改私密）
+        ...(dto.visibility ? { visibility: dto.visibility } : {}),
+        editedAt: new Date(),
+      },
+      include: { _count: { select: { comments: true } } },
+    });
+    return this.toVo(updated);
+  }
+
+  // CR-007 作者删除树洞帖（软删；平台删除走 admin 接口，语义=全圈子不可见）
+  async deletePost(anonId: string, postId: string) {
+    const post = await this.prisma.anonymousPost.findFirst({
+      where: { id: postId, deletedAt: null },
+      select: { id: true, anonId: true, publisherScope: true, communityId: true },
+    });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (post.anonId !== anonId) throw new BizException(10003, '只有作者可删除', HttpStatus.FORBIDDEN);
+    const ownerProfile = await this.prisma.anonymousProfile.findUnique({
+      where: { anonId },
+      select: { userId: true },
+    });
+    if (!ownerProfile) throw new BizException(30001, '匿名身份已失效', HttpStatus.UNAUTHORIZED);
+    await this.publicationPolicy.assertOwnerCanManage(ownerProfile.userId, post.publisherScope);
+    await this.publicationPolicy.assertAnonCommunityInteractionAllowed(anonId, post.communityId);
+    await this.prisma.anonymousPost.update({
+      where: { id: postId },
+      data: { deletedAt: new Date() },
+    });
+    return { deleted: true };
+  }
+
   async listPosts(
     anonId: string,
     opts: { cursor?: string; limit?: number; sort?: 'latest' | 'recommend'; mood?: string; communityId?: string; keyword?: string } = {},
   ) {
     const limit = opts.limit ?? 20;
-    const baseWhere: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED };
+    // CR-007：公开流仅 PUBLIC 且未删除（私密帖仅作者在详情/我的树洞可见）
+    const baseWhere: Prisma.AnonymousPostWhereInput = { status: PostStatus.APPROVED, visibility: 'PUBLIC', deletedAt: null };
     if (opts.mood) baseWhere.mood = opts.mood;
     if (opts.keyword?.trim()) baseWhere.content = { contains: opts.keyword.trim(), mode: 'insensitive' };
     // 读路径圈子兜底：缺省解析用户当前圈子，未加入兜底默认圈（不抛 80014）
@@ -461,7 +553,7 @@ export class TreeholeService {
     const profile = await this.prisma.anonymousProfile.findUnique({ where: { userId: uid } });
     if (!profile) return { list: [] };
     const posts = await this.prisma.anonymousPost.findMany({
-      where: { anonId: profile.anonId },
+      where: { anonId: profile.anonId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: { _count: { select: { comments: true } } },
@@ -475,8 +567,11 @@ export class TreeholeService {
       where: {
         id,
         status: PostStatus.APPROVED,
+        deletedAt: null,
         AND: [
           this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+          // CR-007 私密帖仅作者可见（anonId 比对，不触碰真实 uid）
+          { OR: [{ visibility: 'PUBLIC' }, { anonId }] },
         ],
       },
       include: {
@@ -505,6 +600,8 @@ export class TreeholeService {
         where: {
           anonId: targetAnonId,
           status: PostStatus.APPROVED,
+          visibility: 'PUBLIC',
+          deletedAt: null,
           AND: [
             this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
           ],
@@ -629,6 +726,8 @@ export class TreeholeService {
     const where: Prisma.AnonymousPostWhereInput = {
       anonId: targetAnonId,
       status: PostStatus.APPROVED,
+      visibility: 'PUBLIC',
+      deletedAt: null,
       AND: [
         this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
         ...(decodedCursor
@@ -1198,8 +1297,10 @@ export class TreeholeService {
       where: {
         id: postId,
         status: PostStatus.APPROVED,
+        deletedAt: null,
         AND: [
           this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+          { OR: [{ visibility: 'PUBLIC' }, { anonId }] },
         ],
       },
     });
@@ -1252,8 +1353,10 @@ export class TreeholeService {
       where: {
         id: postId,
         status: PostStatus.APPROVED,
+        deletedAt: null,
         AND: [
           this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+          { OR: [{ visibility: 'PUBLIC' }, { anonId }] },
         ],
       },
       select: { id: true, anonId: true },
@@ -1281,8 +1384,10 @@ export class TreeholeService {
       where: {
         id: postId,
         status: PostStatus.APPROVED,
+        deletedAt: null,
         AND: [
           this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+          { OR: [{ visibility: 'PUBLIC' }, { anonId }] },
         ],
       },
       select: { id: true, anonId: true },
@@ -1317,8 +1422,10 @@ export class TreeholeService {
         id: commentId,
         post: {
           status: PostStatus.APPROVED,
+          deletedAt: null,
           AND: [
             this.publicationPolicy.anonymousPostVisibilityFilter(communityId),
+            { OR: [{ visibility: 'PUBLIC' }, { anonId }] },
           ],
         },
       },
@@ -1366,7 +1473,7 @@ export class TreeholeService {
   // 累计浏览数自增（fire-and-forget；updateMany 避免并发删帖 P2025）
   async incrementViewCount(postId: string): Promise<void> {
     await this.prisma.anonymousPost.updateMany({
-      where: { id: postId },
+      where: { id: postId, deletedAt: null },
       data: { viewCount: { increment: 1 } },
     });
   }
@@ -1502,6 +1609,8 @@ export class TreeholeService {
     mood: string | null;
     locationCity?: string | null; // CR-006 发布地·市（存量行可能未带字段，可选入参）
     locationDistrict?: string | null; // CR-006 发布地·区
+    visibility?: PostVisibility; // CR-007（存量调用方可能未带字段，可选入参）
+    editedAt?: Date | null; // CR-007
     status: PostStatus;
     likeCount: number;
     publisherScope: PublicationScope;
@@ -1521,6 +1630,8 @@ export class TreeholeService {
       mood: p.mood,
       locationCity: p.locationCity ?? null,
       locationDistrict: p.locationDistrict ?? null,
+      visibility: p.visibility ?? 'PUBLIC',
+      editedAt: p.editedAt ? p.editedAt.toISOString() : null,
       likeCount: p.likeCount,
       liked: (p.likes?.length ?? 0) > 0,
       platformPublished: p.publisherScope === PublicationScope.PLATFORM,

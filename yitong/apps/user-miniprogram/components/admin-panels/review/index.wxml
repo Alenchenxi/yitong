@@ -70,6 +70,9 @@
       <view class="adm-item-actions">
         <button size="mini" data-id="{{item.id}}" data-pinned="{{item.pinned}}" bindtap="togglePin">{{item.pinned ? '取消置顶' : '置顶'}}</button>
         <button size="mini" data-id="{{item.id}}" data-featured="{{item.featured}}" bindtap="toggleFeature">{{item.featured ? '取消加精' : '加精'}}</button>
+        <!-- CR-007 平台编辑/删除入口 -->
+        <button size="mini" data-id="{{item.id}}" bindtap="editPostTap">编辑</button>
+        <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deletePostTap">删除</button>
         <button wx:if="{{item.status === 'APPROVED'}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="takedown">下架</button>
         <button wx:if="{{item.status === 'REJECTED' && item.moderationAuthority && (isPlatformAdmin || item.moderationAuthority === 'COMMUNITY')}}" size="mini" data-id="{{item.id}}" data-version="{{item.moderationVersion}}" bindtap="restorePostTap">恢复</button>
       </view>
@@ -86,6 +89,9 @@
         <text class="adm-item-sub">{{item.anonId}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text></text>
       </view>
       <view class="adm-item-actions">
+        <!-- CR-007 平台编辑/删除入口 -->
+        <button size="mini" data-id="{{item.id}}" bindtap="editAnonPostTap">编辑</button>
+        <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteAnonPostTap">删除</button>
         <button wx:if="{{item.status === 'APPROVED'}}" size="mini" type="warn" data-id="{{item.id}}" bindtap="takedownAnon">下架</button>
         <button wx:if="{{item.status === 'REJECTED' && item.moderationAuthority && (isPlatformAdmin || item.moderationAuthority === 'COMMUNITY')}}" size="mini" data-id="{{item.id}}" data-version="{{item.moderationVersion}}" bindtap="restoreAnonPostTap">恢复</button>
       </view>

@@ -6,6 +6,7 @@ import {
   getAnonId,
   toggleAnonPostLike,
   blockAnon,
+  deleteAnonPost,
   listAnonComments,
   createAnonComment,
   toggleAnonCommentLike,
@@ -233,6 +234,36 @@ Page({
     const post = this.data.post;
     if (!post) return;
     wx.navigateTo({ url: `/pages/boost/index?type=anon_post&id=${post.id}` });
+  },
+
+  // CR-007 编辑自己的树洞帖：storage 中转草稿 → 发布页 editId 回填（仅 isAuthor 可见入口）
+  onEdit() {
+    const post = this.data.post;
+    if (!post) return;
+    wx.setStorageSync('yitong_edit_anon_post_draft', post);
+    wx.navigateTo({ url: `/pages/treehole/post/index?editId=${post.id}` });
+  },
+
+  // CR-007 删除自己的树洞帖（软删，全圈子不可见）
+  onDelete() {
+    const post = this.data.post;
+    if (!post) return;
+    wx.showModal({
+      title: '删除帖子',
+      content: '删除后所有圈子都不再可见，确定删除吗？',
+      confirmText: '删除',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await deleteAnonPost(post.id);
+          wx.showToast({ title: '已删除', icon: 'success' });
+          setTimeout(() => wx.navigateBack(), 600);
+        } catch {
+          /* toast */
+        }
+      },
+    });
   },
 
   // P0-16 屏蔽此用户（帖子作者）：屏蔽后互相隔离，屏蔽即返回广场

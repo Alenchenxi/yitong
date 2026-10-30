@@ -361,7 +361,10 @@ model AnonymousPost {
   locationCity        String?                @map("location_city") // CR-006 发布地·市（地址文本解析，纯展示；不存坐标——匿名红线：精确坐标可用于去匿名化）
   locationDistrict    String?                @map("location_district") // CR-006 发布地·区（可空：地址无区县命中时为 null）
   status              PostStatus             @default(PENDING)
+  visibility          PostVisibility         @default(PUBLIC) // CR-007 公开/私密发布（复用表白墙 PostVisibility；树洞无草稿）
   createdAt           DateTime               @default(now()) @map("created_at")
+  editedAt            DateTime?              @map("edited_at") // CR-007 最后编辑时间
+  deletedAt           DateTime?              @map("deleted_at") // CR-007 软删（作者删除 / 平台删除=全圈子不可见）
   likeCount           Int                    @default(0) @map("like_count")
   publisherScope      PublicationScope       @default(COMMUNITY) @map("publisher_scope")
   visibilityScope     ContentVisibilityScope @default(COMMUNITY) @map("visibility_scope")

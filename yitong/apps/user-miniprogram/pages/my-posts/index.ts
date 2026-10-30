@@ -6,6 +6,7 @@ import {
   listMyCommentedPosts,
   listMyDrafts,
   listMyPrivate,
+  deletePost,
   type PostVo,
 } from '../../services/confession';
 import { listAllFavorites } from '../../services/favorite';
@@ -211,5 +212,28 @@ Page({
     if (!post) return;
     wx.setStorageSync('yitong_edit_post_draft', post);
     wx.navigateTo({ url: `/pages/post-create/index?editId=${id}` });
+  },
+
+  // CR-007 删除自己的帖子（软删，全圈子不可见）；成功后本地移除
+  onDeletePost(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    const post = this.data.posts.find((p) => p.id === id);
+    if (!post) return;
+    wx.showModal({
+      title: '删除帖子',
+      content: '删除后所有圈子都不再可见，确定删除吗？',
+      confirmText: '删除',
+      confirmColor: '#E63946',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await deletePost(id);
+          this.setData({ posts: this.data.posts.filter((p) => p.id !== id) });
+          wx.showToast({ title: '已删除', icon: 'success' });
+        } catch {
+          /* toast */
+        }
+      },
+    });
   },
 });
