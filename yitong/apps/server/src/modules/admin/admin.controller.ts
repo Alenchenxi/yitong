@@ -154,37 +154,6 @@ export class AdminController {
     return ok(await this.admin.restoreAnonPost(id, dto.expectedVersion, uid, (req as AuthenticatedRequest).adminAccess!));
   }
 
-  // ===== CR-007 平台编辑/删除（编辑=改文案；删除=软删全圈子不可见）=====
-  @Put('posts/:id')
-  @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
-  async adminEditPost(@Param('id') id: string, @Body() body: { content?: string }, @Req() req: Request) {
-    const uid = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.admin.adminEditPost(id, body.content ?? '', uid, (req as AuthenticatedRequest).adminAccess!));
-  }
-
-  @Delete('posts/:id')
-  @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
-  async adminDeletePost(@Param('id') id: string, @Req() req: Request) {
-    const uid = (req as AuthenticatedRequest).user!.uid;
-    const reason = (req.body as { reason?: string })?.reason;
-    return ok(await this.admin.adminDeletePost(id, uid, reason, (req as AuthenticatedRequest).adminAccess!));
-  }
-
-  @Put('anon-posts/:id')
-  @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
-  async adminEditAnonPost(@Param('id') id: string, @Body() body: { content?: string }, @Req() req: Request) {
-    const uid = (req as AuthenticatedRequest).user!.uid;
-    return ok(await this.admin.adminEditAnonPost(id, body.content ?? '', uid, (req as AuthenticatedRequest).adminAccess!));
-  }
-
-  @Delete('anon-posts/:id')
-  @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
-  async adminDeleteAnonPost(@Param('id') id: string, @Req() req: Request) {
-    const uid = (req as AuthenticatedRequest).user!.uid;
-    const reason = (req.body as { reason?: string })?.reason;
-    return ok(await this.admin.adminDeleteAnonPost(id, uid, reason, (req as AuthenticatedRequest).adminAccess!));
-  }
-
   @Post('job-posts/:id/restore')
   @RequireAdminPermission(ADMIN_PERMISSIONS.CONTENT_MODERATE)
   async restoreJobPost(@Param('id') id: string, @Body() dto: RestoreModeratedContentDto, @Req() req: Request) {

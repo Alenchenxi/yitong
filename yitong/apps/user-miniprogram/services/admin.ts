@@ -53,19 +53,6 @@ export function takedownPost(id: string, reason?: string) {
 export function takedownAnonPost(id: string, reason?: string) {
   return request({ url: `/admin/anon-posts/${id}/takedown`, method: 'POST', data: { reason } });
 }
-// ===== CR-007 平台编辑/删除（编辑=改文案；删除=软删，全圈子不可见）=====
-export function editPostAdmin(id: string, content: string) {
-  return request({ url: `/admin/posts/${id}`, method: 'PUT', data: { content } });
-}
-export function deletePostAdmin(id: string, reason?: string) {
-  return request({ url: `/admin/posts/${id}`, method: 'DELETE', data: { reason } });
-}
-export function editAnonPostAdmin(id: string, content: string) {
-  return request({ url: `/admin/anon-posts/${id}`, method: 'PUT', data: { content } });
-}
-export function deleteAnonPostAdmin(id: string, reason?: string) {
-  return request({ url: `/admin/anon-posts/${id}`, method: 'DELETE', data: { reason } });
-}
 export function getPricing() {
   return request<PricingVo[]>({ url: '/admin/pricing' });
 }

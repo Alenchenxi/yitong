@@ -9,10 +9,6 @@ import {
   batchMerchants,
   takedownPost,
   takedownAnonPost,
-  editPostAdmin,
-  deletePostAdmin,
-  editAnonPostAdmin,
-  deleteAnonPostAdmin,
   pinPost,
   featurePost,
   listPostsAdmin,
@@ -357,92 +353,6 @@ Component({
       void featurePost(id, !featured).then(() => {
         wx.showToast({ title: !featured ? '已加精' : '已取消加精', icon: 'success' });
         this.load();
-      });
-    },
-
-    // ===== CR-007 平台编辑/删除 =====
-    // 平台编辑帖子文案（可输入弹窗；不下审核，操作留痕 moderation_records）
-    editPostTap(e: WechatMiniprogram.TouchEvent) {
-      const id = e.currentTarget.dataset.id as string;
-      const post = this.data.posts.find((p) => p.id === id);
-      wx.showModal({
-        title: '编辑帖子内容',
-        content: (post?.content ?? '').slice(0, 300),
-        editable: true,
-        placeholderText: '新内容（1-2000 字）',
-        success: async (r) => {
-          if (!r.confirm || !r.content) return;
-          try {
-            await editPostAdmin(id, r.content);
-            wx.showToast({ title: '已保存', icon: 'success' });
-            this.load();
-          } catch {
-            /* toast */
-          }
-        },
-      });
-    },
-    // 平台删除帖子：软删，全圈子（含作者）不可见
-    deletePostTap(e: WechatMiniprogram.TouchEvent) {
-      const id = e.currentTarget.dataset.id as string;
-      wx.showModal({
-        title: '删除帖子',
-        content: '删除后全圈子（含作者本人）均不可见，确定删除吗？',
-        editable: true,
-        placeholderText: '删除原因（可选）',
-        confirmText: '删除',
-        confirmColor: '#E63946',
-        success: async (r) => {
-          if (!r.confirm) return;
-          try {
-            await deletePostAdmin(id, r.content || undefined);
-            wx.showToast({ title: '已删除', icon: 'success' });
-            this.load();
-          } catch {
-            /* toast */
-          }
-        },
-      });
-    },
-    editAnonPostTap(e: WechatMiniprogram.TouchEvent) {
-      const id = e.currentTarget.dataset.id as string;
-      const post = this.data.anonPosts.find((p) => p.id === id);
-      wx.showModal({
-        title: '编辑树洞帖内容',
-        content: (post?.content ?? '').slice(0, 300),
-        editable: true,
-        placeholderText: '新内容（1-500 字）',
-        success: async (r) => {
-          if (!r.confirm || !r.content) return;
-          try {
-            await editAnonPostAdmin(id, r.content);
-            wx.showToast({ title: '已保存', icon: 'success' });
-            this.load();
-          } catch {
-            /* toast */
-          }
-        },
-      });
-    },
-    deleteAnonPostTap(e: WechatMiniprogram.TouchEvent) {
-      const id = e.currentTarget.dataset.id as string;
-      wx.showModal({
-        title: '删除树洞帖',
-        content: '删除后全圈子（含作者本人）均不可见，确定删除吗？',
-        editable: true,
-        placeholderText: '删除原因（可选）',
-        confirmText: '删除',
-        confirmColor: '#E63946',
-        success: async (r) => {
-          if (!r.confirm) return;
-          try {
-            await deleteAnonPostAdmin(id, r.content || undefined);
-            wx.showToast({ title: '已删除', icon: 'success' });
-            this.load();
-          } catch {
-            /* toast */
-          }
-        },
       });
     },
 
