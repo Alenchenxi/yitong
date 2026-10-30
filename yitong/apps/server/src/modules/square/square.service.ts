@@ -69,7 +69,7 @@ export class SquareService {
     boostedItems.sort((a, b) => {
       const byBoost = (b.data.boostUntil ?? '').localeCompare(a.data.boostUntil ?? '');
       if (byBoost !== 0) return byBoost;
-      const byTime = b.data.createdAt.localeCompare(a.data.createdAt);
+      const byTime = (b.data.updatedAt ?? b.data.createdAt).localeCompare(a.data.updatedAt ?? a.data.createdAt); // CR-008
       return byTime !== 0 ? byTime : b.data.id.localeCompare(a.data.id);
     });
     return { list: [...boostedItems, ...normal.list], nextCursor: normal.nextCursor, hasMore: normal.hasMore };
@@ -86,13 +86,13 @@ export class SquareService {
   ): SquareFeedResult {
     const merged: FeedItemVo[] = [...postItems, ...anonItems];
     merged.sort((a, b) => {
-      const cmp = b.data.createdAt.localeCompare(a.data.createdAt);
+      const cmp = (b.data.updatedAt ?? b.data.createdAt).localeCompare(a.data.updatedAt ?? a.data.createdAt); // CR-008
       return cmp !== 0 ? cmp : b.data.id.localeCompare(a.data.id);
     });
     const slice = merged.slice(0, limit);
     const hasMore = merged.length > limit;
     const last = slice[slice.length - 1];
-    const nextCursor = hasMore && last ? this.encodeCursor(last.data.createdAt, last.data.id) : null;
+    const nextCursor = hasMore && last ? this.encodeCursor(last.data.updatedAt ?? last.data.createdAt, last.data.id) : null; // CR-008
     return { list: slice, nextCursor, hasMore };
   }
 
@@ -118,8 +118,8 @@ export class SquareService {
             boostInactive,
             {
               OR: [
-                { createdAt: { lt: cur.createdAt } },
-                { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
+                { updatedAt: { lt: cur.createdAt } },
+                { updatedAt: { equals: cur.createdAt }, id: { lt: cur.id } },
               ],
             },
           ]
@@ -127,8 +127,8 @@ export class SquareService {
     };
     const orderBy: Prisma.PostOrderByWithRelationInput[] =
       sort === 'recommend'
-        ? [{ featured: 'desc' }, { pinned: 'desc' }, { likeCount: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
-        : [{ createdAt: 'desc' }, { id: 'desc' }];
+        ? [{ featured: 'desc' }, { pinned: 'desc' }, { likeCount: 'desc' }, { updatedAt: 'desc' }, { id: 'desc' }] // CR-008
+        : [{ updatedAt: 'desc' }, { id: 'desc' }];
     return this.prisma.post.findMany({
       where,
       orderBy,
@@ -151,7 +151,7 @@ export class SquareService {
         boostUntil: { gt: new Date() },
         AND: [this.publication.postVisibilityFilter(communityId)],
       },
-      orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ boostUntil: 'desc' }, { updatedAt: 'desc' }, { id: 'desc' }], // CR-008
       take,
       include: {
         author: { select: { id: true, nickname: true, avatarUrl: true } },
@@ -190,16 +190,16 @@ export class SquareService {
           boostInactive,
           {
             OR: [
-              { createdAt: { lt: cur.createdAt } },
-              { createdAt: { equals: cur.createdAt }, id: { lt: cur.id } },
+              { updatedAt: { lt: cur.createdAt } },
+              { updatedAt: { equals: cur.createdAt }, id: { lt: cur.id } },
             ],
           },
         ]
       : [this.publication.anonymousPostVisibilityFilter(communityId), boostInactive];
     const orderBy: Prisma.AnonymousPostOrderByWithRelationInput[] =
       sort === 'recommend'
-        ? [{ likeCount: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
-        : [{ createdAt: 'desc' }, { id: 'desc' }];
+        ? [{ likeCount: 'desc' }, { updatedAt: 'desc' }, { id: 'desc' }] // CR-008
+        : [{ updatedAt: 'desc' }, { id: 'desc' }];
     return this.prisma.anonymousPost.findMany({
       where: baseWhere,
       orderBy,
@@ -227,7 +227,7 @@ export class SquareService {
     }
     return this.prisma.anonymousPost.findMany({
       where,
-      orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ boostUntil: 'desc' }, { updatedAt: 'desc' }, { id: 'desc' }], // CR-008
       take,
       include: {
         _count: { select: { comments: true } },
@@ -309,6 +309,7 @@ export class SquareService {
     boostUntil: Date | null;
     publishAt: Date | null;
     createdAt: Date;
+    updatedAt?: Date; // CR-008（存量调用方可能未带字段，可选入参）
     editedAt: Date | null;
     author: { nickname: string; avatarUrl: string | null };
     _count: { comments: number };
@@ -342,6 +343,7 @@ export class SquareService {
       publishAt: post.publishAt ? post.publishAt.toISOString() : null,
       createdAt: post.createdAt.toISOString(),
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,
+      updatedAt: (post.updatedAt ?? post.createdAt).toISOString(), // CR-008 排序键透出
     };
   }
 
@@ -362,6 +364,7 @@ export class SquareService {
       publisherScope: PublicationScope;
       boostUntil: Date | null;
       createdAt: Date;
+      updatedAt?: Date; // CR-008（存量调用方可能未带字段，可选入参）
       likes?: { id: string }[];
       _count?: { comments: number };
     },
@@ -387,6 +390,7 @@ export class SquareService {
       boosted: p.boostUntil != null && p.boostUntil.getTime() > Date.now(),
       boostUntil: p.boostUntil ? p.boostUntil.toISOString() : null,
       createdAt: p.createdAt.toISOString(),
+      updatedAt: (p.updatedAt ?? p.createdAt).toISOString(), // CR-008 排序键透出
     };
   }
 

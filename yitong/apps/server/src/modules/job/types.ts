@@ -49,6 +49,7 @@ export interface JobPostVo {
   canFreeRepublish: boolean; // P2-74 PENDING+已发布过+原有效期未过 → 可免付费直接重发
   deletedAt: string | null;
   createdAt: string;
+  updatedAt?: string; // CR-008 排序用更新时间（商家编辑刷新；岗位列表排序键）
   myApplication?: {
     id: string;
     status: AppStatus;

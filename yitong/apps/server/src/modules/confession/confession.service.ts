@@ -260,10 +260,10 @@ export class ConfessionService {
     return this.queryPosts(uid, query, circleId, communityId);
   }
 
-  // 我的表白墙：当前用户发的帖（含已软删，但不影响展示；用户可看到「我删了的帖」以便复盘）
+  // 我的表白墙：当前用户发的帖（CR-008 已删帖不再出现在列表，避免点进详情「帖子不存在」）
   async listMyPosts(uid: string): Promise<{ list: PostVo[] }> {
     const posts = await this.prisma.post.findMany({
-      where: { authorId: uid },
+      where: { authorId: uid, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: postInclude(uid),
@@ -413,6 +413,7 @@ export class ConfessionService {
         // P1-11：编辑可改 visibility（例：草稿保存后发布；私密改公开）
         ...(dto.visibility ? { visibility: dto.visibility } : {}),
         editedAt: new Date(),
+        updatedAt: new Date(), // CR-008 编辑刷新更新时间（最新流排序键）
       },
       include: postInclude(uid),
     });
@@ -812,8 +813,8 @@ export class ConfessionService {
         boostInactive,
         {
           OR: [
-            { createdAt: { lt: cursor.createdAt } },
-            { createdAt: { equals: cursor.createdAt }, id: { lt: cursor.id } },
+            { updatedAt: { lt: cursor.createdAt } },
+            { updatedAt: { equals: cursor.createdAt }, id: { lt: cursor.id } },
           ],
         },
       ];
@@ -841,7 +842,7 @@ export class ConfessionService {
     const [posts, pinnedPosts, boostedPosts] = await Promise.all([
       this.prisma.post.findMany({
         where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], // CR-008 最新流按更新时间排序（编辑过的帖子浮上来）
         take: limit + 1,
         include: postInclude(uid),
       }),
@@ -857,7 +858,7 @@ export class ConfessionService {
         ? Promise.resolve([])
         : this.prisma.post.findMany({
             where: boostedWhere,
-            orderBy: [{ boostUntil: 'desc' }, { createdAt: 'desc' }],
+            orderBy: [{ boostUntil: 'desc' }, { updatedAt: 'desc' }],
             take: 20,
             include: postInclude(uid),
           }),
@@ -866,7 +867,8 @@ export class ConfessionService {
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
     const last = slice[slice.length - 1];
-    const nextCursor = hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
+    // 游标 JSON 字段名保持 createdAt（兼容旧结构），值装 updatedAt（排序键）
+    const nextCursor = hasMore && last ? encodeCursor(last.updatedAt, last.id) : null;
 
     const list = cursor ? slice : [...pinnedPosts, ...boostedPosts, ...slice];
     return { list: list.map((p) => this.toPostVo(p)), nextCursor, hasMore };
@@ -1039,7 +1041,7 @@ export class ConfessionService {
         authorId: { in: followeeIds },
         AND: [this.publicationPolicy.postVisibilityFilter(communityId)],
       },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], // CR-008 关注流同口径按更新时间
       take: limit,
       include: postInclude(uid),
     });
@@ -1072,6 +1074,7 @@ export class ConfessionService {
       boostUntil: post.boostUntil ? post.boostUntil.toISOString() : null,
       publishAt: post.publishAt ? post.publishAt.toISOString() : null, // P2-06
       createdAt: post.createdAt.toISOString(),
+      updatedAt: (post.updatedAt ?? post.createdAt).toISOString(), // CR-008 排序键透出
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,
     };
   }

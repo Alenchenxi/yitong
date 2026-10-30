@@ -18,6 +18,7 @@ function anonPostRow(overrides: Record<string, unknown> = {}) {
     mood: null,
     status: 'APPROVED',
     createdAt: now,
+    updatedAt: now, // CR-008 排序键（encodeAnonPostCursor 现取 updatedAt）
     likeCount: 0,
     publisherScope: PublicationScope.PLATFORM,
     visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
@@ -222,7 +223,7 @@ describe('TreeholeService 平台发布治理', () => {
     }
   });
 
-  it('最新列表应使用 createdAt + id 复合游标避免同时间戳漏项', async () => {
+  it('最新列表应使用 updatedAt + id 复合游标避免同时间戳漏项（CR-008 按更新时间排序）', async () => {
     const { service, findMany } = buildService();
     findMany
       .mockResolvedValueOnce([
@@ -243,7 +244,7 @@ describe('TreeholeService 平台发布治理', () => {
       where: unknown;
       orderBy: unknown;
     };
-    expect(latestQuery.orderBy).toEqual([{ createdAt: 'desc' }, { id: 'desc' }]);
+    expect(latestQuery.orderBy).toEqual([{ updatedAt: 'desc' }, { id: 'desc' }]);
     expect(JSON.stringify(latestQuery.where)).toContain('"id":{"lt":"same_time_b"}');
   });
 

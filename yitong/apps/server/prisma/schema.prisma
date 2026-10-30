@@ -262,6 +262,7 @@ model Post {
   topicId             String?                @map("topic_id") // P2-04 校园话题
   publishAt           DateTime?              @map("publish_at") // P2-06 定时发布时间（到点 DRAFT->PUBLIC + 审核）
   createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @default(now()) @map("updated_at") // CR-008 排序用更新时间（仅编辑时刷新，非自动 @updatedAt；迁移回填=created_at）
   editedAt            DateTime?              @map("edited_at") // P1-10 最后编辑时间
   deletedAt           DateTime?              @map("deleted_at") // P1-10 作者软删
   circle              Circle                 @relation(fields: [circleId], references: [id])
@@ -363,6 +364,7 @@ model AnonymousPost {
   status              PostStatus             @default(PENDING)
   visibility          PostVisibility         @default(PUBLIC) // CR-007 公开/私密发布（复用表白墙 PostVisibility；树洞无草稿）
   createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @default(now()) @map("updated_at") // CR-008 排序用更新时间（仅编辑时刷新；迁移回填=created_at）
   editedAt            DateTime?              @map("edited_at") // CR-007 最后编辑时间
   deletedAt           DateTime?              @map("deleted_at") // CR-007 软删（作者删除 / 平台删除=全圈子不可见）
   likeCount           Int                    @default(0) @map("like_count")
@@ -848,6 +850,7 @@ model JobPost {
   publishedAt           DateTime?            @map("published_at") // P2-74 首次发布时间（付费兑现/免付直发/批量导入/家教同步时写入，只设不清）；PENDING+已发布过+有效期内 → 编辑后免付费重发
   deletedAt             DateTime?            @map("deleted_at") // M3-07 商家硬删草稿（软删字段，null=未删；list/get 全链路过滤 deletedAt:null）
   createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @default(now()) @map("updated_at") // CR-008 排序用更新时间（商家编辑时刷新；迁移回填=created_at）
   merchant              Merchant             @relation(fields: [merchantId], references: [id])
   community             Community            @relation(fields: [communityId], references: [id], onDelete: Restrict)
   applications          JobApplication[]

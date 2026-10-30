@@ -135,10 +135,11 @@ function isJobListCursorPayload(value: unknown): value is JobListCursorPayload {
   );
 }
 
-function encodeJobListCursor(post: { createdAt: Date; id: string }): string {
+function encodeJobListCursor(post: { createdAt: Date; id: string; updatedAt?: Date }): string {
   const payload: JobListCursorPayload = {
     v: 1,
-    createdAt: post.createdAt.toISOString(),
+    // CR-008 游标 JSON 字段名保持 createdAt（兼容旧结构），值装 updatedAt（排序键）
+    createdAt: (post.updatedAt ?? post.createdAt).toISOString(),
     id: post.id,
   };
   return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
@@ -733,7 +734,7 @@ export class JobService {
 
     const updated = await this.prisma.jobPost.update({
       where: { id: postId },
-      data,
+      data: { ...data, updatedAt: new Date() }, // CR-008 编辑刷新更新时间（岗位列表排序键）
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
     const vo = this.toPostVo(updated, true);
@@ -993,8 +994,9 @@ export class JobService {
       if (!cursor) throwJobListCursorExpired();
       andFilters.push({
         OR: [
-          { createdAt: { lt: cursor.createdAt } },
-          { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+          // CR-008 游标比对列同步改 updatedAt（与 orderBy/encode 一致，否则编辑过的岗位跨页重复）
+          { updatedAt: { lt: cursor.createdAt } },
+          { updatedAt: cursor.createdAt, id: { lt: cursor.id } },
         ],
       });
     }
@@ -1015,7 +1017,7 @@ export class JobService {
 
     const posts = await this.prisma.jobPost.findMany({
       where,
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], // CR-008 岗位列表按更新时间（商家编辑过的岗位浮上来）
       take: limit + 1,
       include: { merchant: { select: MERCHANT_CONTACT_SELECT } },
     });
@@ -1926,6 +1928,7 @@ export class JobService {
       publishedAt?: Date | null; // P2-74 首次发布时间（null=从未发布过）
       deletedAt?: Date | null; // M3-07 软删字段
       createdAt: Date;
+      updatedAt?: Date; // CR-008（存量调用方可能未带字段，可选入参）
       merchant?: {
         userId?: string;
         shopName: string;
@@ -2010,6 +2013,7 @@ export class JobService {
         (p.expireAt === null || p.expireAt.getTime() > Date.now()),
       deletedAt: p.deletedAt ? p.deletedAt.toISOString() : null, // M3-07 审计字段
       createdAt: p.createdAt.toISOString(),
+      updatedAt: (p.updatedAt ?? p.createdAt).toISOString(), // CR-008 排序键透出
       // M3-04 编辑返回扩展（仅 updatePost 设置）
       editedFromStatus: undefined as string | undefined,
       needsRepublish: undefined as boolean | undefined,

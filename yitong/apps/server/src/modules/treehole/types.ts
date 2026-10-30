@@ -18,6 +18,7 @@ export interface AnonPostVo {
   boosted: boolean; // 内容推广：boostUntil > now 为 true
   boostUntil: string | null; // ISO 字符串，未推广为 null
   createdAt: string; // ISO 字符串
+  updatedAt?: string; // CR-008 排序用更新时间（编辑时刷新；列表排序键）
 }
 
 // 树洞匿名评论 VO（红线：authorAnonId 是匿名 id，不含真实 uid）

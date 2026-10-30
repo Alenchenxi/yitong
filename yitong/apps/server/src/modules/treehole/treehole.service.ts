@@ -413,6 +413,7 @@ export class TreeholeService {
         // 编辑可改可见性（私密改公开 / 公开改私密）
         ...(dto.visibility ? { visibility: dto.visibility } : {}),
         editedAt: new Date(),
+        updatedAt: new Date(), // CR-008 编辑刷新更新时间（最新流排序键）
       },
       include: { _count: { select: { comments: true } } },
     });
@@ -485,13 +486,13 @@ export class TreeholeService {
       return { list: list.map((p) => this.toVo(p)), nextCursor: null, hasMore: false };
     }
 
-    // 最新：使用 (createdAt DESC, id DESC) 复合游标；首页前置推广中帖子，翻页不重复。
+    // 最新：CR-008 按 (updatedAt DESC, id DESC) 复合游标（编辑过的帖子浮上来）；游标 JSON 字段名保持 t（装 updatedAt 值）。
     const cursor = opts.cursor ? decodeAnonPostCursor(opts.cursor) : null;
     const cursorFilter: Prisma.AnonymousPostWhereInput | null = cursor
       ? {
           OR: [
-            { createdAt: { lt: cursor.createdAt } },
-            ...(cursor.id ? [{ createdAt: cursor.createdAt, id: { lt: cursor.id } }] : []),
+            { updatedAt: { lt: cursor.createdAt } },
+            ...(cursor.id ? [{ updatedAt: cursor.createdAt, id: { lt: cursor.id } }] : []),
           ],
         }
       : null;
@@ -505,7 +506,7 @@ export class TreeholeService {
     const [posts, boostedPosts] = await Promise.all([
       this.prisma.anonymousPost.findMany({
         where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
         take: limit + 1,
         include,
       }),
@@ -513,7 +514,7 @@ export class TreeholeService {
         ? Promise.resolve([])
         : this.prisma.anonymousPost.findMany({
             where: { ...baseWhere, boostUntil: { gt: now } },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { updatedAt: 'desc' },
             take: limit,
             include,
           }),
@@ -521,7 +522,7 @@ export class TreeholeService {
     const hasMore = posts.length > limit;
     const slice = hasMore ? posts.slice(0, limit) : posts;
     const last = slice[slice.length - 1];
-    const nextCursor = hasMore && last ? encodeAnonPostCursor(last.createdAt, last.id) : null;
+    const nextCursor = hasMore && last ? encodeAnonPostCursor(last.updatedAt, last.id) : null;
     const list = opts.cursor ? slice : [...boostedPosts, ...slice];
     return { list: list.map((p) => this.toVo(p)), nextCursor, hasMore };
   }
@@ -733,9 +734,9 @@ export class TreeholeService {
         ...(decodedCursor
           ? [{
               OR: [
-                { createdAt: { lt: decodedCursor.createdAt } },
+                { updatedAt: { lt: decodedCursor.createdAt } },
                 ...(decodedCursor.id
-                  ? [{ createdAt: decodedCursor.createdAt, id: { lt: decodedCursor.id } }]
+                  ? [{ updatedAt: decodedCursor.createdAt, id: { lt: decodedCursor.id } }]
                   : []),
               ],
             }]
@@ -744,7 +745,7 @@ export class TreeholeService {
     };
     const posts = await this.prisma.anonymousPost.findMany({
       where,
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], // CR-008 作者动态按更新时间
       take: limit + 1,
       include: {
         likes: { where: { anonId }, select: { id: true }, take: 1 },
@@ -756,7 +757,7 @@ export class TreeholeService {
     const last = list[list.length - 1];
     return {
       list: list.map((post) => this.toVo(post)),
-      nextCursor: hasMore && last ? encodeAnonPostCursor(last.createdAt, last.id) : null,
+      nextCursor: hasMore && last ? encodeAnonPostCursor(last.updatedAt, last.id) : null,
       hasMore,
     };
   }
@@ -1611,6 +1612,7 @@ export class TreeholeService {
     locationDistrict?: string | null; // CR-006 发布地·区
     visibility?: PostVisibility; // CR-007（存量调用方可能未带字段，可选入参）
     editedAt?: Date | null; // CR-007
+    updatedAt?: Date; // CR-008（存量调用方可能未带字段，可选入参）
     status: PostStatus;
     likeCount: number;
     publisherScope: PublicationScope;
@@ -1632,6 +1634,7 @@ export class TreeholeService {
       locationDistrict: p.locationDistrict ?? null,
       visibility: p.visibility ?? 'PUBLIC',
       editedAt: p.editedAt ? p.editedAt.toISOString() : null,
+      updatedAt: (p.updatedAt ?? p.createdAt).toISOString(), // CR-008 排序用更新时间
       likeCount: p.likeCount,
       liked: (p.likes?.length ?? 0) > 0,
       platformPublished: p.publisherScope === PublicationScope.PLATFORM,
