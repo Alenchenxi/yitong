@@ -43,13 +43,22 @@
 .meta { flex: 1; min-width: 0; }
 
 .nickname {
+  display: flex;
+  align-items: center;
   font-size: 28rpx;
   font-weight: 600;
   color: var(--yt-text-main);
 }
 
+.nickname-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .anon-badge {
-  display: inline-block;
+  flex-shrink: 0;
   margin-left: 8rpx;
   padding: 0 12rpx;
   font-size: 20rpx;
@@ -57,7 +66,6 @@
   color: var(--yt-text-main);
   background: #FFF7D1;
   border-radius: 999rpx;
-  vertical-align: middle;
 }
 
 .time {

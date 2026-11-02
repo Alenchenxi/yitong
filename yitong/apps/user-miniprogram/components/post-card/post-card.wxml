@@ -13,7 +13,7 @@
         <view class="avatar avatar-ph">?</view>
         <view class="meta">
           <view class="nickname">
-            {{post.anonNickname || '匿名用户'}}
+            <text class="nickname-text">{{post.anonNickname || '匿名用户'}}</text>
             <text class="anon-badge">匿名</text>
           </view>
           <view class="time">{{timeText}}<text wx:if="{{isUpdated}}" class="updated-tag">已更新</text></view>
@@ -26,7 +26,7 @@
         <view wx:else class="avatar avatar-ph">{{avatarChar}}</view>
         <view class="meta">
           <view class="nickname">
-            {{post.authorNickname}}
+            <text class="nickname-text">{{post.authorNickname}}</text>
             <text class="anon-badge" wx:if="{{post.isAnonymous}}">匿名</text>
           </view>
           <view class="time">{{timeText}}<text wx:if="{{isUpdated}}" class="updated-tag">已更新</text></view>
