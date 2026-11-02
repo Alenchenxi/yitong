@@ -8,8 +8,10 @@
   margin-bottom: 24rpx;
 }
 .auth-head { display: flex; justify-content: space-between; align-items: center; }
-.shop-name { font-size: 34rpx; font-weight: 600; color: var(--yt-text-main); }
+.shop-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 34rpx; font-weight: 600; color: var(--yt-text-main); }
 .auth-badge {
+  flex-shrink: 0;
+  margin-left: 16rpx;
   font-size: 24rpx;
   padding: 6rpx 16rpx;
   border-radius: 20rpx;

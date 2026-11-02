@@ -22,6 +22,7 @@
 .anon-author-hit { display: flex; align-items: center; flex: 1; min-width: 0; }
 
 .avatar {
+  flex-shrink: 0;
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
@@ -39,7 +40,7 @@
   font-weight: 600;
 }
 
-.meta { flex: 1; }
+.meta { flex: 1; min-width: 0; }
 
 .nickname {
   font-size: 28rpx;

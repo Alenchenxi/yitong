@@ -37,7 +37,7 @@
   border: 2rpx solid #E5E6EB; border-radius: 12rpx; padding: 0 16rpx;
   height: 72rpx; font-size: 28rpx; color: #1D2129; background: #FFFFFF;
 }
-.circle-value { color: #1D2129; }
+.circle-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1D2129; }
 .circle-failed { color: #F53F3F; }
 .circle-arrow { color: #86909C; font-size: 32rpx; }
 

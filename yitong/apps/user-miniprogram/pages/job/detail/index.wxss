@@ -75,9 +75,9 @@
 .app-item { display: flex; flex-direction: column; padding: 16rpx 0; border-bottom: 1rpx solid #f4f4f4; }
 .app-item:last-child { border-bottom: none; }
 .app-head { display: flex; justify-content: space-between; align-items: center; }
-.app-head-left { display: flex; align-items: center; gap: 8rpx; }
-.app-nick { font-size: 28rpx; color: #222; }
-.app-status { font-size: 24rpx; color: #999; }
+.app-head-left { display: flex; align-items: center; gap: 8rpx; min-width: 0; }
+.app-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 28rpx; color: #222; }
+.app-status { flex-shrink: 0; font-size: 24rpx; color: #999; }
 .app-resume { background: #f7f8fa; border-radius: 10rpx; padding: 12rpx 16rpx; margin: 10rpx 0; }
 .app-resume-line { display: block; font-size: 24rpx; color: #4E5969; line-height: 1.6; }
 .app-answers { margin: 10rpx 0; }

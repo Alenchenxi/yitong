@@ -167,11 +167,18 @@
   margin-top: 12rpx;
 }
 .salary {
+  min-width: 0;
+  flex: 1;
+  padding-right: 12rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--yt-danger, #e63946);
   font-size: 28rpx;
   font-weight: 600;
 }
 .status {
+  flex-shrink: 0;
   font-size: 22rpx;
   padding: 4rpx 14rpx;
   border-radius: 20rpx;

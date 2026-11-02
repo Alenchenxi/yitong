@@ -22,7 +22,7 @@
       <view class="group-avatar">{{item.name.slice(0, 1)}}</view>
       <view class="group-info">
         <view class="group-name">
-          <text>{{item.name}}</text>
+          <text class="group-name-text">{{item.name}}</text>
           <text class="group-private" wx:if="{{item.isPrivate}}">🔒</text>
           <text class="group-joined" wx:if="{{item.isMember}}">已加入</text>
         </view>

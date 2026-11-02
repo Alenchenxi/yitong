@@ -58,6 +58,11 @@
   justify-content: space-between;
 }
 .card-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 30rpx;
   font-weight: 500;
   color: #1d2129;

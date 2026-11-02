@@ -13,8 +13,8 @@
   font-size: 40rpx;
   margin-right: 20rpx;
 }
-.anon-info { flex: 1; }
-.anon-nick { font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); }
+.anon-info { flex: 1; min-width: 0; }
+.anon-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); }
 .anon-sub { font-size: 22rpx; color: var(--yt-text-sub); margin-top: 4rpx; }
 
 /* 入口区 */

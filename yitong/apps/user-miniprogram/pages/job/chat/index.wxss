@@ -254,6 +254,10 @@ button::after {
 }
 
 .salary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #c59a00;
   font-weight: 600;
 }

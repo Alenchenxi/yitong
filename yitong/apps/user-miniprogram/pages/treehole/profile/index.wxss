@@ -70,8 +70,8 @@
 
 .block-list { display: flex; flex-direction: column; gap: 16rpx; }
 .block-row { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 20rpx; background: #F7F8FA; border-radius: 12rpx; }
-.block-name { font-size: 26rpx; color: #4E5969; }
-.block-unblock { font-size: 24rpx; color: #E63946; padding: 6rpx 20rpx; border: 1rpx solid #E63946; border-radius: 28rpx; }
+.block-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 26rpx; color: #4E5969; }
+.block-unblock { flex-shrink: 0; font-size: 24rpx; color: #E63946; padding: 6rpx 20rpx; border: 1rpx solid #E63946; border-radius: 28rpx; }
 .block-empty { font-size: 26rpx; color: #C9CDD4; }
 
 .save {

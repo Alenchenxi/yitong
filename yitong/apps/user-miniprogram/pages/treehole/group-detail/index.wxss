@@ -31,7 +31,7 @@
 .member:last-child { border-bottom: none; }
 .member-avatar { width: 64rpx; height: 64rpx; border-radius: 50%; background: var(--yt-primary-lighter); display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 600; color: var(--yt-primary-dark); flex-shrink: 0; }
 .member-info { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; }
-.member-name { font-size: 28rpx; color: var(--yt-text-main); }
+.member-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 28rpx; color: var(--yt-text-main); }
 .member-role { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 999rpx; }
 .member-role.OWNER { background: #F9C801; color: #1D2129; font-weight: 600; }
 .member-role.ADMIN { background: var(--yt-primary-lighter); color: var(--yt-primary-dark); }

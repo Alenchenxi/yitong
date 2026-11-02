@@ -36,26 +36,26 @@
 .hot-list { background: #fff; border-radius: 16rpx; padding: 8rpx 24rpx; }
 .hot-item { display: flex; justify-content: space-between; padding: 18rpx 0; border-bottom: 1rpx solid #f4f4f4; }
 .hot-item:last-child { border-bottom: none; }
-.hot-keyword { font-size: 28rpx; color: #1D2129; }
-.hot-count { font-size: 22rpx; color: #C9CDD4; }
+.hot-keyword { min-width: 0; flex: 1; padding-right: 16rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 28rpx; color: #1D2129; }
+.hot-count { flex-shrink: 0; font-size: 22rpx; color: #C9CDD4; }
 
 .post { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
 .post-content { font-size: 28rpx; line-height: 1.6; color: #1D2129; word-break: break-word; }
 .post-meta { font-size: 22rpx; color: #86909C; margin-top: 12rpx; }
 
 .user { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 0; border-bottom: 1rpx solid #f4f4f4; }
-.u-avatar { width: 80rpx; height: 80rpx; border-radius: 50%; background: #f2f2f2; }
+.u-avatar { flex-shrink: 0; width: 80rpx; height: 80rpx; border-radius: 50%; background: #f2f2f2; }
 .u-ph {
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #ffb3c1, #ff8fa3);
   color: #fff; font-size: 28rpx; font-weight: 600;
 }
-.u-nick { font-size: 28rpx; color: #1D2129; }
+.u-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 28rpx; color: #1D2129; }
 .user-next { margin-left: auto; color: #C9CDD4; font-size: 36rpx; }
 
 .tag-row { display: flex; justify-content: space-between; padding: 18rpx 0; border-bottom: 1rpx solid #f4f4f4; }
-.tag-name { font-size: 28rpx; color: #1D2129; font-weight: 500; }
-.tag-count { font-size: 22rpx; color: #86909C; }
+.tag-name { min-width: 0; flex: 1; padding-right: 16rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 28rpx; color: #1D2129; font-weight: 500; }
+.tag-count { flex-shrink: 0; font-size: 22rpx; color: #86909C; }
 
 .empty { text-align: center; color: #C9CDD4; padding: 40rpx 0; font-size: 24rpx; }
 .loading { text-align: center; color: #86909C; padding: 24rpx 0; font-size: 24rpx; }

@@ -1,8 +1,8 @@
 .page { padding: 24rpx; }
 .app { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
 .app-head { display: flex; justify-content: space-between; align-items: center; }
-.app-title { font-size: 30rpx; font-weight: 600; color: #222; flex: 1; }
-.app-status { font-size: 24rpx; padding: 4rpx 16rpx; border-radius: 20rpx; background: #f5f6f8; color: #666; }
+.app-title { min-width: 0; font-size: 30rpx; font-weight: 600; color: #222; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-status { flex-shrink: 0; font-size: 24rpx; padding: 4rpx 16rpx; border-radius: 20rpx; background: #f5f6f8; color: #666; }
 .app-status.DONE { color: #fff; background: #52c41a; }
 .app-status.ACCEPTED { color: #fff; background: #ff4d6d; }
 .app-status.REJECTED { color: #fff; background: #999; }

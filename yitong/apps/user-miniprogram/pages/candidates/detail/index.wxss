@@ -60,6 +60,12 @@
   line-height: 1.4;
   color: var(--yt-text-body, #4e5969);
 }
+.candidate-info-line text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .candidate-info-line image {
   width: 26rpx;
   height: 26rpx;
