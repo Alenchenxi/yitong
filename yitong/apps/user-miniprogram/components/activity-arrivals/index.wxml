@@ -1,0 +1,35 @@
+<view wx:if="{{show}}" class="aa-mask" catchtap="close" catchtouchmove="noop">
+  <view class="aa-modal" catchtap="noop">
+    <view class="aa-header">
+      <text class="aa-title">活动上新</text>
+      <text class="aa-sub">最近发布的活动</text>
+      <view class="aa-close" catchtap="close">✕</view>
+    </view>
+    <swiper class="aa-swiper" current="{{current}}" bindchange="onSwiperChange" circular="{{false}}" indicator-dots="{{list.length > 1}}">
+      <swiper-item wx:for="{{list}}" wx:key="id">
+        <view class="aa-card">
+          <image class="aa-cover" src="{{item.coverImage}}" mode="aspectFill" />
+          <view class="aa-info">
+            <view class="aa-name">{{item.title}}</view>
+            <view class="aa-desc">{{item.summary}}</view>
+            <view class="aa-time">🕐 {{item.timeText}}</view>
+            <view class="aa-meta">
+              <text>{{item.approvedCount}}人已报名</text>
+              <text wx:if="{{item.capacity}}"> / 上限{{item.capacity}}人</text>
+            </view>
+          </view>
+          <view class="aa-actions">
+            <view class="aa-btn aa-btn-ghost" data-id="{{item.id}}" catchtap="markInterested">感兴趣</view>
+            <view class="aa-btn aa-btn-ghost" data-id="{{item.id}}" catchtap="markNotInterested">不感兴趣</view>
+            <view wx:if="{{item.joined}}" class="aa-btn aa-btn-primary" data-id="{{item.id}}" catchtap="openDetail">查看报名</view>
+            <view wx:elif="{{item.full}}" class="aa-btn aa-btn-disabled">名额已满</view>
+            <view wx:else class="aa-btn aa-btn-primary" data-id="{{item.id}}" catchtap="openDetail">立即报名</view>
+          </view>
+        </view>
+      </swiper-item>
+    </swiper>
+    <view wx:if="{{undoId}}" class="aa-undo" catchtap="undoNotInterested">
+      已标记「{{undoName}}」不感兴趣，点此撤销
+    </view>
+  </view>
+</view>

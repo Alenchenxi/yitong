@@ -1,0 +1,238 @@
+/* 活动发布/编辑：分区长表单 + 表单构建器 + 底部双按钮（UI设计规范 §6.4） */
+.section {
+  margin: 20rpx 24rpx 0;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 8rpx;
+}
+
+.field {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.field-label {
+  font-size: 28rpx;
+  color: #1d2129;
+  font-weight: 500;
+  margin-bottom: 16rpx;
+}
+
+.req {
+  color: #f53f3f;
+}
+
+.field-input {
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  color: #1d2129;
+}
+
+.field-picker {
+  color: #4e5969;
+}
+
+.field-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  color: #1d2129;
+  min-height: 200rpx;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.chip {
+  font-size: 26rpx;
+  color: #4e5969;
+  background: #f5f6f8;
+  border-radius: 999rpx;
+  padding: 12rpx 28rpx;
+}
+
+.chip-on {
+  color: #c59a00;
+  background: #fff7d1;
+  font-weight: 600;
+}
+
+.cover-wrap {
+  display: flex;
+}
+
+.cover-preview {
+  width: 320rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+}
+
+.cover-add {
+  width: 320rpx;
+  height: 200rpx;
+  border: 2rpx dashed #e5e6eb;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  color: #86909c;
+}
+
+.dt-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.dt {
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  font-size: 26rpx;
+  color: #4e5969;
+}
+
+.dt-sep {
+  font-size: 24rpx;
+  color: #86909c;
+}
+
+.field-form {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.ff-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.ff-label {
+  flex: 1;
+  min-width: 0;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 14rpx 20rpx;
+  font-size: 26rpx;
+  color: #1d2129;
+}
+
+.ff-type {
+  font-size: 22rpx;
+  color: #86909c;
+}
+
+.ff-req {
+  font-size: 22rpx;
+  color: #86909c;
+}
+
+.ff-op {
+  font-size: 26rpx;
+  color: #4e5969;
+  padding: 8rpx;
+}
+
+.ff-del {
+  color: #f53f3f;
+}
+
+.ff-input {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+}
+
+.add-field {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding-top: 20rpx;
+}
+
+.ff-add-type {
+  font-size: 26rpx;
+  color: #4e5969;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 12rpx 20rpx;
+}
+
+.ff-add-btn {
+  font-size: 26rpx;
+  color: #c59a00;
+  background: #fff7d1;
+  border-radius: 12rpx;
+  padding: 12rpx 24rpx;
+  margin-top: 12rpx;
+  display: inline-block;
+}
+
+.ff-danger {
+  color: #f53f3f;
+  background: #fff1f0;
+}
+
+.ff-link {
+  font-size: 24rpx;
+  color: #2f80ed;
+  margin-top: 12rpx;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  border-top: 1rpx solid #e5e6eb;
+}
+
+.footer-main {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  background: #f9c801;
+  color: #1d2129;
+  font-size: 30rpx;
+  font-weight: 600;
+  border-radius: 12rpx;
+}
+
+.footer-ghost {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  border: 1rpx solid #e5e6eb;
+  color: #4e5969;
+  font-size: 30rpx;
+  border-radius: 12rpx;
+  background: #ffffff;
+}
+
+.op-disabled {
+  opacity: 0.6;
+}

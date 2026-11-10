@@ -1,0 +1,153 @@
+/* 报名表单：分区卡片 + 动态字段 + 底部固定提交（UI设计规范 §6.4） */
+.tip {
+  margin: 20rpx 24rpx 0;
+}
+
+.tip-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.tip-sub {
+  display: block;
+  font-size: 24rpx;
+  color: #86909c;
+  margin-top: 8rpx;
+}
+
+.tip-warn {
+  display: block;
+  font-size: 24rpx;
+  color: #ffb020;
+  margin-top: 8rpx;
+}
+
+.form {
+  margin: 20rpx 24rpx 200rpx;
+}
+
+.field {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.field-label {
+  font-size: 28rpx;
+  color: #1d2129;
+  font-weight: 500;
+  margin-bottom: 16rpx;
+}
+
+.field-input {
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  color: #1d2129;
+}
+
+.field-picker {
+  color: #4e5969;
+}
+
+.field-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  color: #1d2129;
+  min-height: 160rpx;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.chip {
+  font-size: 26rpx;
+  color: #4e5969;
+  background: #f5f6f8;
+  border-radius: 999rpx;
+  padding: 12rpx 28rpx;
+}
+
+.chip-on {
+  color: #c59a00;
+  background: #fff7d1;
+  font-weight: 600;
+}
+
+.images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.img-item {
+  position: relative;
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 12rpx;
+  background: #f5f6f8;
+}
+
+.img-del {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 40rpx;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+  border-radius: 0 12rpx 0 12rpx;
+  font-size: 22rpx;
+}
+
+.img-add {
+  width: 180rpx;
+  height: 180rpx;
+  border: 2rpx dashed #e5e6eb;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  color: #86909c;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  border-top: 1rpx solid #e5e6eb;
+}
+
+.footer-main {
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  background: #f9c801;
+  color: #1d2129;
+  font-size: 30rpx;
+  font-weight: 600;
+  border-radius: 12rpx;
+}
+
+.footer-disabled {
+  opacity: 0.6;
+}

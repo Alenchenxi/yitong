@@ -1,0 +1,211 @@
+/* 报名管理：队列 tab + 参与人卡 + 资料弹层（UI设计规范 §6.5/§6.4） */
+.tabs {
+  background: #ffffff;
+  white-space: nowrap;
+}
+
+.tabs-inner {
+  display: inline-flex;
+  padding: 8rpx 12rpx;
+}
+
+.tab {
+  font-size: 28rpx;
+  color: #86909c;
+  padding: 16rpx 24rpx;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tab-active {
+  color: #1d2129;
+  font-weight: 600;
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 4rpx;
+  width: 40rpx;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: #f9c801;
+}
+
+.tab-badge {
+  margin-left: 6rpx;
+  font-size: 20rpx;
+  color: #f53f3f;
+}
+
+.list {
+  padding: 20rpx 24rpx 60rpx;
+}
+
+.item {
+  margin-bottom: 20rpx;
+}
+
+.item-head {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+}
+
+.item-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #f5f6f8;
+  flex-shrink: 0;
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.item-sub {
+  font-size: 22rpx;
+  color: #86909c;
+  margin-top: 4rpx;
+}
+
+.item-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f5f6f8;
+}
+
+.op {
+  font-size: 26rpx;
+  color: #4e5969;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 12rpx 28rpx;
+}
+
+.op-primary {
+  color: #c59a00;
+  background: #fff7d1;
+  font-weight: 600;
+}
+
+.op-danger {
+  color: #f53f3f;
+  background: #fff1f0;
+}
+
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet {
+  width: 640rpx;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 32rpx 24rpx;
+  box-sizing: border-box;
+}
+
+.sheet-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 20rpx;
+  text-align: center;
+}
+
+.sheet-warn {
+  font-size: 24rpx;
+  color: #ffb020;
+  margin: 16rpx 0;
+}
+
+.kv {
+  display: flex;
+  gap: 16rpx;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.kv-k {
+  flex-shrink: 0;
+  width: 180rpx;
+  font-size: 24rpx;
+  color: #86909c;
+  word-break: break-all;
+}
+
+.kv-v {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: #1d2129;
+  word-break: break-all;
+}
+
+.sheet-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+  min-height: 140rpx;
+}
+
+.sheet-btns {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.sheet-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: 1rpx solid #e5e6eb;
+  color: #4e5969;
+}
+
+.sheet-btn-primary {
+  background: #f9c801;
+  border: none;
+  color: #1d2129;
+  font-weight: 600;
+}
+
+.sheet-btn-danger {
+  background: #f53f3f;
+  border: none;
+  color: #ffffff;
+}
+
+.sheet-close {
+  margin-top: 24rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #86909c;
+}

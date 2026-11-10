@@ -231,6 +231,8 @@ Component({
       } else if (targetType === 'merchant_candidates') {
         // candidates 非 tabBar 页，事件化交宿主：用户端薄壳 navigateTo / 商家 panel switchtab 切 tab
         this.triggerEvent('opencandidates');
+      } else if (targetType === 'activity') {
+        wx.navigateTo({ url: `/pages/activity/detail/index?id=${targetId}` });
       }
     },
 

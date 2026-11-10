@@ -1,0 +1,101 @@
+/* 我的活动：横向分组 tab + 活动卡（UI设计规范 §6.5） */
+.tabs {
+  background: #ffffff;
+  white-space: nowrap;
+}
+
+.tabs-inner {
+  display: inline-flex;
+  padding: 8rpx 12rpx;
+}
+
+.tab {
+  font-size: 28rpx;
+  color: #86909c;
+  padding: 16rpx 24rpx;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tab-active {
+  color: #1d2129;
+  font-weight: 600;
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 4rpx;
+  width: 40rpx;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: #f9c801;
+}
+
+.list {
+  padding: 20rpx 24rpx 60rpx;
+}
+
+.my-card {
+  margin-bottom: 20rpx;
+}
+
+.my-main {
+  display: flex;
+  gap: 20rpx;
+}
+
+.my-cover {
+  width: 160rpx;
+  height: 120rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+
+.my-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.my-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.my-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1d2129;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.my-status {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: #c59a00;
+  background: #fff7d1;
+  border-radius: 999rpx;
+  padding: 4rpx 12rpx;
+}
+
+.my-meta {
+  font-size: 24rpx;
+  color: #86909c;
+  margin-top: 12rpx;
+}
+
+.my-restore {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #2f80ed;
+  text-align: center;
+  border-top: 1rpx solid #f5f6f8;
+  padding-top: 16rpx;
+}

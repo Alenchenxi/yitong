@@ -1408,3 +1408,198 @@ model ContentView {
   @@index([createdAt]) // 近24h 聚合加速
   @@map("content_views")
 }
+
+// ===== 活动模块（specs/features/活动模块.md；与表白墙 ActivityTopic 活动专题是两个独立功能）=====
+enum ActivityScope {
+  PLATFORM // 平台活动，全部圈子可见（含后续新建圈子）
+  COMMUNITY // 圈子活动，仅所属圈子可见
+}
+
+enum ActivityFormat {
+  OFFLINE // 线下
+  ONLINE // 线上
+  HYBRID // 线上线下结合
+}
+
+enum ActivityJoinMode {
+  DIRECT // 直接报名
+  REVIEW // 管理员审核
+}
+
+enum ActivityStatus {
+  DRAFT // 草稿
+  PUBLISHED // 已发布（报名中）
+  UPCOMING // 报名截止后待开始
+  ONGOING // 进行中
+  ENDED // 已结束
+  CANCELLED // 已取消
+  DELISTED // 已下架
+}
+
+enum ActivityInfoVisibility {
+  PUBLIC // 地点与参与链接公开
+  APPROVED_ONLY // 仅正式报名成功用户可见
+}
+
+enum ActivityEnrollmentStatus {
+  PENDING_REVIEW // 待审核（REVIEW 型提交 / 修改后继续保持）
+  APPROVED // 正式参与人（占名额、在群聊）
+  WAITLIST // 候补（按 waitlistedAt FIFO）
+  CANCELLED // 用户主动取消（截止前可重新报名）
+  REJECTED // 审核拒绝（可修改资料后重新提交）
+  REVOKED // 被管理员取消资格（终态，不得再次报名）
+}
+
+enum ActivityInterestState {
+  INTERESTED // 感兴趣（不占名额、不进群、不收参与提醒）
+  NOT_INTERESTED // 不感兴趣（不再进入上新弹窗）
+}
+
+enum ActivityReminderKind {
+  AUTO_3D // 开始前三天自动提醒
+  AUTO_1D // 开始前一天自动提醒
+  MANUAL // 管理员手动提醒
+}
+
+enum ActivitySyncStatus {
+  PENDING // 待同步
+  SYNCED // 同步成功
+  FAILED // 同步失败（可重试，不阻塞报名）
+}
+
+model Activity {
+  id                 String                @id @default(cuid())
+  scope              ActivityScope         @default(PLATFORM)
+  communityId        String?               @map("community_id") // COMMUNITY 时必填，PLATFORM 时为 null
+  title              String
+  coverImage         String                @map("cover_image") // 活动首图（列表/详情/上新弹窗）
+  description        String // 活动介绍（含链接，展示端识别高亮）
+  format             ActivityFormat
+  location           String? // 线下/结合时必填
+  joinLink           String?               @map("join_link") // 参与方式或链接（线上/结合时必填）
+  infoVisibility     ActivityInfoVisibility @default(PUBLIC) @map("info_visibility") // 地点与参与链接可见性
+  startTime          DateTime?             @map("start_time") // 可空 = 长期活动（不执行相对提醒、不自动推进状态）
+  endTime            DateTime?             @map("end_time")
+  enrollStartAt      DateTime?             @map("enroll_start_at") // 可空 = 随发布开放报名
+  enrollEndAt        DateTime?             @map("enroll_end_at") // 可空 = 有开始时间时默认不晚于开始（提交时钳制）
+  joinMode           ActivityJoinMode      @map("join_mode")
+  capacity           Int? // 人数上限，null = 不限
+  form               Json // 自定义报名表单 [{key,type,label,required,placeholder,options?,order}]
+  status             ActivityStatus        @default(DRAFT)
+  initiatorId        String                @map("initiator_id") // 发起人（创建活动的管理员）
+  larkConnectionId   String?               @map("lark_connection_id") // 飞书连接（仅发起人可管理）
+  larkBitableApp     String?               @map("lark_bitable_app") // 目标多维表格 app_token
+  larkBitableTable   String?               @map("lark_bitable_table") // 目标多维表格 table_id
+  publishedAt        DateTime?             @map("published_at")
+  chatReadonlyAt     DateTime?             @map("chat_readonly_at") // 群聊只读时间点（取消=立即；结束=+7 天）
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+
+  @@index([scope, communityId, status, publishedAt])
+  @@index([status, startTime])
+  @@index([initiatorId, status])
+  @@index([status, publishedAt]) // 上新弹窗按发布时间倒序
+  @@map("activities")
+}
+
+// 活动管理员（不含发起人；发起人专属权限见 BR-009）
+model ActivityAdmin {
+  id         String   @id @default(cuid())
+  activityId String   @map("activity_id")
+  userId     String   @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([activityId, userId])
+  @@index([userId])
+  @@map("activity_admins")
+}
+
+// 报名记录：同 (activityId, userId) 一行，状态机原地流转
+// data=最新提交资料；approvedData=最近审核通过快照；pendingData=已正式用户修改资料后的待复审新资料
+model ActivityEnrollment {
+  id            String                  @id @default(cuid())
+  activityId    String                  @map("activity_id")
+  userId        String                  @map("user_id")
+  status        ActivityEnrollmentStatus @default(PENDING_REVIEW)
+  data          Json
+  approvedData  Json?                   @map("approved_data")
+  pendingData   Json?                   @map("pending_data")
+  waitlistedAt  DateTime?               @map("waitlisted_at") // 进入候补时间（FIFO 排序键）
+  reviewedAt    DateTime?               @map("reviewed_at")
+  reviewedBy    String?                 @map("reviewed_by")
+  revokedReason String?                 @map("revoked_reason") // 管理员取消资格原因（必填）
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  @@unique([activityId, userId])
+  @@index([activityId, status, waitlistedAt])
+  @@index([userId, updatedAt])
+  @@map("activity_enrollments")
+}
+
+// 感兴趣 / 不感兴趣（同一活动一人一条，状态可互切可恢复）
+model ActivityInterest {
+  id         String                @id @default(cuid())
+  activityId String                @map("activity_id")
+  userId     String                @map("user_id")
+  state      ActivityInterestState
+  createdAt  DateTime              @default(now()) @map("created_at")
+  updatedAt  DateTime              @updatedAt @map("updated_at")
+
+  @@unique([activityId, userId])
+  @@index([userId, state])
+  @@map("activity_interests")
+}
+
+// 提醒发送记录：AUTO_3D/AUTO_1D dedupKey=kind（每用户每活动每节点仅一条）；
+// MANUAL dedupKey=记录自身 id（每次发送一条，24h 频率限制由服务端查询判定）
+model ActivityReminder {
+  id         String               @id @default(cuid())
+  activityId String               @map("activity_id")
+  userId     String               @map("user_id")
+  kind       ActivityReminderKind
+  dedupKey   String               @map("dedup_key")
+  sentBy     String?              @map("sent_by") // MANUAL 时记录发送的管理员 userId
+  result     String // sent / skipped_no_template / skipped_unauthorized / failed
+  createdAt  DateTime             @default(now()) @map("created_at")
+
+  @@unique([activityId, userId, dedupKey])
+  @@index([activityId, kind, createdAt])
+  @@index([userId, createdAt])
+  @@map("activity_reminders")
+}
+
+// 可复用飞书连接（发起人维度；appSecret 服务端持有、接口层脱敏）
+model LarkConnection {
+  id        String   @id @default(cuid())
+  name      String
+  appId     String   @map("app_id")
+  appSecret String   @map("app_secret")
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([ownerId])
+  @@map("lark_connections")
+}
+
+// 飞书多维表格同步记录：稳定标识 = enrollmentId；成功后记 remoteRecordId，重试走更新不重复建行
+model ActivitySyncRecord {
+  id              String            @id @default(cuid())
+  activityId      String            @map("activity_id")
+  enrollmentId    String            @map("enrollment_id")
+  status          ActivitySyncStatus @default(PENDING)
+  remoteRecordId  String?           @map("remote_record_id")
+  attempts        Int               @default(0)
+  lastError       String?           @map("last_error")
+  syncedAt        DateTime?         @map("synced_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  @@unique([activityId, enrollmentId])
+  @@index([activityId, status])
+  @@map("activity_sync_records")
+}
+
+// 活动群聊不建新表：复用 ChatMessage（groupId = 'activity-' + activityId，fromId=uid 实名场景，符合本表标识符约定）
+// 只读守卫由 Activity.chatReadonlyAt 在 activity.service 发送路径判定

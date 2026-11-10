@@ -181,13 +181,15 @@ export class ChatService {
 
   // ===== P2-11 群聊消息 =====
 
-  // 发群消息（文字/图片，禁言拦截由调用方 treehole.service 处理）
-  async sendGroupMessage(fromId: string, groupId: string, content: string, type = 'text'): Promise<MessageVo> {
+  // 发群消息（文字/图片，禁言拦截由调用方 treehole.service 处理）。
+  // openid 可选：实名场景（活动群聊 fromId=uid）由调用方传 user.openid 供内容审核，
+  // 缺省按树洞匿名链路解析（resolveAnonOpenid）。
+  async sendGroupMessage(fromId: string, groupId: string, content: string, type = 'text', openid?: string): Promise<MessageVo> {
     const msgType = type === 'image' ? 'image' : 'text';
     if (msgType === 'image') {
       await this.moderation.checkImage(content);
     } else {
-      await this.moderation.checkText(content, await this.resolveAnonOpenid(fromId));
+      await this.moderation.checkText(content, openid ?? await this.resolveAnonOpenid(fromId));
     }
     const m = await this.prisma.chatMessage.create({
       data: { fromId, toId: null, groupId, content, type: msgType },

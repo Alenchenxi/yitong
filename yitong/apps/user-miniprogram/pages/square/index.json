@@ -4,6 +4,7 @@
   "backgroundColor": "#F6F7FB",
   "usingComponents": {
     "post-card": "/components/post-card/post-card",
-    "job-card": "/components/job-card/job-card"
+    "job-card": "/components/job-card/job-card",
+    "activity-arrivals": "/components/activity-arrivals/index"
   }
 }

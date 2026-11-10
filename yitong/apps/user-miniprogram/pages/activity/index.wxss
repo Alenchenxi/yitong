@@ -1,0 +1,164 @@
+/* 活动首页：自绘导航 + 状态筛选 chips + 活动卡列表（UI设计规范 §5 频道统一结构） */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24rpx;
+  background: #ffffff;
+}
+
+.nav-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.nav-btn {
+  font-size: 24rpx;
+  color: #4e5969;
+  background: #f5f6f8;
+  border-radius: 999rpx;
+  padding: 8rpx 20rpx;
+}
+
+.nav-btn-primary {
+  background: #f9c801;
+  color: #1d2129;
+  font-weight: 600;
+}
+
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  display: flex;
+  background: #ffffff;
+  padding: 0 12rpx 8rpx;
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  font-size: 28rpx;
+  color: #86909c;
+  padding: 16rpx 0;
+  position: relative;
+}
+
+.tab-active {
+  color: #1d2129;
+  font-weight: 600;
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 4rpx;
+  width: 40rpx;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: #f9c801;
+}
+
+.list {
+  padding: 20rpx 24rpx 200rpx;
+}
+
+.act-card {
+  display: flex;
+  gap: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.act-cover {
+  width: 200rpx;
+  height: 150rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+
+.act-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.act-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.act-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1d2129;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.act-status {
+  font-size: 22rpx;
+  color: #c59a00;
+  background: #fff7d1;
+  border-radius: 999rpx;
+  padding: 4rpx 12rpx;
+  flex-shrink: 0;
+}
+
+.act-summary {
+  font-size: 24rpx;
+  color: #86909c;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.act-meta {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  color: #4e5969;
+}
+
+.act-dot {
+  color: #e5e6eb;
+}
+
+.act-counts {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 22rpx;
+  color: #86909c;
+}
+
+.act-scope {
+  margin-left: auto;
+  font-size: 22rpx;
+  color: #c59a00;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200rpx;
+}

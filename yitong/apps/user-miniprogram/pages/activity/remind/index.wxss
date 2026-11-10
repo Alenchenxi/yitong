@@ -1,0 +1,89 @@
+/* 活动提醒：手动提醒入口 + 发送记录 */
+.head {
+  margin: 20rpx 24rpx 0;
+}
+
+.head-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.head-sub {
+  font-size: 24rpx;
+  color: #86909c;
+  margin-top: 12rpx;
+  line-height: 1.6;
+}
+
+.head-btn {
+  margin-top: 24rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  background: #f9c801;
+  color: #1d2129;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 12rpx;
+}
+
+.head-disabled {
+  opacity: 0.6;
+}
+
+.list {
+  margin: 20rpx 24rpx 60rpx;
+}
+
+.list-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 16rpx;
+}
+
+.record {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.record:last-child {
+  border-bottom: none;
+}
+
+.record-main {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.record-user {
+  font-size: 28rpx;
+  color: #1d2129;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-kind {
+  font-size: 22rpx;
+  color: #c59a00;
+  background: #fff7d1;
+  border-radius: 999rpx;
+  padding: 4rpx 12rpx;
+}
+
+.record-result {
+  font-size: 22rpx;
+  color: #86909c;
+}
+
+.record-sub {
+  font-size: 22rpx;
+  color: #86909c;
+  margin-top: 8rpx;
+}

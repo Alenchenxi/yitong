@@ -32,6 +32,7 @@ import { JobCommunicationModule } from './modules/job-communication/job-communic
 import { TutorSyncModule } from './modules/tutor-sync/tutor-sync.module';
 import { AppConfigModule } from './modules/app-config/app-config.module';
 import { PublicationModule } from './modules/publication/publication.module';
+import { ActivityModule } from './modules/activity/activity.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { PublicationModule } from './modules/publication/publication.module';
     ReferralModule,
     ConfessionModule,
     SupportModule,
+    ActivityModule,
     LicenseModule,
   ],
   providers: [

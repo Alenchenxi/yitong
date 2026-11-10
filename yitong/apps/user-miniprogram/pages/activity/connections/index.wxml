@@ -1,0 +1,39 @@
+<view class="page">
+  <view class="yt-card section">
+    <view class="section-title-row">
+      <text class="section-title">飞书连接</text>
+      <view class="section-op" bindtap="toggleForm">{{formVisible ? '收起' : '＋ 新建'}}</view>
+    </view>
+    <view wx:if="{{formVisible}}" class="conn-form">
+      <input class="field-input" value="{{formName}}" data-key="formName" bindinput="onFormInput" placeholder="连接名称（如：活动统计表）" />
+      <input class="field-input" value="{{formAppId}}" data-key="formAppId" bindinput="onFormInput" placeholder="飞书应用 app_id" />
+      <input class="field-input" value="{{formAppSecret}}" data-key="formAppSecret" bindinput="onFormInput" placeholder="飞书应用 app_secret（仅保存，界面脱敏）" password />
+      <view class="form-btn {{submitting ? 'form-disabled' : ''}}" bindtap="onCreate">创建连接</view>
+    </view>
+    <view wx:if="{{!connections.length && !formVisible}}" class="yt-empty">暂无连接</view>
+    <view wx:for="{{connections}}" wx:key="id" class="conn">
+      <view class="conn-main">
+        <text class="conn-name">{{item.name}}</text>
+        <text class="conn-masked">{{item.appSecretMasked}}</text>
+      </view>
+      <view class="conn-sub">app_id：{{item.appId}}</view>
+      <view class="conn-del" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+    </view>
+  </view>
+
+  <view wx:if="{{activityId}}" class="yt-card section">
+    <view class="section-title-row">
+      <text class="section-title">同步状态</text>
+      <view class="section-op" bindtap="onRetry">重试失败</view>
+    </view>
+    <view wx:if="{{!syncRecords.length}}" class="yt-empty">暂无同步记录</view>
+    <view wx:for="{{syncRecords}}" wx:key="id" class="record">
+      <view class="record-main">
+        <text class="record-user">{{item.userNickname}}</text>
+        <text class="record-status {{item.status === 'FAILED' ? 'status-failed' : item.status === 'SYNCED' ? 'status-ok' : ''}}">{{item.statusText}}</text>
+      </view>
+      <view wx:if="{{item.lastError}}" class="record-error">{{item.lastError}}</view>
+      <view class="record-sub">尝试 {{item.attempts}} 次 · {{item.updatedAt}}</view>
+    </view>
+  </view>
+</view>

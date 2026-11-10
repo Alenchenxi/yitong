@@ -1,0 +1,18 @@
+<view class="page">
+  <view wx:if="{{readonly}}" class="readonly-tip">活动群聊已转为只读，历史消息保留可查</view>
+  <scroll-view scroll-y class="msgs" scroll-into-view="{{scrollInto}}">
+    <view wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}" class="msg {{item.fromId === myUid ? 'mine' : ''}}">
+      <image wx:if="{{item.fromId !== myUid}}" class="avatar" src="{{item.avatarUrl || '/assets/tabbar/activity.png'}}" mode="aspectFill" />
+      <view class="bubble-wrap">
+        <view wx:if="{{item.fromId !== myUid}}" class="nick">{{item.nickname}}</view>
+        <view class="bubble">{{item.content}}</view>
+      </view>
+    </view>
+    <view wx:if="{{!messages.length}}" class="yt-empty">暂无消息，来打个招呼吧</view>
+  </scroll-view>
+
+  <view wx:if="{{!readonly}}" class="input-bar">
+    <input class="chat-input" value="{{input}}" placeholder="发送消息" bindinput="onInput" confirm-type="send" bindconfirm="onSend" />
+    <view class="send-btn {{sending || !input ? 'send-disabled' : ''}}" bindtap="onSend">发送</view>
+  </view>
+</view>

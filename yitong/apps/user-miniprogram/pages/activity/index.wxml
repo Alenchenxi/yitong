@@ -1,0 +1,49 @@
+<view class="page">
+  <view class="nav" style="padding-top: {{navTop}}px; height: {{navHeight}}px;">
+    <text class="nav-title">活动</text>
+    <view class="nav-actions">
+      <view class="nav-btn" bindtap="goMine">我的活动</view>
+      <view class="nav-btn nav-btn-primary" bindtap="goPublish">发布</view>
+    </view>
+  </view>
+  <view style="height: {{navTop + navHeight + 12}}px;"></view>
+
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab {{activeTab === item.key ? 'tab-active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="switchTab"
+    >{{item.label}}</view>
+  </view>
+
+  <view wx:if="{{!loading && !list.length}}" class="yt-empty">暂无活动</view>
+
+  <view class="list">
+    <view wx:for="{{list}}" wx:key="id" class="yt-card act-card" data-id="{{item.id}}" bindtap="openDetail">
+      <image class="act-cover" src="{{item.coverImage}}" mode="aspectFill" />
+      <view class="act-body">
+        <view class="act-title-row">
+          <text class="act-title">{{item.title}}</text>
+          <text class="act-status">{{item.statusText}}</text>
+        </view>
+        <view class="act-summary">{{item.summary}}</view>
+        <view class="act-meta">
+          <text>{{item.formatText}}</text>
+          <text class="act-dot">·</text>
+          <text>{{item.timeText}}</text>
+        </view>
+        <view class="act-counts">
+          <text>已报名 {{item.approvedCount}}{{item.capacity ? '/' + item.capacity : ''}}人</text>
+          <text wx:if="{{item.waitlistCount}}" class="act-dot">·</text>
+          <text wx:if="{{item.waitlistCount}}">候补 {{item.waitlistCount}}人</text>
+          <text class="act-scope">{{item.scope === 'PLATFORM' ? '全圈可见' : item.communityName}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <activity-arrivals id="activityArrivals" />
+  <custom-tab-bar />
+</view>

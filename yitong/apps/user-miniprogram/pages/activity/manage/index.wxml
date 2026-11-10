@@ -1,0 +1,87 @@
+<view class="page">
+  <scroll-view scroll-x class="tabs" enhanced show-scrollbar="{{false}}">
+    <view class="tabs-inner">
+      <view
+        wx:for="{{tabs}}"
+        wx:key="key"
+        class="tab {{activeTab === item.key ? 'tab-active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="switchTab"
+      >{{item.label}}<text wx:if="{{item.key === 'PENDING_REVIEW' && detail && detail.pendingCount}}" class="tab-badge">{{detail.pendingCount}}</text></view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{!list.length}}" class="yt-empty">暂无记录</view>
+
+  <view class="list">
+    <view wx:for="{{list}}" wx:key="id" class="yt-card item">
+      <view class="item-head">
+        <image class="item-avatar" src="{{item.avatarUrl || '/assets/tabbar/activity.png'}}" mode="aspectFill" />
+        <view class="item-info">
+          <view class="item-name">{{item.nickname}}</view>
+          <view class="item-sub">提交于 {{item.createdAt}}</view>
+          <view wx:if="{{item.waitlistedAt}}" class="item-sub">候补进入时间 {{item.waitlistedAt}}</view>
+        </view>
+      </view>
+      <view class="item-actions">
+        <view class="op" data-id="{{item.id}}" data-pending="{{false}}" bindtap="viewData">查看资料</view>
+        <block wx:if="{{activeTab === 'PENDING_REVIEW' || activeTab === 'RE_REVIEW'}}">
+          <view class="op op-primary" data-id="{{item.id}}" bindtap="onApprove">通过</view>
+          <view class="op op-danger" data-id="{{item.id}}" bindtap="openReject">拒绝</view>
+        </block>
+        <view
+          wx:if="{{activeTab === 'APPROVED'}}"
+          class="op op-primary"
+          data-id="{{item.id}}"
+          data-uid="{{item.userId}}"
+          data-name="{{item.nickname}}"
+          bindtap="onRemindOne"
+        >提醒</view>
+        <view
+          wx:if="{{activeTab === 'APPROVED' || activeTab === 'WAITLIST'}}"
+          class="op op-danger"
+          data-id="{{item.id}}"
+          bindtap="openRevoke"
+        >取消资格</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{viewing}}" class="mask" bindtap="closeView">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">{{viewing.nickname}} 的报名资料</view>
+      <view class="kv" wx:for="{{viewingEntries}}" wx:key="label">
+        <text class="kv-k">{{item.label}}</text>
+        <text class="kv-v">{{item.value}}</text>
+      </view>
+      <view wx:if="{{viewingPendingEntries.length}}" class="sheet-warn">—— 待复审新资料 ——</view>
+      <view class="kv" wx:for="{{viewingPendingEntries}}" wx:key="label">
+        <text class="kv-k">{{item.label}}</text>
+        <text class="kv-v">{{item.value}}</text>
+      </view>
+      <view class="sheet-close" bindtap="closeView">关闭</view>
+    </view>
+  </view>
+
+  <view wx:if="{{rejectId}}" class="mask" bindtap="closeReject">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">拒绝报名</view>
+      <textarea class="sheet-input" value="{{rejectReason}}" bindinput="onRejectInput" placeholder="拒绝原因（将通知用户，选填）" maxlength="200" />
+      <view class="sheet-btns">
+        <view class="sheet-btn" bindtap="closeReject">取消</view>
+        <view class="sheet-btn sheet-btn-primary" bindtap="doReject">确认拒绝</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{revokeId}}" class="mask" bindtap="closeRevoke">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">取消参与资格</view>
+      <textarea class="sheet-input" value="{{revokeReason}}" bindinput="onRevokeInput" placeholder="取消原因（必填，将通知用户）" maxlength="200" />
+      <view class="sheet-btns">
+        <view class="sheet-btn" bindtap="closeRevoke">取消</view>
+        <view class="sheet-btn sheet-btn-danger" bindtap="doRevoke">确认取消</view>
+      </view>
+    </view>
+  </view>
+</view>

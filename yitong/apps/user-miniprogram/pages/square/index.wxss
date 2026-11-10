@@ -343,3 +343,54 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* 广场活动分类卡（specs/features/活动模块.md AC-002） */
+.sq-activity {
+  display: flex;
+  gap: 20rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+
+.sq-act-cover {
+  width: 200rpx;
+  height: 150rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  background: #f5f6f8;
+}
+
+.sq-act-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sq-act-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1d2129;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sq-act-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 24rpx;
+  color: #86909c;
+}
+
+.sq-act-scope {
+  color: #c59a00;
+  font-size: 22rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220rpx;
+}

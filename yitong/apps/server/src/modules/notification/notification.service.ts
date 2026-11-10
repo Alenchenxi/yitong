@@ -46,6 +46,18 @@ export const NotificationType = {
   // P2-26 圈子创建审核结果
   COMMUNITY_APPROVED: 'community_approved',
   COMMUNITY_REJECTED: 'community_rejected',
+  // 活动模块（specs/features/活动模块.md §4.7）
+  ACTIVITY_ENROLL_SUCCESS: 'activity_enroll_success',
+  ACTIVITY_REVIEW_PASS: 'activity_review_pass',
+  ACTIVITY_REVIEW_REJECT: 'activity_review_reject',
+  ACTIVITY_WAITLISTED: 'activity_waitlisted',
+  ACTIVITY_WAITLIST_PROMOTED: 'activity_waitlist_promoted',
+  ACTIVITY_REREVIEW_REJECTED: 'activity_rereview_rejected',
+  ACTIVITY_REVOKED: 'activity_revoked',
+  ACTIVITY_INFO_CHANGED: 'activity_info_changed',
+  ACTIVITY_CANCELLED: 'activity_cancelled',
+  ACTIVITY_REMINDER: 'activity_reminder', // 自动 + 手动提醒（微信订阅消息模板 activityRemind）
+  ACTIVITY_PENDING_REVIEW: 'activity_pending_review', // 新报名/复审提醒管理者
 } as const;
 
 @Injectable()

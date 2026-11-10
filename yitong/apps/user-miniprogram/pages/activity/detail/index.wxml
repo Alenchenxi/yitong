@@ -1,0 +1,88 @@
+<view wx:if="{{detail}}" class="page">
+  <image class="cover" src="{{detail.coverImage}}" mode="aspectFill" />
+  <view class="yt-card head">
+    <view class="head-row">
+      <text class="head-title">{{detail.title}}</text>
+      <text class="head-status">{{statusText}}</text>
+    </view>
+    <view class="head-meta">
+      <image class="head-avatar" src="{{detail.initiator.avatarUrl || '/assets/tabbar/activity.png'}}" mode="aspectFill" />
+      <text class="head-initiator">{{detail.initiator.nickname}} 发起</text>
+      <text class="head-scope">{{detail.scope === 'PLATFORM' ? '全圈可见' : detail.communityName}}</text>
+    </view>
+    <view class="head-time">🕐 {{timeText}}</view>
+    <view class="head-counts">
+      <view class="count"><text class="count-num">{{detail.approvedCount}}</text><text class="count-label">正式报名</text></view>
+      <view wx:if="{{detail.pendingCount}}" class="count"><text class="count-num">{{detail.pendingCount}}</text><text class="count-label">待审核</text></view>
+      <view wx:if="{{detail.waitlistCount}}" class="count"><text class="count-num">{{detail.waitlistCount}}</text><text class="count-label">候补</text></view>
+      <view wx:if="{{detail.capacity}}" class="count"><text class="count-num">{{detail.capacity}}</text><text class="count-label">人数上限</text></view>
+    </view>
+  </view>
+
+  <view class="yt-card section">
+    <view class="section-title">活动介绍</view>
+    <view class="desc">
+      <text
+        wx:for="{{segments}}"
+        wx:key="index"
+        class="{{item.isLink ? 'link' : ''}}"
+        data-text="{{item.text}}"
+        data-link="{{item.isLink}}"
+        bindtap="onSegmentTap"
+      >{{item.text}}</text>
+    </view>
+  </view>
+
+  <view class="yt-card section">
+    <view class="section-title">参与信息</view>
+    <view wx:if="{{detail.locationVisible && detail.location}}" class="kv"><text class="kv-k">活动地点</text><text class="kv-v">{{detail.location}}</text></view>
+    <view wx:elif="{{detail.location}}" class="kv"><text class="kv-k">活动地点</text><text class="kv-v kv-restricted">仅正式报名成功后可见</text></view>
+    <view wx:if="{{detail.joinLinkVisible && detail.joinLink}}" class="kv"><text class="kv-k">参与方式</text><text class="kv-v">{{detail.joinLink}}</text></view>
+    <view wx:elif="{{detail.joinLink}}" class="kv"><text class="kv-k">参与方式</text><text class="kv-v kv-restricted">仅正式报名成功后可见</text></view>
+    <view wx:if="{{detail.enrollEndAt}}" class="kv"><text class="kv-k">报名截止</text><text class="kv-v">{{detail.enrollEndAt}}</text></view>
+    <view class="kv"><text class="kv-k">报名方式</text><text class="kv-v">{{detail.joinMode === 'DIRECT' ? '直接报名' : '管理员审核'}}</text></view>
+  </view>
+
+  <view wx:if="{{detail.myEnrollment}}" class="yt-card section">
+    <view class="section-title">我的报名</view>
+    <view class="kv"><text class="kv-k">状态</text><text class="kv-v">{{enrollStatusText}}{{detail.myEnrollment.pendingReview ? '（资料待复审）' : ''}}</text></view>
+    <view wx:if="{{detail.myEnrollment.revokedReason}}" class="kv"><text class="kv-k">取消原因</text><text class="kv-v">{{detail.myEnrollment.revokedReason}}</text></view>
+  </view>
+
+  <view wx:if="{{detail.canManage}}" class="yt-card section">
+    <view class="section-title manage-title" bindtap="toggleManage">
+      <text>活动管理</text>
+      <text class="manage-toggle">{{managing ? '收起' : '展开'}}</text>
+    </view>
+    <view wx:if="{{managing}}" class="manage-grid">
+      <view class="manage-btn" bindtap="goManage">报名管理</view>
+      <view class="manage-btn" bindtap="goChat">活动群聊</view>
+      <view class="manage-btn" bindtap="goRemind">活动提醒</view>
+      <view class="manage-btn" bindtap="goEdit">编辑活动</view>
+      <view wx:if="{{detail.larkSync}}" class="manage-btn" bindtap="goSync">飞书同步</view>
+      <view wx:if="{{detail.isInitiator}}" class="manage-btn manage-danger" data-action="finish" bindtap="onLifecycle">结束活动</view>
+      <view wx:if="{{detail.isInitiator}}" class="manage-btn manage-danger" data-action="delist" bindtap="onLifecycle">下架活动</view>
+      <view wx:if="{{detail.isInitiator}}" class="manage-btn manage-danger" data-action="cancel" bindtap="onLifecycle">取消活动</view>
+    </view>
+  </view>
+
+  <view class="footer">
+    <view class="footer-side">
+      <view class="side-btn {{detail.myInterest === 'INTERESTED' ? 'side-on' : ''}}" data-state="INTERESTED" bindtap="onInterest">感兴趣</view>
+      <view class="side-btn {{detail.myInterest === 'NOT_INTERESTED' ? 'side-on' : ''}}" data-state="NOT_INTERESTED" bindtap="onInterest">不感兴趣</view>
+    </view>
+    <block wx:if="{{detail.myEnrollment && detail.myEnrollment.status !== 'CANCELLED' && detail.myEnrollment.status !== 'REVOKED' && detail.myEnrollment.status !== 'REJECTED'}}">
+      <view wx:if="{{detail.chat.canChat && !chatReadonly}}" class="footer-chat" bindtap="goChat">群聊</view>
+      <view class="footer-main" bindtap="goEnroll">查看报名</view>
+      <view wx:if="{{detail.status === 'PUBLISHED'}}" class="footer-ghost" bindtap="onCancelEnroll">退出报名</view>
+    </block>
+    <block wx:elif="{{detail.myEnrollment}}">
+      <view wx:if="{{detail.status === 'PUBLISHED'}}" class="footer-main" bindtap="goEnroll">重新报名</view>
+    </block>
+    <block wx:elif="{{detail.status === 'PUBLISHED'}}">
+      <view wx:if="{{detail.capacity && detail.approvedCount >= detail.capacity}}" class="footer-main footer-disabled">名额已满</view>
+      <view wx:else class="footer-main" bindtap="goEnroll">{{detail.joinMode === 'REVIEW' ? '提交报名' : '立即报名'}}</view>
+    </block>
+  </view>
+</view>
+<view wx:elif="{{!loading}}" class="yt-empty">活动不存在或不可见</view>

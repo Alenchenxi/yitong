@@ -1,0 +1,23 @@
+<view class="page">
+  <view class="yt-card head">
+    <view class="head-title">{{detail ? detail.title : ''}}</view>
+    <view class="head-sub">提醒对象为全部正式参与人；候补用户不接收参与提醒；同一用户 24 小时内最多收到一次手动提醒。</view>
+    <view class="head-btn {{sending ? 'head-disabled' : ''}}" bindtap="onRemindAll">发送手动提醒</view>
+  </view>
+
+  <view class="yt-card list">
+    <view class="list-title">发送记录（{{total}}）</view>
+    <view wx:if="{{!records.length}}" class="yt-empty">暂无记录</view>
+    <view wx:for="{{records}}" wx:key="id" class="record">
+      <view class="record-main">
+        <text class="record-user">{{item.userNickname}}</text>
+        <text class="record-kind">{{item.kindText}}</text>
+        <text class="record-result">{{item.resultText}}</text>
+      </view>
+      <view class="record-sub">
+        <text>{{item.createdAt}}</text>
+        <text wx:if="{{item.sentByNickname}}"> · {{item.sentByNickname}} 发送</text>
+      </view>
+    </view>
+  </view>
+</view>

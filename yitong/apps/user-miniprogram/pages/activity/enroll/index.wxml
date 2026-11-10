@@ -1,0 +1,91 @@
+<view wx:if="{{detail}}" class="page">
+  <view class="yt-card tip">
+    <text class="tip-title">{{detail.title}}</text>
+    <text class="tip-sub">{{detail.joinMode === 'REVIEW' ? '提交后需管理员审核' : '提交后立即完成报名'}}{{isModify ? ' · 本次为资料修改' : ''}}</text>
+    <text wx:if="{{isModify && detail.myEnrollment.pendingReview}}" class="tip-warn">你有待复审的新资料，再次提交将覆盖</text>
+  </view>
+
+  <view class="yt-card form">
+    <block wx:for="{{detail.form}}" wx:key="key" wx:for-item="field">
+      <view class="field">
+        <view class="field-label">{{field.required ? '* ' : ''}}{{field.label}}</view>
+
+        <input
+          wx:if="{{field.type === 'text' || field.type === 'phone' || field.type === 'wechat'}}"
+          class="field-input"
+          type="{{field.type === 'phone' ? 'number' : 'text'}}"
+          value="{{values[field.key]}}"
+          placeholder="{{field.placeholder || ('请输入' + field.label)}}"
+          data-key="{{field.key}}"
+          bindinput="onInput"
+        />
+
+        <textarea
+          wx:elif="{{field.type === 'textarea'}}"
+          class="field-textarea"
+          value="{{values[field.key]}}"
+          placeholder="{{field.placeholder || ('请输入' + field.label)}}"
+          maxlength="1000"
+          data-key="{{field.key}}"
+          bindinput="onInput"
+        />
+
+        <picker
+          wx:elif="{{field.type === 'date'}}"
+          mode="date"
+          value="{{values[field.key]}}"
+          data-key="{{field.key}}"
+          bindchange="onDatePick"
+        >
+          <view class="field-input field-picker">{{values[field.key] || (field.placeholder || '请选择日期')}}</view>
+        </picker>
+
+        <view wx:elif="{{field.type === 'radio'}}" class="chips">
+          <view
+            wx:for="{{field.options}}"
+            wx:for-item="opt"
+            wx:key="*this"
+            class="chip {{values[field.key] === opt ? 'chip-on' : ''}}"
+            data-key="{{field.key}}"
+            data-value="{{opt}}"
+            bindtap="onRadioPick"
+          >{{opt}}</view>
+        </view>
+
+        <view wx:elif="{{field.type === 'checkbox'}}" class="chips">
+          <view
+            wx:for="{{field.options}}"
+            wx:for-item="opt"
+            wx:key="*this"
+            class="chip {{(values[field.key] || []).indexOf(opt) >= 0 ? 'chip-on' : ''}}"
+            data-key="{{field.key}}"
+            data-value="{{opt}}"
+            bindtap="onCheckboxToggle"
+          >{{opt}}</view>
+        </view>
+
+        <view wx:elif="{{field.type === 'image'}}" class="images">
+          <image
+            wx:for="{{values[field.key] || []}}"
+            wx:for-item="img"
+            wx:for-index="imgIndex"
+            wx:key="*this"
+            class="img-item"
+            src="{{img}}"
+            mode="aspectFill"
+            data-key="{{field.key}}"
+            data-index="{{imgIndex}}"
+            bindtap="onPreviewImage"
+          >
+            <view class="img-del" data-key="{{field.key}}" data-index="{{imgIndex}}" catchtap="onRemoveImage">✕</view>
+          </image>
+          <view wx:if="{{(values[field.key] || []).length < 9}}" class="img-add" data-key="{{field.key}}" bindtap="onAddImage">＋</view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="footer">
+    <view class="footer-main {{submitting ? 'footer-disabled' : ''}}" bindtap="onSubmit">{{isModify ? '提交修改' : '提交报名'}}</view>
+  </view>
+</view>

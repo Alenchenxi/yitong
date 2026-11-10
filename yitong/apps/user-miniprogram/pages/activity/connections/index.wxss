@@ -1,0 +1,138 @@
+/* 飞书连接与同步：连接 CRUD（密钥脱敏）+ 同步记录/重试 */
+.section {
+  margin: 20rpx 24rpx 0;
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.section-op {
+  font-size: 24rpx;
+  color: #c59a00;
+}
+
+.conn-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.field-input {
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  color: #1d2129;
+}
+
+.form-btn {
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  background: #f9c801;
+  color: #1d2129;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 12rpx;
+}
+
+.form-disabled {
+  opacity: 0.6;
+}
+
+.conn {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.conn:last-child {
+  border-bottom: none;
+}
+
+.conn-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.conn-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1d2129;
+}
+
+.conn-masked {
+  font-size: 22rpx;
+  color: #86909c;
+}
+
+.conn-sub {
+  font-size: 22rpx;
+  color: #86909c;
+  margin-top: 8rpx;
+}
+
+.conn-del {
+  font-size: 24rpx;
+  color: #f53f3f;
+  margin-top: 8rpx;
+}
+
+.record {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.record:last-child {
+  border-bottom: none;
+}
+
+.record-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.record-user {
+  font-size: 28rpx;
+  color: #1d2129;
+  font-weight: 500;
+}
+
+.record-status {
+  font-size: 22rpx;
+  color: #86909c;
+}
+
+.status-ok {
+  color: #00b42a;
+}
+
+.status-failed {
+  color: #f53f3f;
+}
+
+.record-error {
+  font-size: 22rpx;
+  color: #f53f3f;
+  margin-top: 8rpx;
+  word-break: break-all;
+}
+
+.record-sub {
+  font-size: 22rpx;
+  color: #86909c;
+  margin-top: 8rpx;
+}

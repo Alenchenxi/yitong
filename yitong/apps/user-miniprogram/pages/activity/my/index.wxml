@@ -1,0 +1,31 @@
+<view class="page">
+  <scroll-view scroll-x class="tabs" enhanced show-scrollbar="{{false}}">
+    <view class="tabs-inner">
+      <view
+        wx:for="{{tabs}}"
+        wx:key="key"
+        class="tab {{activeTab === item.key ? 'tab-active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="switchTab"
+      >{{item.label}}</view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{!loading && !list.length}}" class="yt-empty">暂无活动</view>
+
+  <view class="list">
+    <view wx:for="{{list}}" wx:key="id" class="yt-card my-card">
+      <view class="my-main" data-id="{{item.id}}" bindtap="openDetail">
+        <image class="my-cover" src="{{item.coverImage}}" mode="aspectFill" />
+        <view class="my-body">
+          <view class="my-title-row">
+            <text class="my-title">{{item.title}}</text>
+            <text class="my-status">{{item.statusText}}</text>
+          </view>
+          <view class="my-meta">{{item.scope === 'PLATFORM' ? '全圈' : item.communityName}}</view>
+        </view>
+      </view>
+      <view wx:if="{{activeTab === 'not_interested'}}" class="my-restore" data-id="{{item.id}}" bindtap="restore">恢复展示</view>
+    </view>
+  </view>
+</view>

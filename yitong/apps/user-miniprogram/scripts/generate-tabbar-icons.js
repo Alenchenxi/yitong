@@ -18,6 +18,7 @@ const ICONS = [
   { file: 'confession', icon: 'heart' },
   { file: 'treehole', icon: 'moon-stars' },
   { file: 'job', icon: 'briefcase' },
+  { file: 'activity', icon: 'calendar-event' },
   { file: 'profile', icon: 'user' },
   // 商家端
   { file: 'm-candidates', icon: 'users' },

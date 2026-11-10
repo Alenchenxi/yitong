@@ -8,6 +8,7 @@ import {
   getAnonymousToken,
 } from '../../services/treehole';
 import { isJobListCursorExpired, listJobPosts, type JobPostVo } from '../../services/job';
+import { listActivities } from '../../services/activity';
 import {
   acceptCommunityInvite,
   getActiveCommunity,
@@ -31,8 +32,8 @@ import {
 } from '../../utils/job-module';
 
 // 广场（圈子首页）：树洞能力由全局匿名内容开关控制，兼职 tab 由兼职板块开关控制。
-type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job';
-type RawPageFeedItemVo = FeedItemVo | { kind: 'job_post'; data: JobPostVo };
+type PlazaTab = 'dynamic' | 'confession' | 'treehole' | 'job' | 'activity';
+type RawPageFeedItemVo = FeedItemVo | { kind: 'job_post'; data: JobPostVo } | { kind: 'activity'; data: { id: string; title: string; coverImage: string; approvedCount: number; scope: string; communityName: string | null } };
 type WithFeedKey<T> = T & { feedKey: string };
 type PageFeedItemVo = WithFeedKey<RawPageFeedItemVo>;
 type PageTodayHitItem = WithFeedKey<TodayHitItem>;
@@ -169,6 +170,9 @@ Page({
     syncCustomTabBar(this, '/pages/square/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    // 活动上新弹窗：冷启动首次 onShow 触发（组件内含冷启动门闩与空列表守卫）
+    const arrivals = this.selectComponent('#activityArrivals') as unknown as { maybeShow: () => void } | null;
+    arrivals?.maybeShow?.();
     const anonymousContentEnabled = await app.getAnonymousContentVisibility();
     this.updateAnonymousContentVisibility(anonymousContentEnabled);
     const jobModuleEnabled = await app.getJobModuleVisibility();
@@ -429,6 +433,14 @@ Page({
           nextCursor: r.nextCursor,
           hasMore: r.hasMore,
         };
+      } else if (tab === 'activity') {
+        // 活动分类：当前可见范围内的可报名活动（后端一次性返回，本地不分页）
+        const r = await listActivities();
+        resp = {
+          list: r.list.map((a) => ({ kind: 'activity' as const, data: a })),
+          nextCursor: null,
+          hasMore: false,
+        };
       } else {
         // 开关关闭或未知 tab：返回空页，不发请求
         resp = { list: [], nextCursor: null, hasMore: false };
@@ -607,6 +619,11 @@ Page({
     if (id) wx.navigateTo({ url: `/pages/treehole/detail/index?id=${id}` });
   },
 
+  goActivityDetail(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    if (id) wx.navigateTo({ url: `/pages/activity/detail/index?id=${id}` });
+  },
+
   goAnonAuthor(e: WechatMiniprogram.CustomEvent) {
     const anonId = (e.detail as { anonId?: string }).anonId;
     if (anonId) {
@@ -632,7 +649,7 @@ Page({
     const idx = this.data.items.findIndex((item) => item.data.id === id);
     if (idx < 0) return;
     const item = this.data.items[idx];
-    if (item.kind === 'job_post') return;
+    if (item.kind === 'job_post' || item.kind === 'activity') return;
     if (item.kind === 'anon_post' && !hasAnonToken()) return;
 
     const p = item.data;

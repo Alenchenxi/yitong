@@ -141,6 +141,7 @@
     <view wx:if="{{anonymousContentEnabled}}" class="main-tab {{activeTab === 'treehole' ? 'active' : ''}}" data-tab="treehole" bindtap="switchTab">树洞</view>
     <!-- 兼职 tab 由平台兼职板块开关控制 -->
     <view wx:if="{{jobModuleEnabled}}" class="main-tab {{activeTab === 'job' ? 'active' : ''}}" data-tab="job" bindtap="switchTab">兼职</view>
+    <view class="main-tab {{activeTab === 'activity' ? 'active' : ''}}" data-tab="activity" bindtap="switchTab">活动</view>
   </view>
 
   <!-- 混合流 / 各 tab 列表：按 kind 分发 -->
@@ -169,6 +170,17 @@
       <view wx:elif="{{item.kind === 'job_post'}}" class="feed-item">
         <job-card job="{{item.data}}"></job-card>
       </view>
+      <!-- 活动：进入当前可见范围内的活动列表（specs/features/活动模块.md AC-002） -->
+      <view wx:elif="{{item.kind === 'activity'}}" class="feed-item sq-activity" data-id="{{item.data.id}}" bindtap="goActivityDetail">
+        <image class="sq-act-cover" src="{{item.data.coverImage}}" mode="aspectFill" />
+        <view class="sq-act-body">
+          <view class="sq-act-title">{{item.data.title}}</view>
+          <view class="sq-act-meta">
+            <text>{{item.data.approvedCount}}人已报名</text>
+            <text class="sq-act-scope">{{item.data.scope === 'PLATFORM' ? '全圈' : item.data.communityName}}</text>
+          </view>
+        </view>
+      </view>
     </block>
     <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
     <view class="loading-tip" wx:elif="{{!hasMore}}">没有更多了</view>
@@ -188,3 +200,5 @@
 
 <!-- P2-81 版本升级弹窗（全局组件，utils/update.ts 广播驱动） -->
 <update-modal />
+<!-- 活动上新弹窗（冷启动一次，组件内自带门闩） -->
+<activity-arrivals id="activityArrivals" />

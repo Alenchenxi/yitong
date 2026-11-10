@@ -5,6 +5,7 @@ import { WxAccessTokenService } from './wx-access-token.service';
 export interface SubscribeTemplateConfig {
   jobApply: string | null;
   jobStatus: string | null;
+  activityRemind: string | null; // 活动模块：开始前提醒（specs/features/活动模块.md §4.7）
   tmplIds: string[];
 }
 
@@ -35,10 +36,12 @@ export class WxSubscribeMessageService {
   getTemplates(): SubscribeTemplateConfig {
     const jobApply = this.config.get<string>('WX_SUBSCRIBE_JOB_APPLY_TEMPLATE_ID') || null;
     const jobStatus = this.config.get<string>('WX_SUBSCRIBE_JOB_STATUS_TEMPLATE_ID') || null;
+    const activityRemind = this.config.get<string>('WX_SUBSCRIBE_ACTIVITY_REMIND_TEMPLATE_ID') || null;
     return {
       jobApply,
       jobStatus,
-      tmplIds: [jobApply, jobStatus].filter((id): id is string => !!id),
+      activityRemind,
+      tmplIds: [jobApply, jobStatus, activityRemind].filter((id): id is string => !!id),
     };
   }
 
@@ -85,6 +88,7 @@ export class WxSubscribeMessageService {
     const templates = this.getTemplates();
     if (type === 'job_apply') return templates.jobApply;
     if (type === 'job_accept' || type === 'job_complete' || type === 'job_reject') return templates.jobStatus;
+    if (type === 'activity_reminder') return templates.activityRemind;
     return null;
   }
 
@@ -95,12 +99,22 @@ export class WxSubscribeMessageService {
     if (payload.targetType === 'application') {
       return 'pages/job/my-applications/index';
     }
+    if (payload.targetType === 'activity' && payload.targetId) {
+      return `pages/activity/detail/index?id=${encodeURIComponent(payload.targetId)}`;
+    }
     return 'pages/notifications/index';
   }
 
   private dataFor(payload: SubscribeNotificationPayload) {
     const time = formatDate(payload.createdAt ?? new Date());
     if (payload.type === 'job_apply') {
+      return {
+        thing1: { value: truncate(payload.title, 20) },
+        thing2: { value: truncate(payload.content, 20) },
+        time3: { value: time },
+      };
+    }
+    if (payload.type === 'activity_reminder') {
       return {
         thing1: { value: truncate(payload.title, 20) },
         thing2: { value: truncate(payload.content, 20) },

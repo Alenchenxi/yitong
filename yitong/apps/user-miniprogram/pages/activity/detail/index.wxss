@@ -1,0 +1,248 @@
+/* 活动详情：首图 + 信息卡 + 参与信息 + 底部操作栏（UI设计规范 §6.4 底部固定按钮） */
+.cover {
+  width: 100%;
+  height: 400rpx;
+}
+
+.head {
+  margin: -60rpx 24rpx 0;
+  position: relative;
+}
+
+.head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.head-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1d2129;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.head-status {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: #c59a00;
+  background: #fff7d1;
+  border-radius: 999rpx;
+  padding: 4rpx 16rpx;
+}
+
+.head-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.head-avatar {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: #f5f6f8;
+}
+
+.head-initiator {
+  font-size: 24rpx;
+  color: #4e5969;
+}
+
+.head-scope {
+  margin-left: auto;
+  font-size: 22rpx;
+  color: #86909c;
+  background: #f5f6f8;
+  border-radius: 999rpx;
+  padding: 4rpx 16rpx;
+}
+
+.head-time {
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: #4e5969;
+}
+
+.head-counts {
+  display: flex;
+  gap: 40rpx;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f5f6f8;
+}
+
+.count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.count-num {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1d2129;
+}
+
+.count-label {
+  font-size: 22rpx;
+  color: #86909c;
+  margin-top: 4rpx;
+}
+
+.section {
+  margin: 20rpx 24rpx 0;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 16rpx;
+}
+
+.manage-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.manage-toggle {
+  font-size: 24rpx;
+  font-weight: 400;
+  color: #86909c;
+}
+
+.manage-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.manage-btn {
+  font-size: 26rpx;
+  color: #4e5969;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 16rpx 28rpx;
+}
+
+.manage-danger {
+  color: #f53f3f;
+  background: #fff1f0;
+}
+
+.desc {
+  font-size: 28rpx;
+  color: #4e5969;
+  line-height: 1.7;
+  word-break: break-all;
+}
+
+.link {
+  color: #2f80ed;
+  text-decoration: underline;
+}
+
+.kv {
+  display: flex;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.kv-k {
+  flex-shrink: 0;
+  width: 140rpx;
+  font-size: 26rpx;
+  color: #86909c;
+}
+
+.kv-v {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: #1d2129;
+  word-break: break-all;
+}
+
+.kv-restricted {
+  color: #ffb020;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  border-top: 1rpx solid #e5e6eb;
+  z-index: 100;
+}
+
+.footer-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.side-btn {
+  font-size: 22rpx;
+  color: #86909c;
+  border: 1rpx solid #e5e6eb;
+  border-radius: 999rpx;
+  padding: 2rpx 16rpx;
+}
+
+.side-on {
+  color: #c59a00;
+  border-color: #f9c801;
+  background: #fffbea;
+}
+
+.footer-main {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  background: #f9c801;
+  color: #1d2129;
+  font-size: 30rpx;
+  font-weight: 600;
+  border-radius: 12rpx;
+}
+
+.footer-disabled {
+  background: #f5f6f8;
+  color: #86909c;
+  font-weight: 400;
+}
+
+.footer-chat,
+.footer-ghost {
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0 28rpx;
+  text-align: center;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+
+.footer-chat {
+  background: #fff7d1;
+  color: #c59a00;
+  font-weight: 600;
+}
+
+.footer-ghost {
+  border: 1rpx solid #e5e6eb;
+  color: #4e5969;
+}

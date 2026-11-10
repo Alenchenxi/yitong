@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "activity-arrivals": "/components/activity-arrivals/index",
+    "custom-tab-bar": "/custom-tab-bar/index"
+  }
+}

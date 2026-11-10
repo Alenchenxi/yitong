@@ -95,6 +95,7 @@ App({
     joinGate: false, // 圈子：加入页门闩（广场 onShow 未加入时只跳一次，返回不再无限跳）
     pendingCommunityInviteId: '', // 分享邀请：冷/热启动先暂存，登录后由广场幂等消费
     communityInviteRouting: false, // 分享邀请：角色切换/重进广场期间防止 onLaunch、onShow 重复路由
+    activityArrivalsShown: false, // 活动上新弹窗：冷启动门闩（内存态，冷启动自动复位）
   },
 
   onLaunch(options) {
@@ -398,6 +399,7 @@ export type AppInstance = WechatMiniprogram.App.Instance<{
     anonymousContentEnabled: boolean;
     jobModuleEnabled: boolean;
     adminAccess: AdminAccessVo | null;
+    activityArrivalsShown: boolean; // 活动上新弹窗：每次冷启动最多展示一次
   };
   loginWithRole: (role: 'user' | 'merchant' | 'admin', referralCode?: string) => Promise<void>;
   switchRole: (role: 'user' | 'merchant' | 'admin') => Promise<void>;

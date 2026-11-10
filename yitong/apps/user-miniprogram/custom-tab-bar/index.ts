@@ -7,6 +7,8 @@ interface TabItem {
   selectedIconPath: string;
   anonymousOnly?: boolean;
   jobOnly?: boolean;
+  // 第 6 个入口（活动）不在微信官方 tabBar.list（上限 5 项），由本组件渲染、reLaunch 承载
+  plain?: boolean;
 }
 
 const TAB_ITEMS: TabItem[] = [
@@ -35,6 +37,13 @@ const TAB_ITEMS: TabItem[] = [
     iconPath: '/assets/tabbar/job.png',
     selectedIconPath: '/assets/tabbar/job-active.png',
     jobOnly: true,
+  },
+  {
+    pagePath: '/pages/activity/index',
+    text: '活动',
+    iconPath: '/assets/tabbar/activity.png',
+    selectedIconPath: '/assets/tabbar/activity-active.png',
+    plain: true,
   },
   {
     pagePath: '/pages/profile/index',
@@ -102,7 +111,13 @@ Component({
     switchTab(e: WechatMiniprogram.TouchEvent) {
       const path = e.currentTarget.dataset.path as string;
       if (!path || path === this.data.selectedPath) return;
-      wx.switchTab({ url: path });
+      const item = TAB_ITEMS.find((t) => t.pagePath === path);
+      // 官方 tabBar list 仅 5 项：不在其中的活动页用 reLaunch（活动页由本组件手动挂载渲染）
+      if (item?.plain) {
+        wx.reLaunch({ url: path });
+      } else {
+        wx.switchTab({ url: path });
+      }
     },
   },
 });

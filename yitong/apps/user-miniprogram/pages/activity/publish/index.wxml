@@ -1,0 +1,141 @@
+<view class="page">
+  <view class="yt-card section">
+    <view class="section-title">基础信息</view>
+    <view class="field">
+      <view class="field-label">活动名称 <text class="req">*</text></view>
+      <input class="field-input" value="{{form.title}}" placeholder="请输入活动名称" data-key="title" bindinput="onInput" maxlength="50" />
+    </view>
+    <view class="field">
+      <view class="field-label">活动首图 <text class="req">*</text></view>
+      <view wx:if="{{form.coverImage}}" class="cover-wrap">
+        <image class="cover-preview" src="{{form.coverImage}}" mode="aspectFill" bindtap="onChooseCover" />
+      </view>
+      <view wx:else class="cover-add" bindtap="onChooseCover">＋ 上传首图</view>
+    </view>
+    <view class="field">
+      <view class="field-label">活动介绍 <text class="req">*</text></view>
+      <textarea class="field-textarea" value="{{form.description}}" placeholder="支持粘贴链接，展示时自动识别高亮" data-key="description" bindinput="onInput" maxlength="5000" />
+    </view>
+    <view class="field">
+      <view class="field-label">活动形式 <text class="req">*</text></view>
+      <view class="chips">
+        <view wx:for="{{formats}}" wx:key="value" class="chip {{form.format === item.value ? 'chip-on' : ''}}" data-value="{{item.value}}" bindtap="pickFormat">{{item.label}}</view>
+      </view>
+    </view>
+    <view wx:if="{{form.format !== 'ONLINE'}}" class="field">
+      <view class="field-label">活动地点 <text class="req">*</text></view>
+      <input class="field-input" value="{{form.location}}" placeholder="线下地点" data-key="location" bindinput="onInput" maxlength="200" />
+    </view>
+    <view wx:if="{{form.format !== 'OFFLINE'}}" class="field">
+      <view class="field-label">参与方式或链接 <text class="req">*</text></view>
+      <input class="field-input" value="{{form.joinLink}}" placeholder="会议链接 / 参与方式说明" data-key="joinLink" bindinput="onInput" maxlength="500" />
+    </view>
+    <view class="field">
+      <view class="field-label">地点和参与链接可见性</view>
+      <view class="chips">
+        <view class="chip {{form.infoVisibility === 'PUBLIC' ? 'chip-on' : ''}}" data-value="PUBLIC" bindtap="pickVisibility">公开</view>
+        <view class="chip {{form.infoVisibility === 'APPROVED_ONLY' ? 'chip-on' : ''}}" data-value="APPROVED_ONLY" bindtap="pickVisibility">仅正式参与人可见</view>
+      </view>
+    </view>
+    <view wx:if="{{!id && !isPlatform}}" class="field">
+      <view class="field-label">所属圈子 <text class="req">*</text></view>
+      <picker mode="selector" range="{{communities}}" range-key="name" bindchange="pickCommunity">
+        <view class="field-input field-picker">{{communityName || '选择我管理的圈子'}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="yt-card section">
+    <view class="section-title">时间与报名</view>
+    <view class="field">
+      <view class="field-label">活动时间（不填为长期活动）</view>
+      <view class="dt-row">
+        <picker mode="date" value="{{form.startDate}}" data-key="startDate" bindchange="onDatePick"><view class="dt">{{form.startDate || '开始日期'}}</view></picker>
+        <picker mode="time" value="{{form.startTime}}" data-key="startTime" bindchange="onTimePick"><view class="dt">{{form.startTime || '时间'}}</view></picker>
+        <text class="dt-sep">至</text>
+        <picker mode="date" value="{{form.endDate}}" data-key="endDate" bindchange="onDatePick"><view class="dt">{{form.endDate || '结束日期'}}</view></picker>
+        <picker mode="time" value="{{form.endTime}}" data-key="endTime" bindchange="onTimePick"><view class="dt">{{form.endTime || '时间'}}</view></picker>
+      </view>
+    </view>
+    <view class="field">
+      <view class="field-label">报名时间（不填随发布开放）</view>
+      <view class="dt-row">
+        <picker mode="date" value="{{form.enrollStartDate}}" data-key="enrollStartDate" bindchange="onDatePick"><view class="dt">{{form.enrollStartDate || '开始日期'}}</view></picker>
+        <picker mode="time" value="{{form.enrollStartTime}}" data-key="enrollStartTime" bindchange="onTimePick"><view class="dt">{{form.enrollStartTime || '时间'}}</view></picker>
+        <text class="dt-sep">至</text>
+        <picker mode="date" value="{{form.enrollEndDate}}" data-key="enrollEndDate" bindchange="onDatePick"><view class="dt">{{form.enrollEndDate || '截止日期'}}</view></picker>
+        <picker mode="time" value="{{form.enrollEndTime}}" data-key="enrollEndTime" bindchange="onTimePick"><view class="dt">{{form.enrollEndTime || '时间'}}</view></picker>
+      </view>
+    </view>
+    <view class="field">
+      <view class="field-label">报名方式 <text class="req">*</text></view>
+      <view class="chips">
+        <view class="chip {{form.joinMode === 'DIRECT' ? 'chip-on' : ''}}" data-value="DIRECT" bindtap="pickJoinMode">直接报名</view>
+        <view class="chip {{form.joinMode === 'REVIEW' ? 'chip-on' : ''}}" data-value="REVIEW" bindtap="pickJoinMode">管理员审核</view>
+      </view>
+    </view>
+    <view class="field">
+      <view class="field-label">人数上限（不填不限人数）</view>
+      <input class="field-input" type="number" value="{{form.capacity}}" placeholder="如 50" data-key="capacity" bindinput="onInput" />
+    </view>
+  </view>
+
+  <view class="yt-card section">
+    <view class="section-title">报名表单</view>
+    <view class="field-form" wx:for="{{form.form}}" wx:key="index">
+      <view class="ff-row">
+        <input class="ff-label" value="{{item.label}}" data-index="{{index}}" data-key="label" bindinput="onFieldInput" placeholder="字段名称" />
+        <text class="ff-type">{{item.type}}</text>
+        <switch checked="{{item.required}}" data-index="{{index}}" bindchange="onFieldRequiredToggle" />
+        <text class="ff-req">必填</text>
+        <view class="ff-op" data-index="{{index}}" data-dir="{{-1}}" bindtap="moveField">↑</view>
+        <view class="ff-op" data-index="{{index}}" data-dir="{{1}}" bindtap="moveField">↓</view>
+        <view class="ff-op ff-del" data-index="{{index}}" bindtap="removeField">✕</view>
+      </view>
+      <input class="field-input ff-input" value="{{item.placeholder}}" data-index="{{index}}" data-key="placeholder" bindinput="onFieldInput" placeholder="提示文字（选填）" />
+      <input
+        wx:if="{{item.type === 'radio' || item.type === 'checkbox'}}"
+        class="field-input ff-input"
+        value="{{item.options}}"
+        data-index="{{index}}"
+        bindinput="onFieldOptionsInput"
+        placeholder="选项，用逗号分隔"
+      />
+    </view>
+    <view class="add-field">
+      <picker mode="selector" range="{{fieldTypes}}" range-key="label" bindchange="onFieldTypePick">
+        <view class="ff-add-type">类型：{{fieldTypes[newFieldTypeIndex].label}}</view>
+      </picker>
+      <view class="ff-add-btn" bindtap="addField">＋ 添加字段</view>
+    </view>
+  </view>
+
+  <view wx:if="{{editing && editing.isInitiator}}" class="yt-card section">
+    <view class="section-title">发起人专属</view>
+    <view class="field">
+      <view class="field-label">活动管理员（用户 ID，逗号分隔）</view>
+      <input class="field-input" value="{{adminIdsInput}}" bindinput="onAdminIdsInput" placeholder="userId1,userId2" />
+      <view class="ff-add-btn" bindtap="saveAdmins">保存管理员</view>
+    </view>
+    <view class="field">
+      <view class="field-label">转让发起人</view>
+      <input class="field-input" value="{{transferInput}}" bindinput="onTransferInput" placeholder="目标用户 ID" />
+      <view class="ff-add-btn ff-danger" bindtap="doTransfer">转让</view>
+    </view>
+    <view class="field">
+      <view class="field-label">飞书多维表格同步</view>
+      <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onConnectionPick">
+        <view class="field-input field-picker">{{connectionId ? '已选择连接' : '选择飞书连接'}}</view>
+      </picker>
+      <input class="field-input ff-input" value="{{bitableApp}}" data-key="bitableApp" bindinput="onLarkInput" placeholder="多维表格 app_token" />
+      <input class="field-input ff-input" value="{{bitableTable}}" data-key="bitableTable" bindinput="onLarkInput" placeholder="数据表 table_id" />
+      <view class="ff-add-btn" bindtap="saveLark">保存同步配置</view>
+      <view class="ff-link" bindtap="goConnections">管理飞书连接 →</view>
+    </view>
+  </view>
+
+  <view class="footer">
+    <view class="footer-ghost {{submitting ? 'op-disabled' : ''}}" data-publish="0" bindtap="onSubmit">{{id ? '保存' : '存草稿'}}</view>
+    <view wx:if="{{!id || editing.status === 'DRAFT'}}" class="footer-main {{submitting ? 'op-disabled' : ''}}" data-publish="1" bindtap="onSubmit">发布</view>
+  </view>
+</view>

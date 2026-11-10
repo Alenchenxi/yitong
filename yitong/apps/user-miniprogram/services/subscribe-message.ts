@@ -3,6 +3,7 @@ import { request } from './request';
 interface SubscribeTemplates {
   jobApply: string | null;
   jobStatus: string | null;
+  activityRemind: string | null;
   tmplIds: string[];
 }
 
@@ -16,7 +17,11 @@ export async function requestJobStatusSubscribe() {
   return requestSubscribe('jobStatus');
 }
 
-async function requestSubscribe(key: 'jobApply' | 'jobStatus') {
+export async function requestActivityRemindSubscribe() {
+  return requestSubscribe('activityRemind');
+}
+
+async function requestSubscribe(key: 'jobApply' | 'jobStatus' | 'activityRemind') {
   if (!wx.requestSubscribeMessage) return false;
   const templates = await getSubscribeTemplates().catch(() => null);
   const tmplId = templates?.[key];
