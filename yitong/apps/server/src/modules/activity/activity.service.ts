@@ -729,7 +729,8 @@ export class ActivityService {
       where: { id: enrollment.id },
       data: { status: ActivityEnrollmentStatus.CANCELLED, waitlistedAt: null, pendingData: Prisma.DbNull },
     });
-    void this.larkSync.markPending(id, enrollment.id).catch(() => undefined);
+    // 取消报名：同步语义为删除远端表格行
+    void this.larkSync.markPending(id, enrollment.id, 'REMOVE').catch(() => undefined);
     if (wasApproved) await this.promoteWaitlistHead(activity);
     return this.detail(uid, id);
   }
@@ -893,7 +894,8 @@ export class ActivityService {
       data: { status: ActivityEnrollmentStatus.REVOKED, revokedReason: reason, waitlistedAt: null, pendingData: Prisma.DbNull, reviewedAt: new Date(), reviewedBy: uid },
     });
     await this.notifyOne(enrollment.userId, NotificationType.ACTIVITY_REVOKED, '参与资格已取消', `你在「${activity.title}」的参与资格已被取消：${reason}`, id);
-    void this.larkSync.markPending(id, enrollmentId).catch(() => undefined);
+    // 取消资格：同步语义为删除远端表格行
+    void this.larkSync.markPending(id, enrollmentId, 'REMOVE').catch(() => undefined);
     if (wasApproved) await this.promoteWaitlistHead(activity);
   }
 

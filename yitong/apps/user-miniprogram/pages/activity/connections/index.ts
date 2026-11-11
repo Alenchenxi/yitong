@@ -35,6 +35,9 @@ Page({
     cfgApp: '',
     cfgTable: '',
     cfgIndex: -1,
+    cfgStableKey: '',
+    stableOptions: [] as Array<{ key: string; label: string }>,
+    stableLabel: '稳定数据项：报名编号（默认）',
   },
 
   onLoad(query: Record<string, string>) {
@@ -52,6 +55,9 @@ Page({
       if (this.data.activityId) {
         const detail = await activityDetail(this.data.activityId).catch(() => null);
         if (detail) {
+          const stableOptions = [{ key: '', label: '稳定数据项：报名编号（默认）' }]
+            .concat(detail.form.map((f) => ({ key: f.key, label: `稳定数据项：${f.label}` })));
+          const stableKey = detail.larkStableKey ?? '';
           this.setData({
             detail,
             canConfig: detail.canManage,
@@ -60,6 +66,9 @@ Page({
             cfgApp: detail.larkBitableApp ?? '',
             cfgTable: detail.larkBitableTable ?? '',
             cfgIndex: detail.larkConnectionId ? connections.findIndex((c) => c.id === detail.larkConnectionId) : -1,
+            cfgStableKey: stableKey,
+            stableOptions,
+            stableLabel: stableOptions.find((o) => o.key === stableKey)?.label ?? stableOptions[0]!.label,
           });
         }
         const records = await listSyncRecords(this.data.activityId);
@@ -83,16 +92,27 @@ Page({
     this.setData({ [key]: e.detail.value } as never);
   },
 
+  onCfgStablePick(e: WechatMiniprogram.PickerChange) {
+    const picked = this.data.stableOptions[Number(e.detail.value)];
+    if (!picked) return;
+    this.setData({ cfgStableKey: picked.key, stableLabel: picked.label });
+  },
+
   async onSaveCfg() {
     if (this.data.submitting) return;
-    const { cfgConnectionId, cfgApp, cfgTable } = this.data;
+    const { cfgConnectionId, cfgApp, cfgTable, cfgStableKey } = this.data;
     if (!cfgConnectionId || !cfgApp.trim() || !cfgTable.trim()) {
       wx.showToast({ title: '请选择连接并填全两个表格参数', icon: 'none' });
       return;
     }
     this.setData({ submitting: true });
     try {
-      await setLarkConfig(this.data.activityId, { connectionId: cfgConnectionId, bitableApp: cfgApp.trim(), bitableTable: cfgTable.trim() });
+      await setLarkConfig(this.data.activityId, {
+        connectionId: cfgConnectionId,
+        bitableApp: cfgApp.trim(),
+        bitableTable: cfgTable.trim(),
+        stableKey: cfgStableKey || undefined,
+      });
       wx.showToast({ title: '同步配置已保存', icon: 'success' });
       await this.reload();
     } catch {

@@ -1467,6 +1467,11 @@ enum ActivitySyncStatus {
   FAILED // 同步失败（可重试，不阻塞报名）
 }
 
+enum ActivitySyncOp {
+  UPSERT // 创建/更新远端行
+  REMOVE // 取消报名/取消资格：删除远端行
+}
+
 model Activity {
   id                 String                @id @default(cuid())
   scope              ActivityScope         @default(PLATFORM)
@@ -1589,6 +1594,7 @@ model ActivitySyncRecord {
   activityId      String            @map("activity_id")
   enrollmentId    String            @map("enrollment_id")
   status          ActivitySyncStatus @default(PENDING)
+  op              ActivitySyncOp    @default(UPSERT)
   remoteRecordId  String?           @map("remote_record_id")
   attempts        Int               @default(0)
   lastError       String?           @map("last_error")

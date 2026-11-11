@@ -32,8 +32,11 @@
       </picker>
       <input class="field-input" value="{{cfgApp}}" data-key="cfgApp" bindinput="onCfgInput" placeholder="多维表格 app_token（表格 URL /base/ 后那段）" />
       <input class="field-input" value="{{cfgTable}}" data-key="cfgTable" bindinput="onCfgInput" placeholder="table_id（表格 URL table= 参数）" />
+      <picker mode="selector" range="{{stableOptions}}" range-key="label" bindchange="onCfgStablePick">
+        <view class="field-input">{{stableLabel}}</view>
+      </picker>
       <view class="form-btn {{submitting ? 'form-disabled' : ''}}" bindtap="onSaveCfg">保存同步配置</view>
-      <view class="cfg-hint">表格需含列：报名编号/用户/状态/报名资料/更新时间；并把本飞书应用添加为表格协作者</view>
+      <view class="cfg-hint">表格列自动创建：报名编号/用户/状态/报名时间/更新时间 + 报名表单字段逐列；稳定数据项列仅首次写入、后续更新不覆盖；取消报名会删除对应行。需把本飞书应用添加为表格协作者。</view>
     </view>
   </view>
 

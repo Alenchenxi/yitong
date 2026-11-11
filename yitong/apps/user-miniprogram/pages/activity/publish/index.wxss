@@ -152,27 +152,59 @@
 
 .ff-type {
   font-size: 22rpx;
-  color: #86909c;
-}
-
-.ff-req {
-  font-size: 22rpx;
-  color: #86909c;
-}
-
-.ff-op {
-  font-size: 26rpx;
-  color: #4e5969;
-  padding: 8rpx;
-}
-
-.ff-del {
-  color: #f53f3f;
+  color: var(--yt-primary-dark, #c59a00);
+  background: var(--yt-primary-light, #fff7d1);
+  border-radius: 8rpx;
+  padding: 4rpx 12rpx;
+  flex-shrink: 0;
 }
 
 .ff-input {
   margin-top: 12rpx;
   font-size: 26rpx;
+}
+
+/* 表单项功能按钮：主色外框 + tabler 线性图标（assets/icons，同一尺寸） */
+.ff-ops {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.ff-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  height: 56rpx;
+  min-width: 56rpx;
+  border: 2rpx solid var(--yt-primary, #f9c801);
+  border-radius: 12rpx;
+  padding: 0 14rpx;
+  background: #ffffff;
+  font-size: 22rpx;
+  color: var(--yt-primary-dark, #c59a00);
+}
+
+.ff-btn-text {
+  flex: none;
+}
+
+.ff-btn-on {
+  background: var(--yt-primary-light, #fff7d1);
+  border-color: var(--yt-primary-dark, #c59a00);
+  font-weight: 600;
+}
+
+.ff-ic {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.ff-ic-sm {
+  width: 26rpx;
+  height: 26rpx;
 }
 
 .add-field {

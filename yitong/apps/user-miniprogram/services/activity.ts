@@ -64,6 +64,7 @@ export interface ActivityDetailVo extends ActivityListVo {
   larkConnectionId: string | null;
   larkBitableApp: string | null;
   larkBitableTable: string | null;
+  larkStableKey: string | null;
 }
 
 export interface ActivityEnrollmentVo {
@@ -163,7 +164,7 @@ export function setActivityAdmins(id: string, add: string[], remove: string[]): 
   return request<ActivityDetailVo>({ url: `/activities/${id}/admins`, method: 'POST', data: { add, remove } });
 }
 
-export function setLarkConfig(id: string, data: { connectionId: string; bitableApp: string; bitableTable: string }): Promise<ActivityDetailVo> {
+export function setLarkConfig(id: string, data: { connectionId: string; bitableApp: string; bitableTable: string; stableKey?: string }): Promise<ActivityDetailVo> {
   return request<ActivityDetailVo>({ url: `/activities/${id}/lark-config`, method: 'POST', data });
 }
 

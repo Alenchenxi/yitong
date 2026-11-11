@@ -264,9 +264,10 @@ Page({
     this.setData({ [`form.form[${index}].options`]: options });
   },
 
-  onFieldRequiredToggle(e: WechatMiniprogram.SwitchChange) {
+  onFieldRequiredToggle(e: WechatMiniprogram.TouchEvent) {
     const index = Number(e.currentTarget.dataset.index);
-    this.setData({ [`form.form[${index}].required`]: e.detail.value });
+    const current = this.data.form.form[index]?.required ?? false;
+    this.setData({ [`form.form[${index}].required`]: !current });
   },
 
   moveField(e: WechatMiniprogram.TouchEvent) {

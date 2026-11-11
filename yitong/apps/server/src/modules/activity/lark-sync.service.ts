@@ -1,18 +1,29 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { ActivitySyncStatus, type Activity, type ActivityEnrollment, type LarkConnection } from '@prisma/client';
+import { ActivitySyncOp, ActivitySyncStatus, type Activity, type ActivityEnrollment, type LarkConnection } from '@prisma/client';
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ActivityFormData, ActivityFormField } from './types';
 import type { CreateLarkConnectionDto } from './dto';
 
-// 飞书多维表格单向同步（specs/features/活动模块.md §4.8）
+// 飞书多维表格单向同步（specs/features/活动模块.md §4.8 + 逐列扩展）
 // - 连接 = 发起人自建飞书应用（app_id/app_secret），密钥仅服务端与库内保存、接口脱敏
-// - 稳定标识 = enrollmentId；首次成功后记 remoteRecordId，重试走更新不重复建行（AC-030）
+// - 逐列写入：固定列（报名编号/用户/状态/报名时间/更新时间）+ 报名表单字段逐列（列名=字段名，文本类型，缺失自动创建）
+// - 行定位：优先 remoteRecordId；缺失时按「报名编号」列精确搜索远端行（更新/删除都用它定位，报名编号天然不变）
+// - 取消报名/取消资格 → op=REMOVE 删除远端行并清除同步记录
 // - 同步失败只记状态与原因，绝不阻塞小程序内报名（BR-013）
-// 目标表格字段约定（发起人自建多维表格需包含这些列）：
-//   报名编号(文本) / 用户(文本) / 状态(文本) / 报名资料(文本) / 更新时间(文本)
 const LARK_BASE = 'https://open.feishu.cn';
 const TOKEN_CACHE_TTL_MS = 30 * 60 * 1000;
+
+const FIXED_COLUMNS = ['报名编号', '用户', '状态', '报名时间', '更新时间'] as const;
+
+const STATUS_TEXT: Record<string, string> = {
+  PENDING_REVIEW: '待审核',
+  APPROVED: '报名成功',
+  WAITLIST: '候补中',
+  CANCELLED: '已取消',
+  REJECTED: '未通过',
+  REVOKED: '资格已取消',
+};
 
 interface TenantTokenResp {
   code?: number;
@@ -25,6 +36,18 @@ interface BitableRecordResp {
   code?: number;
   msg?: string;
   data?: { record?: { record_id?: string } };
+}
+
+interface BitableFieldsResp {
+  code?: number;
+  msg?: string;
+  data?: { items?: Array<{ field_name?: string }> };
+}
+
+interface BitableSearchResp {
+  code?: number;
+  msg?: string;
+  data?: { items?: Array<{ record_id?: string }> };
 }
 
 @Injectable()
@@ -70,8 +93,8 @@ export class LarkSyncService {
 
   // ===== 同步记录 =====
 
-  /** 标记某条报名待同步（报名新增/修改/取消/取消资格时调用） */
-  async markPending(activityId: string, enrollmentId: string): Promise<void> {
+  /** 标记某条报名待同步（op：upsert=创建/更新行；remove=取消报名/取消资格删行） */
+  async markPending(activityId: string, enrollmentId: string, op: 'UPSERT' | 'REMOVE' = 'UPSERT'): Promise<void> {
     const activity = await this.prisma.activity.findUnique({
       where: { id: activityId },
       select: { larkConnectionId: true },
@@ -79,15 +102,15 @@ export class LarkSyncService {
     if (!activity?.larkConnectionId) return; // 未配置同步的活动直接跳过
     await this.prisma.activitySyncRecord.upsert({
       where: { activityId_enrollmentId: { activityId, enrollmentId } },
-      update: { status: ActivitySyncStatus.PENDING, lastError: null },
-      create: { activityId, enrollmentId, status: ActivitySyncStatus.PENDING },
+      update: { status: ActivitySyncStatus.PENDING, op, lastError: null },
+      create: { activityId, enrollmentId, status: ActivitySyncStatus.PENDING, op },
     });
     void this.pushPending(activityId).catch((e: unknown) => {
       this.logger.warn(`lark push failed for activity ${activityId}: ${e instanceof Error ? e.message : String(e)}`);
     });
   }
 
-  /** 活动取消：全部报名记录重新同步（状态列更新） */
+  /** 活动取消：全部报名记录重新同步（状态列更新，不删行，保留外部留痕） */
   async markAllPending(activityId: string): Promise<void> {
     const activity = await this.prisma.activity.findUnique({
       where: { id: activityId },
@@ -95,7 +118,7 @@ export class LarkSyncService {
     });
     if (!activity?.larkConnectionId) return;
     await this.prisma.activitySyncRecord.updateMany({
-      where: { activityId },
+      where: { activityId, op: ActivitySyncOp.UPSERT },
       data: { status: ActivitySyncStatus.PENDING },
     });
     void this.pushPending(activityId).catch((e: unknown) => {
@@ -122,6 +145,7 @@ export class LarkSyncService {
       id: r.id,
       enrollmentId: r.enrollmentId,
       userNickname: enrollmentUser.get(r.enrollmentId) ?? '已注销用户',
+      op: r.op,
       status: r.status,
       attempts: r.attempts,
       lastError: r.lastError,
@@ -164,20 +188,73 @@ export class LarkSyncService {
     return data.tenant_access_token;
   }
 
-  private fieldsPayload(activity: Activity, enrollment: ActivityEnrollment, nickname: string): Record<string, { text: string }> {
+  /** 逐列组装：固定列 + 报名表单字段列（列名=字段 label） */
+  private buildColumns(activity: Activity, enrollment: ActivityEnrollment, nickname: string): Record<string, { text: string }> {
     const form = activity.form as unknown as ActivityFormField[];
     const data = enrollment.data as ActivityFormData;
-    const summary = form
-      .filter((f) => data[f.key] !== undefined && data[f.key] !== null)
-      .map((f) => `${f.label}: ${Array.isArray(data[f.key]) ? (data[f.key] as string[]).join('、') : String(data[f.key])}`)
-      .join('\n');
-    return {
+    const columns: Record<string, { text: string }> = {
       报名编号: { text: enrollment.id },
       用户: { text: nickname },
-      状态: { text: enrollment.status },
-      报名资料: { text: summary || '（空）' },
-      更新时间: { text: new Date().toISOString() },
+      状态: { text: STATUS_TEXT[enrollment.status] ?? enrollment.status },
+      报名时间: { text: formatDateTime(enrollment.createdAt) },
+      更新时间: { text: formatDateTime(new Date()) },
     };
+    for (const f of form) {
+      const v = data[f.key];
+      if (v === undefined || v === null) continue;
+      const text = Array.isArray(v) ? v.join('、') : String(v);
+      if (!text) continue;
+      columns[f.label || f.key] = { text };
+    }
+    return columns;
+  }
+
+  /** 按「报名编号」列精确搜索远端行 record_id（找不到返回 undefined） */
+  private async findByEnrollmentNo(token: string, activity: Activity, enrollmentNo: string): Promise<string | undefined> {
+    const res = await fetch(
+      `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/records/search?page_size=20`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          filter: { conjunction: 'and', conditions: [{ field_name: '报名编号', operator: 'is', value: [enrollmentNo] }] },
+        }),
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    const data = (await res.json()) as BitableSearchResp;
+    if (data.code !== 0 || !data.data) {
+      throw new Error(`搜索报名编号失败: ${data.code} ${data.msg ?? ''}`);
+    }
+    return data.data.items?.[0]?.record_id;
+  }
+
+  /** 确保目标表字段齐全（固定列 + 表单字段列；缺失自动创建为多行文本） */
+  private async ensureColumns(token: string, activity: Activity, names: string[]): Promise<void> {
+    const need = [...new Set([...FIXED_COLUMNS, ...names])];
+    const res = await fetch(
+      `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/fields?page_size=200`,
+      { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) },
+    );
+    const data = (await res.json()) as BitableFieldsResp;
+    if (data.code !== 0 || !data.data) {
+      throw new Error(`读取表格字段失败: ${data.code} ${data.msg ?? ''}`);
+    }
+    const existing = new Set((data.data.items ?? []).map((i) => i.field_name ?? ''));
+    for (const name of need) {
+      if (existing.has(name)) continue;
+      const created = await fetch(
+        `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/fields`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ field_name: name, type: 1 }),
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+      const cd = (await created.json()) as BitableFieldsResp;
+      if (cd.code !== 0) throw new Error(`创建表格字段「${name}」失败: ${cd.code} ${cd.msg ?? ''}`);
+    }
   }
 
   /** 推送全部 PENDING 记录（fire-and-forget 场景由调用方 catch） */
@@ -211,17 +288,42 @@ export class LarkSyncService {
         continue;
       }
       const nickname = users.find((u) => u.id === enrollment.userId)?.nickname ?? '已注销用户';
+
+      // 删行（取消报名/取消资格）：remoteRecordId 缺失时按报名编号搜索定位；成功后清除同步记录
+      if (record.op === ActivitySyncOp.REMOVE) {
+        try {
+          const recordId = record.remoteRecordId ?? await this.findByEnrollmentNo(token, activity, enrollment.id);
+          if (recordId) {
+            const res = await fetch(
+              `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/records/${recordId}`,
+              { method: 'DELETE', headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) },
+            );
+            const data = (await res.json()) as BitableRecordResp;
+            if (data.code !== 0) throw new Error(`删除记录失败: ${data.code} ${data.msg ?? ''}`);
+          }
+          await this.prisma.activitySyncRecord.delete({ where: { id: record.id } });
+        } catch (e) {
+          const message = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+          await this.prisma.activitySyncRecord.update({
+            where: { id: record.id },
+            data: { status: ActivitySyncStatus.FAILED, attempts: { increment: 1 }, lastError: message },
+          });
+        }
+        continue;
+      }
+
+      // 建行/更新行：优先 remoteRecordId，缺失时按报名编号搜索定位
       try {
-        const fields = this.fieldsPayload(activity, enrollment, nickname);
-        let recordId = record.remoteRecordId ?? undefined;
+        const columns = this.buildColumns(activity, enrollment, nickname);
+        await this.ensureColumns(token, activity, Object.keys(columns).filter((n) => !FIXED_COLUMNS.includes(n as (typeof FIXED_COLUMNS)[number])));
+        let recordId = record.remoteRecordId ?? await this.findByEnrollmentNo(token, activity, enrollment.id);
         if (recordId) {
-          // 已有远端记录 → 更新（重试不产生重复行）
           const res = await fetch(
             `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/records/${recordId}`,
             {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ fields }),
+              body: JSON.stringify({ fields: columns }),
               signal: AbortSignal.timeout(15_000),
             },
           );
@@ -233,7 +335,7 @@ export class LarkSyncService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ fields }),
+              body: JSON.stringify({ fields: columns }),
               signal: AbortSignal.timeout(15_000),
             },
           );
@@ -264,4 +366,9 @@ export class LarkSyncService {
       data: { status: ActivitySyncStatus.FAILED, lastError: message.slice(0, 500) },
     });
   }
+}
+
+function formatDateTime(d: Date): string {
+  const pad = (n: number) => `${n}`.padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
