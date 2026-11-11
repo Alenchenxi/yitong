@@ -1,3 +1,11 @@
+<!-- WXML 表达式不支持方法调用与数组字面量，数组助手经 WXS 提供 -->
+<wxs module="arr">
+  module.exports = {
+    has: function (a, v) { if (!a) return false; return a.indexOf(v) >= 0; },
+    len: function (a) { if (!a) return 0; return a.length; }
+  };
+</wxs>
+
 <view wx:if="{{detail}}" class="page">
   <view class="yt-card tip">
     <text class="tip-title">{{detail.title}}</text>
@@ -57,7 +65,7 @@
             wx:for="{{field.options}}"
             wx:for-item="opt"
             wx:key="*this"
-            class="chip {{(values[field.key] || []).indexOf(opt) >= 0 ? 'chip-on' : ''}}"
+            class="chip {{arr.has(values[field.key], opt) ? 'chip-on' : ''}}"
             data-key="{{field.key}}"
             data-value="{{opt}}"
             bindtap="onCheckboxToggle"
@@ -66,7 +74,7 @@
 
         <view wx:elif="{{field.type === 'image'}}" class="images">
           <image
-            wx:for="{{values[field.key] || []}}"
+            wx:for="{{values[field.key]}}"
             wx:for-item="img"
             wx:for-index="imgIndex"
             wx:key="*this"
@@ -79,7 +87,7 @@
           >
             <view class="img-del" data-key="{{field.key}}" data-index="{{imgIndex}}" catchtap="onRemoveImage">✕</view>
           </image>
-          <view wx:if="{{(values[field.key] || []).length < 9}}" class="img-add" data-key="{{field.key}}" bindtap="onAddImage">＋</view>
+          <view wx:if="{{arr.len(values[field.key]) < 9}}" class="img-add" data-key="{{field.key}}" bindtap="onAddImage">＋</view>
         </view>
       </view>
     </block>
