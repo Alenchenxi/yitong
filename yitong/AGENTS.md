@@ -132,6 +132,8 @@ squash merge 到 main 并 push 成功后，必须依次执行以下步骤，**�
 - **小程序 tsconfig**：`types:["miniprogram-api-typings"]`，`Page`/`Component` 用 catchtap 阻止冒泡。
 - **前端构建产物**：前端验收必须检查构建输出中的 `.js` / `.js.map` 是否已按改动重新生成；只跑 `tsc --noEmit` 不算完成。
 - **响应/异常**：路由前缀 `/api/v1`；成功 `ok(data)`；业务异常 `BizException(code,msg,status)`；错误码段见飞书《API设计规范》§3。
+- **内容安全 v2 必传 openid**：msgSecCheck v2 要求真实用户 openid，传空/缺失会被微信以业务 errcode 拒绝 → 生产 fail-closed 抛 90003「内容安全服务不可用」（2026-11-11 活动发布踩坑，dev mock 跳过审核导致仅在生产暴露）。**任何 `moderation.checkText/checkImage` 调用必须先取 `user.openid` 再传入**（参考 confession/treehole/chat/activity 各调用点的 `findUnique({select:{openid:true}})` 模式）；新增内容发布类接口时自查此项。
+- **WXML 表达式限制**：WXML 模板不支持方法调用（`.indexOf()`/`.map()` 等）与数组/对象字面量（`|| []`），且 **tsc 查不出模板语法错误**——数组判断走内联 WXS 助手（参考 `pages/activity/enroll/index.wxml` 的 `arr.has`/`arr.len` 模式）；新页面/组件交付前必须微信开发者工具实际编译一次，不能只看 tsc。
 - **GitHub 推送**：本机常超时，多重试；不要因为 push 失败就改历史。
 
 ---
