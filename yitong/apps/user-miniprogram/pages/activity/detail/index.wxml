@@ -37,7 +37,7 @@
     <view class="section-title">参与信息</view>
     <view wx:if="{{detail.locationVisible && detail.location}}" class="kv"><text class="kv-k">活动地点</text><text class="kv-v">{{detail.location}}</text></view>
     <view wx:elif="{{detail.location}}" class="kv"><text class="kv-k">活动地点</text><text class="kv-v kv-restricted">仅正式报名成功后可见</text></view>
-    <view wx:if="{{detail.joinLinkVisible && detail.joinLink}}" class="kv"><text class="kv-k">参与方式</text><text class="kv-v">{{detail.joinLink}}</text></view>
+    <view wx:if="{{detail.joinLinkVisible && detail.joinLink}}" class="kv"><text class="kv-k">参与方式</text><text class="kv-v kv-link" bindtap="onCopyJoinLink">{{detail.joinLink}}</text><text class="kv-copy">复制</text></view>
     <view wx:elif="{{detail.joinLink}}" class="kv"><text class="kv-k">参与方式</text><text class="kv-v kv-restricted">仅正式报名成功后可见</text></view>
     <view wx:if="{{detail.enrollEndAt}}" class="kv"><text class="kv-k">报名截止</text><text class="kv-v">{{detail.enrollEndAt}}</text></view>
     <view class="kv"><text class="kv-k">报名方式</text><text class="kv-v">{{detail.joinMode === 'DIRECT' ? '直接报名' : '管理员审核'}}</text></view>

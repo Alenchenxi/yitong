@@ -246,3 +246,15 @@
   border: 1rpx solid #e5e6eb;
   color: #4e5969;
 }
+
+/* 参与方式一键复制（链接/会议号） */
+.kv-link {
+  color: var(--yt-primary-dark, #c59a00);
+  text-decoration: underline;
+}
+
+.kv-copy {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: #86909c;
+}

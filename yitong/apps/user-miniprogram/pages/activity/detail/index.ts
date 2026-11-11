@@ -103,6 +103,13 @@ Page({
     });
   },
 
+  // 参与方式一键复制（链接/会议号等，统一 spec §7 复制提示口径）
+  onCopyJoinLink() {
+    const link = this.data.detail?.joinLink;
+    if (!link) return;
+    wx.setClipboardData({ data: link });
+  },
+
   goEnroll() {
     const d = this.data.detail;
     if (!d) return;
