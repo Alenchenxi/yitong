@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { WxSubscribeMessageService } from '../../common/wx/wx-subscribe-message.service';
+import type { SubscribeNotificationPayload } from '../../common/wx/wx-subscribe-message.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface NotificationVo {
@@ -78,6 +79,8 @@ export class NotificationService {
     targetType?: string;
     targetId?: string;
     extraId?: string;
+    // 仅订阅消息使用（活动提醒模板字段），不落库
+    activity?: SubscribeNotificationPayload['activity'];
   }) {
     const notification = await this.prisma.notification.create({
       data: {
@@ -90,7 +93,7 @@ export class NotificationService {
         extraId: params.extraId ?? null,
       },
     });
-    void this.trySendSubscribeMessage(notification).catch((e: unknown) => {
+    void this.trySendSubscribeMessage(notification, params.activity).catch((e: unknown) => {
       this.logger.warn(`subscribe message skipped: ${e instanceof Error ? e.message : String(e)}`);
     });
     return notification;
@@ -271,15 +274,18 @@ export class NotificationService {
     };
   }
 
-  private async trySendSubscribeMessage(n: {
-    userId: string;
-    type: string;
-    title: string;
-    content: string;
-    targetType: string | null;
-    targetId: string | null;
-    createdAt: Date;
-  }) {
+  private async trySendSubscribeMessage(
+    n: {
+      userId: string;
+      type: string;
+      title: string;
+      content: string;
+      targetType: string | null;
+      targetId: string | null;
+      createdAt: Date;
+    },
+    activity?: SubscribeNotificationPayload['activity'],
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: n.userId },
       select: { openid: true },
@@ -293,6 +299,7 @@ export class NotificationService {
       targetType: n.targetType,
       targetId: n.targetId,
       createdAt: n.createdAt,
+      activity,
     });
   }
 }

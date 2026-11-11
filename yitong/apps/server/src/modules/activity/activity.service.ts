@@ -1264,6 +1264,13 @@ export class ActivityService {
       content: `「${activity.title}」${when}，请准时参与`,
       targetType: 'activity',
       targetId: activity.id,
+      activity: {
+        title: activity.title,
+        startAt: activity.startTime,
+        endAt: activity.endTime,
+        location: activity.location,
+        tip: '活动即将开始，请准时参与',
+      },
     });
     if (noTemplate) {
       await this.prisma.activityReminder.updateMany({

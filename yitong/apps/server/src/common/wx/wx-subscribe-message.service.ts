@@ -22,6 +22,14 @@ export interface SubscribeNotificationPayload {
   targetType?: string | null;
   targetId?: string | null;
   createdAt?: Date;
+  // 活动提醒模板「活动即将开始提醒」专用：活动名称/活动时间/活动开始时间/活动地址/温馨提示
+  activity?: {
+    title: string;
+    startAt: Date | null;
+    endAt: Date | null;
+    location: string | null;
+    tip: string;
+  } | null;
 }
 
 @Injectable()
@@ -115,10 +123,15 @@ export class WxSubscribeMessageService {
       };
     }
     if (payload.type === 'activity_reminder') {
+      // 模板「活动即将开始提醒」5 关键词，ID 按位置+类型编号：thing1/time2/time3/thing4/thing5
+      const start = formatDate(payload.activity?.startAt ?? payload.createdAt ?? new Date());
+      const end = payload.activity?.endAt ? formatDate(payload.activity.endAt).slice(11) : null;
       return {
-        thing1: { value: truncate(payload.title, 20) },
-        thing2: { value: truncate(payload.content, 20) },
-        time3: { value: time },
+        thing1: { value: truncate(payload.activity?.title ?? payload.title, 20) }, // 活动名称
+        time2: { value: end ? `${start}~${end}` : start }, // 活动时间
+        time3: { value: chineseDate(payload.activity?.startAt ?? payload.createdAt ?? new Date()) }, // 活动开始时间
+        thing4: { value: truncate(payload.activity?.location || '待定', 20) }, // 活动地址
+        thing5: { value: truncate(payload.activity?.tip ?? payload.content, 20) }, // 温馨提示
       };
     }
     return {
@@ -144,4 +157,9 @@ function truncate(value: string, max: number) {
 function formatDate(date: Date) {
   const pad = (n: number) => `${n}`.padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+// time 类关键词兼容日期型校验（模板卡片示例即「2021年2月2日」格式）
+function chineseDate(date: Date) {
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
