@@ -30,6 +30,20 @@
   color: #f53f3f;
 }
 
+/* 地图选点按钮：地点输入框下方的次级按钮（样式对齐 job 发岗 btn-secondary） */
+.loc-btn {
+  width: 100%;
+  height: 72rpx;
+  line-height: 72rpx;
+  margin-top: 12rpx;
+  background: #ffffff;
+  color: #1d2129;
+  font-size: 26rpx;
+  border: 2rpx solid #e5e6eb;
+  border-radius: 12rpx;
+  padding: 0;
+}
+
 .field-input {
   background: #f5f6f8;
   border-radius: 12rpx;

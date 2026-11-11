@@ -25,6 +25,7 @@
     <view wx:if="{{form.format !== 'ONLINE'}}" class="field">
       <view class="field-label">活动地点 <text class="req">*</text></view>
       <input class="field-input" value="{{form.location}}" placeholder="线下地点" data-key="location" bindinput="onInput" maxlength="200" />
+      <button class="loc-btn" bindtap="onChooseLocation">📍 地图选点（支持搜索）</button>
     </view>
     <view wx:if="{{form.format !== 'OFFLINE'}}" class="field">
       <view class="field-label">参与方式或链接 <text class="req">*</text></view>

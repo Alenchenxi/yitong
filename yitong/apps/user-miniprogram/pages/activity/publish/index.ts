@@ -14,6 +14,7 @@ import {
 } from '../../../services/activity';
 import { getActiveCommunity } from '../../../services/community';
 import { uploadImage } from '../../../services/upload';
+import { chooseLocation } from '../../../utils/choose-location';
 
 const FIELD_TYPES: Array<{ value: ActivityFormField['type']; label: string }> = [
   { value: 'text', label: '单行文本' },
@@ -197,6 +198,14 @@ Page({
     const idx = Number(e.detail.value);
     const picked = this.data.communities[idx];
     this.setData({ communityId: picked?.id ?? '', communityName: picked?.name ?? '' });
+  },
+
+  // 地图选点（复用 utils/choose-location 的 wx.chooseLocation 封装，与 job 发岗同款；取消/失败静默）
+  // 活动地点只存文本（模型无坐标字段），取 POI 名，坐标不入库
+  async onChooseLocation() {
+    const loc = await chooseLocation();
+    if (!loc) return;
+    this.setData({ 'form.location': loc.name || loc.address });
   },
 
   onDatePick(e: WechatMiniprogram.PickerChange) {
