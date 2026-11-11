@@ -176,6 +176,9 @@ describe('CommunityService 圈子广场动态数', () => {
     expect(prisma.anonymousPost.count).toHaveBeenCalledWith({
       where: {
         status: 'APPROVED',
+        // CR-007 可见口径：私密帖不计数、软删帖不计数
+        visibility: 'PUBLIC',
+        deletedAt: null,
         AND: [{
           OR: [
             { publisherScope: 'PLATFORM', visibilityScope: 'ALL_COMMUNITIES' },
