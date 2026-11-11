@@ -24,8 +24,8 @@
 .bd { font-size: 20rpx; padding: 2rpx 14rpx; border-radius: 999rpx; }
 .bd-urgent { background: #ff4d6d; color: #fff; }
 .bd-online { background: #FFF7D1; color: #B8860B; }
-.title { min-width: 0; font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.salary { flex: 0 0 auto; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--yt-primary-dark); font-size: 30rpx; font-weight: 700; }
+.title { min-width: 0; font-size: 30rpx; font-weight: 600; color: var(--yt-text-main); flex: 1; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.salary { flex: 0 0 auto; max-width: 40%; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--yt-primary-dark); font-size: 30rpx; font-weight: 700; }
 .shop { font-size: 24rpx; color: var(--yt-text-sub); margin-top: 8rpx; }
 .meta { display: flex; gap: 24rpx; margin-top: 16rpx; }
 .meta-item { font-size: 24rpx; color: var(--yt-text-body); }

@@ -17,6 +17,7 @@
   font-weight: 600;
   color: var(--yt-text-main);
   flex: 1;
+  line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -26,6 +27,11 @@
   font-weight: 700;
   color: var(--yt-primary-dark);
   flex-shrink: 0;
+  max-width: 40%;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .badges {
   margin-top: 12rpx;
