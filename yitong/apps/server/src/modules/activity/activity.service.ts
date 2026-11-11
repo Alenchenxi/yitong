@@ -63,6 +63,7 @@ const ERR = {
   NOT_APPROVED_MEMBER: [70015, '仅正式参与人可使用活动群聊', HttpStatus.FORBIDDEN] as const,
   CHAT_READONLY: [70016, '活动群聊已转为只读', HttpStatus.FORBIDDEN] as const,
   TRANSFER_INVALID: [70017, '转让目标必须是活动管理员或平台/圈子管理员', HttpStatus.FORBIDDEN] as const,
+  MANAGER_NO_ENROLL: [70021, '发起人和活动管理员无需报名，可直接管理活动', HttpStatus.FORBIDDEN] as const,
 };
 
 const FIELD_TYPES = ['text', 'textarea', 'radio', 'checkbox', 'date', 'phone', 'wechat', 'image'] as const;
@@ -589,6 +590,11 @@ export class ActivityService {
     const activity = await this.getOrThrow(id);
     if (activity.status === ActivityStatus.DRAFT) throw new BizException(...ERR.NOT_FOUND, HttpStatus.NOT_FOUND);
     if (!this.enrollWindowOpen(activity)) throw new BizException(...ERR.NOT_ENROLLABLE);
+
+    // 发起人/活动管理员不参与报名（产品语义：组织者非参与人；BR-009/010 管理口径）
+    if (await this.isActivityManager(id, activity.initiatorId, uid)) {
+      throw new BizException(...ERR.MANAGER_NO_ENROLL);
+    }
 
     const existing = await this.prisma.activityEnrollment.findUnique({
       where: { activityId_userId: { activityId: id, userId: uid } },

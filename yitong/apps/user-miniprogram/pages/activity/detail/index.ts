@@ -117,6 +117,10 @@ Page({
       wx.navigateTo({ url: `/pages/activity/enroll/index?id=${d.id}` });
       return;
     }
+    if (d.canManage) {
+      wx.showToast({ title: '发起人和活动管理员无需报名', icon: 'none' });
+      return;
+    }
     if (!this.data.canEnroll) {
       wx.showToast({ title: '当前不可报名', icon: 'none' });
       return;

@@ -84,7 +84,8 @@
       <view wx:else class="footer-main footer-disabled">报名已截止</view>
     </block>
     <block wx:elif="{{detail.status === 'PUBLISHED'}}">
-      <view wx:if="{{detail.capacity && detail.approvedCount >= detail.capacity}}" class="footer-main footer-disabled">名额已满</view>
+      <view wx:if="{{detail.canManage}}" class="footer-main footer-disabled">发起人/管理员无需报名</view>
+      <view wx:elif="{{detail.capacity && detail.approvedCount >= detail.capacity}}" class="footer-main footer-disabled">名额已满</view>
       <view wx:else class="footer-main" bindtap="goEnroll">{{detail.joinMode === 'REVIEW' ? '提交报名' : '立即报名'}}</view>
     </block>
     <block wx:elif="{{detail.status === 'ENDED'}}">
