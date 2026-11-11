@@ -78,10 +78,26 @@
     </block>
     <block wx:elif="{{detail.myEnrollment}}">
       <view wx:if="{{detail.status === 'PUBLISHED'}}" class="footer-main" bindtap="goEnroll">重新报名</view>
+      <view wx:elif="{{detail.status === 'ENDED'}}" class="footer-main footer-disabled">活动已结束</view>
+      <view wx:elif="{{detail.status === 'CANCELLED'}}" class="footer-main footer-disabled">活动已取消</view>
+      <view wx:elif="{{detail.status === 'DELISTED'}}" class="footer-main footer-disabled">活动已下架</view>
+      <view wx:else class="footer-main footer-disabled">报名已截止</view>
     </block>
     <block wx:elif="{{detail.status === 'PUBLISHED'}}">
       <view wx:if="{{detail.capacity && detail.approvedCount >= detail.capacity}}" class="footer-main footer-disabled">名额已满</view>
       <view wx:else class="footer-main" bindtap="goEnroll">{{detail.joinMode === 'REVIEW' ? '提交报名' : '立即报名'}}</view>
+    </block>
+    <block wx:elif="{{detail.status === 'ENDED'}}">
+      <view class="footer-main footer-disabled">活动已结束</view>
+    </block>
+    <block wx:elif="{{detail.status === 'CANCELLED'}}">
+      <view class="footer-main footer-disabled">活动已取消</view>
+    </block>
+    <block wx:elif="{{detail.status === 'DELISTED'}}">
+      <view class="footer-main footer-disabled">活动已下架</view>
+    </block>
+    <block wx:elif="{{detail.status === 'UPCOMING' || detail.status === 'ONGOING'}}">
+      <view class="footer-main footer-disabled">报名已截止</view>
     </block>
   </view>
 </view>

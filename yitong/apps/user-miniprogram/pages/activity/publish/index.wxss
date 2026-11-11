@@ -211,6 +211,11 @@
   margin-top: 12rpx;
 }
 
+/* 底部留白：防止 fixed 底栏遮挡内容尾部（报名表单添加区/发起人专属），同时避免原生 input 穿透底栏 */
+.page {
+  padding: 24rpx 24rpx calc(160rpx + env(safe-area-inset-bottom));
+}
+
 .footer {
   position: fixed;
   left: 0;
