@@ -83,6 +83,9 @@
   .ok-view { text-align: center; padding: 20px 0; }
   .ok-view .big { font-size: 40px; }
   .ok-view p { color: #666; font-size: 14px; margin-top: 8px; }
+  .ok-qr { margin-top: 14px; }
+  .ok-qr img { width: 180px; height: 180px; object-fit: cover; border-radius: 10px; background: #fff; border: 1px solid var(--line); }
+  .ok-qr-tip { font-size: 12px; color: var(--muted); margin-top: 6px; }
   /* 图片查看器 */
   .viewer { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 99; align-items: center; justify-content: center; cursor: zoom-out; touch-action: none; }
   .viewer.show { display: flex; }
@@ -303,6 +306,10 @@
     <div class="big">✅</div>
     <h3 id="okTitle">报名成功</h3>
     <p id="okText"></p>
+    <div class="ok-qr" id="okQrWrap" hidden>
+      <img id="okQr" alt="该酒店微信群二维码">
+      <p class="ok-qr-tip">长按识别二维码，加入该酒店对接群</p>
+    </div>
   </div>
 </div>
 
@@ -699,7 +706,7 @@
   document.getElementById('sendCodeBtn').onclick = function () {
     var btn = this;
     var phone = document.getElementById('fPhone').value.trim();
-    if (!/^1\d{10}$/.test(phone)) { err.textContent = '请先填写正确的 11 位手机号'; return; }
+    if (!/^1[3-9]\d{9}$/.test(phone)) { err.textContent = '请先填写正确的 11 位手机号'; return; }
     err.textContent = '';
     btn.disabled = true; btn.textContent = '发送中…';
     fetch('api/sms/send', {
@@ -738,7 +745,7 @@
     var smsCode = document.getElementById('fSmsCode').value.trim();
     if (codeSent && !smsCode) { err.textContent = '请输入验证码'; return; }
     if (!name) { err.textContent = '请填写姓名'; return; }
-    if (!/^1\d{10}$/.test(phone)) { err.textContent = '请填写正确的 11 位手机号'; return; }
+    if (!/^1[3-9]\d{9}$/.test(phone)) { err.textContent = '请填写正确的 11 位手机号'; return; }
     if (!school) { err.textContent = '请填写学校'; return; }
     if (!birth) { err.textContent = '请选择出生年月'; return; }
     if (expHas && !experience) { err.textContent = '请选择工作时长'; return; }
@@ -756,6 +763,16 @@
         document.getElementById('okText').textContent = r.j.updated
           ? '报名酒店等最新信息已生效，我们会尽快与你电话联系'
           : '我们会尽快通过电话与你联系；如需更换报名酒店，重新提交即可自动更新';
+        // 群码按约定放 public/qr/<酒店名>.jpg 或 .png；缺图（服务端回退 HTML 页，img 解码失败走 onerror）最终保持隐藏
+        var qrWrap = document.getElementById('okQrWrap'), qrImg = document.getElementById('okQr');
+        qrWrap.hidden = true;
+        qrImg.onload = function () { qrWrap.hidden = false; };
+        qrImg.onerror = function () {
+          // ponytail: 只支持 jpg/png 两级回退；若后续出现其他格式再扩
+          if (/\.jpg$/.test(qrImg.src)) qrImg.src = qrImg.src.replace(/\.jpg$/, '.png');
+          else qrWrap.hidden = true;
+        };
+        qrImg.src = 'qr/' + encodeURIComponent(currentHotel) + '.jpg';
         document.getElementById('formView').style.display = 'none';
         document.getElementById('okView').style.display = '';
       } else {
@@ -790,6 +807,15 @@
           x.fillRect(POSTER_CODE.x, POSTER_CODE.y, POSTER_CODE.w, POSTER_CODE.h);
           x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = '26px sans-serif';
           x.fillText('—— 邀请码 ' + promoterCode + ' ——', POSTER_CODE.cx, POSTER_CODE.by);
+          var servicePhone = String(PAGE_CONFIG.posterContactPhone || '').trim();
+          if (servicePhone) { // 号码来自 env（/api/config），未配置则不画该行；压在青/黄波浪交界上，先画深青偏移层再画白字保证两种底色都可读
+            var contactLine = '客服联系方式：' + servicePhone + '（微信同号）';
+            x.font = '20px sans-serif';
+            x.fillStyle = '#014b5a';
+            x.fillText(contactLine, POSTER_CODE.cx + 2, POSTER_CODE.by + 40);
+            x.fillStyle = '#fff';
+            x.fillText(contactLine, POSTER_CODE.cx, POSTER_CODE.by + 38);
+          }
           resolve(c.toDataURL('image/png'));
         };
         qi.src = qr.createDataURL(8, 2); // gif data URL，不污染画布
@@ -859,7 +885,7 @@
     var name = document.getElementById('pName').value.trim();
     var phone = document.getElementById('pPhone').value.trim();
     if (name.length < 2) { promoErr.textContent = '请填写真实姓名'; return; }
-    if (!/^1\d{10}$/.test(phone)) { promoErr.textContent = '请填写正确的 11 位手机号'; return; }
+    if (!/^1[3-9]\d{9}$/.test(phone)) { promoErr.textContent = '请填写正确的 11 位手机号'; return; }
     btn.disabled = true; btn.textContent = '提交中…';
     fetch('api/promoter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, phone: phone }) })
       .then(function (r) { return r.json(); })

@@ -177,7 +177,7 @@ async function handlePromoter(req, res) {
   const name = String(b.name || '').trim().slice(0, 20);
   const phone = String(b.phone || '').trim();
   if (name.length < 2) return sendJSON(res, 400, { ok: false, msg: '请填写真实姓名' });
-  if (!/^1\d{10}$/.test(phone)) return sendJSON(res, 400, { ok: false, msg: '请填写正确的 11 位手机号' });
+  if (!/^1[3-9]\d{9}$/.test(phone)) return sendJSON(res, 400, { ok: false, msg: '请填写正确的 11 位手机号' });
   rateHit(ip); // 校验通过才算一次，填错重试不占额度
   // 同手机号幂等：重复注册返回原码，码不会跟人走丢
   const exist = Object.keys(autoInviters).find(c => autoInviters[c].phone === phone);
@@ -216,7 +216,7 @@ async function handleSmsSend(req, res) {
   let b;
   try { b = JSON.parse(await readBody(req)); } catch { b = {}; }
   const phone = String(b.phone || '').trim();
-  if (!/^1\d{10}$/.test(phone)) return sendJSON(res, 400, { ok: false, msg: '请先填写正确的 11 位手机号' });
+  if (!/^1[3-9]\d{9}$/.test(phone)) return sendJSON(res, 400, { ok: false, msg: '请先填写正确的 11 位手机号' });
   if (!smsReady) return sendJSON(res, 503, { ok: false, msg: '短信服务未配置' });
   const left = smsCooldown(phone);
   if (left) return sendJSON(res, 429, { ok: false, msg: `${left}s 后可重新发送` });
@@ -297,7 +297,7 @@ async function handleApply(req, res) {
 
   if (!name) return sendJSON(res, 400, { ok: false, msg: '请填写姓名' });
   if (gender !== '男' && gender !== '女') return sendJSON(res, 400, { ok: false, msg: '请选择性别' });
-  if (!/^1\d{10}$/.test(phone)) return sendJSON(res, 400, { ok: false, msg: '手机号格式不正确' });
+  if (!/^1[3-9]\d{9}$/.test(phone)) return sendJSON(res, 400, { ok: false, msg: '手机号格式不正确' });
   if (!school) return sendJSON(res, 400, { ok: false, msg: '请填写学校' });
   if (!/^\d{4}[-/年]\d{1,2}([-/月]?)$/.test(birth)) return sendJSON(res, 400, { ok: false, msg: '出生年月格式不正确，如 2000-06' });
   const birthMatch = birth.match(/^(\d{4})[-/年](\d{1,2})/);
@@ -484,7 +484,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/stats' && req.method === 'GET') return await handleStats(req, res, url);
     if (url.pathname === '/api/my' && req.method === 'GET') return await handleMy(req, res, url);
     if (url.pathname === '/api/applies' && req.method === 'GET') return await handleApplies(req, res, url);
-    if (url.pathname === '/api/config' && req.method === 'GET') return sendJSON(res, 200, { ok: true, ...recruitment });
+    if (url.pathname === '/api/config' && req.method === 'GET') return sendJSON(res, 200, { ok: true, ...recruitment, posterContactPhone: (process.env.POSTER_CONTACT_PHONE || '').trim() });
     if (url.pathname === '/api/counts' && req.method === 'GET') return await handleCounts(req, res);
     if (url.pathname === '/api/promoter' && req.method === 'POST') return await handlePromoter(req, res);
     if (url.pathname === '/api/promoter/del' && req.method === 'POST') return await handlePromoterDel(req, res, url);

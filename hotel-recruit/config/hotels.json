@@ -25,7 +25,7 @@
     {"region": "瑞安市", "name": "塘下中心酒店", "hours": "9小时", "pay": "120元/天", "newYearPay": "除夕放假，初一、初二300元/天，另有100元红包", "rest": "月休0天", "accommodation": "包吃包住，提供床上用品；住宿水电由同宿人员平摊", "overtime": "超9小时按10元/小时或补休", "transport": "车费50元以内报销", "bonus": "100元春节红包", "highlight": "月休0天，报名前请确认", "warning": true, "address": "瑞安塘下大道温莎国际公馆1-3层"},
     {"region": "瑞安市", "name": "国豪宴会中心", "hours": "8小时（不含用餐）", "pay": "120元/天", "newYearPay": "除夕放假，初一至初三300元/天，另有100元红包", "rest": "月休2天", "accommodation": "包吃包住，提供床上用品，可拎包入住", "overtime": "超时按15元/小时或补休", "transport": "车费50元以内报销", "bonus": "100元春节红包", "highlight": "春节三天300元/天", "address": "莘塍街道富民东路9号国豪宴会中心"},
 
-    {"region": "龙湾区", "name": "瑞达州际大酒店", "hours": "8小时（不含用餐）", "pay": "120元/天", "newYearPay": "300元/天+100元红包", "rest": "月休4天", "accommodation": "包吃包住，提供床上用品，可拎包入住", "overtime": "超8小时按15元/小时或补休", "transport": "车费50元以内报销", "bonus": "100元春节红包", "highlight": "月休4天", "address": "龙湾区梵海路666号"},
+    {"region": "龙湾区", "name": "瑞达州际大酒店", "hours": "8小时（不含用餐）", "pay": "120元/天", "newYearPay": "300元/天+100元红包", "rest": "月休2天", "accommodation": "包吃包住，提供床上用品，可拎包入住", "overtime": "超8小时按15元/小时或补休", "transport": "车费50元以内报销", "bonus": "100元春节红包", "highlight": "月休4天", "address": "龙湾区梵海路666号"},
 
     {"region": "永嘉县", "name": "维多利开元酒店", "hours": "8小时（不含用餐）", "pay": "110元/天", "newYearPay": "220-300元/天+100元红包", "rest": "月休2天", "accommodation": "包吃包住，提供床上用品，可拎包入住", "overtime": "超8小时按15元/小时或补休", "transport": "车费50元以内报销", "bonus": "100元春节红包", "highlight": "厨房寒假工150元/天+过年红包150元", "address": "永嘉县桥头镇维多利广场"},
 
@@ -34,6 +34,7 @@
     {"region": "鹿城区", "name": "美乐食街（2家店）", "hours": "8小时（不含用餐）", "pay": "120元/天", "newYearPay": "300元/天+100元红包", "rest": "月休2天", "accommodation": "包吃包住，提供床上用品，可拎包入住", "overtime": "超8小时按15元/小时或补休", "transport": "车费50元以内报销", "bonus": "100元春节红包", "highlight": "两个门店可选", "address": "环城东路232号（鸿翔店）/小南路195号海龙大厦1楼（小南店）"},
     {"region": "鹿城区", "name": "东山海鲜（新田园店、黄龙店）", "hours": "9小时", "pay": "120元/天", "newYearPay": "300元/天+100元红包", "rest": "月休2天", "accommodation": "包吃包住，提供床上用品，可拎包入住", "overtime": "超9小时补休", "transport": "车费50元以内报销", "bonus": "100元春节红包", "highlight": "两个门店可选", "address": "新田园5组团；双屿街道过境公路瓯浦垟康城对面"},
     {"region": "鹿城区", "name": "东方柏宴", "hours": "约9小时", "pay": "120元/天", "newYearPay": "300元/天+100元红包", "rest": "月休2天", "accommodation": "包吃包住，提供床上用品，可拎包入住", "overtime": "超时补休", "transport": "车费50元以内报销", "bonus": "瓶盖、加班费、果汁提成，预计每月数百元", "highlight": "额外提成预计每月数百元", "address": "广化街道鹿城路619号"},
+    {"region": "鹿城区", "name": "溢香厅大酒店人民路店", "hours": "以酒店排班为准", "pay": "120元/天", "newYearPay": "300元/天+100元红包", "rest": "做满一个月月休2天", "accommodation": "包吃包住，床上用品员工自行准备，门店不提供", "overtime": "", "transport": "", "bonus": "100元春节红包", "highlight": "有酒店寒暑假工经验工资每天多5元", "note": "工作周期2027.1.22-2.20", "address": "鹿城区人民东路国信大厦2楼"},
 
     {"region": "平阳县", "name": "喜喜喜大酒店", "hours": "9小时", "pay": "120元/天", "newYearPay": "300元/天+100元红包", "rest": "月休2天", "accommodation": "包吃包住，提供床上用品，可拎包入住", "overtime": "超9小时补休", "transport": "车费50元以内报销", "bonus": "100元春节红包", "highlight": "平阳昆阳岗位", "address": "平阳县昆阳镇汉森世家3栋"}
   ]
