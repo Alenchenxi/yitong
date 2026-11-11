@@ -136,3 +136,10 @@
   color: #86909c;
   margin-top: 8rpx;
 }
+
+/* 同步目标配置提示 */
+.cfg-hint {
+  font-size: 22rpx;
+  color: #86909c;
+  line-height: 1.5;
+}

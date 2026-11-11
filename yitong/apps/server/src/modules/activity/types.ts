@@ -64,7 +64,10 @@ export interface ActivityDetailVo extends ActivityListVo {
     readonly: boolean;
     readonlyAt: string | null;
   };
-  larkSync: { enabled: boolean } | null;
+  // 飞书同步配置回显（appSecret 永不下发）
+  larkConnectionId: string | null;
+  larkBitableApp: string | null;
+  larkBitableTable: string | null;
 }
 
 export interface ActivityEnrollmentVo {

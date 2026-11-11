@@ -1,9 +1,12 @@
 import {
+  activityDetail,
   createLarkConnection,
   deleteLarkConnection,
   listLarkConnections,
   listSyncRecords,
   retrySync,
+  setLarkConfig,
+  type ActivityDetailVo,
   type LarkConnectionVo,
 } from '../../../services/activity';
 
@@ -24,6 +27,14 @@ Page({
     formAppId: '',
     formAppSecret: '',
     submitting: false,
+    // 同步目标配置（发起人）
+    detail: null as ActivityDetailVo | null,
+    canConfig: false,
+    configured: false,
+    cfgConnectionId: '',
+    cfgApp: '',
+    cfgTable: '',
+    cfgIndex: -1,
   },
 
   onLoad(query: Record<string, string>) {
@@ -39,6 +50,18 @@ Page({
       const connections = await listLarkConnections();
       this.setData({ connections });
       if (this.data.activityId) {
+        const detail = await activityDetail(this.data.activityId).catch(() => null);
+        if (detail) {
+          this.setData({
+            detail,
+            canConfig: detail.canManage,
+            configured: !!detail.larkConnectionId,
+            cfgConnectionId: detail.larkConnectionId ?? '',
+            cfgApp: detail.larkBitableApp ?? '',
+            cfgTable: detail.larkBitableTable ?? '',
+            cfgIndex: detail.larkConnectionId ? connections.findIndex((c) => c.id === detail.larkConnectionId) : -1,
+          });
+        }
         const records = await listSyncRecords(this.data.activityId);
         this.setData({
           syncRecords: records.map((r) => ({ ...r, statusText: STATUS_TEXT[r.status] ?? r.status })),
@@ -46,6 +69,36 @@ Page({
       }
     } catch {
       /* toast 已在 request 内 */
+    }
+  },
+
+  onCfgConnectionPick(e: WechatMiniprogram.PickerChange) {
+    const idx = Number(e.detail.value);
+    const picked = this.data.connections[idx];
+    this.setData({ cfgIndex: idx, cfgConnectionId: picked?.id ?? '' });
+  },
+
+  onCfgInput(e: WechatMiniprogram.Input) {
+    const key = e.currentTarget.dataset.key as 'cfgApp' | 'cfgTable';
+    this.setData({ [key]: e.detail.value } as never);
+  },
+
+  async onSaveCfg() {
+    if (this.data.submitting) return;
+    const { cfgConnectionId, cfgApp, cfgTable } = this.data;
+    if (!cfgConnectionId || !cfgApp.trim() || !cfgTable.trim()) {
+      wx.showToast({ title: '请选择连接并填全两个表格参数', icon: 'none' });
+      return;
+    }
+    this.setData({ submitting: true });
+    try {
+      await setLarkConfig(this.data.activityId, { connectionId: cfgConnectionId, bitableApp: cfgApp.trim(), bitableTable: cfgTable.trim() });
+      wx.showToast({ title: '同步配置已保存', icon: 'success' });
+      await this.reload();
+    } catch {
+      /* toast 已在 request 内 */
+    } finally {
+      this.setData({ submitting: false });
     }
   },
 

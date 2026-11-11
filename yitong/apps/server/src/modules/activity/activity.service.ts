@@ -1092,7 +1092,10 @@ export class ActivityService {
         readonly,
         readonlyAt: activity.chatReadonlyAt?.toISOString() ?? null,
       },
-      larkSync: activity.larkConnectionId ? { enabled: true } : null,
+      // 飞书同步配置回显（appSecret 永不下发；app/table id 供发起人编辑预填）
+      larkConnectionId: activity.larkConnectionId,
+      larkBitableApp: activity.larkBitableApp,
+      larkBitableTable: activity.larkBitableTable,
     };
   }
 

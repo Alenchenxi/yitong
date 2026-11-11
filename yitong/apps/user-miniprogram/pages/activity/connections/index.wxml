@@ -21,6 +21,22 @@
     </view>
   </view>
 
+  <view wx:if="{{activityId && canConfig}}" class="yt-card section">
+    <view class="section-title-row">
+      <text class="section-title">同步目标配置</text>
+      <text class="section-op">{{configured ? '已配置' : '未配置'}}</text>
+    </view>
+    <view class="conn-form">
+      <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onCfgConnectionPick">
+        <view class="field-input">{{cfgConnectionId ? (connections[cfgIndex] || {}).name || '已选择连接' : '选择飞书连接（先在上方创建）'}}</view>
+      </picker>
+      <input class="field-input" value="{{cfgApp}}" data-key="cfgApp" bindinput="onCfgInput" placeholder="多维表格 app_token（表格 URL /base/ 后那段）" />
+      <input class="field-input" value="{{cfgTable}}" data-key="cfgTable" bindinput="onCfgInput" placeholder="table_id（表格 URL table= 参数）" />
+      <view class="form-btn {{submitting ? 'form-disabled' : ''}}" bindtap="onSaveCfg">保存同步配置</view>
+      <view class="cfg-hint">表格需含列：报名编号/用户/状态/报名资料/更新时间；并把本飞书应用添加为表格协作者</view>
+    </view>
+  </view>
+
   <view wx:if="{{activityId}}" class="yt-card section">
     <view class="section-title-row">
       <text class="section-title">同步状态</text>

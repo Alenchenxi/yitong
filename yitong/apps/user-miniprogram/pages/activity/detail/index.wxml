@@ -59,7 +59,7 @@
       <view class="manage-btn" bindtap="goChat">活动群聊</view>
       <view class="manage-btn" bindtap="goRemind">活动提醒</view>
       <view class="manage-btn" bindtap="goEdit">编辑活动</view>
-      <view wx:if="{{detail.larkSync}}" class="manage-btn" bindtap="goSync">飞书同步</view>
+      <view class="manage-btn" bindtap="goSync">飞书同步</view>
       <view wx:if="{{detail.isInitiator}}" class="manage-btn manage-danger" data-action="finish" bindtap="onLifecycle">结束活动</view>
       <view wx:if="{{detail.isInitiator}}" class="manage-btn manage-danger" data-action="delist" bindtap="onLifecycle">下架活动</view>
       <view wx:if="{{detail.isInitiator}}" class="manage-btn manage-danger" data-action="cancel" bindtap="onLifecycle">取消活动</view>
