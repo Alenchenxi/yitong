@@ -24,33 +24,14 @@ const FORMAT_TEXT: Record<string, string> = {
 
 Page({
   data: {
-    navTop: 0,
-    navHeight: 44,
     tabs: STATUS_TABS,
     activeTab: 'open',
     list: [] as Array<ActivityListVo & { statusText: string; formatText: string; timeText: string }>,
     loading: false,
-    canBack: false,
     searchKey: '',
   },
 
   rawList: [] as Array<ActivityListVo & { statusText: string; formatText: string; timeText: string }>,
-
-  onLoad() {
-    const win = wx.getWindowInfo();
-    const menu = wx.getMenuButtonBoundingClientRect();
-    this.setData({
-      navTop: menu.top,
-      navHeight: menu.height,
-      // navigateTo 进入时栈里有上一页 → 显示返回；分享/扫码直达（栈深 1）不显示
-      canBack: getCurrentPages().length > 1,
-    });
-    void win;
-  },
-
-  goBack() {
-    wx.navigateBack();
-  },
 
   onSearchInput(e: WechatMiniprogram.Input) {
     this.setData({ searchKey: e.detail.value });

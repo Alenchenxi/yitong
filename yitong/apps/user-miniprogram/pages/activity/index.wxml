@@ -1,21 +1,17 @@
-<view class="page">
-  <view class="nav" style="padding-top: {{navTop}}px; height: {{navHeight}}px;">
-    <view wx:if="{{canBack}}" class="nav-back" bindtap="goBack">‹</view>
-    <text class="nav-title">活动</text>
-    <view wx:if="{{!canBack}}" class="nav-back nav-back-hold"></view>
-  </view>
-  <view style="height: {{navTop + navHeight + 12}}px;"></view>
-
-  <view class="toolbar">
+<tab-page-header title="活动">
+  <view slot="actions" class="topbar">
     <input
-      class="search"
+      class="search-box search-input"
       placeholder="搜索活动名称"
       value="{{searchKey}}"
       confirm-type="search"
       bindinput="onSearchInput"
     />
-    <view class="nav-btn" bindtap="goMine">我的活动</view>
+    <view class="publish-btn" bindtap="goMine">我的活动</view>
   </view>
+</tab-page-header>
+
+<view class="page">
 
   <view class="tabs">
     <view

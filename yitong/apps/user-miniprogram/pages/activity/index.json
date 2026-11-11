@@ -2,6 +2,7 @@
   "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "usingComponents": {
+    "tab-page-header": "/components/tab-page-header/index",
     "activity-arrivals": "/components/activity-arrivals/index",
     "custom-tab-bar": "/custom-tab-bar/index"
   }
