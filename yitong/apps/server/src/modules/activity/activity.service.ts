@@ -116,9 +116,22 @@ export class ActivityService {
     return { platform, managed };
   }
 
+  /** 发布范围查询（发布页渲染依据）：与 create/update 同一判定口径，平台管理员在用户角色下也可正确识别 */
+  async getPublishScope(uid: string): Promise<{ platform: boolean; communities: Array<{ id: string; name: string }> }> {
+    const { platform, managed } = await this.publishScope(uid);
+    const ids = [...managed];
+    const communities = ids.length
+      ? await this.prisma.community.findMany({
+        where: { id: { in: ids }, status: CommunityStatus.ACTIVE, deletedAt: null },
+        select: { id: true, name: true },
+        orderBy: { createdAt: 'desc' },
+      })
+      : [];
+    return { platform, communities };
+  }
+
   // 与 community.service.consoleCircleAdminScope 同套口径（管理端非平台类型管理员的圈子授权）
-  private async consoleCircleAdminScope(uid: string): Promise<{ all: boolean; ids: Set<string> } | null> {
-    const user = await this.prisma.user.findUnique({ where: { id: uid }, select: { openid: true } });
+  private async consoleCircleAdminScope(uid: string): Promise<{ all: boolean; ids: Set<string> } | null> {    const user = await this.prisma.user.findUnique({ where: { id: uid }, select: { openid: true } });
     if (!user?.openid) return null;
     const admin = await this.prisma.adminUser.findFirst({
       where: { openid: user.openid, adminType: { active: true, deletedAt: null, isPlatform: false } },

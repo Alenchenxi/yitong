@@ -123,6 +123,11 @@ export function activityDetail(id: string): Promise<ActivityDetailVo> {
   return request<ActivityDetailVo>({ url: `/activities/${id}` });
 }
 
+// 发布范围：平台标记 + 可选圈子列表（服务端同源判定，平台管理员在用户角色下也能正确识别）
+export function getActivityPublishScope(): Promise<{ platform: boolean; communities: Array<{ id: string; name: string }> }> {
+  return request({ url: '/activities/publish-scope' });
+}
+
 export function createActivity(payload: SaveActivityPayload & { communityId?: string; publish?: boolean }): Promise<ActivityDetailVo> {
   return request<ActivityDetailVo>({ url: '/activities', method: 'POST', data: payload });
 }

@@ -43,6 +43,11 @@ export class ActivityController {
     return ok(await this.activity.mine(req.user!.uid, query.tab));
   }
 
+  @Get('publish-scope')
+  async publishScope(@Req() req: AuthenticatedRequest) {
+    return ok(await this.activity.getPublishScope(req.user!.uid));
+  }
+
   @Get(':id')
   async detail(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return ok(await this.activity.detail(req.user!.uid, id));

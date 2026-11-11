@@ -1,7 +1,7 @@
-import type { AppInstance } from '../../../app';
 import {
   activityDetail,
   createActivity,
+  getActivityPublishScope,
   listLarkConnections,
   publishActivity,
   setActivityAdmins,
@@ -12,7 +12,7 @@ import {
   type ActivityFormField,
   type LarkConnectionVo,
 } from '../../../services/activity';
-import { getActiveCommunity, listCommunities } from '../../../services/community';
+import { getActiveCommunity } from '../../../services/community';
 import { uploadImage } from '../../../services/upload';
 
 const FIELD_TYPES: Array<{ value: ActivityFormField['type']; label: string }> = [
@@ -115,16 +115,13 @@ Page({
   },
 
   async onLoad(query: Record<string, string>) {
-    // 发布范围：平台管理员可全圈；圈子管理员选自己管理的圈子，默认当前圈子（AC-003/004）
+    // 发布范围：走 /activities/publish-scope 服务端口径（adminAccess 仅 admin 角色可刷新，用户角色下不可靠）
     try {
-      const app = getApp<AppInstance>();
-      this.setData({ isPlatform: !!app.globalData.adminAccess?.isPlatform });
-      const all = await listCommunities();
-      const managed = all.filter((c) => c.managedByMe).map((c) => ({ id: c.id, name: c.name }));
-      this.setData({ communities: managed });
-      if (!query.id && !this.data.isPlatform && !this.data.communityId) {
+      const scope = await getActivityPublishScope();
+      this.setData({ isPlatform: scope.platform, communities: scope.communities });
+      if (!query.id && !scope.platform && !this.data.communityId) {
         const active = await getActiveCommunity().catch(() => null);
-        const hit = managed.find((c) => c.id === active?.id);
+        const hit = scope.communities.find((c) => c.id === active?.id);
         if (hit) this.setData({ communityId: hit.id, communityName: hit.name });
       }
     } catch {
