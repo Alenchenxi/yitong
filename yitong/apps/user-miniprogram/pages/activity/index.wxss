@@ -60,6 +60,23 @@
   gap: 12rpx;
 }
 
+/* 悬浮发布：与表白墙/广场 FAB 同款（app.wxss 全局变量定位于底栏上方） */
+.fab {
+  position: fixed;
+  right: 32rpx;
+  bottom: var(--yt-fab-bottom);
+  width: 96rpx;
+  height: 96rpx;
+  background: var(--yt-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(249, 200, 1, 0.4);
+  z-index: 20;
+}
+.fab-plus { font-size: 48rpx; color: var(--yt-text-main); font-weight: 300; line-height: 1; }
+
 .nav-btn {
   font-size: 24rpx;
   color: #4e5969;

@@ -15,7 +15,6 @@
       bindinput="onSearchInput"
     />
     <view class="nav-btn" bindtap="goMine">我的活动</view>
-    <view class="nav-btn nav-btn-primary" bindtap="goPublish">发布</view>
   </view>
 
   <view class="tabs">
@@ -52,6 +51,11 @@
         </view>
       </view>
     </view>
+  </view>
+
+  <!-- 悬浮发布（与表白墙/广场 FAB 同款交互） -->
+  <view class="fab" bindtap="goPublish">
+    <text class="fab-plus">＋</text>
   </view>
 
   <activity-arrivals id="activityArrivals" />
