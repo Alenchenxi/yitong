@@ -343,7 +343,9 @@ export class ActivityService {
       if (!scopeInfo.platform) throw new BizException(...ERR.COMMUNITY_REQUIRED);
       scope = ActivityScope.PLATFORM;
     }
-    await this.moderation.checkText(`${dto.title}\n${dto.description}`);
+    // msgSecCheck v2 必传真实 openid（P2-86），缺失会导致微信返回业务错误 → 生产 fail-closed 90003
+    const creator = await this.prisma.user.findUnique({ where: { id: uid }, select: { openid: true } });
+    await this.moderation.checkText(`${dto.title}\n${dto.description}`, creator?.openid);
 
     const startTime = this.parseDate(dto.startTime, '活动开始');
     const endTime = this.parseDate(dto.endTime, '活动结束');
@@ -382,7 +384,8 @@ export class ActivityService {
   async update(uid: string, id: string, dto: UpdateActivityDto): Promise<ActivityDetailVo> {
     const activity = await this.getOrThrow(id);
     await this.assertManager(activity, uid);
-    await this.moderation.checkText(`${dto.title}\n${dto.description}`);
+    const editor = await this.prisma.user.findUnique({ where: { id: uid }, select: { openid: true } });
+    await this.moderation.checkText(`${dto.title}\n${dto.description}`, editor?.openid);
 
     const startTime = this.parseDate(dto.startTime, '活动开始');
     const endTime = this.parseDate(dto.endTime, '活动结束');
