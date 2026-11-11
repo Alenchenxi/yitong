@@ -18,6 +18,43 @@
   color: #1d2129;
 }
 
+/* navigateTo 进入时显示的返回按钮（自定义导航无系统返回箭头） */
+.nav-back {
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 52rpx;
+  text-align: center;
+  font-size: 40rpx;
+  color: #1d2129;
+  background: #f5f6f8;
+  border-radius: 50%;
+}
+
+.nav-back-hold {
+  /* 标题居中占位：无返回按钮时保持标题不偏移 */
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 标题下工具行：搜索框 + 我的活动 + 发布（分类 tab 之上） */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 24rpx 20rpx;
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+  height: 60rpx;
+  background: #f5f6f8;
+  border-radius: 999rpx;
+  padding: 0 24rpx;
+  font-size: 26rpx;
+  color: #1d2129;
+}
+
 .nav-actions {
   display: flex;
   gap: 12rpx;

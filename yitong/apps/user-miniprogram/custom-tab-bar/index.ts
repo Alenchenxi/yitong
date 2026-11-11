@@ -112,9 +112,9 @@ Component({
       const path = e.currentTarget.dataset.path as string;
       if (!path || path === this.data.selectedPath) return;
       const item = TAB_ITEMS.find((t) => t.pagePath === path);
-      // 官方 tabBar list 仅 5 项：不在其中的活动页用 reLaunch（活动页由本组件手动挂载渲染）
+      // 官方 tabBar list 仅 5 项：活动页 navigateTo 进入（保留返回手势；selectedPath 比对天然防自压栈）
       if (item?.plain) {
-        wx.reLaunch({ url: path });
+        wx.navigateTo({ url: path });
       } else {
         wx.switchTab({ url: path });
       }

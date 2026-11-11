@@ -208,6 +208,10 @@ Page({
     wx.navigateTo({ url: '/pages/job/my-applications/index' });
   },
 
+  goMyActivities() {
+    wx.navigateTo({ url: '/pages/activity/my/index' });
+  },
+
   goNotifications() {
     wx.navigateTo({ url: '/pages/notifications/index' });
   },

@@ -30,7 +30,11 @@ Page({
     activeTab: 'open',
     list: [] as Array<ActivityListVo & { statusText: string; formatText: string; timeText: string }>,
     loading: false,
+    canBack: false,
+    searchKey: '',
   },
+
+  rawList: [] as Array<ActivityListVo & { statusText: string; formatText: string; timeText: string }>,
 
   onLoad() {
     const win = wx.getWindowInfo();
@@ -38,8 +42,31 @@ Page({
     this.setData({
       navTop: menu.top,
       navHeight: menu.height,
+      // navigateTo 进入时栈里有上一页 → 显示返回；分享/扫码直达（栈深 1）不显示
+      canBack: getCurrentPages().length > 1,
     });
     void win;
+  },
+
+  goBack() {
+    wx.navigateBack();
+  },
+
+  onSearchInput(e: WechatMiniprogram.Input) {
+    this.setData({ searchKey: e.detail.value });
+    this.applyFilter();
+  },
+
+  /** 前端过滤已加载列表（列表上限 50 条，无需后端查询） */
+  applyFilter() {
+    const key = this.data.searchKey.trim().toLowerCase();
+    if (!key) {
+      this.setData({ list: this.rawList });
+      return;
+    }
+    this.setData({
+      list: this.rawList.filter((a) => a.title.toLowerCase().includes(key) || a.summary.toLowerCase().includes(key)),
+    });
   },
 
   async onShow() {
@@ -69,14 +96,13 @@ Page({
       // 可报名 = 报名中；其余按状态过滤
       const status = tab?.value ?? 'PUBLISHED';
       const res = await listActivities(status);
-      this.setData({
-        list: res.list.map((a) => ({
-          ...a,
-          statusText: STATUS_TEXT[a.status] ?? a.status,
-          formatText: FORMAT_TEXT[a.format] ?? a.format,
-          timeText: formatRange(a.startTime, a.endTime),
-        })),
-      });
+      this.rawList = res.list.map((a) => ({
+        ...a,
+        statusText: STATUS_TEXT[a.status] ?? a.status,
+        formatText: FORMAT_TEXT[a.format] ?? a.format,
+        timeText: formatRange(a.startTime, a.endTime),
+      }));
+      this.applyFilter();
     } catch {
       /* toast 已在 request 内 */
     } finally {
