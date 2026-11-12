@@ -373,6 +373,10 @@ Page({
     if (!this.data.isPlatform && !this.data.id && !this.data.communityId) return this.tip('请选择所属圈子');
     for (const field of f.form) {
       if (!field.label.trim()) return this.tip('表单字段名称不能为空');
+      // 保留列名：与飞书同步固定列撞名的字段会被跳过不同步，创建时即拦截
+      if (['报名编号', '用户', '状态', '报名时间', '更新时间'].includes(field.label.trim())) {
+        return this.tip(`字段名「${field.label}」是同步保留列名，请换个名称`);
+      }
       if ((field.type === 'radio' || field.type === 'checkbox') && !(field.options ?? []).length) {
         return this.tip(`「${field.label}」至少需要一个选项`);
       }

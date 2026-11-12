@@ -204,6 +204,8 @@ export class LarkSyncService {
       if (v === undefined || v === null) continue;
       const text = Array.isArray(v) ? v.join('、') : String(v);
       if (!text) continue;
+      // 防御：字段名与保留列撞名时跳过该字段列，避免覆盖固定列的值（发布页已拦截新活动命名）
+      if ((FIXED_COLUMNS as readonly string[]).includes(f.label || f.key)) continue;
       columns[f.label || f.key] = { text };
     }
     return columns;
