@@ -150,8 +150,9 @@
     </view>
   </view>
 
-  <view class="footer">
-    <view class="footer-ghost {{submitting ? 'op-disabled' : ''}}" data-publish="0" bindtap="onSubmit">{{id ? '保存' : '存草稿'}}</view>
-    <view wx:if="{{!id || editing.status === 'DRAFT'}}" class="footer-main {{submitting ? 'op-disabled' : ''}}" data-publish="1" bindtap="onSubmit">发布</view>
-  </view>
+  <!-- cover-view：盖在原生 input 之上，杜绝占位文本穿透底栏 -->
+  <cover-view class="footer">
+    <cover-view class="footer-ghost {{submitting ? 'op-disabled' : ''}}" data-publish="0" bindtap="onSubmit">{{id ? '保存' : '存草稿'}}</cover-view>
+    <cover-view wx:if="{{!id || editing.status === 'DRAFT'}}" class="footer-main {{submitting ? 'op-disabled' : ''}}" data-publish="1" bindtap="onSubmit">发布</cover-view>
+  </cover-view>
 </view>
