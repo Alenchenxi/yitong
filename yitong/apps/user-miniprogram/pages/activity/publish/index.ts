@@ -359,7 +359,9 @@ Page({
   },
 
   goConnections() {
-    wx.navigateTo({ url: '/pages/activity/connections/index' });
+    // 带上活动 id：同步状态/目标配置卡片依赖它渲染
+    const q = this.data.id ? `?activityId=${this.data.id}` : '';
+    wx.navigateTo({ url: `/pages/activity/connections/index${q}` });
   },
 
   // ===== 提交 =====

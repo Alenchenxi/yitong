@@ -3,6 +3,11 @@
   margin: 20rpx 24rpx 0;
 }
 
+/* 页底留白：最后一张卡片不贴屏幕底缘（手势条/小圆条区域） */
+.page {
+  padding-bottom: 48rpx;
+}
+
 .section-title-row {
   display: flex;
   justify-content: space-between;
