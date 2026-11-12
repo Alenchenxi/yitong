@@ -133,15 +133,20 @@
       <input class="field-input" value="{{transferInput}}" bindinput="onTransferInput" placeholder="目标用户 ID" />
       <view class="ff-add-btn ff-danger" bindtap="doTransfer">转让</view>
     </view>
+  </view>
+
+  <!-- 飞书同步：创建与编辑（发起人）均可配置；创建时在提交后自动保存 -->
+  <view wx:if="{{!id || (editing && editing.isInitiator)}}" class="yt-card section">
+    <view class="section-title">飞书多维表格同步（可选）</view>
     <view class="field">
-      <view class="field-label">飞书多维表格同步</view>
       <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onConnectionPick">
-        <view class="field-input field-picker">{{connectionId ? '已选择连接' : '选择飞书连接'}}</view>
+        <view class="field-input field-picker">{{connectionId ? '已选择连接' : '选择飞书连接（「管理飞书连接」中创建）'}}</view>
       </picker>
-      <input class="field-input ff-input" value="{{bitableApp}}" data-key="bitableApp" bindinput="onLarkInput" placeholder="多维表格 app_token" />
-      <input class="field-input ff-input" value="{{bitableTable}}" data-key="bitableTable" bindinput="onLarkInput" placeholder="数据表 table_id" />
-      <view class="ff-add-btn" bindtap="saveLark">保存同步配置</view>
+      <input class="field-input ff-input" value="{{bitableApp}}" data-key="bitableApp" bindinput="onLarkInput" placeholder="多维表格 app_token（URL /base/ 后段）" />
+      <input class="field-input ff-input" value="{{bitableTable}}" data-key="bitableTable" bindinput="onLarkInput" placeholder="数据表 table_id（URL table= 参数）" />
+      <view wx:if="{{id}}" class="ff-add-btn" bindtap="saveLark">保存同步配置</view>
       <view class="ff-link" bindtap="goConnections">管理飞书连接 →</view>
+      <view class="ff-hint">报名数据将按表单字段逐列自动同步；取消报名会删除对应行</view>
     </view>
   </view>
 

@@ -125,6 +125,9 @@ Page({
         const hit = scope.communities.find((c) => c.id === active?.id);
         if (hit) this.setData({ communityId: hit.id, communityName: hit.name });
       }
+      // 连接列表常驻加载：飞书同步配置在创建与编辑模式均可填
+      const conns = await listLarkConnections().catch(() => []);
+      this.setData({ connections: conns });
     } catch {
       /* toast 已在 request 内 */
     }
@@ -165,13 +168,11 @@ Page({
         },
         communityId: d.communityId ?? '',
         adminIdsInput: d.adminIds.join(','),
+        // 飞书同步配置回显
+        connectionId: d.larkConnectionId ?? '',
+        bitableApp: d.larkBitableApp ?? '',
+        bitableTable: d.larkBitableTable ?? '',
       });
-      if (d.isInitiator) {
-        try {
-          const conns = await listLarkConnections();
-          this.setData({ connections: conns });
-        } catch { /* 非阻断 */ }
-      }
     } catch {
       /* toast 已在 request 内 */
     }
@@ -423,7 +424,15 @@ Page({
         if (publish && this.data.editing?.status === 'DRAFT') await publishActivity(this.data.id);
         wx.showToast({ title: '已保存', icon: 'success' });
       } else {
-        await createActivity({ ...payload, communityId: this.data.isPlatform ? undefined : this.data.communityId || undefined, publish });
+        const created = await createActivity({ ...payload, communityId: this.data.isPlatform ? undefined : this.data.communityId || undefined, publish });
+        // 创建时一并保存飞书同步配置（选填；失败不阻断创建）
+        if (this.data.connectionId && this.data.bitableApp && this.data.bitableTable) {
+          await setLarkConfig(created.id, {
+            connectionId: this.data.connectionId,
+            bitableApp: this.data.bitableApp,
+            bitableTable: this.data.bitableTable,
+          }).catch(() => undefined);
+        }
         wx.showToast({ title: publish ? '已发布' : '已存草稿', icon: 'success' });
       }
       setTimeout(() => wx.navigateBack(), 800);
