@@ -28,7 +28,7 @@
     </view>
     <view class="conn-form">
       <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onCfgConnectionPick">
-        <view class="field-input">{{cfgConnectionId ? (connections[cfgIndex] || {}).name || '已选择连接' : '选择飞书连接（先在上方创建）'}}</view>
+        <view class="field-input">{{cfgConnectionName || '选择飞书连接（先在上方创建）'}}</view>
       </picker>
       <input class="field-input" value="{{cfgApp}}" data-key="cfgApp" bindinput="onCfgInput" placeholder="多维表格 app_token（表格 URL /base/ 后那段）" />
       <input class="field-input" value="{{cfgTable}}" data-key="cfgTable" bindinput="onCfgInput" placeholder="table_id（表格 URL table= 参数）" />

@@ -32,6 +32,7 @@ Page({
     canConfig: false,
     configured: false,
     cfgConnectionId: '',
+    cfgConnectionName: '',
     cfgApp: '',
     cfgTable: '',
     cfgIndex: -1,
@@ -66,6 +67,7 @@ Page({
             cfgApp: detail.larkBitableApp ?? '',
             cfgTable: detail.larkBitableTable ?? '',
             cfgIndex: detail.larkConnectionId ? connections.findIndex((c) => c.id === detail.larkConnectionId) : -1,
+            cfgConnectionName: detail.larkConnectionId ? connections.find((c) => c.id === detail.larkConnectionId)?.name ?? '已选择连接' : '',
             cfgStableKey: stableKey,
             stableOptions,
             stableLabel: stableOptions.find((o) => o.key === stableKey)?.label ?? stableOptions[0]!.label,
@@ -84,7 +86,7 @@ Page({
   onCfgConnectionPick(e: WechatMiniprogram.PickerChange) {
     const idx = Number(e.detail.value);
     const picked = this.data.connections[idx];
-    this.setData({ cfgIndex: idx, cfgConnectionId: picked?.id ?? '' });
+    this.setData({ cfgIndex: idx, cfgConnectionId: picked?.id ?? '', cfgConnectionName: picked?.name ?? '' });
   },
 
   onCfgInput(e: WechatMiniprogram.Input) {
