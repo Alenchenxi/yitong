@@ -89,14 +89,25 @@
         <text class="ff-type">{{item.type}}</text>
       </view>
       <input class="field-input ff-input" value="{{item.placeholder}}" data-index="{{index}}" data-key="placeholder" bindinput="onFieldInput" placeholder="提示文字（选填）" />
-      <input
-        wx:if="{{item.type === 'radio' || item.type === 'checkbox'}}"
-        class="field-input ff-input"
-        value="{{item.options}}"
-        data-index="{{index}}"
-        bindinput="onFieldOptionsInput"
-        placeholder="选项，用逗号分隔"
-      />
+      <view wx:if="{{item.type === 'radio' || item.type === 'checkbox'}}" class="ff-options">
+        <view class="ff-options-title">选项（{{item.options.length || 0}}/20）</view>
+        <view class="ff-opt-row" wx:for="{{item.options}}" wx:for-item="opt" wx:for-index="optIndex" wx:key="*this">
+          <text class="ff-opt-no">{{optIndex + 1}}</text>
+          <input
+            class="ff-opt-input"
+            value="{{opt}}"
+            data-index="{{index}}"
+            data-opt-index="{{optIndex}}"
+            bindinput="onOptionInput"
+            placeholder="选项{{optIndex + 1}}"
+            maxlength="30"
+          />
+          <view class="ff-btn" data-index="{{index}}" data-opt-index="{{optIndex}}" catchtap="onOptionRemove">
+            <image class="ff-ic" src="/assets/icons/form-trash.png" mode="aspectFit" />
+          </view>
+        </view>
+        <view class="ff-add-btn" data-index="{{index}}" catchtap="onOptionAdd">＋ 添加选项</view>
+      </view>
       <view class="ff-ops">
         <view class="ff-btn ff-btn-text {{item.required ? 'ff-btn-on' : ''}}" data-index="{{index}}" bindtap="onFieldRequiredToggle">
           <image class="ff-ic ff-ic-sm" src="/assets/icons/form-required.png" mode="aspectFit" />

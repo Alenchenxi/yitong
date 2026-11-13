@@ -164,7 +164,9 @@ Page({
           enrollEndTime: ee.time,
           joinMode: d.joinMode,
           capacity: d.capacity === null ? '' : String(d.capacity),
-          form: d.form,
+          form: d.form.map((f) =>
+            (f.type === 'radio' || f.type === 'checkbox') && !f.options ? { ...f, options: [] } : f,
+          ),
         },
         communityId: d.communityId ?? '',
         adminIdsInput: d.adminIds.join(','),
@@ -248,7 +250,7 @@ Page({
       label: `字段${form.length + 1}`,
       required: false,
       placeholder: '',
-      options: type === 'radio' || type === 'checkbox' ? ['选项1'] : undefined,
+      options: type === 'radio' || type === 'checkbox' ? [''] : undefined,
       order: form.length,
     });
     this.setData({ 'form.form': form });
@@ -259,10 +261,23 @@ Page({
     this.setData({ [`form.form[${index}].${key}`]: e.detail.value });
   },
 
-  onFieldOptionsInput(e: WechatMiniprogram.Input) {
+  onOptionInput(e: WechatMiniprogram.Input) {
+    const { index, optIndex } = e.currentTarget.dataset as { index: number; optIndex: number };
+    this.setData({ [`form.form[${index}].options[${optIndex}]`]: e.detail.value });
+  },
+
+  onOptionAdd(e: WechatMiniprogram.TouchEvent) {
     const index = Number(e.currentTarget.dataset.index);
-    const options = e.detail.value.split(/[，,]/).map((s) => s.trim()).filter(Boolean);
-    this.setData({ [`form.form[${index}].options`]: options });
+    const field = this.data.form.form[index];
+    if (!field || (field.options ?? []).length >= 20) return this.tip('选项最多 20 个');
+    this.setData({ [`form.form[${index}].options[${(field.options ?? []).length}]`]: '' });
+  },
+
+  onOptionRemove(e: WechatMiniprogram.TouchEvent) {
+    const { index, optIndex } = e.currentTarget.dataset as { index: number; optIndex: number };
+    const field = this.data.form.form[index];
+    if (!field) return;
+    this.setData({ [`form.form[${index}].options`]: (field.options ?? []).filter((_, i) => i !== optIndex) });
   },
 
   onFieldRequiredToggle(e: WechatMiniprogram.TouchEvent) {
@@ -380,8 +395,8 @@ Page({
       if (['报名编号', '用户', '状态', '报名时间', '更新时间'].includes(field.label.trim())) {
         return this.tip(`字段名「${field.label}」是同步保留列名，请换个名称`);
       }
-      if ((field.type === 'radio' || field.type === 'checkbox') && !(field.options ?? []).length) {
-        return this.tip(`「${field.label}」至少需要一个选项`);
+      if ((field.type === 'radio' || field.type === 'checkbox') && !(field.options ?? []).some((o) => o.trim())) {
+        return this.tip(`「${field.label}」至少需要一个非空选项`);
       }
     }
     if (f.capacity && (!Number.isInteger(Number(f.capacity)) || Number(f.capacity) < 1)) {
@@ -411,7 +426,12 @@ Page({
       enrollEndAt: joinIso(f.enrollEndDate, f.enrollEndTime),
       joinMode: f.joinMode,
       capacity: f.capacity ? Number(f.capacity) : undefined,
-      form: f.form.map((field, i) => ({ ...field, order: i })),
+      form: f.form.map((field, i) => ({
+        ...field,
+        order: i,
+        // 空选项行静默丢弃，存值即文案
+        options: field.options ? field.options.map((o) => o.trim()).filter(Boolean) : undefined,
+      })),
     };
   },
 

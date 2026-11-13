@@ -164,6 +164,42 @@
   font-size: 26rpx;
 }
 
+/* 单选/多选选项逐行编辑 */
+.ff-options {
+  margin-top: 12rpx;
+}
+
+.ff-options-title {
+  font-size: 24rpx;
+  color: #86909c;
+  margin-bottom: 8rpx;
+}
+
+.ff-opt-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+
+.ff-opt-no {
+  width: 32rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #86909c;
+  flex-shrink: 0;
+}
+
+.ff-opt-input {
+  flex: 1;
+  min-width: 0;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 14rpx 20rpx;
+  font-size: 26rpx;
+  color: #1d2129;
+}
+
 /* 表单项功能按钮：主色外框 + tabler 线性图标（assets/icons，同一尺寸） */
 .ff-ops {
   display: flex;
