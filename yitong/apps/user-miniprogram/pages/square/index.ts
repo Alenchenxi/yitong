@@ -598,18 +598,17 @@ Page({
       imageUrl: this.data.sharePosterPath || community.backgroundImage || community.logo || undefined,
     };
   },
-  // FAB：匿名内容开启时允许选择树洞发布，否则直接进入表白墙发布。
+  // FAB：匿名内容开启时菜单含树洞；活动固定为末项，与活动页 FAB 同为无门槛直达。
   goCreate() {
-    if (!this.data.anonymousContentEnabled) {
-      wx.navigateTo({ url: '/pages/post-create/index' });
-      return;
-    }
+    const items = this.data.anonymousContentEnabled ? ['表白墙', '树洞', '活动'] : ['表白墙', '活动'];
+    const urls = this.data.anonymousContentEnabled
+      ? ['/pages/post-create/index', '/pages/treehole/post/index', '/pages/activity/publish/index']
+      : ['/pages/post-create/index', '/pages/activity/publish/index'];
     wx.showActionSheet({
-      itemList: ['表白墙', '树洞'],
+      itemList: items,
       success: (result) => {
-        wx.navigateTo({
-          url: result.tapIndex === 1 ? '/pages/treehole/post/index' : '/pages/post-create/index',
-        });
+        const url = urls[result.tapIndex];
+        if (url) wx.navigateTo({ url });
       },
     });
   },
