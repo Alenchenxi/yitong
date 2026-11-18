@@ -320,6 +320,21 @@
   background: #ffffff;
 }
 
+/* 自绘 placeholder：与 .field-input 的 padding/字号对齐；pointer-events:none 让点击落到 input 上 */
+.field-input-wrap {
+  position: relative;
+}
+
+.input-ph {
+  position: absolute;
+  left: 24rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #86909c;
+  font-size: 28rpx;
+  pointer-events: none;
+}
+
 .op-disabled {
   opacity: 0.6;
 }

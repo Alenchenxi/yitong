@@ -1,3 +1,13 @@
+<!-- WXML 表达式不支持对象字面量取值，字段类型中文映射经 WXS 提供 -->
+<wxs module="f">
+  module.exports = {
+    typeName: function (t) {
+      var m = { text: '单行文本', textarea: '多行文本', radio: '单选', checkbox: '多选', date: '日期', phone: '手机号', wechat: '微信号', image: '图片上传' };
+      return m[t] || t;
+    }
+  };
+</wxs>
+
 <view class="page">
   <view class="yt-card section">
     <view class="section-title">基础信息</view>
@@ -86,7 +96,7 @@
     <view class="field-form" wx:for="{{form.form}}" wx:key="index">
       <view class="ff-row">
         <input class="ff-label" value="{{item.label}}" data-index="{{index}}" data-key="label" bindinput="onFieldInput" placeholder="字段名称" />
-        <text class="ff-type">{{item.type}}</text>
+        <text class="ff-type">{{f.typeName(item.type)}}</text>
       </view>
       <input class="field-input ff-input" value="{{item.placeholder}}" data-index="{{index}}" data-key="placeholder" bindinput="onFieldInput" placeholder="提示文字（选填）" />
       <view wx:if="{{item.type === 'radio' || item.type === 'checkbox'}}" class="ff-options">
@@ -153,8 +163,15 @@
       <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onConnectionPick">
         <view class="field-input field-picker">{{connectionId ? '已选择连接' : '选择飞书连接（「管理飞书连接」中创建）'}}</view>
       </picker>
-      <input class="field-input ff-input" value="{{bitableApp}}" data-key="bitableApp" bindinput="onLarkInput" placeholder="多维表格 app_token（URL /base/ 后段）" />
-      <input class="field-input ff-input" value="{{bitableTable}}" data-key="bitableTable" bindinput="onLarkInput" placeholder="数据表 table_id（URL table= 参数）" />
+      <!-- 自绘 placeholder：原生 placeholder 属原生层，Windows 工具穿透 cover-view 底栏，改 webview 层绘制 -->
+      <view class="field-input-wrap">
+        <input class="field-input ff-input" value="{{bitableApp}}" data-key="bitableApp" bindinput="onLarkInput" />
+        <view wx:if="{{!bitableApp}}" class="input-ph">多维表格 app_token（URL /base/ 后段）</view>
+      </view>
+      <view class="field-input-wrap">
+        <input class="field-input ff-input" value="{{bitableTable}}" data-key="bitableTable" bindinput="onLarkInput" />
+        <view wx:if="{{!bitableTable}}" class="input-ph">数据表 table_id（URL table= 参数）</view>
+      </view>
       <view wx:if="{{id}}" class="ff-add-btn" bindtap="saveLark">保存同步配置</view>
       <view class="ff-link" bindtap="goConnections">管理飞书连接 →</view>
       <view class="ff-hint">报名数据将按表单字段逐列自动同步；取消报名会删除对应行</view>

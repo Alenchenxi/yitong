@@ -3,6 +3,7 @@ import {
   createActivity,
   getActivityPublishScope,
   listLarkConnections,
+  myActivityDraft,
   publishActivity,
   setActivityAdmins,
   setLarkConfig,
@@ -125,16 +126,26 @@ Page({
         const hit = scope.communities.find((c) => c.id === active?.id);
         if (hit) this.setData({ communityId: hit.id, communityName: hit.name });
       }
-      // 连接列表常驻加载：飞书同步配置在创建与编辑模式均可填
-      const conns = await listLarkConnections().catch(() => []);
-      this.setData({ connections: conns });
     } catch {
       /* toast 已在 request 内 */
     }
     if (query.id) {
       this.setData({ id: query.id });
       await this.loadDetail(query.id);
+      return;
     }
+    // 创建模式：有未发布草稿则自动载入（进入编辑草稿状态）
+    const draft = await myActivityDraft().catch(() => null);
+    if (draft?.id) {
+      this.setData({ id: draft.id });
+      await this.loadDetail(draft.id);
+    }
+  },
+
+  async onShow() {
+    // 连接列表每次显示时刷新：从「管理飞书连接」新建返回后 picker 才能看到新连接
+    const conns = await listLarkConnections().catch(() => []);
+    this.setData({ connections: conns });
   },
 
   async loadDetail(id: string) {
@@ -244,12 +255,14 @@ Page({
   addField() {
     const type = FIELD_TYPES[this.data.newFieldTypeIndex]!.value;
     const form = this.data.form.form;
+    // 手机号/微信号字段名默认取类型名；占位文本预填「请填写{字段名}」（改字段名时自动跟随，见 onFieldInput）
+    const label = type === 'phone' ? '手机号' : type === 'wechat' ? '微信号' : `字段${form.length + 1}`;
     form.push({
       key: '',
       type,
-      label: `字段${form.length + 1}`,
+      label,
       required: false,
-      placeholder: '',
+      placeholder: `请填写${label}`,
       options: type === 'radio' || type === 'checkbox' ? [''] : undefined,
       order: form.length,
     });
@@ -258,6 +271,13 @@ Page({
 
   onFieldInput(e: WechatMiniprogram.Input) {
     const { index, key } = e.currentTarget.dataset as { index: number; key: string };
+    // 占位文本处于「请填写{旧字段名}」自动形态时跟随字段名更新，手动改过则不联动
+    if (key === 'label') {
+      const field = this.data.form.form[index];
+      if (field && field.placeholder === `请填写${field.label}`) {
+        this.setData({ [`form.form[${index}].placeholder`]: `请填写${e.detail.value}` });
+      }
+    }
     this.setData({ [`form.form[${index}].${key}`]: e.detail.value });
   },
 

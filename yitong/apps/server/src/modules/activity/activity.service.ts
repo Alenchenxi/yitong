@@ -1177,6 +1177,16 @@ export class ActivityService {
     return { list: await decorate(activities) };
   }
 
+  /** 我最新的草稿（发布页进入创建模式时自动回填，AC 无编号：2026-11-17 用户需求） */
+  async myDraft(uid: string): Promise<{ id: string | null }> {
+    const draft = await this.prisma.activity.findFirst({
+      where: { initiatorId: uid, status: ActivityStatus.DRAFT },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true },
+    });
+    return { id: draft?.id ?? null };
+  }
+
   /** 感兴趣 / 不感兴趣 / 恢复（AC-011/013） */
   async setInterest(uid: string, id: string, dto: SetInterestDto): Promise<void> {
     const activity = await this.getOrThrow(id);

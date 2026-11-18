@@ -48,6 +48,11 @@ export class ActivityController {
     return ok(await this.activity.getPublishScope(req.user!.uid));
   }
 
+  @Get('my-draft')
+  async myDraft(@Req() req: AuthenticatedRequest) {
+    return ok(await this.activity.myDraft(req.user!.uid));
+  }
+
   @Get(':id')
   async detail(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return ok(await this.activity.detail(req.user!.uid, id));

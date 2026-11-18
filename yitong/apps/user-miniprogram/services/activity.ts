@@ -132,6 +132,11 @@ export function getActivityPublishScope(): Promise<{ platform: boolean; communit
   return request({ url: '/activities/publish-scope' });
 }
 
+// 我最新的草稿活动（发布页创建模式自动回填用）
+export function myActivityDraft(): Promise<{ id: string | null }> {
+  return request({ url: '/activities/my-draft' });
+}
+
 export function createActivity(payload: SaveActivityPayload & { communityId?: string; publish?: boolean }): Promise<ActivityDetailVo> {
   return request<ActivityDetailVo>({ url: '/activities', method: 'POST', data: payload });
 }

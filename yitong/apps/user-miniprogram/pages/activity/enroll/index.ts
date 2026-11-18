@@ -109,6 +109,15 @@ Page({
         wx.showToast({ title: `请填写「${field.label}」`, icon: 'none' });
         return false;
       }
+      // 格式校验与后端 validateFormData 口径对齐（手机号沿用 auth 模块严格段位）
+      if (!empty && (field.type === 'phone' || field.type === 'wechat')) {
+        const ok
+          = field.type === 'phone' ? /^1[3-9]\d{9}$/.test(value as string) : /^[a-zA-Z][a-zA-Z0-9_-]{5,19}$/.test(value as string);
+        if (!ok) {
+          wx.showToast({ title: `「${field.label}」${field.type === 'phone' ? '手机号' : '微信号'}格式不正确`, icon: 'none' });
+          return false;
+        }
+      }
     }
     return true;
   },
