@@ -463,7 +463,17 @@ Page({
       const payload = this.buildPayload();
       if (this.data.id) {
         await updateActivity(this.data.id, payload);
-        if (publish && this.data.editing?.status === 'DRAFT') await publishActivity(this.data.id);
+        if (publish && this.data.editing?.status === 'DRAFT') {
+          await publishActivity(this.data.id);
+          // 草稿转发布与创建语义一致：已填飞书配置随发布一并保存（失败不阻断）
+          if (this.data.connectionId && this.data.bitableApp && this.data.bitableTable) {
+            await setLarkConfig(this.data.id, {
+              connectionId: this.data.connectionId,
+              bitableApp: this.data.bitableApp,
+              bitableTable: this.data.bitableTable,
+            }).catch(() => undefined);
+          }
+        }
         wx.showToast({ title: '已保存', icon: 'success' });
       } else {
         const created = await createActivity({ ...payload, communityId: this.data.isPlatform ? undefined : this.data.communityId || undefined, publish });
