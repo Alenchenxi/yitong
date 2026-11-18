@@ -403,6 +403,13 @@
   position: relative;
 }
 
+/* flex 行内的自绘 placeholder 包裹（ff-row/ff-opt-row/user-search-row 内保持占位伸缩） */
+.wrap-flex {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
 .input-ph {
   position: absolute;
   left: 24rpx;
@@ -411,6 +418,24 @@
   color: #86909c;
   font-size: 28rpx;
   pointer-events: none;
+}
+
+/* textarea 多行：占位顶部对齐（top 与 .field-textarea padding-top 一致），不垂直居中 */
+.input-ph-top {
+  top: 20rpx;
+  transform: none;
+}
+
+/* .ff-label / .ff-opt-input 的 padding/字号（14/20、26rpx）对应的小号占位 */
+.input-ph-sm {
+  left: 20rpx;
+  font-size: 26rpx;
+}
+
+/* 搜索结果列表：限高可滚动，不随结果数无限撑高页面 */
+.user-result-list {
+  max-height: 480rpx;
+  overflow-y: auto;
 }
 
 .op-disabled {

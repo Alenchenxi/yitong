@@ -13,7 +13,10 @@
     <view class="section-title">基础信息</view>
     <view class="field">
       <view class="field-label">活动名称 <text class="req">*</text></view>
-      <input class="field-input" value="{{form.title}}" placeholder="请输入活动名称" data-key="title" bindinput="onInput" maxlength="50" />
+      <view class="field-input-wrap">
+        <input class="field-input" value="{{form.title}}" data-key="title" bindinput="onInput" maxlength="50" />
+        <view wx:if="{{!form.title}}" class="input-ph">请输入活动名称</view>
+      </view>
     </view>
     <view class="field">
       <view class="field-label">活动首图 <text class="req">*</text></view>
@@ -24,7 +27,10 @@
     </view>
     <view class="field">
       <view class="field-label">活动介绍 <text class="req">*</text></view>
-      <textarea class="field-textarea" value="{{form.description}}" placeholder="支持粘贴链接，展示时自动识别高亮" data-key="description" bindinput="onInput" maxlength="5000" />
+      <view class="field-input-wrap">
+        <textarea class="field-textarea" value="{{form.description}}" data-key="description" bindinput="onInput" maxlength="5000" />
+        <view wx:if="{{!form.description}}" class="input-ph input-ph-top">支持粘贴链接，展示时自动识别高亮</view>
+      </view>
     </view>
     <view class="field">
       <view class="field-label">活动形式 <text class="req">*</text></view>
@@ -34,12 +40,18 @@
     </view>
     <view wx:if="{{form.format !== 'ONLINE'}}" class="field">
       <view class="field-label">活动地点 <text class="req">*</text></view>
-      <input class="field-input" value="{{form.location}}" placeholder="线下地点" data-key="location" bindinput="onInput" maxlength="200" />
+      <view class="field-input-wrap">
+        <input class="field-input" value="{{form.location}}" data-key="location" bindinput="onInput" maxlength="200" />
+        <view wx:if="{{!form.location}}" class="input-ph">线下地点</view>
+      </view>
       <button class="loc-btn" bindtap="onChooseLocation">📍 地图选点（支持搜索）</button>
     </view>
     <view wx:if="{{form.format !== 'OFFLINE'}}" class="field">
       <view class="field-label">参与方式或链接 <text class="req">*</text></view>
-      <input class="field-input" value="{{form.joinLink}}" placeholder="会议链接 / 参与方式说明" data-key="joinLink" bindinput="onInput" maxlength="500" />
+      <view class="field-input-wrap">
+        <input class="field-input" value="{{form.joinLink}}" data-key="joinLink" bindinput="onInput" maxlength="500" />
+        <view wx:if="{{!form.joinLink}}" class="input-ph">会议链接 / 参与方式说明</view>
+      </view>
     </view>
     <view class="field">
       <view class="field-label">地点和参与链接可见性</view>
@@ -87,7 +99,10 @@
     </view>
     <view class="field">
       <view class="field-label">人数上限（不填不限人数）</view>
-      <input class="field-input" type="number" value="{{form.capacity}}" placeholder="如 50" data-key="capacity" bindinput="onInput" />
+      <view class="field-input-wrap">
+        <input class="field-input" type="number" value="{{form.capacity}}" data-key="capacity" bindinput="onInput" />
+        <view wx:if="{{!form.capacity}}" class="input-ph">如 50</view>
+      </view>
     </view>
   </view>
 
@@ -95,23 +110,31 @@
     <view class="section-title">报名表单</view>
     <view class="field-form" wx:for="{{form.form}}" wx:key="index">
       <view class="ff-row">
-        <input class="ff-label" value="{{item.label}}" data-index="{{index}}" data-key="label" bindinput="onFieldInput" placeholder="字段名称" />
+        <view class="wrap-flex">
+          <input class="ff-label" value="{{item.label}}" data-index="{{index}}" data-key="label" bindinput="onFieldInput" />
+          <view wx:if="{{!item.label}}" class="input-ph input-ph-sm">字段名称</view>
+        </view>
         <text class="ff-type">{{f.typeName(item.type)}}</text>
       </view>
-      <input class="field-input ff-input" value="{{item.placeholder}}" data-index="{{index}}" data-key="placeholder" bindinput="onFieldInput" placeholder="提示文字（选填）" />
+      <view class="field-input-wrap">
+        <input class="field-input ff-input" value="{{item.placeholder}}" data-index="{{index}}" data-key="placeholder" bindinput="onFieldInput" />
+        <view wx:if="{{!item.placeholder}}" class="input-ph">提示文字（选填）</view>
+      </view>
       <view wx:if="{{item.type === 'radio' || item.type === 'checkbox'}}" class="ff-options">
         <view class="ff-options-title">选项（{{item.options.length || 0}}/20）</view>
         <view class="ff-opt-row" wx:for="{{item.options}}" wx:for-item="opt" wx:for-index="optIndex" wx:key="*this">
           <text class="ff-opt-no">{{optIndex + 1}}</text>
-          <input
-            class="ff-opt-input"
-            value="{{opt}}"
-            data-index="{{index}}"
-            data-opt-index="{{optIndex}}"
-            bindinput="onOptionInput"
-            placeholder="选项{{optIndex + 1}}"
-            maxlength="30"
-          />
+          <view class="wrap-flex">
+            <input
+              class="ff-opt-input"
+              value="{{opt}}"
+              data-index="{{index}}"
+              data-opt-index="{{optIndex}}"
+              bindinput="onOptionInput"
+              maxlength="30"
+            />
+            <view wx:if="{{!opt}}" class="input-ph input-ph-sm">选项{{optIndex + 1}}</view>
+          </view>
           <view class="ff-btn" data-index="{{index}}" data-opt-index="{{optIndex}}" catchtap="onOptionRemove">
             <image class="ff-ic" src="/assets/icons/form-trash.png" mode="aspectFit" />
           </view>
@@ -153,14 +176,19 @@
         </view>
       </view>
       <view class="user-search-row">
-        <input class="field-input user-search-input" value="{{adminKw}}" bindinput="onAdminKwInput" confirm-type="search" bindconfirm="searchAdmins" placeholder="搜索用户昵称添加" />
+        <view class="wrap-flex">
+          <input class="field-input user-search-input" value="{{adminKw}}" bindinput="onAdminKwInput" confirm-type="search" bindconfirm="searchAdmins" />
+          <view wx:if="{{!adminKw}}" class="input-ph">搜索用户昵称添加</view>
+        </view>
         <view class="user-search-btn" bindtap="searchAdmins">搜索</view>
       </view>
-      <view wx:for="{{adminResults}}" wx:key="id" class="user-result" bindtap="pickAdmin" data-index="{{index}}">
-        <image wx:if="{{item.avatarUrl}}" class="user-result-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
-        <view wx:else class="user-result-avatar user-result-avatar-ph"></view>
-        <text class="user-result-name">{{item.nickname}}</text>
-        <text class="user-result-add">添加</text>
+      <view class="user-result-list">
+        <view wx:for="{{adminResults}}" wx:key="id" class="user-result" bindtap="pickAdmin" data-index="{{index}}">
+          <image wx:if="{{item.avatarUrl}}" class="user-result-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="user-result-avatar user-result-avatar-ph"></view>
+          <text class="user-result-name">{{item.nickname}}</text>
+          <text class="user-result-add">添加</text>
+        </view>
       </view>
       <view class="ff-add-btn" bindtap="saveAdmins">保存管理员</view>
     </view>
@@ -168,14 +196,19 @@
       <view class="field-label">转让发起人</view>
       <view wx:if="{{transferTarget}}" class="transfer-target">已选择：{{transferTarget.nickname}}<text class="admin-chip-x" catchtap="clearTransferTarget">✕</text></view>
       <view class="user-search-row">
-        <input class="field-input user-search-input" value="{{transferKw}}" bindinput="onTransferKwInput" confirm-type="search" bindconfirm="searchTransfer" placeholder="搜索用户昵称选择" />
+        <view class="wrap-flex">
+          <input class="field-input user-search-input" value="{{transferKw}}" bindinput="onTransferKwInput" confirm-type="search" bindconfirm="searchTransfer" />
+          <view wx:if="{{!transferKw}}" class="input-ph">搜索用户昵称选择</view>
+        </view>
         <view class="user-search-btn" bindtap="searchTransfer">搜索</view>
       </view>
-      <view wx:for="{{transferResults}}" wx:key="id" class="user-result" bindtap="pickTransferTarget" data-index="{{index}}">
-        <image wx:if="{{item.avatarUrl}}" class="user-result-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
-        <view wx:else class="user-result-avatar user-result-avatar-ph"></view>
-        <text class="user-result-name">{{item.nickname}}</text>
-        <text class="user-result-add">选择</text>
+      <view class="user-result-list">
+        <view wx:for="{{transferResults}}" wx:key="id" class="user-result" bindtap="pickTransferTarget" data-index="{{index}}">
+          <image wx:if="{{item.avatarUrl}}" class="user-result-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="user-result-avatar user-result-avatar-ph"></view>
+          <text class="user-result-name">{{item.nickname}}</text>
+          <text class="user-result-add">选择</text>
+        </view>
       </view>
       <view class="ff-add-btn ff-danger" bindtap="doTransfer">转让</view>
     </view>

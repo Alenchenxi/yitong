@@ -337,12 +337,21 @@ Page({
   // ===== 发起人专属（编辑模式）：管理员 / 转让人搜索选择 =====
 
   onAdminKwInput(e: WechatMiniprogram.Input) {
-    this.setData({ adminKw: e.detail.value });
+    const kw = e.detail.value;
+    // 清空搜索条件时同步清空结果列表
+    if (!kw.trim()) {
+      this.setData({ adminKw: kw, adminResults: [] });
+      return;
+    }
+    this.setData({ adminKw: kw });
   },
 
   async searchAdmins() {
     const q = this.data.adminKw.trim();
-    if (!q) return;
+    if (!q) {
+      this.setData({ adminResults: [] });
+      return;
+    }
     try {
       const r = await searchUsers(q, 20);
       this.setData({ adminResults: r.list });
@@ -385,12 +394,21 @@ Page({
   },
 
   onTransferKwInput(e: WechatMiniprogram.Input) {
-    this.setData({ transferKw: e.detail.value });
+    const kw = e.detail.value;
+    // 清空搜索条件时同步清空结果列表
+    if (!kw.trim()) {
+      this.setData({ transferKw: kw, transferResults: [] });
+      return;
+    }
+    this.setData({ transferKw: kw });
   },
 
   async searchTransfer() {
     const q = this.data.transferKw.trim();
-    if (!q) return;
+    if (!q) {
+      this.setData({ transferResults: [] });
+      return;
+    }
     try {
       const r = await searchUsers(q, 20);
       this.setData({ transferResults: r.list });
