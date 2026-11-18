@@ -91,6 +91,57 @@ export class LarkSyncService {
     return { deleted: true };
   }
 
+  // ===== 连接配置校验（创建/保存活动前强校验，2026-11-18 用户需求） =====
+
+  private async larkGet(token: string, path: string): Promise<{ code?: number; msg?: string }> {
+    const res = await fetch(`${LARK_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    return (await res.json()) as { code?: number; msg?: string };
+  }
+
+  /** 校验连接凭证与目标多维表格可达性；任一环节失败抛 BizException 细分原因，由前端阻断提交 */
+  async verifyConfig(
+    uid: string,
+    dto: { connectionId: string; bitableApp: string; bitableTable: string },
+  ): Promise<{ ok: true }> {
+    const conn = await this.prisma.larkConnection.findUnique({ where: { id: dto.connectionId } });
+    if (!conn || conn.ownerId !== uid) {
+      throw new BizException(70012, '飞书连接不存在或已被删除，请重新选择连接', HttpStatus.NOT_FOUND);
+    }
+    let token: string;
+    try {
+      token = await this.tenantToken(conn);
+    } catch {
+      throw new BizException(70013, '连接的 app_id 或 app_secret 不正确（换取飞书应用凭证失败）', HttpStatus.BAD_REQUEST);
+    }
+    const appPath = `/open-apis/bitable/v1/apps/${encodeURIComponent(dto.bitableApp)}`;
+    let app: { code?: number; msg?: string };
+    try {
+      app = await this.larkGet(token, appPath);
+    } catch {
+      throw new BizException(70013, '飞书服务暂不可达，请稍后重试', HttpStatus.BAD_GATEWAY);
+    }
+    if (app.code !== 0) {
+      throw new BizException(
+        70013,
+        '多维表格 app_token 无法访问：请检查 URL /base/ 后段是否正确，并确认已把该飞书应用添加为表格协作者',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    let table: { code?: number; msg?: string };
+    try {
+      table = await this.larkGet(token, `${appPath}/tables/${encodeURIComponent(dto.bitableTable)}`);
+    } catch {
+      throw new BizException(70013, '飞书服务暂不可达，请稍后重试', HttpStatus.BAD_GATEWAY);
+    }
+    if (table.code !== 0) {
+      throw new BizException(70013, '数据表 table_id 不存在：请检查表格 URL 中 table= 参数', HttpStatus.BAD_REQUEST);
+    }
+    return { ok: true };
+  }
+
   // ===== 同步记录 =====
 
   /** 标记某条报名待同步（op：upsert=创建/更新行；remove=取消报名/取消资格删行） */

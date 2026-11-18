@@ -6,6 +6,7 @@ import { ActivityService } from './activity.service';
 import {
   CreateActivityDto,
   CreateLarkConnectionDto,
+  VerifyLarkConfigDto,
   EnrollActivityDto,
   ListActivitiesDto,
   ListMyActivitiesDto,
@@ -238,6 +239,11 @@ export class LarkConnectionController {
   @Post()
   async create(@Req() req: AuthenticatedRequest, @Body() dto: CreateLarkConnectionDto) {
     return ok(await this.activity.createConnection(req.user!.uid, dto));
+  }
+
+  @Post('verify')
+  async verify(@Req() req: AuthenticatedRequest, @Body() dto: VerifyLarkConfigDto) {
+    return ok(await this.activity.verifyLarkConfig(req.user!.uid, dto));
   }
 
   @Delete(':id')

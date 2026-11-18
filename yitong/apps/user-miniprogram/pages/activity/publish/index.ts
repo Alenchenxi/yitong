@@ -4,6 +4,7 @@ import {
   getActivityPublishScope,
   listLarkConnections,
   myActivityDraft,
+  verifyLarkConfig,
   publishActivity,
   setActivityAdmins,
   setLarkConfig,
@@ -443,6 +444,14 @@ Page({
     this.setData({ submitting: true });
     try {
       const payload = this.buildPayload();
+      // 创建/保存前强校验飞书同步配置：填了才验，失败时后端细分原因已 toast 并抛错阻断提交
+      if (this.data.connectionId && this.data.bitableApp && this.data.bitableTable) {
+        await verifyLarkConfig({
+          connectionId: this.data.connectionId,
+          bitableApp: this.data.bitableApp,
+          bitableTable: this.data.bitableTable,
+        });
+      }
       if (this.data.id) {
         await updateActivity(this.data.id, payload);
         // 编辑与创建语义一致：已填飞书配置随保存/发布一并落库（失败不阻断）

@@ -214,6 +214,23 @@ export class CreateLarkConnectionDto {
   appSecret!: string;
 }
 
+// 创建/保存活动前对飞书同步配置的连通性校验（细分失败原因反馈给用户）
+export class VerifyLarkConfigDto {
+  @IsString()
+  @IsNotEmpty()
+  connectionId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  bitableApp!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  bitableTable!: string;
+}
+
 export class ListActivitiesDto {
   @IsOptional()
   @IsString()

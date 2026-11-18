@@ -240,6 +240,11 @@ export function createLarkConnection(data: { name: string; appId: string; appSec
   return request({ url: '/lark-connections', method: 'POST', data });
 }
 
+// 飞书同步配置连通性校验（失败时后端细分原因，request 层 toast 展示并抛错阻断提交）
+export function verifyLarkConfig(data: { connectionId: string; bitableApp: string; bitableTable: string }): Promise<{ ok: boolean }> {
+  return request({ url: '/lark-connections/verify', method: 'POST', data });
+}
+
 export function deleteLarkConnection(id: string): Promise<unknown> {
   return request({ url: `/lark-connections/${id}`, method: 'DELETE' });
 }

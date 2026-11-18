@@ -32,6 +32,7 @@ import {
 import type {
   CreateActivityDto,
   CreateLarkConnectionDto,
+  VerifyLarkConfigDto,
   EnrollActivityDto,
   RemindDto,
   ReviewEnrollmentDto,
@@ -1421,6 +1422,10 @@ export class ActivityService {
 
   async createConnection(uid: string, dto: CreateLarkConnectionDto) {
     return this.larkSync.createConnection(uid, dto);
+  }
+
+  async verifyLarkConfig(uid: string, dto: VerifyLarkConfigDto) {
+    return this.larkSync.verifyConfig(uid, dto);
   }
 
   async deleteConnection(uid: string, id: string) {
