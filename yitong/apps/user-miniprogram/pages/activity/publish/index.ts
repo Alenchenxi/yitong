@@ -375,24 +375,6 @@ Page({
     this.setData({ [key]: e.detail.value } as never);
   },
 
-  async saveLark() {
-    const d = this.data.editing;
-    if (!d || !this.data.connectionId || !this.data.bitableApp || !this.data.bitableTable) {
-      wx.showToast({ title: '请完整填写飞书配置', icon: 'none' });
-      return;
-    }
-    try {
-      await setLarkConfig(d.id, {
-        connectionId: this.data.connectionId,
-        bitableApp: this.data.bitableApp,
-        bitableTable: this.data.bitableTable,
-      });
-      wx.showToast({ title: '已保存', icon: 'success' });
-    } catch {
-      /* toast 已在 request 内 */
-    }
-  },
-
   goConnections() {
     // 带上活动 id：同步状态/目标配置卡片依赖它渲染
     const q = this.data.id ? `?activityId=${this.data.id}` : '';
@@ -463,17 +445,15 @@ Page({
       const payload = this.buildPayload();
       if (this.data.id) {
         await updateActivity(this.data.id, payload);
-        if (publish && this.data.editing?.status === 'DRAFT') {
-          await publishActivity(this.data.id);
-          // 草稿转发布与创建语义一致：已填飞书配置随发布一并保存（失败不阻断）
-          if (this.data.connectionId && this.data.bitableApp && this.data.bitableTable) {
-            await setLarkConfig(this.data.id, {
-              connectionId: this.data.connectionId,
-              bitableApp: this.data.bitableApp,
-              bitableTable: this.data.bitableTable,
-            }).catch(() => undefined);
-          }
+        // 编辑与创建语义一致：已填飞书配置随保存/发布一并落库（失败不阻断）
+        if (this.data.connectionId && this.data.bitableApp && this.data.bitableTable) {
+          await setLarkConfig(this.data.id, {
+            connectionId: this.data.connectionId,
+            bitableApp: this.data.bitableApp,
+            bitableTable: this.data.bitableTable,
+          }).catch(() => undefined);
         }
+        if (publish && this.data.editing?.status === 'DRAFT') await publishActivity(this.data.id);
         wx.showToast({ title: '已保存', icon: 'success' });
       } else {
         const created = await createActivity({ ...payload, communityId: this.data.isPlatform ? undefined : this.data.communityId || undefined, publish });

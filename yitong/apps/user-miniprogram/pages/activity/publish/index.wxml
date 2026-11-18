@@ -172,7 +172,6 @@
         <input class="field-input ff-input" value="{{bitableTable}}" data-key="bitableTable" bindinput="onLarkInput" />
         <view wx:if="{{!bitableTable}}" class="input-ph">数据表 table_id（URL table= 参数）</view>
       </view>
-      <view wx:if="{{id}}" class="ff-add-btn" bindtap="saveLark">保存同步配置</view>
       <view class="ff-link" bindtap="goConnections">管理飞书连接 →</view>
       <view class="ff-hint">报名数据将按表单字段逐列自动同步；取消报名会删除对应行</view>
     </view>
