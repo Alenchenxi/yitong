@@ -70,7 +70,7 @@
 
 ### 4.4 后端部署 bundle 上传红线（强制）
 - 如果本次功能修改需要重新部署后端，必须先按第 4.3 节和第 5 节完成独立验收、squash 合并及 `main` 提交，并在主工作区完成最终验收；不得从功能 worktree 或未合并分支生成部署包。
-- 合并后的 `main` 必须重新生成完整历史 bundle，禁止复用旧 `yitong-main.bundle`：
+- 合并后的 `main` 必须重新生成完整历史 bundle，禁止复用旧 `yitong-main.bundle`。**bundle 固定生成在仓库子目录内 `yitong/yitong-main.bundle`**（`yitong/.gitignore` 已忽略 `*.bundle`，不得生成到仓库外如 `project/` 根；每次生成覆盖同一文件，不遗留多版本）——在 `yitong/` 目录内执行：
   ```bash
   git bundle create yitong-main.bundle main
   git bundle verify yitong-main.bundle
