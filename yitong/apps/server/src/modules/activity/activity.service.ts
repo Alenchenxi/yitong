@@ -1038,6 +1038,14 @@ export class ActivityService {
       this.isActivityManager(id, activity.initiatorId, uid),
       this.activeCommunityId(uid),
     ]);
+    // 管理员昵称回显（发布页搜索选择 UI 用）；保持 adminRows 顺序，缺失用户兜底「用户」
+    const adminUsers = adminRows.length
+      ? await this.prisma.user.findMany({
+        where: { id: { in: adminRows.map((a) => a.userId) } },
+        select: { id: true, nickname: true, avatarUrl: true },
+      })
+      : [];
+    const adminById = new Map(adminUsers.map((u) => [u.id, u]));
 
     // DRAFT 仅管理者可见；下架/圈外：管理者与已报名用户仍可访问（AC-027/029），其余拒绝
     const visibleScope = activity.scope === ActivityScope.PLATFORM || activity.communityId === activeCommunityId;
@@ -1075,6 +1083,7 @@ export class ActivityService {
       enrollStartAt: activity.enrollStartAt?.toISOString() ?? null,
       form: this.readForm(activity),
       initiator: initiator ?? { id: activity.initiatorId, nickname: '用户', avatarUrl: null },
+      admins: adminRows.map((a) => adminById.get(a.userId) ?? { id: a.userId, nickname: '用户', avatarUrl: null }),
       adminIds: adminRows.map((a) => a.userId),
       canManage: isManager,
       isInitiator: activity.initiatorId === uid,

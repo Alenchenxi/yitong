@@ -46,6 +46,7 @@ export interface ActivityDetailVo extends ActivityListVo {
   enrollStartAt: string | null;
   form: ActivityFormField[];
   initiator: { id: string; nickname: string; avatarUrl: string | null };
+  admins: Array<{ id: string; nickname: string; avatarUrl: string | null }>; // 管理员昵称回显（发布页搜索选择用）
   adminIds: string[];
   canManage: boolean; // 活动管理员或发起人
   isInitiator: boolean;

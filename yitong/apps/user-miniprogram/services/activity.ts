@@ -46,6 +46,7 @@ export interface ActivityDetailVo extends ActivityListVo {
   enrollStartAt: string | null;
   form: ActivityFormField[];
   initiator: { id: string; nickname: string; avatarUrl: string | null };
+  admins: Array<{ id: string; nickname: string; avatarUrl: string | null }>;
   adminIds: string[];
   canManage: boolean;
   isInitiator: boolean;

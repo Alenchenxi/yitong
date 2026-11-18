@@ -15,6 +15,7 @@ import {
   type LarkConnectionVo,
 } from '../../../services/activity';
 import { getActiveCommunity } from '../../../services/community';
+import { searchUsers, type UserSearchItem } from '../../../services/confession';
 import { uploadImage } from '../../../services/upload';
 import { chooseLocation } from '../../../utils/choose-location';
 
@@ -110,8 +111,13 @@ Page({
     connectionId: '',
     bitableApp: '',
     bitableTable: '',
-    adminIdsInput: '',
-    transferInput: '',
+    // 发起人专属：管理员/转让人均走昵称搜索点选，不手输 userId
+    adminList: [] as UserSearchItem[],
+    adminKw: '',
+    adminResults: [] as UserSearchItem[],
+    transferKw: '',
+    transferResults: [] as UserSearchItem[],
+    transferTarget: null as UserSearchItem | null,
     newFieldTypeIndex: 0,
     uploading: false,
     submitting: false,
@@ -181,7 +187,12 @@ Page({
           ),
         },
         communityId: d.communityId ?? '',
-        adminIdsInput: d.adminIds.join(','),
+        adminList: d.admins,
+        adminKw: '',
+        adminResults: [],
+        transferKw: '',
+        transferResults: [],
+        transferTarget: null,
         // 飞书同步配置回显
         connectionId: d.larkConnectionId ?? '',
         bitableApp: d.larkBitableApp ?? '',
@@ -323,22 +334,43 @@ Page({
     this.setData({ 'form.form': form.map((f, i) => ({ ...f, order: i })) });
   },
 
-  // ===== 高级配置（编辑模式） =====
+  // ===== 发起人专属（编辑模式）：管理员 / 转让人搜索选择 =====
 
-  onAdminIdsInput(e: WechatMiniprogram.Input) {
-    this.setData({ adminIdsInput: e.detail.value });
+  onAdminKwInput(e: WechatMiniprogram.Input) {
+    this.setData({ adminKw: e.detail.value });
   },
 
-  onTransferInput(e: WechatMiniprogram.Input) {
-    this.setData({ transferInput: e.detail.value });
+  async searchAdmins() {
+    const q = this.data.adminKw.trim();
+    if (!q) return;
+    try {
+      const r = await searchUsers(q, 20);
+      this.setData({ adminResults: r.list });
+    } catch {
+      /* toast 已在 request 内 */
+    }
+  },
+
+  pickAdmin(e: WechatMiniprogram.TouchEvent) {
+    const u = this.data.adminResults[Number(e.currentTarget.dataset.index)];
+    if (!u) return;
+    if (this.data.adminList.some((a) => a.id === u.id)) return this.tip('该用户已是管理员');
+    // 与后端 SetActivityAdminsDto ArrayMaxSize(20) 对齐
+    if (this.data.adminList.length >= 20) return this.tip('管理员最多 20 个');
+    this.setData({ adminList: [...this.data.adminList, u] });
+  },
+
+  removeAdminChip(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    this.setData({ adminList: this.data.adminList.filter((a) => a.id !== id) });
   },
 
   async saveAdmins() {
     const d = this.data.editing;
     if (!d) return;
-    const add = this.data.adminIdsInput.split(/[，,]/).map((s) => s.trim()).filter(Boolean)
-      .filter((id) => !d.adminIds.includes(id));
-    const remove = d.adminIds.filter((id) => !this.data.adminIdsInput.split(/[，,]/).map((s) => s.trim()).includes(id));
+    const ids = this.data.adminList.map((u) => u.id);
+    const add = ids.filter((id) => !d.adminIds.includes(id));
+    const remove = d.adminIds.filter((id) => !ids.includes(id));
     if (!add.length && !remove.length) {
       wx.showToast({ title: '无变更', icon: 'none' });
       return;
@@ -352,14 +384,39 @@ Page({
     }
   },
 
+  onTransferKwInput(e: WechatMiniprogram.Input) {
+    this.setData({ transferKw: e.detail.value });
+  },
+
+  async searchTransfer() {
+    const q = this.data.transferKw.trim();
+    if (!q) return;
+    try {
+      const r = await searchUsers(q, 20);
+      this.setData({ transferResults: r.list });
+    } catch {
+      /* toast 已在 request 内 */
+    }
+  },
+
+  pickTransferTarget(e: WechatMiniprogram.TouchEvent) {
+    const u = this.data.transferResults[Number(e.currentTarget.dataset.index)];
+    if (!u) return;
+    this.setData({ transferTarget: u });
+  },
+
+  clearTransferTarget() {
+    this.setData({ transferTarget: null });
+  },
+
   async doTransfer() {
     const d = this.data.editing;
-    const target = this.data.transferInput.trim();
-    if (!d || !target) return;
-    const { confirm } = await wx.showModal({ title: '转让发起人', content: `确定将发起人转让给 ${target} 吗？` });
+    const t = this.data.transferTarget;
+    if (!d || !t) return this.tip('请先搜索并选择目标用户');
+    const { confirm } = await wx.showModal({ title: '转让发起人', content: `确定将发起人转让给「${t.nickname}」吗？` });
     if (!confirm) return;
     try {
-      await transferInitiator(d.id, target);
+      await transferInitiator(d.id, t.id);
       wx.showToast({ title: '已转让', icon: 'success' });
       await this.loadDetail(d.id);
     } catch {
