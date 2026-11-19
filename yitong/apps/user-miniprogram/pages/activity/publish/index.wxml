@@ -173,7 +173,7 @@
     <view class="section-title">飞书多维表格同步（可选）</view>
     <view class="field">
       <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onConnectionPick">
-        <view class="field-input field-picker">{{connectionId ? '已选择连接' : '选择飞书连接（「管理飞书连接」中创建）'}}</view>
+        <view class="field-input field-picker">{{connectionName || '选择飞书连接（「管理飞书连接」中创建）'}}</view>
       </picker>
       <!-- 自绘 placeholder：原生 placeholder 属原生层，Windows 工具穿透 cover-view 底栏，改 webview 层绘制 -->
       <view class="field-input-wrap">

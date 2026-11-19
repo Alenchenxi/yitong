@@ -106,6 +106,7 @@ Page({
     isPlatform: false,
     connections: [] as LarkConnectionVo[],
     connectionId: '',
+    connectionName: '',
     bitableApp: '',
     bitableTable: '',
     newFieldTypeIndex: 0,
@@ -179,6 +180,8 @@ Page({
         communityId: d.communityId ?? '',
         // 飞书同步配置回显
         connectionId: d.larkConnectionId ?? '',
+        // 回显所选连接名称（onLoad 已先拉取连接列表）
+        connectionName: this.data.connections.find((c) => c.id === d.larkConnectionId)?.name ?? '',
         bitableApp: d.larkBitableApp ?? '',
         bitableTable: d.larkBitableTable ?? '',
       });
@@ -319,7 +322,8 @@ Page({
   },
 
   onConnectionPick(e: WechatMiniprogram.PickerChange) {
-    this.setData({ connectionId: this.data.connections[Number(e.detail.value)]?.id ?? '' });
+    const picked = this.data.connections[Number(e.detail.value)];
+    this.setData({ connectionId: picked?.id ?? '', connectionName: picked?.name ?? '' });
   },
 
   onLarkInput(e: WechatMiniprogram.Input) {
