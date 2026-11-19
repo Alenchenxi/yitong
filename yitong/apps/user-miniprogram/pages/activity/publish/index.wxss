@@ -357,16 +357,22 @@
   margin-bottom: 12rpx;
 }
 
-/* 底部留白：防止 fixed 底栏遮挡内容尾部（报名表单添加区/发起人专属），同时避免原生 input 穿透底栏 */
+/* 布局根治穿透：页面纵向 flex，内容区 scroll-view 内滚，底栏普通布局常驻底部——
+   内容与底栏几何不重叠，原生 input 的占位/已输入文字不再经过底栏后方 */
 .page {
-  padding: 24rpx 24rpx calc(160rpx + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.page-body {
+  flex: 1;
+  min-height: 0;
+  padding: 24rpx 24rpx 40rpx;
+  box-sizing: border-box;
 }
 
 .footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
   display: flex;
   gap: 16rpx;
   padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
