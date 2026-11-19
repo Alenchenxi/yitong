@@ -279,84 +279,6 @@
   margin-top: 12rpx;
 }
 
-/* ===== 发起人专属：管理员/转让人昵称搜索点选 ===== */
-.admin-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-bottom: 12rpx;
-}
-
-.admin-chip {
-  display: flex;
-  align-items: center;
-  background: #fff7d1;
-  color: #1d2129;
-  font-size: 24rpx;
-  border-radius: 24rpx;
-  padding: 8rpx 20rpx;
-}
-
-.admin-chip-x {
-  color: #4e5969;
-  font-size: 24rpx;
-  margin-left: 12rpx;
-  padding: 0 4rpx;
-}
-
-.user-search-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.user-search-input {
-  flex: 1;
-}
-
-.user-search-btn {
-  font-size: 26rpx;
-  color: #c59a00;
-  background: #fff7d1;
-  border-radius: 12rpx;
-  padding: 16rpx 28rpx;
-}
-
-.user-result {
-  display: flex;
-  align-items: center;
-  padding: 16rpx 8rpx;
-  border-bottom: 1rpx solid #f5f6f8;
-}
-
-.user-result-avatar {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 50%;
-  margin-right: 16rpx;
-  background: #f5f6f8;
-}
-
-.user-result-name {
-  flex: 1;
-  font-size: 28rpx;
-  color: #1d2129;
-}
-
-.user-result-add {
-  font-size: 24rpx;
-  color: #c59a00;
-}
-
-.transfer-target {
-  font-size: 26rpx;
-  color: #1d2129;
-  background: #fff7d1;
-  border-radius: 12rpx;
-  padding: 12rpx 20rpx;
-  margin-bottom: 12rpx;
-}
-
 /* 布局根治穿透：页面纵向 flex，内容区 scroll-view 内滚，底栏普通布局常驻底部——
    内容与底栏几何不重叠，原生 input 的占位/已输入文字不再经过底栏后方 */
 .page {
@@ -409,7 +331,7 @@
   position: relative;
 }
 
-/* flex 行内的自绘 placeholder 包裹（ff-row/ff-opt-row/user-search-row 内保持占位伸缩） */
+/* flex 行内的自绘 placeholder 包裹（ff-row/ff-opt-row 内保持占位伸缩） */
 .wrap-flex {
   flex: 1;
   min-width: 0;
@@ -436,12 +358,6 @@
 .input-ph-sm {
   left: 20rpx;
   font-size: 26rpx;
-}
-
-/* 搜索结果列表：限高可滚动，不随结果数无限撑高页面 */
-.user-result-list {
-  max-height: 480rpx;
-  overflow-y: auto;
 }
 
 .op-disabled {

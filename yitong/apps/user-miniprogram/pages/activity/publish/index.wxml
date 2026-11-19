@@ -168,55 +168,6 @@
     </view>
   </view>
 
-  <view wx:if="{{editing && editing.isInitiator}}" class="yt-card section">
-    <view class="section-title">发起人专属</view>
-    <view class="field">
-      <view class="field-label">活动管理员</view>
-      <view class="admin-chips">
-        <view wx:for="{{adminList}}" wx:key="id" class="admin-chip">
-          <text class="admin-chip-name">{{item.nickname}}</text>
-          <text class="admin-chip-x" catchtap="removeAdminChip" data-id="{{item.id}}">✕</text>
-        </view>
-      </view>
-      <view class="user-search-row">
-        <view class="wrap-flex">
-          <input class="field-input user-search-input" value="{{adminKw}}" bindinput="onAdminKwInput" confirm-type="search" bindconfirm="searchAdmins" />
-          <view wx:if="{{!adminKw}}" class="input-ph">搜索用户昵称添加</view>
-        </view>
-        <view class="user-search-btn" bindtap="searchAdmins">搜索</view>
-      </view>
-      <view class="user-result-list">
-        <view wx:for="{{adminResults}}" wx:key="id" class="user-result" bindtap="pickAdmin" data-index="{{index}}">
-          <image wx:if="{{item.avatarUrl}}" class="user-result-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
-          <view wx:else class="user-result-avatar user-result-avatar-ph"></view>
-          <text class="user-result-name">{{item.nickname}}</text>
-          <text class="user-result-add">添加</text>
-        </view>
-      </view>
-      <view class="ff-add-btn" bindtap="saveAdmins">保存管理员</view>
-    </view>
-    <view class="field">
-      <view class="field-label">转让发起人</view>
-      <view wx:if="{{transferTarget}}" class="transfer-target">已选择：{{transferTarget.nickname}}<text class="admin-chip-x" catchtap="clearTransferTarget">✕</text></view>
-      <view class="user-search-row">
-        <view class="wrap-flex">
-          <input class="field-input user-search-input" value="{{transferKw}}" bindinput="onTransferKwInput" confirm-type="search" bindconfirm="searchTransfer" />
-          <view wx:if="{{!transferKw}}" class="input-ph">搜索用户昵称选择</view>
-        </view>
-        <view class="user-search-btn" bindtap="searchTransfer">搜索</view>
-      </view>
-      <view class="user-result-list">
-        <view wx:for="{{transferResults}}" wx:key="id" class="user-result" bindtap="pickTransferTarget" data-index="{{index}}">
-          <image wx:if="{{item.avatarUrl}}" class="user-result-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
-          <view wx:else class="user-result-avatar user-result-avatar-ph"></view>
-          <text class="user-result-name">{{item.nickname}}</text>
-          <text class="user-result-add">选择</text>
-        </view>
-      </view>
-      <view class="ff-add-btn ff-danger" bindtap="doTransfer">转让</view>
-    </view>
-  </view>
-
   <!-- 飞书同步：创建与编辑（发起人）均可配置；创建时在提交后自动保存 -->
   <view wx:if="{{!id || (editing && editing.isInitiator)}}" class="yt-card section">
     <view class="section-title">飞书多维表格同步（可选）</view>

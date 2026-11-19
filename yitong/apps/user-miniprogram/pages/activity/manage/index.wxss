@@ -209,3 +209,131 @@
   font-size: 26rpx;
   color: #86909c;
 }
+
+/* ===== 活动设置（仅发起人）：管理员/转让人搜索点选，样式沿用发布页原实现 ===== */
+.settings {
+  margin-top: 24rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 20rpx;
+}
+
+.field {
+  margin-bottom: 24rpx;
+}
+
+.field-label {
+  font-size: 26rpx;
+  color: #4e5969;
+  margin-bottom: 12rpx;
+}
+
+.field-input {
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  color: #1d2129;
+}
+
+.admin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.admin-chip {
+  display: flex;
+  align-items: center;
+  background: #fff7d1;
+  color: #1d2129;
+  font-size: 24rpx;
+  border-radius: 24rpx;
+  padding: 8rpx 20rpx;
+}
+
+.admin-chip-x {
+  color: #4e5969;
+  font-size: 24rpx;
+  margin-left: 12rpx;
+  padding: 0 4rpx;
+}
+
+.user-search-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.user-search-input {
+  flex: 1;
+}
+
+.user-search-btn {
+  font-size: 26rpx;
+  color: #c59a00;
+  background: #fff7d1;
+  border-radius: 12rpx;
+  padding: 16rpx 28rpx;
+}
+
+.user-result {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 8rpx;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.user-result-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  background: #f5f6f8;
+}
+
+.user-result-name {
+  flex: 1;
+  font-size: 28rpx;
+  color: #1d2129;
+}
+
+.user-result-add {
+  font-size: 24rpx;
+  color: #c59a00;
+}
+
+.transfer-target {
+  font-size: 26rpx;
+  color: #1d2129;
+  background: #fff7d1;
+  border-radius: 12rpx;
+  padding: 12rpx 20rpx;
+  margin-bottom: 12rpx;
+}
+
+.ff-add-btn {
+  margin-top: 12rpx;
+  text-align: center;
+  background: #f5f6f8;
+  color: #4e5969;
+  font-size: 26rpx;
+  border-radius: 12rpx;
+  padding: 16rpx 0;
+}
+
+.ff-danger {
+  color: #f53f3f;
+  background: #ffece8;
+}
+
+/* 搜索结果列表：限高可滚动，不随结果数无限撑高页面 */
+.user-result-list {
+  max-height: 480rpx;
+  overflow-y: auto;
+}
