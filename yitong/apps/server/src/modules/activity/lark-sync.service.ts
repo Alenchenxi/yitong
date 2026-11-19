@@ -32,6 +32,18 @@ interface TenantTokenResp {
   expire?: number;
 }
 
+interface WikiNodeResp {
+  code?: number;
+  msg?: string;
+  data?: { node?: { obj_token?: string; obj_type?: string } };
+}
+
+interface BitableTablesResp {
+  code?: number;
+  msg?: string;
+  data?: { items?: Array<{ table_id?: string; name?: string }> };
+}
+
 interface BitableRecordResp {
   code?: number;
   msg?: string;
@@ -140,6 +152,78 @@ export class LarkSyncService {
       throw new BizException(70013, '数据表 table_id 不存在：请检查表格 URL 中 table= 参数', HttpStatus.BAD_REQUEST);
     }
     return { ok: true };
+  }
+
+  // ===== 多维表格链接解析（用户粘贴链接自动识别 app_token 与数据表，2026-11-19 用户需求） =====
+
+  /** 从 /base/ 或 /wiki/ 链接提取表格标识；无法识别返回 undefined */
+  private extractAppTokenFromUrl(url: string): { appToken?: string; wikiNode?: string; tableId?: string } {
+    const base = url.match(/\/base\/([A-Za-z0-9]+)/);
+    const wiki = url.match(/\/wiki\/([A-Za-z0-9]+)/);
+    const table = url.match(/[?&]table=([A-Za-z0-9]+)/);
+    return { appToken: base?.[1], wikiNode: wiki?.[1], tableId: table?.[1] };
+  }
+
+  /**
+   * 解析用户粘贴的多维表格链接：提取 app_token（/wiki/ 链接经飞书 get_node 换取 obj_token），
+   * 列出该表格全部数据表供用户按名称选择——用户全程不接触 token 概念。
+   */
+  async resolveBitable(
+    uid: string,
+    dto: { connectionId: string; url: string },
+  ): Promise<{ appToken: string; tableId: string | null; tables: Array<{ tableId: string; name: string }> }> {
+    const conn = await this.prisma.larkConnection.findUnique({ where: { id: dto.connectionId } });
+    if (!conn || conn.ownerId !== uid) {
+      throw new BizException(70012, '飞书连接不存在或已被删除，请重新选择连接', HttpStatus.NOT_FOUND);
+    }
+    const picked = this.extractAppTokenFromUrl(dto.url);
+    if (!picked.appToken && !picked.wikiNode) {
+      throw new BizException(70013, '无法从链接识别多维表格：请粘贴表格的分享链接（/base/ 或知识库 /wiki/ 链接）', HttpStatus.BAD_REQUEST);
+    }
+    let token: string;
+    try {
+      token = await this.tenantToken(conn);
+    } catch {
+      throw new BizException(70013, '连接的 app_id 或 app_secret 不正确（换取飞书应用凭证失败）', HttpStatus.BAD_REQUEST);
+    }
+    let appToken = picked.appToken ?? '';
+    if (!appToken && picked.wikiNode) {
+      let node: WikiNodeResp;
+      try {
+        node = (await this.larkGet(token, `/open-apis/wiki/v2/spaces/get_node?token=${encodeURIComponent(picked.wikiNode)}`)) as WikiNodeResp;
+      } catch {
+        throw new BizException(70013, '飞书服务暂不可达，请稍后重试', HttpStatus.BAD_GATEWAY);
+      }
+      if (node.code !== 0 || node.data?.node?.obj_type !== 'bitable' || !node.data.node.obj_token) {
+        throw new BizException(
+          70013,
+          '知识库链接解析失败：请确认已把该飞书应用添加为表格协作者（知识库或表格级均可），或改用表格的 /base/ 分享链接',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      appToken = node.data.node.obj_token;
+    }
+    let tablesResp: BitableTablesResp;
+    try {
+      tablesResp = (await this.larkGet(token, `/open-apis/bitable/v1/apps/${encodeURIComponent(appToken)}/tables?page_size=100`)) as BitableTablesResp;
+    } catch {
+      throw new BizException(70013, '飞书服务暂不可达，请稍后重试', HttpStatus.BAD_GATEWAY);
+    }
+    if (tablesResp.code !== 0) {
+      throw new BizException(
+        70013,
+        '多维表格无法访问：请确认已把该飞书应用添加为表格协作者，或改用表格的 /base/ 分享链接',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const tables = (tablesResp.data?.items ?? [])
+      .filter((t): t is { table_id: string; name: string } => !!t.table_id)
+      .map((t) => ({ tableId: t.table_id, name: t.name || t.table_id }));
+    if (!tables.length) {
+      throw new BizException(70013, '该多维表格下没有数据表，请先在表格中创建数据表', HttpStatus.BAD_REQUEST);
+    }
+    const tableId = picked.tableId && tables.some((t) => t.tableId === picked.tableId) ? picked.tableId : null;
+    return { appToken, tableId, tables };
   }
 
   // ===== 同步记录 =====

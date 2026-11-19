@@ -246,6 +246,15 @@ export function verifyLarkConfig(data: { connectionId: string; bitableApp: strin
   return request({ url: '/lark-connections/verify', method: 'POST', data });
 }
 
+// 解析粘贴的多维表格链接（/base/ 或知识库 /wiki/），返回 app_token 与数据表列表
+export function resolveBitable(data: { connectionId: string; url: string }): Promise<{
+  appToken: string;
+  tableId: string | null;
+  tables: Array<{ tableId: string; name: string }>;
+}> {
+  return request({ url: '/lark-connections/resolve-bitable', method: 'POST', data });
+}
+
 export function deleteLarkConnection(id: string): Promise<unknown> {
   return request({ url: `/lark-connections/${id}`, method: 'DELETE' });
 }

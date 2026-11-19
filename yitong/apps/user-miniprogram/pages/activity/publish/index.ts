@@ -4,6 +4,7 @@ import {
   getActivityPublishScope,
   listLarkConnections,
   myActivityDraft,
+  resolveBitable,
   verifyLarkConfig,
   publishActivity,
   setLarkConfig,
@@ -107,6 +108,11 @@ Page({
     connections: [] as LarkConnectionVo[],
     connectionId: '',
     connectionName: '',
+    // 飞书链接识别：larkUrl 为粘贴的链接，识别后 larkTables 供选表，bitableApp/Table 为内部存值
+    larkUrl: '',
+    larkTables: [] as Array<{ tableId: string; name: string }>,
+    bitableTableName: '',
+    resolving: false,
     bitableApp: '',
     bitableTable: '',
     newFieldTypeIndex: 0,
@@ -184,9 +190,30 @@ Page({
         connectionName: this.data.connections.find((c) => c.id === d.larkConnectionId)?.name ?? '',
         bitableApp: d.larkBitableApp ?? '',
         bitableTable: d.larkBitableTable ?? '',
+        // 识别结果重置，随后异步拉表列表回显表名
+        larkUrl: '',
+        larkTables: [],
+        bitableTableName: '',
       });
+      void this.refreshLarkTables();
     } catch {
       /* toast 已在 request 内 */
+    }
+  },
+
+  /** 编辑回显：已有 app/table 配置时自动识别拉取数据表列表并回显表名（失败静默保留原 table 值） */
+  async refreshLarkTables() {
+    const { connectionId, bitableApp, bitableTable } = this.data;
+    if (!connectionId || !bitableApp) return;
+    try {
+      const r = await resolveBitable({
+        connectionId,
+        url: `https://feishu.cn/base/${bitableApp}${bitableTable ? `?table=${bitableTable}` : ''}`,
+      });
+      const picked = r.tables.find((t) => t.tableId === bitableTable) ?? null;
+      this.setData({ larkTables: r.tables, bitableTableName: picked?.name ?? (bitableTable || '') });
+    } catch {
+      this.setData({ bitableTableName: bitableTable });
     }
   },
 
@@ -326,9 +353,44 @@ Page({
     this.setData({ connectionId: picked?.id ?? '', connectionName: picked?.name ?? '' });
   },
 
-  onLarkInput(e: WechatMiniprogram.Input) {
-    const key = e.currentTarget.dataset.key as 'bitableApp' | 'bitableTable';
-    this.setData({ [key]: e.detail.value } as never);
+  // ===== 飞书链接识别：粘贴 /base/ 或 /wiki/ 链接，自动解析 app_token 并按名称选数据表 =====
+
+  onLarkUrlInput(e: WechatMiniprogram.Input) {
+    const url = e.detail.value;
+    // 清空链接时重置识别结果
+    if (!url.trim()) {
+      this.setData({ larkUrl: url, larkTables: [], bitableTableName: '' });
+      return;
+    }
+    this.setData({ larkUrl: url });
+  },
+
+  async resolveLark() {
+    const { connectionId, larkUrl, resolving } = this.data;
+    if (resolving) return;
+    if (!connectionId) return this.tip('请先选择飞书连接');
+    if (!larkUrl.trim()) return this.tip('请先粘贴多维表格链接');
+    this.setData({ resolving: true });
+    try {
+      const r = await resolveBitable({ connectionId, url: larkUrl.trim() });
+      const picked = r.tables.find((t) => t.tableId === r.tableId) ?? null;
+      this.setData({
+        bitableApp: r.appToken,
+        larkTables: r.tables,
+        bitableTable: picked?.tableId ?? '',
+        bitableTableName: picked?.name ?? '',
+      });
+      wx.showToast({ title: `已识别：${r.tables.length} 个数据表`, icon: 'none' });
+    } catch {
+      /* toast 已在 request 内 */
+    } finally {
+      this.setData({ resolving: false });
+    }
+  },
+
+  onTablePick(e: WechatMiniprogram.PickerChange) {
+    const picked = this.data.larkTables[Number(e.detail.value)];
+    this.setData({ bitableTable: picked?.tableId ?? '', bitableTableName: picked?.name ?? '' });
   },
 
   goConnections() {

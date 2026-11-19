@@ -231,6 +231,18 @@ export class VerifyLarkConfigDto {
   bitableTable!: string;
 }
 
+// 解析用户粘贴的多维表格链接（/base/ 或知识库 /wiki/），返回 app_token 与数据表列表
+export class ResolveBitableDto {
+  @IsString()
+  @IsNotEmpty()
+  connectionId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  url!: string;
+}
+
 export class ListActivitiesDto {
   @IsOptional()
   @IsString()

@@ -6,6 +6,7 @@ import { ActivityService } from './activity.service';
 import {
   CreateActivityDto,
   CreateLarkConnectionDto,
+  ResolveBitableDto,
   VerifyLarkConfigDto,
   EnrollActivityDto,
   ListActivitiesDto,
@@ -244,6 +245,11 @@ export class LarkConnectionController {
   @Post('verify')
   async verify(@Req() req: AuthenticatedRequest, @Body() dto: VerifyLarkConfigDto) {
     return ok(await this.activity.verifyLarkConfig(req.user!.uid, dto));
+  }
+
+  @Post('resolve-bitable')
+  async resolveBitable(@Req() req: AuthenticatedRequest, @Body() dto: ResolveBitableDto) {
+    return ok(await this.activity.resolveBitable(req.user!.uid, dto));
   }
 
   @Delete(':id')

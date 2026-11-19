@@ -175,15 +175,15 @@
       <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onConnectionPick">
         <view class="field-input field-picker">{{connectionName || '选择飞书连接（「管理飞书连接」中创建）'}}</view>
       </picker>
-      <!-- 自绘 placeholder：原生 placeholder 属原生层，Windows 工具穿透 cover-view 底栏，改 webview 层绘制 -->
-      <view class="field-input-wrap">
-        <input class="field-input ff-input" value="{{bitableApp}}" data-key="bitableApp" bindinput="onLarkInput" />
-        <view wx:if="{{!bitableApp}}" class="input-ph">多维表格 app_token（URL /base/ 后段）</view>
+      <!-- 粘贴链接自动识别：用户无需理解 app_token/table_id 概念 -->
+      <view class="field-input-wrap lark-url-row">
+        <input class="field-input ff-input" value="{{larkUrl}}" bindinput="onLarkUrlInput" bindconfirm="resolveLark" />
+        <view wx:if="{{!larkUrl}}" class="input-ph">粘贴多维表格链接（/base/ 或知识库链接）</view>
       </view>
-      <view class="field-input-wrap">
-        <input class="field-input ff-input" value="{{bitableTable}}" data-key="bitableTable" bindinput="onLarkInput" />
-        <view wx:if="{{!bitableTable}}" class="input-ph">数据表 table_id（URL table= 参数）</view>
-      </view>
+      <view class="ff-add-btn {{resolving ? 'op-disabled' : ''}}" bindtap="resolveLark">{{resolving ? '识别中…' : '识别表格'}}</view>
+      <picker mode="selector" range="{{larkTables}}" range-key="name" bindchange="onTablePick">
+        <view class="field-input field-picker">{{bitableTableName || '识别后选择数据表'}}</view>
+      </picker>
       <view class="ff-link" bindtap="goConnections">管理飞书连接 →</view>
       <view class="ff-hint">报名数据将按表单字段逐列自动同步；取消报名会删除对应行</view>
     </view>
