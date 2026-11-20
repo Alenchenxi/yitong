@@ -112,6 +112,7 @@ Page({
     larkUrl: '',
     larkTables: [] as Array<{ tableId: string; name: string }>,
     bitableTableName: '',
+    bitableBaseName: '',
     resolving: false,
     bitableApp: '',
     bitableTable: '',
@@ -194,6 +195,7 @@ Page({
         larkUrl: '',
         larkTables: [],
         bitableTableName: '',
+        bitableBaseName: '',
       });
       void this.refreshLarkTables();
     } catch {
@@ -211,7 +213,7 @@ Page({
         url: `https://feishu.cn/base/${bitableApp}${bitableTable ? `?table=${bitableTable}` : ''}`,
       });
       const picked = r.tables.find((t) => t.tableId === bitableTable) ?? null;
-      this.setData({ larkTables: r.tables, bitableTableName: picked?.name ?? (bitableTable || '') });
+      this.setData({ larkTables: r.tables, bitableTableName: picked?.name ?? (bitableTable || ''), bitableBaseName: r.baseName });
     } catch {
       this.setData({ bitableTableName: bitableTable });
     }
@@ -359,7 +361,7 @@ Page({
     const url = e.detail.value;
     // 清空链接时重置识别结果
     if (!url.trim()) {
-      this.setData({ larkUrl: url, larkTables: [], bitableTableName: '' });
+      this.setData({ larkUrl: url, larkTables: [], bitableTableName: '', bitableBaseName: '' });
       return;
     }
     this.setData({ larkUrl: url });
@@ -379,6 +381,7 @@ Page({
         larkTables: r.tables,
         bitableTable: picked?.tableId ?? '',
         bitableTableName: picked?.name ?? '',
+        bitableBaseName: r.baseName,
       });
       wx.showToast({ title: `已识别：${r.tables.length} 个数据表`, icon: 'none' });
     } catch {

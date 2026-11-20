@@ -42,6 +42,7 @@ Page({
     cfgUrl: '',
     cfgTables: [] as Array<{ tableId: string; name: string }>,
     cfgTableName: '',
+    cfgBaseName: '',
     resolvingCfg: false,
   },
 
@@ -71,6 +72,7 @@ Page({
             cfgUrl: '',
             cfgTables: [],
             cfgTableName: '',
+            cfgBaseName: '',
           });
           void this.refreshCfgTables();
         }
@@ -94,7 +96,7 @@ Page({
         url: `https://feishu.cn/base/${cfgApp}${cfgTable ? `?table=${cfgTable}` : ''}`,
       });
       const picked = r.tables.find((t) => t.tableId === cfgTable) ?? null;
-      this.setData({ cfgTables: r.tables, cfgTableName: picked?.name ?? (cfgTable || '') });
+      this.setData({ cfgTables: r.tables, cfgTableName: picked?.name ?? (cfgTable || ''), cfgBaseName: r.baseName });
     } catch {
       this.setData({ cfgTableName: cfgTable });
     }
@@ -109,6 +111,7 @@ Page({
       cfgApp: '',
       cfgTable: '',
       cfgTableName: '',
+      cfgBaseName: '',
       cfgUrl: '',
       cfgTables: [],
     });
@@ -117,7 +120,7 @@ Page({
   onCfgUrlInput(e: WechatMiniprogram.Input) {
     const url = e.detail.value;
     if (!url.trim()) {
-      this.setData({ cfgUrl: url, cfgTables: [], cfgTableName: '' });
+      this.setData({ cfgUrl: url, cfgTables: [], cfgTableName: '', cfgBaseName: '' });
       return;
     }
     this.setData({ cfgUrl: url });
@@ -143,6 +146,7 @@ Page({
         cfgTables: r.tables,
         cfgTable: picked?.tableId ?? '',
         cfgTableName: picked?.name ?? '',
+        cfgBaseName: r.baseName,
       });
       wx.showToast({ title: `已识别：${r.tables.length} 个数据表`, icon: 'none' });
     } catch {

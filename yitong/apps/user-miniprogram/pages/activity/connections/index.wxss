@@ -106,6 +106,12 @@
 }
 
 /* 同步目标配置：粘贴链接 + 识别按钮行 */
+.cfg-base {
+  font-size: 24rpx;
+  color: #1d2129;
+  font-weight: 500;
+}
+
 .cfg-url-row {
   display: flex;
   align-items: center;

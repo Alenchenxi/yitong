@@ -34,6 +34,7 @@
       <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onCfgConnectionPick">
         <view class="field-input">{{cfgConnectionName || '选择飞书连接（先在上方创建）'}}</view>
       </picker>
+      <view wx:if="{{cfgBaseName}}" class="cfg-base">多维表格：{{cfgBaseName}}</view>
       <view class="cfg-url-row">
         <input class="field-input cfg-url-input" value="{{cfgUrl}}" bindinput="onCfgUrlInput" placeholder="粘贴多维表格链接（/base/ 或知识库链接）" />
         <view class="cfg-resolve {{resolvingCfg ? 'op-disabled' : ''}}" bindtap="onCfgResolve">{{resolvingCfg ? '识别中…' : '识别'}}</view>

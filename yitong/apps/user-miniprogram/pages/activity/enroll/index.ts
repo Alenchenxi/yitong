@@ -37,7 +37,13 @@ Page({
           values[key] = value;
         }
       }
-      this.setData({ detail, values, isModify: !!detail.myEnrollment });
+      // 仅后端允许改资料的状态走修改接口；已取消（重新报名走全新 POST，后端 upsert 重置状态）/资格已取消（后端 403 提示）不算修改
+      const MODIFY_STATUSES = ['PENDING_REVIEW', 'APPROVED', 'WAITLIST', 'REJECTED'];
+      this.setData({
+        detail,
+        values,
+        isModify: !!detail.myEnrollment && MODIFY_STATUSES.includes(detail.myEnrollment.status),
+      });
     } catch {
       /* toast 已在 request 内 */
     }

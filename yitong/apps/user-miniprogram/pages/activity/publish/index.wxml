@@ -184,6 +184,7 @@
       <picker mode="selector" range="{{larkTables}}" range-key="name" bindchange="onTablePick">
         <view class="field-input field-picker">{{bitableTableName || '识别后选择数据表'}}</view>
       </picker>
+      <view wx:if="{{bitableBaseName}}" class="ff-hint">多维表格：{{bitableBaseName}}</view>
       <view class="ff-link" bindtap="goConnections">管理飞书连接 →</view>
       <view class="ff-hint">报名数据将按表单字段逐列自动同步；取消报名会删除对应行</view>
     </view>

@@ -43,6 +43,12 @@ interface WikiNodeResp {
   data?: { node?: { obj_token?: string; obj_type?: string } };
 }
 
+interface BitableAppMetaResp {
+  code?: number;
+  msg?: string;
+  data?: { name?: string; url?: string };
+}
+
 interface BitableTablesResp {
   code?: number;
   msg?: string;
@@ -213,7 +219,7 @@ export class LarkSyncService {
   async resolveBitable(
     uid: string,
     dto: { connectionId: string; url: string },
-  ): Promise<{ appToken: string; tableId: string | null; tables: Array<{ tableId: string; name: string }> }> {
+  ): Promise<{ appToken: string; tableId: string | null; baseName: string; tables: Array<{ tableId: string; name: string }> }> {
     const conn = await this.prisma.larkConnection.findUnique({ where: { id: dto.connectionId } });
     if (!conn || conn.ownerId !== uid) {
       throw new BizException(70012, '飞书连接不存在或已被删除，请重新选择连接', HttpStatus.NOT_FOUND);
@@ -240,6 +246,14 @@ export class LarkSyncService {
       }
       appToken = node.data.node.obj_token;
     }
+    // 多维表格名（回显用，让用户确认指向的是哪个表）：拉不到不阻断选表
+    let baseName = '';
+    try {
+      const meta = (await this.larkGet(token, `/open-apis/bitable/v1/apps/${encodeURIComponent(appToken)}`)) as BitableAppMetaResp;
+      if (meta.code === 0 && meta.data?.name) baseName = meta.data.name;
+    } catch {
+      /* 忽略：仅影响回显 */
+    }
     let tablesResp: BitableTablesResp;
     try {
       tablesResp = (await this.larkGet(token, `/open-apis/bitable/v1/apps/${encodeURIComponent(appToken)}/tables?page_size=100`)) as BitableTablesResp;
@@ -260,7 +274,7 @@ export class LarkSyncService {
       throw new BizException(70013, '该多维表格下没有数据表，请先在表格中创建数据表', HttpStatus.BAD_REQUEST);
     }
     const tableId = picked.tableId && tables.some((t) => t.tableId === picked.tableId) ? picked.tableId : null;
-    return { appToken, tableId, tables };
+    return { appToken, tableId, baseName, tables };
   }
 
   // ===== 同步记录 =====
