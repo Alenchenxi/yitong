@@ -1,4 +1,5 @@
 <wxs src="../admin-status.wxs" module="st" />
+<wxs src="../../../utils/format.wxs" module="fmt" />
 <view class="adm-page">
   <scroll-view scroll-x class="adm-subtabs" enhanced show-scrollbar="{{false}}">
     <view wx:for="{{allowedSubs}}" wx:key="*this" class="adm-subtab {{sub === item ? 'on' : ''}}" data-sub="{{item}}" bindtap="switchSub">{{subLabels[item]}}</view>
@@ -129,7 +130,7 @@
     <view class="adm-item" wx:for="{{reports}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title">{{item.targetSummary || item.targetType}}</text>
-        <text class="adm-item-sub">举报人：{{item.reporterNickname || '匿名'}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text> · {{item.createdAt}}</text>
+        <text class="adm-item-sub">举报人：{{item.reporterNickname || '匿名'}} · <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text> · {{fmt.dateTime(item.createdAt)}}</text>
         <text class="adm-item-sub" wx:if="{{item.reason}}">理由：{{item.reason}}</text>
       </view>
       <view class="adm-item-actions" wx:if="{{item.status === 'PENDING'}}">

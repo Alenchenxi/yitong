@@ -1,3 +1,4 @@
+<wxs src="../../utils/format.wxs" module="fmt" />
 <view class="page">
   <!-- P1-21 简历完整度 -->
   <view class="completeness-card" wx:if="{{loaded}}">
@@ -56,7 +57,7 @@
       </view>
       <view class="app-meta">
         <text class="app-shop">{{item.merchantShopName || '未知商家'}}</text>
-        <text class="app-time">{{item.createdAt}}</text>
+        <text class="app-time">{{fmt.dateTime(item.createdAt)}}</text>
       </view>
     </view>
     <view class="apps-empty" wx:if="{{applications.length === 0}}">暂无投递记录</view>

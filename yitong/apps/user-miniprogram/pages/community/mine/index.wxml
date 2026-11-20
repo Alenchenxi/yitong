@@ -1,3 +1,4 @@
+<wxs src="../../../utils/format.wxs" module="fmt" />
 <view class="page">
   <view class="tabs">
     <view class="tab {{tab === 'joined' ? 'on' : ''}}" data-t="joined" bindtap="switchTab">已加入<text wx:if="{{joined.length > 0}}" class="count"> ({{joined.length}})</text></view>
@@ -30,7 +31,7 @@
         <text class="card-title">{{item.name}}</text>
         <text class="status status-pending">审核中</text>
       </view>
-      <view class="card-meta">{{item.category}} · 创建于 {{item.createdAt}}</view>
+      <view class="card-meta">{{item.category}} · 创建于 {{fmt.dateTime(item.createdAt)}}</view>
       <view class="card-tip">管理员正在审核中，通过后会通知你</view>
     </view>
   </block>
@@ -45,7 +46,7 @@
         <text class="card-title">{{item.name}}</text>
         <text class="status status-rejected">未通过</text>
       </view>
-      <view class="card-meta">{{item.category}} · 创建于 {{item.createdAt}}</view>
+      <view class="card-meta">{{item.category}} · 创建于 {{fmt.dateTime(item.createdAt)}}</view>
       <view class="reject-reason" wx:if="{{item.rejectReason}}">
         <text class="reject-label">拒绝原因：</text>
         <text class="reject-text">{{item.rejectReason}}</text>

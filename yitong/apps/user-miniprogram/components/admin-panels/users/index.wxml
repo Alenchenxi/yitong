@@ -1,4 +1,5 @@
 <wxs src="../admin-status.wxs" module="st" />
+<wxs src="../../../utils/format.wxs" module="fmt" />
 <view class="adm-page">
   <scroll-view scroll-x class="adm-subtabs" enhanced show-scrollbar="{{false}}">
     <view wx:for="{{subs}}" wx:key="*this" class="adm-subtab {{sub === item ? 'on' : ''}}" data-sub="{{item}}" bindtap="switchSub">{{subLabels[item]}}</view>
@@ -56,7 +57,7 @@
     <view class="adm-item" wx:for="{{tickets}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title">{{item.title}}</text>
-        <text class="adm-item-sub">{{item.userNickname}}（{{item.role === 'merchant' ? '商家' : '用户'}}）· <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text> · {{item.createdAt}}</text>
+        <text class="adm-item-sub">{{item.userNickname}}（{{item.role === 'merchant' ? '商家' : '用户'}}）· <text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text> · {{fmt.dateTime(item.createdAt)}}</text>
         <text class="adm-item-sub">内容：{{item.content}}</text>
         <text class="adm-item-sub" wx:if="{{item.reply}}">回复：{{item.reply}}</text>
       </view>
@@ -82,7 +83,7 @@
       <view class="adm-item-main">
         <text class="adm-item-title">{{item.linkedUser ? item.linkedUser.nickname : item.username}}<text wx:if="{{item.isSelf}}" class="adm-badge adm-badge--self">自己</text></text>
         <text class="adm-item-sub">{{item.adminType.name}} · {{item.allCommunities ? '全部圈子' : item.communities.length + ' 个圈子'}}</text>
-        <text class="adm-item-sub">username: {{item.username}} · 加入于 {{item.createdAt}}</text>
+        <text class="adm-item-sub">username: {{item.username}} · 加入于 {{fmt.dateTime(item.createdAt)}}</text>
       </view>
       <view class="adm-item-actions">
         <button size="mini" data-admin="{{item}}" bindtap="editAdminTap">调整</button>

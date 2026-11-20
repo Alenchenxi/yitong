@@ -1,4 +1,5 @@
 <wxs src="../admin-status.wxs" module="st" />
+<wxs src="../../../utils/format.wxs" module="fmt" />
 <view class="adm-page">
   <scroll-view scroll-x class="adm-subtabs" enhanced show-scrollbar="{{false}}">
     <view wx:for="{{allowedSubs}}" wx:key="*this" class="adm-subtab {{sub === item ? 'on' : ''}}" data-sub="{{item}}" bindtap="switchSub">
@@ -18,7 +19,7 @@
     <view class="adm-item" wx:for="{{announcements}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title">{{item.title}}</text>
-        <text class="adm-item-sub"><text class="adm-status {{item.active ? 'adm-status--approved' : 'adm-status--neutral'}}">{{item.active ? '启用' : '停用'}}</text> · {{item.createdAt}}</text>
+        <text class="adm-item-sub"><text class="adm-status {{item.active ? 'adm-status--approved' : 'adm-status--neutral'}}">{{item.active ? '启用' : '停用'}}</text> · {{fmt.dateTime(item.createdAt)}}</text>
       </view>
       <view class="adm-item-actions">
         <button size="mini" data-id="{{item.id}}" data-active="{{item.active}}" bindtap="toggleAnn">{{item.active ? '停用' : '启用'}}</button>
@@ -40,7 +41,7 @@
     <view class="adm-item" wx:for="{{activityTopics}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title">{{item.title}}</text>
-        <text class="adm-item-sub"><text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text> · {{item.createdAt}}</text>
+        <text class="adm-item-sub"><text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text> · {{fmt.dateTime(item.createdAt)}}</text>
       </view>
       <view class="adm-item-actions">
         <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteAct">删除</button>
@@ -61,7 +62,7 @@
     <view class="adm-item" wx:for="{{topics}}" wx:key="id">
       <view class="adm-item-main">
         <text class="adm-item-title">#{{item.name}}</text>
-        <text class="adm-item-sub"><text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text> · {{item.createdAt}}</text>
+        <text class="adm-item-sub"><text class="adm-status {{st.cls(item.status)}}">{{st.text(item.status)}}</text> · {{fmt.dateTime(item.createdAt)}}</text>
       </view>
       <view class="adm-item-actions">
         <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteTopic">删除</button>

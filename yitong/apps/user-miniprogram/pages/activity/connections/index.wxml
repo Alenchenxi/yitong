@@ -1,3 +1,4 @@
+<wxs src="../../../utils/format.wxs" module="fmt" />
 <view class="page">
   <view class="yt-card section">
     <view class="section-title-row">
@@ -57,7 +58,7 @@
         <text class="record-status {{item.status === 'FAILED' ? 'status-failed' : item.status === 'SYNCED' ? 'status-ok' : ''}}">{{item.statusText}}</text>
       </view>
       <view wx:if="{{item.lastError}}" class="record-error">{{item.lastError}}</view>
-      <view class="record-sub">尝试 {{item.attempts}} 次 · {{item.updatedAt}}</view>
+      <view class="record-sub">尝试 {{item.attempts}} 次 · {{fmt.dateTime(item.updatedAt)}}</view>
     </view>
   </view>
 </view>

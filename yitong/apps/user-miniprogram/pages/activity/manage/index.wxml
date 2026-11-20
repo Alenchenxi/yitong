@@ -1,3 +1,4 @@
+<wxs src="../../../utils/format.wxs" module="fmt" />
 <view class="page">
   <scroll-view scroll-x class="tabs" enhanced show-scrollbar="{{false}}">
     <view class="tabs-inner">
@@ -63,8 +64,8 @@
         <image class="item-avatar" src="{{item.avatarUrl || '/assets/tabbar/activity.png'}}" mode="aspectFill" />
         <view class="item-info">
           <view class="item-name">{{item.nickname}}</view>
-          <view class="item-sub">提交于 {{item.createdAt}}</view>
-          <view wx:if="{{item.waitlistedAt}}" class="item-sub">候补进入时间 {{item.waitlistedAt}}</view>
+          <view class="item-sub">提交于 {{fmt.dateTime(item.createdAt)}}</view>
+          <view wx:if="{{item.waitlistedAt}}" class="item-sub">候补进入时间 {{fmt.dateTime(item.waitlistedAt)}}</view>
         </view>
       </view>
       <view class="item-actions">

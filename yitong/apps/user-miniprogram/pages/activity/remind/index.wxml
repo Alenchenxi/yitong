@@ -1,3 +1,4 @@
+<wxs src="../../../utils/format.wxs" module="fmt" />
 <view class="page">
   <view class="yt-card head">
     <view class="head-title">{{detail ? detail.title : ''}}</view>
@@ -15,7 +16,7 @@
         <text class="record-result">{{item.resultText}}</text>
       </view>
       <view class="record-sub">
-        <text>{{item.createdAt}}</text>
+        <text>{{fmt.dateTime(item.createdAt)}}</text>
         <text wx:if="{{item.sentByNickname}}"> · {{item.sentByNickname}} 发送</text>
       </view>
     </view>
