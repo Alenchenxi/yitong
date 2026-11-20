@@ -65,7 +65,6 @@ export interface ActivityDetailVo extends ActivityListVo {
   larkConnectionId: string | null;
   larkBitableApp: string | null;
   larkBitableTable: string | null;
-  larkStableKey: string | null;
 }
 
 export interface ActivityEnrollmentVo {
@@ -170,7 +169,7 @@ export function setActivityAdmins(id: string, add: string[], remove: string[]): 
   return request<ActivityDetailVo>({ url: `/activities/${id}/admins`, method: 'POST', data: { add, remove } });
 }
 
-export function setLarkConfig(id: string, data: { connectionId: string; bitableApp: string; bitableTable: string; stableKey?: string }): Promise<ActivityDetailVo> {
+export function setLarkConfig(id: string, data: { connectionId: string; bitableApp: string; bitableTable: string }): Promise<ActivityDetailVo> {
   return request<ActivityDetailVo>({ url: `/activities/${id}/lark-config`, method: 'POST', data });
 }
 
@@ -239,6 +238,11 @@ export function listLarkConnections(): Promise<LarkConnectionVo[]> {
 
 export function createLarkConnection(data: { name: string; appId: string; appSecret: string }): Promise<{ id: string }> {
   return request({ url: '/lark-connections', method: 'POST', data });
+}
+
+// 编辑飞书连接：appSecret 留空 = 不修改（后端脱敏不回显完整密钥）
+export function updateLarkConnection(id: string, data: { name: string; appId: string; appSecret?: string }): Promise<{ updated: boolean }> {
+  return request({ url: `/lark-connections/${id}`, method: 'PUT', data });
 }
 
 // 飞书同步配置连通性校验（失败时后端细分原因，request 层 toast 展示并抛错阻断提交）

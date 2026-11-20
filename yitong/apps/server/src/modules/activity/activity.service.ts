@@ -33,6 +33,7 @@ import type {
   CreateActivityDto,
   CreateLarkConnectionDto,
   ResolveBitableDto,
+  UpdateLarkConnectionDto,
   VerifyLarkConfigDto,
   EnrollActivityDto,
   RemindDto,
@@ -1440,6 +1441,10 @@ export class ActivityService {
 
   async resolveBitable(uid: string, dto: ResolveBitableDto) {
     return this.larkSync.resolveBitable(uid, dto);
+  }
+
+  async updateConnection(uid: string, id: string, dto: UpdateLarkConnectionDto) {
+    return this.larkSync.updateConnection(uid, id, dto);
   }
 
   async deleteConnection(uid: string, id: string) {

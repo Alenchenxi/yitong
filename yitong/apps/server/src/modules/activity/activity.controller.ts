@@ -19,6 +19,7 @@ import {
   SetLarkConfigDto,
   TransferInitiatorDto,
   UpdateActivityDto,
+  UpdateLarkConnectionDto,
   UpdateEnrollmentDto,
 } from './dto';
 
@@ -240,6 +241,11 @@ export class LarkConnectionController {
   @Post()
   async create(@Req() req: AuthenticatedRequest, @Body() dto: CreateLarkConnectionDto) {
     return ok(await this.activity.createConnection(req.user!.uid, dto));
+  }
+
+  @Put(':id')
+  async update(@Req() req: AuthenticatedRequest, @Param('id') id: string, @Body() dto: UpdateLarkConnectionDto) {
+    return ok(await this.activity.updateConnection(req.user!.uid, id, dto));
   }
 
   @Post('verify')

@@ -4,8 +4,11 @@ import {
   deleteLarkConnection,
   listLarkConnections,
   listSyncRecords,
+  resolveBitable,
   retrySync,
   setLarkConfig,
+  updateLarkConnection,
+  verifyLarkConfig,
   type ActivityDetailVo,
   type LarkConnectionVo,
 } from '../../../services/activity';
@@ -21,13 +24,14 @@ Page({
     activityId: '',
     connections: [] as LarkConnectionVo[],
     syncRecords: [] as Array<{ id: string; userNickname: string; status: string; statusText: string; attempts: number; lastError: string | null; updatedAt: string }>,
-    // 新建连接表单
+    // 新建/编辑连接表单（editingId 空 = 新建；secret 编辑留空 = 不修改）
     formVisible: false,
+    editingId: '',
     formName: '',
     formAppId: '',
     formAppSecret: '',
     submitting: false,
-    // 同步目标配置（发起人）
+    // 同步目标配置（发起人）：与发布页一致的粘贴链接识别流程，用户不接触 token 概念
     detail: null as ActivityDetailVo | null,
     canConfig: false,
     configured: false,
@@ -35,10 +39,10 @@ Page({
     cfgConnectionName: '',
     cfgApp: '',
     cfgTable: '',
-    cfgIndex: -1,
-    cfgStableKey: '',
-    stableOptions: [] as Array<{ key: string; label: string }>,
-    stableLabel: '稳定数据项：报名编号（默认）',
+    cfgUrl: '',
+    cfgTables: [] as Array<{ tableId: string; name: string }>,
+    cfgTableName: '',
+    resolvingCfg: false,
   },
 
   onLoad(query: Record<string, string>) {
@@ -56,22 +60,19 @@ Page({
       if (this.data.activityId) {
         const detail = await activityDetail(this.data.activityId).catch(() => null);
         if (detail) {
-          const stableOptions = [{ key: '', label: '稳定数据项：报名编号（默认）' }]
-            .concat(detail.form.map((f) => ({ key: f.key, label: `稳定数据项：${f.label}` })));
-          const stableKey = detail.larkStableKey ?? '';
           this.setData({
             detail,
             canConfig: detail.canManage,
             configured: !!detail.larkConnectionId,
             cfgConnectionId: detail.larkConnectionId ?? '',
+            cfgConnectionName: detail.larkConnectionId ? connections.find((c) => c.id === detail.larkConnectionId)?.name ?? '已选择连接' : '',
             cfgApp: detail.larkBitableApp ?? '',
             cfgTable: detail.larkBitableTable ?? '',
-            cfgIndex: detail.larkConnectionId ? connections.findIndex((c) => c.id === detail.larkConnectionId) : -1,
-            cfgConnectionName: detail.larkConnectionId ? connections.find((c) => c.id === detail.larkConnectionId)?.name ?? '已选择连接' : '',
-            cfgStableKey: stableKey,
-            stableOptions,
-            stableLabel: stableOptions.find((o) => o.key === stableKey)?.label ?? stableOptions[0]!.label,
+            cfgUrl: '',
+            cfgTables: [],
+            cfgTableName: '',
           });
+          void this.refreshCfgTables();
         }
         const records = await listSyncRecords(this.data.activityId);
         this.setData({
@@ -83,37 +84,94 @@ Page({
     }
   },
 
+  /** 已配置活动回显表名：用存储的 app/table 合成链接走识别拉表列表（失败静默回退显示原 table 值） */
+  async refreshCfgTables() {
+    const { cfgConnectionId, cfgApp, cfgTable } = this.data;
+    if (!cfgConnectionId || !cfgApp) return;
+    try {
+      const r = await resolveBitable({
+        connectionId: cfgConnectionId,
+        url: `https://feishu.cn/base/${cfgApp}${cfgTable ? `?table=${cfgTable}` : ''}`,
+      });
+      const picked = r.tables.find((t) => t.tableId === cfgTable) ?? null;
+      this.setData({ cfgTables: r.tables, cfgTableName: picked?.name ?? (cfgTable || '') });
+    } catch {
+      this.setData({ cfgTableName: cfgTable });
+    }
+  },
+
   onCfgConnectionPick(e: WechatMiniprogram.PickerChange) {
-    const idx = Number(e.detail.value);
-    const picked = this.data.connections[idx];
-    this.setData({ cfgIndex: idx, cfgConnectionId: picked?.id ?? '', cfgConnectionName: picked?.name ?? '' });
+    const picked = this.data.connections[Number(e.detail.value)];
+    // 换连接后原识别结果作废，需重新识别选表
+    this.setData({
+      cfgConnectionId: picked?.id ?? '',
+      cfgConnectionName: picked?.name ?? '',
+      cfgApp: '',
+      cfgTable: '',
+      cfgTableName: '',
+      cfgUrl: '',
+      cfgTables: [],
+    });
   },
 
-  onCfgInput(e: WechatMiniprogram.Input) {
-    const key = e.currentTarget.dataset.key as 'cfgApp' | 'cfgTable';
-    this.setData({ [key]: e.detail.value } as never);
+  onCfgUrlInput(e: WechatMiniprogram.Input) {
+    const url = e.detail.value;
+    if (!url.trim()) {
+      this.setData({ cfgUrl: url, cfgTables: [], cfgTableName: '' });
+      return;
+    }
+    this.setData({ cfgUrl: url });
   },
 
-  onCfgStablePick(e: WechatMiniprogram.PickerChange) {
-    const picked = this.data.stableOptions[Number(e.detail.value)];
-    if (!picked) return;
-    this.setData({ cfgStableKey: picked.key, stableLabel: picked.label });
+  async onCfgResolve() {
+    const { cfgConnectionId, cfgUrl, resolvingCfg } = this.data;
+    if (resolvingCfg) return;
+    if (!cfgConnectionId) {
+      wx.showToast({ title: '请先选择飞书连接', icon: 'none' });
+      return;
+    }
+    if (!cfgUrl.trim()) {
+      wx.showToast({ title: '请先粘贴多维表格链接', icon: 'none' });
+      return;
+    }
+    this.setData({ resolvingCfg: true });
+    try {
+      const r = await resolveBitable({ connectionId: cfgConnectionId, url: cfgUrl.trim() });
+      const picked = r.tables.find((t) => t.tableId === r.tableId) ?? null;
+      this.setData({
+        cfgApp: r.appToken,
+        cfgTables: r.tables,
+        cfgTable: picked?.tableId ?? '',
+        cfgTableName: picked?.name ?? '',
+      });
+      wx.showToast({ title: `已识别：${r.tables.length} 个数据表`, icon: 'none' });
+    } catch {
+      /* toast 已在 request 内 */
+    } finally {
+      this.setData({ resolvingCfg: false });
+    }
+  },
+
+  onCfgTablePick(e: WechatMiniprogram.PickerChange) {
+    const picked = this.data.cfgTables[Number(e.detail.value)];
+    this.setData({ cfgTable: picked?.tableId ?? '', cfgTableName: picked?.name ?? '' });
   },
 
   async onSaveCfg() {
     if (this.data.submitting) return;
-    const { cfgConnectionId, cfgApp, cfgTable, cfgStableKey } = this.data;
-    if (!cfgConnectionId || !cfgApp.trim() || !cfgTable.trim()) {
-      wx.showToast({ title: '请选择连接并填全两个表格参数', icon: 'none' });
+    const { cfgConnectionId, cfgApp, cfgTable } = this.data;
+    if (!cfgConnectionId || !cfgApp || !cfgTable) {
+      wx.showToast({ title: '请选择连接、识别链接并选择数据表', icon: 'none' });
       return;
     }
     this.setData({ submitting: true });
     try {
+      // 保存前强校验：连接凭证 → app_token 可达 → table 在数据表列表（失败时后端细分原因 toast 阻断）
+      await verifyLarkConfig({ connectionId: cfgConnectionId, bitableApp: cfgApp, bitableTable: cfgTable });
       await setLarkConfig(this.data.activityId, {
         connectionId: cfgConnectionId,
-        bitableApp: cfgApp.trim(),
-        bitableTable: cfgTable.trim(),
-        stableKey: cfgStableKey || undefined,
+        bitableApp: cfgApp,
+        bitableTable: cfgTable,
       });
       wx.showToast({ title: '同步配置已保存', icon: 'success' });
       await this.reload();
@@ -125,7 +183,18 @@ Page({
   },
 
   toggleForm() {
-    this.setData({ formVisible: !this.data.formVisible });
+    if (this.data.formVisible) {
+      this.setData({ formVisible: false });
+      return;
+    }
+    this.setData({ formVisible: true, editingId: '', formName: '', formAppId: '', formAppSecret: '' });
+  },
+
+  onEdit(e: WechatMiniprogram.TouchEvent) {
+    const id = e.currentTarget.dataset.id as string;
+    const conn = this.data.connections.find((c) => c.id === id);
+    if (!conn) return;
+    this.setData({ formVisible: true, editingId: id, formName: conn.name, formAppId: conn.appId, formAppSecret: '' });
   },
 
   onFormInput(e: WechatMiniprogram.Input) {
@@ -133,18 +202,31 @@ Page({
     this.setData({ [key]: e.detail.value } as never);
   },
 
-  async onCreate() {
+  async onSaveConn() {
     if (this.data.submitting) return;
-    const { formName, formAppId, formAppSecret } = this.data;
-    if (!formName.trim() || !formAppId.trim() || !formAppSecret.trim()) {
+    const { editingId, formName, formAppId, formAppSecret } = this.data;
+    if (!formName.trim() || !formAppId.trim()) {
       wx.showToast({ title: '请完整填写连接信息', icon: 'none' });
+      return;
+    }
+    if (!editingId && !formAppSecret.trim()) {
+      wx.showToast({ title: '新建需填写 app_secret', icon: 'none' });
       return;
     }
     this.setData({ submitting: true });
     try {
-      await createLarkConnection({ name: formName.trim(), appId: formAppId.trim(), appSecret: formAppSecret.trim() });
-      wx.showToast({ title: '已创建', icon: 'success' });
-      this.setData({ formVisible: false, formName: '', formAppId: '', formAppSecret: '' });
+      if (editingId) {
+        await updateLarkConnection(editingId, {
+          name: formName.trim(),
+          appId: formAppId.trim(),
+          appSecret: formAppSecret.trim() || undefined,
+        });
+        wx.showToast({ title: '已保存', icon: 'success' });
+      } else {
+        await createLarkConnection({ name: formName.trim(), appId: formAppId.trim(), appSecret: formAppSecret.trim() });
+        wx.showToast({ title: '已创建', icon: 'success' });
+      }
+      this.setData({ formVisible: false, editingId: '', formName: '', formAppId: '', formAppSecret: '' });
       await this.reload();
     } catch {
       /* toast 已在 request 内 */

@@ -89,10 +89,42 @@
   margin-top: 8rpx;
 }
 
+.conn-ops {
+  display: flex;
+  gap: 32rpx;
+  margin-top: 8rpx;
+}
+
+.conn-edit {
+  font-size: 24rpx;
+  color: #c59a00;
+}
+
 .conn-del {
   font-size: 24rpx;
   color: #f53f3f;
-  margin-top: 8rpx;
+}
+
+/* 同步目标配置：粘贴链接 + 识别按钮行 */
+.cfg-url-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.cfg-url-input {
+  flex: 1;
+}
+
+.cfg-resolve {
+  font-size: 26rpx;
+  color: #c59a00;
+  white-space: nowrap;
+  padding: 0 8rpx;
+}
+
+.op-disabled {
+  opacity: 0.6;
 }
 
 .record {

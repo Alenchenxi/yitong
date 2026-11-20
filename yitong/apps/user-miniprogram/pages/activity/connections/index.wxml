@@ -7,8 +7,8 @@
     <view wx:if="{{formVisible}}" class="conn-form">
       <input class="field-input" value="{{formName}}" data-key="formName" bindinput="onFormInput" placeholder="连接名称（如：活动统计表）" />
       <input class="field-input" value="{{formAppId}}" data-key="formAppId" bindinput="onFormInput" placeholder="飞书应用 app_id" />
-      <input class="field-input" value="{{formAppSecret}}" data-key="formAppSecret" bindinput="onFormInput" placeholder="飞书应用 app_secret（仅保存，界面脱敏）" password />
-      <view class="form-btn {{submitting ? 'form-disabled' : ''}}" bindtap="onCreate">创建连接</view>
+      <input class="field-input" value="{{formAppSecret}}" data-key="formAppSecret" bindinput="onFormInput" placeholder="{{editingId ? 'app_secret：不修改请留空' : '飞书应用 app_secret（仅保存，界面脱敏）'}}" password />
+      <view class="form-btn {{submitting ? 'form-disabled' : ''}}" bindtap="onSaveConn">{{editingId ? '保存连接' : '创建连接'}}</view>
     </view>
     <view wx:if="{{!connections.length && !formVisible}}" class="yt-empty">暂无连接</view>
     <view wx:for="{{connections}}" wx:key="id" class="conn">
@@ -17,7 +17,10 @@
         <text class="conn-masked">{{item.appSecretMasked}}</text>
       </view>
       <view class="conn-sub">app_id：{{item.appId}}</view>
-      <view class="conn-del" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+      <view class="conn-ops">
+        <view class="conn-edit" data-id="{{item.id}}" bindtap="onEdit">编辑</view>
+        <view class="conn-del" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+      </view>
     </view>
   </view>
 
@@ -30,13 +33,15 @@
       <picker mode="selector" range="{{connections}}" range-key="name" bindchange="onCfgConnectionPick">
         <view class="field-input">{{cfgConnectionName || '选择飞书连接（先在上方创建）'}}</view>
       </picker>
-      <input class="field-input" value="{{cfgApp}}" data-key="cfgApp" bindinput="onCfgInput" placeholder="多维表格 app_token（表格 URL /base/ 后那段）" />
-      <input class="field-input" value="{{cfgTable}}" data-key="cfgTable" bindinput="onCfgInput" placeholder="table_id（表格 URL table= 参数）" />
-      <picker mode="selector" range="{{stableOptions}}" range-key="label" bindchange="onCfgStablePick">
-        <view class="field-input">{{stableLabel}}</view>
+      <view class="cfg-url-row">
+        <input class="field-input cfg-url-input" value="{{cfgUrl}}" bindinput="onCfgUrlInput" placeholder="粘贴多维表格链接（/base/ 或知识库链接）" />
+        <view class="cfg-resolve {{resolvingCfg ? 'op-disabled' : ''}}" bindtap="onCfgResolve">{{resolvingCfg ? '识别中…' : '识别'}}</view>
+      </view>
+      <picker mode="selector" range="{{cfgTables}}" range-key="name" bindchange="onCfgTablePick">
+        <view class="field-input">{{cfgTableName || '识别后选择数据表'}}</view>
       </picker>
       <view class="form-btn {{submitting ? 'form-disabled' : ''}}" bindtap="onSaveCfg">保存同步配置</view>
-      <view class="cfg-hint">表格列自动创建：报名编号/用户/状态/报名时间/更新时间 + 报名表单字段逐列；稳定数据项列仅首次写入、后续更新不覆盖；取消报名会删除对应行。需把本飞书应用添加为表格协作者。</view>
+      <view class="cfg-hint">保存前会校验连接与表格可达；表格列自动创建：报名编号/用户/状态/报名时间/更新时间 + 报名表单字段逐列；取消报名会删除对应行。需把本飞书应用添加为表格「可编辑」协作者（仅可阅读时同步会失败）。</view>
     </view>
   </view>
 

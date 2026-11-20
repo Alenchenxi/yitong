@@ -214,6 +214,23 @@ export class CreateLarkConnectionDto {
   appSecret!: string;
 }
 
+// 编辑飞书连接：app_secret 缺省 = 不修改（界面脱敏不回显完整密钥）
+export class UpdateLarkConnectionDto {
+  @IsString()
+  @Length(1, 30)
+  name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  appId!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  appSecret?: string;
+}
+
 // 创建/保存活动前对飞书同步配置的连通性校验（细分失败原因反馈给用户）
 export class VerifyLarkConfigDto {
   @IsString()

@@ -3,7 +3,7 @@ import { ActivitySyncOp, ActivitySyncStatus, type Activity, type ActivityEnrollm
 import { BizException } from '../../common/exceptions/biz.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ActivityFormData, ActivityFormField } from './types';
-import type { CreateLarkConnectionDto } from './dto';
+import type { CreateLarkConnectionDto, UpdateLarkConnectionDto } from './dto';
 
 // 飞书多维表格单向同步（specs/features/活动模块.md §4.8 + 逐列扩展）
 // - 连接 = 发起人自建飞书应用（app_id/app_secret），密钥仅服务端与库内保存、接口脱敏
@@ -23,6 +23,11 @@ const STATUS_TEXT: Record<string, string> = {
   CANCELLED: '已取消',
   REJECTED: '未通过',
   REVOKED: '资格已取消',
+};
+
+// 同步写值一律为 {text}，非文本类型列会 1254060 TextFieldConvFail；只列常见类型，其余回退显示类型号
+const FIELD_TYPE_NAME: Record<number, string> = {
+  2: '数字', 3: '单选', 4: '多选', 5: '日期', 6: '复选框', 7: '人员', 8: '电话', 9: '超链接', 10: '附件',
 };
 
 interface TenantTokenResp {
@@ -53,7 +58,7 @@ interface BitableRecordResp {
 interface BitableFieldsResp {
   code?: number;
   msg?: string;
-  data?: { items?: Array<{ field_name?: string }> };
+  data?: { items?: Array<{ field_name?: string; type?: number }> };
 }
 
 interface BitableSearchResp {
@@ -94,6 +99,24 @@ export class LarkSyncService {
     return { id: conn.id };
   }
 
+  async updateConnection(uid: string, id: string, dto: UpdateLarkConnectionDto) {
+    const conn = await this.prisma.larkConnection.findUnique({ where: { id } });
+    if (!conn || conn.ownerId !== uid) {
+      throw new BizException(70012, '飞书连接不存在', HttpStatus.NOT_FOUND);
+    }
+    await this.prisma.larkConnection.update({
+      where: { id },
+      data: {
+        name: dto.name.trim(),
+        appId: dto.appId.trim(),
+        // secret 不回显，编辑留空 = 不修改
+        ...(dto.appSecret?.trim() ? { appSecret: dto.appSecret.trim() } : {}),
+      },
+    });
+    this.tokenCache.delete(id);
+    return { updated: true };
+  }
+
   async deleteConnection(uid: string, id: string) {
     const conn = await this.prisma.larkConnection.findUnique({ where: { id } });
     if (!conn || conn.ownerId !== uid) {
@@ -119,6 +142,14 @@ export class LarkSyncService {
     const cause = parts.filter(Boolean).join(': ').slice(0, 160);
     this.logger.warn(`飞书 API 网络异常: ${cause}`);
     return new BizException(70013, `${friendly}（原因：${cause}）`, HttpStatus.BAD_GATEWAY);
+  }
+
+  /** 飞书业务失败统一组装：91403（无编辑权限）/1254060（列类型非文本）附自助修复提示，进同步记录 lastError */
+  private larkBizError(prefix: string, code?: number, msg?: string): Error {
+    let hint = '';
+    if (code === 91403) hint = '（91403 Forbidden：请把本应用在该多维表格的协作者权限改为「可编辑」，并确认应用已开通多维表格 API 权限）';
+    if (code === 1254060) hint = '（1254060 TextFieldConvFail：表格中存在与同步列同名的非文本类型列，请改为多行文本或删除后重试）';
+    return new Error(`${prefix}: ${code} ${msg ?? ''}${hint}`);
   }
 
   /** 校验连接凭证与目标多维表格可达性；任一环节失败抛 BizException 细分原因，由前端阻断提交 */
@@ -373,12 +404,12 @@ export class LarkSyncService {
     );
     const data = (await res.json()) as BitableSearchResp;
     if (data.code !== 0 || !data.data) {
-      throw new Error(`搜索报名编号失败: ${data.code} ${data.msg ?? ''}`);
+      throw this.larkBizError('搜索报名编号失败', data.code, data.msg);
     }
     return data.data.items?.[0]?.record_id;
   }
 
-  /** 确保目标表字段齐全（固定列 + 表单字段列；缺失自动创建为多行文本） */
+  /** 确保目标表字段齐全（固定列 + 表单字段列；缺失自动创建为多行文本；已有但类型非文本则提前报错指明列名） */
   private async ensureColumns(token: string, activity: Activity, names: string[]): Promise<void> {
     const need = [...new Set([...FIXED_COLUMNS, ...names])];
     const res = await fetch(
@@ -387,11 +418,18 @@ export class LarkSyncService {
     );
     const data = (await res.json()) as BitableFieldsResp;
     if (data.code !== 0 || !data.data) {
-      throw new Error(`读取表格字段失败: ${data.code} ${data.msg ?? ''}`);
+      throw this.larkBizError('读取表格字段失败', data.code, data.msg);
     }
-    const existing = new Set((data.data.items ?? []).map((i) => i.field_name ?? ''));
+    // 同步一律写 {text}：已有列类型非文本会在建行时报 1254060，这里提前拦截并指出具体列
+    const existing = new Map<string, number>((data.data.items ?? []).map((i) => [i.field_name ?? '', i.type ?? 1]));
     for (const name of need) {
-      if (existing.has(name)) continue;
+      const type = existing.get(name);
+      if (type === 1) continue;
+      if (type !== undefined) {
+        throw new Error(
+          `列「${name}」在表格中是${FIELD_TYPE_NAME[type] ?? `类型 ${type}`}，同步需要多行文本列：请把该列改为多行文本，或删除该列后重试（将自动重建）`,
+        );
+      }
       const created = await fetch(
         `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/fields`,
         {
@@ -402,7 +440,7 @@ export class LarkSyncService {
         },
       );
       const cd = (await created.json()) as BitableFieldsResp;
-      if (cd.code !== 0) throw new Error(`创建表格字段「${name}」失败: ${cd.code} ${cd.msg ?? ''}`);
+      if (cd.code !== 0) throw this.larkBizError(`创建表格字段「${name}」失败`, cd.code, cd.msg);
     }
   }
 
@@ -448,7 +486,7 @@ export class LarkSyncService {
               { method: 'DELETE', headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) },
             );
             const data = (await res.json()) as BitableRecordResp;
-            if (data.code !== 0) throw new Error(`删除记录失败: ${data.code} ${data.msg ?? ''}`);
+            if (data.code !== 0) throw this.larkBizError('删除记录失败', data.code, data.msg);
           }
           await this.prisma.activitySyncRecord.delete({ where: { id: record.id } });
         } catch (e) {
@@ -477,7 +515,7 @@ export class LarkSyncService {
             },
           );
           const data = (await res.json()) as BitableRecordResp;
-          if (data.code !== 0) throw new Error(`更新记录失败: ${data.code} ${data.msg ?? ''}`);
+          if (data.code !== 0) throw this.larkBizError('更新记录失败', data.code, data.msg);
         } else {
           const res = await fetch(
             `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/records`,
@@ -490,7 +528,7 @@ export class LarkSyncService {
           );
           const data = (await res.json()) as BitableRecordResp;
           if (data.code !== 0 || !data.data?.record?.record_id) {
-            throw new Error(`创建记录失败: ${data.code} ${data.msg ?? ''}`);
+            throw this.larkBizError('创建记录失败', data.code, data.msg);
           }
           recordId = data.data.record.record_id;
         }
