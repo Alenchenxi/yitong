@@ -113,6 +113,14 @@ export class LarkSyncService {
     return (await res.json()) as { code?: number; msg?: string };
   }
 
+  /** 飞书网络层异常：落日志并把真实原因带进用户可见消息（此前 catch{} 吞掉真实错误，线上无法定位根因） */
+  private networkFail(e: unknown, friendly: string): BizException {
+    const parts = e instanceof Error ? [e.name, e.message, e.cause instanceof Error ? e.cause.message : ''] : [String(e)];
+    const cause = parts.filter(Boolean).join(': ').slice(0, 160);
+    this.logger.warn(`飞书 API 网络异常: ${cause}`);
+    return new BizException(70013, `${friendly}（原因：${cause}）`, HttpStatus.BAD_GATEWAY);
+  }
+
   /** 校验连接凭证与目标多维表格可达性；任一环节失败抛 BizException 细分原因，由前端阻断提交 */
   async verifyConfig(
     uid: string,
@@ -122,18 +130,13 @@ export class LarkSyncService {
     if (!conn || conn.ownerId !== uid) {
       throw new BizException(70012, '飞书连接不存在或已被删除，请重新选择连接', HttpStatus.NOT_FOUND);
     }
-    let token: string;
-    try {
-      token = await this.tenantToken(conn);
-    } catch {
-      throw new BizException(70013, '连接的 app_id 或 app_secret 不正确（换取飞书应用凭证失败）', HttpStatus.BAD_REQUEST);
-    }
+    const token = await this.tenantToken(conn);
     const appPath = `/open-apis/bitable/v1/apps/${encodeURIComponent(dto.bitableApp)}`;
     let app: { code?: number; msg?: string };
     try {
       app = await this.larkGet(token, appPath);
-    } catch {
-      throw new BizException(70013, '飞书服务暂不可达，请稍后重试', HttpStatus.BAD_GATEWAY);
+    } catch (e) {
+      throw this.networkFail(e, '飞书服务暂不可达，请稍后重试');
     }
     if (app.code !== 0) {
       throw new BizException(
@@ -145,8 +148,8 @@ export class LarkSyncService {
     let table: { code?: number; msg?: string };
     try {
       table = await this.larkGet(token, `${appPath}/tables/${encodeURIComponent(dto.bitableTable)}`);
-    } catch {
-      throw new BizException(70013, '飞书服务暂不可达，请稍后重试', HttpStatus.BAD_GATEWAY);
+    } catch (e) {
+      throw this.networkFail(e, '飞书服务暂不可达，请稍后重试');
     }
     if (table.code !== 0) {
       throw new BizException(70013, '数据表 table_id 不存在：请检查表格 URL 中 table= 参数', HttpStatus.BAD_REQUEST);
@@ -180,19 +183,14 @@ export class LarkSyncService {
     if (!picked.appToken && !picked.wikiNode) {
       throw new BizException(70013, '无法从链接识别多维表格：请粘贴表格的分享链接（/base/ 或知识库 /wiki/ 链接）', HttpStatus.BAD_REQUEST);
     }
-    let token: string;
-    try {
-      token = await this.tenantToken(conn);
-    } catch {
-      throw new BizException(70013, '连接的 app_id 或 app_secret 不正确（换取飞书应用凭证失败）', HttpStatus.BAD_REQUEST);
-    }
+    const token = await this.tenantToken(conn);
     let appToken = picked.appToken ?? '';
     if (!appToken && picked.wikiNode) {
       let node: WikiNodeResp;
       try {
         node = (await this.larkGet(token, `/open-apis/wiki/v2/spaces/get_node?token=${encodeURIComponent(picked.wikiNode)}`)) as WikiNodeResp;
-      } catch {
-        throw new BizException(70013, '飞书服务暂不可达，请稍后重试', HttpStatus.BAD_GATEWAY);
+      } catch (e) {
+        throw this.networkFail(e, '飞书服务暂不可达，请稍后重试');
       }
       if (node.code !== 0 || node.data?.node?.obj_type !== 'bitable' || !node.data.node.obj_token) {
         throw new BizException(
@@ -206,8 +204,8 @@ export class LarkSyncService {
     let tablesResp: BitableTablesResp;
     try {
       tablesResp = (await this.larkGet(token, `/open-apis/bitable/v1/apps/${encodeURIComponent(appToken)}/tables?page_size=100`)) as BitableTablesResp;
-    } catch {
-      throw new BizException(70013, '飞书服务暂不可达，请稍后重试', HttpStatus.BAD_GATEWAY);
+    } catch (e) {
+      throw this.networkFail(e, '飞书服务暂不可达，请稍后重试');
     }
     if (tablesResp.code !== 0) {
       throw new BizException(
@@ -306,15 +304,21 @@ export class LarkSyncService {
   private async tenantToken(conn: LarkConnection): Promise<string> {
     const cached = this.tokenCache.get(conn.id);
     if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
-    const res = await fetch(`${LARK_BASE}/open-apis/auth/v3/tenant_access_token/internal`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_id: conn.appId, app_secret: conn.appSecret }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    const data = (await res.json()) as TenantTokenResp;
+    let data: TenantTokenResp;
+    try {
+      const res = await fetch(`${LARK_BASE}/open-apis/auth/v3/tenant_access_token/internal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app_id: conn.appId, app_secret: conn.appSecret }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      data = (await res.json()) as TenantTokenResp;
+    } catch (e) {
+      // 网络层失败与凭证被拒分开报：网络不通不再误报成 app_id/app_secret 不正确
+      throw this.networkFail(e, '连接飞书失败：服务不可达或网络超时');
+    }
     if (data.code !== 0 || !data.tenant_access_token) {
-      throw new Error(`获取飞书凭证失败: ${data.code} ${data.msg ?? ''}`);
+      throw new BizException(70013, '连接的 app_id 或 app_secret 不正确（换取飞书应用凭证失败）', HttpStatus.BAD_REQUEST);
     }
     this.tokenCache.set(conn.id, {
       token: data.tenant_access_token,
