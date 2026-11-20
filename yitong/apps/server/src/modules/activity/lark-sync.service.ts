@@ -145,13 +145,21 @@ export class LarkSyncService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    let table: { code?: number; msg?: string };
+    // 飞书无 GET /tables/{table_id} 路由（纯文本 404 会让 res.json() 抛 SyntaxError），列数据表后按 table_id 判存在
+    let tablesResp: BitableTablesResp;
     try {
-      table = await this.larkGet(token, `${appPath}/tables/${encodeURIComponent(dto.bitableTable)}`);
+      tablesResp = (await this.larkGet(token, `${appPath}/tables?page_size=100`)) as BitableTablesResp;
     } catch (e) {
       throw this.networkFail(e, '飞书服务暂不可达，请稍后重试');
     }
-    if (table.code !== 0) {
+    if (tablesResp.code !== 0) {
+      throw new BizException(
+        70013,
+        '多维表格无法访问：请确认已把该飞书应用添加为表格协作者，或改用表格的 /base/ 分享链接',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (!(tablesResp.data?.items ?? []).some((t) => t.table_id === dto.bitableTable)) {
       throw new BizException(70013, '数据表 table_id 不存在：请检查表格 URL 中 table= 参数', HttpStatus.BAD_REQUEST);
     }
     return { ok: true };
