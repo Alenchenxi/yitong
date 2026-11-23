@@ -25,7 +25,8 @@ const STATUS_TEXT: Record<string, string> = {
   REVOKED: '资格已取消',
 };
 
-// 同步写值一律为 {text}，非文本类型列会 1254060 TextFieldConvFail；只列常见类型，其余回退显示类型号
+// 同步写值一律为纯字符串（{text} 单对象形态飞书会拒 1254060 TextFieldConvFail，须为字符串或富文本数组）；
+// 只列常见类型，其余回退显示类型号
 const FIELD_TYPE_NAME: Record<number, string> = {
   2: '数字', 3: '单选', 4: '多选', 5: '日期', 6: '复选框', 7: '人员', 8: '电话', 9: '超链接', 10: '附件',
 };
@@ -380,16 +381,16 @@ export class LarkSyncService {
     return data.tenant_access_token;
   }
 
-  /** 逐列组装：固定列 + 报名表单字段列（列名=字段 label） */
-  private buildColumns(activity: Activity, enrollment: ActivityEnrollment, nickname: string): Record<string, { text: string }> {
+  /** 逐列组装：固定列 + 报名表单字段列（列名=字段 label；值一律纯字符串，{text} 单对象形态飞书拒 1254060） */
+  private buildColumns(activity: Activity, enrollment: ActivityEnrollment, nickname: string): Record<string, string> {
     const form = activity.form as unknown as ActivityFormField[];
     const data = enrollment.data as ActivityFormData;
-    const columns: Record<string, { text: string }> = {
-      报名编号: { text: enrollment.id },
-      用户: { text: nickname },
-      状态: { text: STATUS_TEXT[enrollment.status] ?? enrollment.status },
-      报名时间: { text: formatDateTime(enrollment.createdAt) },
-      更新时间: { text: formatDateTime(new Date()) },
+    const columns: Record<string, string> = {
+      报名编号: enrollment.id,
+      用户: nickname,
+      状态: STATUS_TEXT[enrollment.status] ?? enrollment.status,
+      报名时间: formatDateTime(enrollment.createdAt),
+      更新时间: formatDateTime(new Date()),
     };
     for (const f of form) {
       const v = data[f.key];
@@ -398,7 +399,7 @@ export class LarkSyncService {
       if (!text) continue;
       // 防御：字段名与保留列撞名时跳过该字段列，避免覆盖固定列的值（发布页已拦截新活动命名）
       if ((FIXED_COLUMNS as readonly string[]).includes(f.label || f.key)) continue;
-      columns[f.label || f.key] = { text };
+      columns[f.label || f.key] = text;
     }
     return columns;
   }
@@ -434,7 +435,7 @@ export class LarkSyncService {
     if (data.code !== 0 || !data.data) {
       throw this.larkBizError('读取表格字段失败', data.code, data.msg);
     }
-    // 同步一律写 {text}：已有列类型非文本会在建行时报 1254060，这里提前拦截并指出具体列
+    // 同步一律写纯字符串：已有列类型非文本会在建行时报 1254060，这里提前拦截并指出具体列
     const existing = new Map<string, number>((data.data.items ?? []).map((i) => [i.field_name ?? '', i.type ?? 1]));
     for (const name of need) {
       const type = existing.get(name);
