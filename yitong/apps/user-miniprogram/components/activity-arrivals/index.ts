@@ -62,6 +62,12 @@ Component({
       /* 阻止冒泡 */
     },
 
+    // 首图 280rpx aspectFill，竖版海报只露中段——点按全屏预览看完整图
+    previewCover(e: WechatMiniprogram.TouchEvent) {
+      const url = e.currentTarget.dataset.src as string;
+      if (url) wx.previewImage({ current: url, urls: [url] });
+    },
+
     openDetail(e: WechatMiniprogram.TouchEvent) {
       const id = e.currentTarget.dataset.id as string;
       this.setData({ show: false });

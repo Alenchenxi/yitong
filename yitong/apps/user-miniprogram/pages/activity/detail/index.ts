@@ -87,6 +87,12 @@ Page({
     return end ? `${fmt(start)} ~ ${fmt(end)}` : fmt(start);
   },
 
+  // 首图横幅固定 400rpx aspectFill，竖版海报只露中段——点按全屏预览看完整图
+  onPreviewCover() {
+    const url = this.data.detail?.coverImage;
+    if (url) wx.previewImage({ urls: [url] });
+  },
+
   onSegmentTap(e: WechatMiniprogram.TouchEvent) {
     const { text, link } = e.currentTarget.dataset as { text: string; link: boolean };
     if (!link) return;
