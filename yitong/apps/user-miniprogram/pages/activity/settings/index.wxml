@@ -5,8 +5,8 @@
       <view class="field-label">活动管理员</view>
       <view class="admin-chips">
         <view wx:for="{{adminList}}" wx:key="id" class="admin-chip">
-          <text class="admin-chip-name">{{item.nickname}}</text>
-          <text class="admin-chip-x" catchtap="removeAdminChip" data-id="{{item.id}}">✕</text>
+          <text class="admin-chip-name">{{item.nickname}}{{item.id === detail.initiator.id ? '（发起人）' : ''}}</text>
+          <text wx:if="{{item.id !== detail.initiator.id}}" class="admin-chip-x" catchtap="removeAdminChip" data-id="{{item.id}}">✕</text>
         </view>
       </view>
       <view class="user-search-row">

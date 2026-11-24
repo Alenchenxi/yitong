@@ -35,7 +35,12 @@ Page({
         setTimeout(() => wx.navigateBack(), 600);
         return;
       }
-      this.setData({ detail: d, adminList: d.admins });
+      // 管理员 chips：发起人固定首位（身份位，不可删无 ✕），显式管理员行去重后跟后（2026-11-24 用户口径）
+      const adminList: UserSearchItem[] = [
+        { id: d.initiator.id, nickname: d.initiator.nickname, avatarUrl: d.initiator.avatarUrl },
+        ...d.admins.filter((a) => a.id !== d.initiator.id),
+      ];
+      this.setData({ detail: d, adminList });
     } catch {
       /* toast 已在 request 内 */
     }
@@ -81,6 +86,8 @@ Page({
 
   removeAdminChip(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
+    // 发起人是身份位（隐式管理员），✕ 已隐藏，此处兜底防其他入口触发
+    if (id === this.data.detail?.initiator.id) return this.tip('发起人不可移除');
     this.setData({ adminList: this.data.adminList.filter((a) => a.id !== id) });
   },
 
@@ -88,8 +95,9 @@ Page({
     const d = this.data.detail;
     if (!d) return;
     const ids = this.data.adminList.map((u) => u.id);
-    const add = ids.filter((id) => !d.adminIds.includes(id));
-    const remove = d.adminIds.filter((id) => !ids.includes(id));
+    // 发起人不进 diff：不为它补建显式行、也不尝试删除（存量行由服务端保护 filter 兜底）
+    const add = ids.filter((id) => !d.adminIds.includes(id) && id !== d.initiator.id);
+    const remove = d.adminIds.filter((id) => !ids.includes(id) && id !== d.initiator.id);
     if (!add.length && !remove.length) {
       wx.showToast({ title: '无变更', icon: 'none' });
       return;
