@@ -1437,6 +1437,10 @@ export class ActivityService {
     return this.larkSync.createConnection(uid, dto);
   }
 
+  async connectionSecret(uid: string, id: string) {
+    return this.larkSync.getConnectionSecret(uid, id);
+  }
+
   async verifyLarkConfig(uid: string, dto: VerifyLarkConfigDto) {
     return this.larkSync.verifyConfig(uid, dto);
   }

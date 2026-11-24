@@ -125,7 +125,7 @@ squash merge 到 main 并 push 成功后，必须依次执行以下步骤，**�
 
 ## 8. 常见坑速查
 - **mock 策略**：缺 WX / COS / TIM / 支付凭证时 dev 走 mock、prod 抛 `90003`（沿用 auth/common）。
-- **mock 登录 code 前 10 字符即 openid**：dev mock code2session 取 code 前 10 位当 openid——多用户 smoke 的不同用户 code 必须在前 10 字符内可区分（如 `r4a-user-aaaa` / `r4b-user-bbbb`），`smoketest-r4a/r4b` 这类前缀相同的会撞成同一用户。
+- **mock 登录 code 前 8 字符即 openid**：dev mock code2session 取 code 前 8 位当 openid（`mock_${code.slice(0, 8)}`，auth.service.ts）——多用户 smoke 的不同用户 code 必须在前 8 字符内可区分（如 `r4a-user-aaaa` / `r4b-user-bbbb`），`smoketest-r4a/r4b` 这类前缀相同的会撞成同一用户；凭证齐全或 production 不走 mock（prod 缺凭证抛 10004 fail-closed）。
 - **Prisma enum**：值必须每行一个；schema 改动跑 `npx prisma migrate dev --name <x>`，必要时 `npx prisma db seed`。
 - **Prisma schema / client**：只要 `schema.prisma`、model、migration、enum 有变更，验收前必须先重新生成 Prisma Client（例如 `npx prisma generate`），再继续 typecheck / smoke / 构建复检；不能把旧 client 当作新结果。
 - **pnpm**：从项目根 `pnpm -C "G:/副业/仿校园小程序开发/project/yitong" --filter @yitong/server ...`（filter 从错误 cwd 会报 No projects matched）。

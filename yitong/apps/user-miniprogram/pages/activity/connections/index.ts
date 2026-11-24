@@ -2,6 +2,7 @@ import {
   activityDetail,
   createLarkConnection,
   deleteLarkConnection,
+  getLarkConnectionSecret,
   listLarkConnections,
   listSyncRecords,
   resolveBitable,
@@ -197,11 +198,14 @@ Page({
     this.setData({ formVisible: true, editingId: '', formName: '', formAppId: '', formAppSecret: '' });
   },
 
-  onEdit(e: WechatMiniprogram.TouchEvent) {
+  async onEdit(e: WechatMiniprogram.TouchEvent) {
     const id = e.currentTarget.dataset.id as string;
     const conn = this.data.connections.find((c) => c.id === id);
     if (!conn) return;
-    this.setData({ formVisible: true, editingId: id, formName: conn.name, formAppId: conn.appId, formAppSecret: conn.appSecret ?? '' });
+    this.setData({ formVisible: true, editingId: id, formName: conn.name, formAppId: conn.appId, formAppSecret: '' });
+    // 密钥按需回显：拉取失败留空，走「留空 = 不修改」兜底
+    const { appSecret } = await getLarkConnectionSecret(id).catch(() => ({ appSecret: '' }));
+    if (this.data.editingId === id) this.setData({ formAppSecret: appSecret });
   },
 
   onFormInput(e: WechatMiniprogram.Input) {

@@ -97,15 +97,23 @@ export class LarkSyncService {
       where: { ownerId: uid },
       orderBy: { createdAt: 'desc' },
     });
-    // appSecret 仅按 ownerId 下发给连接归属人（编辑表单回显），列表行仍展示脱敏
+    // 密钥不出现在列表响应：列表只带脱敏，原文仅 GET /:id/secret 按需下发（owner 校验）
     return conns.map((c) => ({
       id: c.id,
       name: c.name,
       appId: c.appId,
-      appSecret: c.appSecret,
       appSecretMasked: `${c.appSecret.slice(0, 3)}****${c.appSecret.slice(-2)}`,
       createdAt: c.createdAt.toISOString(),
     }));
+  }
+
+  /** 编辑表单按需回显密钥原文（仅连接归属人，见 listConnections 注释） */
+  async getConnectionSecret(uid: string, id: string) {
+    const conn = await this.prisma.larkConnection.findUnique({ where: { id } });
+    if (!conn || conn.ownerId !== uid) {
+      throw new BizException(70012, '飞书连接不存在', HttpStatus.NOT_FOUND);
+    }
+    return { appSecret: conn.appSecret };
   }
 
   async createConnection(uid: string, dto: CreateLarkConnectionDto) {

@@ -243,6 +243,11 @@ export class LarkConnectionController {
     return ok(await this.activity.createConnection(req.user!.uid, dto));
   }
 
+  @Get(':id/secret')
+  async secret(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return ok(await this.activity.connectionSecret(req.user!.uid, id));
+  }
+
   @Put(':id')
   async update(@Req() req: AuthenticatedRequest, @Param('id') id: string, @Body() dto: UpdateLarkConnectionDto) {
     return ok(await this.activity.updateConnection(req.user!.uid, id, dto));

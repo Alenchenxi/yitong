@@ -106,9 +106,13 @@ export interface LarkConnectionVo {
   id: string;
   name: string;
   appId: string;
-  appSecret: string;
   appSecretMasked: string;
   createdAt: string;
+}
+
+/** 密钥原文不在列表响应内，编辑表单按需单独拉取 */
+export function getLarkConnectionSecret(id: string): Promise<{ appSecret: string }> {
+  return request<{ appSecret: string }>({ url: `/lark-connections/${id}/secret` });
 }
 
 export function listActivities(status?: string, limit = 50): Promise<{ list: ActivityListVo[] }> {
