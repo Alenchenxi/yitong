@@ -641,6 +641,8 @@ export class ActivityService {
         reviewedAt: null,
         reviewedBy: null,
         revokedReason: null,
+        // 重新报名视为新报名：重置报名时间（飞书「报名时间」列与管理端展示同源）
+        createdAt: now,
       },
       create: {
         activityId: id,

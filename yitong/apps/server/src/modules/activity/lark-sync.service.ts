@@ -399,7 +399,8 @@ export class LarkSyncService {
       用户: nickname,
       状态: STATUS_TEXT[enrollment.status] ?? enrollment.status,
       报名时间: formatDateTime(enrollment.createdAt),
-      更新时间: formatDateTime(new Date()),
+      // 取报名记录最后一次变更时间（重新报名/审核/改资料）：同步重试多次写值不漂移
+      更新时间: formatDateTime(enrollment.updatedAt),
     };
     for (const f of form) {
       const v = data[f.key];
@@ -546,7 +547,8 @@ export class LarkSyncService {
             const data = (await res.json()) as BitableRecordResp;
             if (data.code !== 0) throw this.larkBizError('删除记录失败', data.code, data.msg);
           }
-          await this.prisma.activitySyncRecord.delete({ where: { id: record.id } });
+          // op 守卫：若删除前记录已被重新标记为 UPSERT（取消后立刻重新报名的竞态），保留记录交给本次/下次 UPSERT 推送
+          await this.prisma.activitySyncRecord.deleteMany({ where: { id: record.id, op: ActivitySyncOp.REMOVE } });
         } catch (e) {
           const message = (e instanceof Error ? e.message : String(e)).slice(0, 500);
           await this.prisma.activitySyncRecord.update({
