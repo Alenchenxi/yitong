@@ -58,10 +58,27 @@
   height: 560rpx;
 }
 
+.aa-cover-wrap {
+  position: relative;
+  flex-shrink: 0;
+  display: flex; /* 首图保持 flex item，包一层后不出现 inline-block 底部空隙 */
+}
+
 .aa-cover {
   width: 100%;
   height: 280rpx;
-  flex-shrink: 0;
+}
+
+.aa-cover-hint {
+  position: absolute;
+  right: 16rpx;
+  bottom: 16rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 0, 0, 0.58);
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 500;
 }
 
 .aa-info {

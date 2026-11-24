@@ -8,7 +8,10 @@
     <swiper class="aa-swiper" current="{{current}}" bindchange="onSwiperChange" circular="{{false}}" indicator-dots="{{list.length > 1}}">
       <swiper-item wx:for="{{list}}" wx:key="id">
         <view class="aa-card">
-          <image class="aa-cover" src="{{item.coverImage}}" mode="aspectFill" data-src="{{item.coverImage}}" catchtap="previewCover" />
+          <view class="aa-cover-wrap" data-src="{{item.coverImage}}" catchtap="previewCover">
+            <image class="aa-cover" src="{{item.coverImage}}" mode="aspectFill" />
+            <view class="aa-cover-hint">点击查看大图</view>
+          </view>
           <view class="aa-info">
             <view class="aa-name">{{item.title}}</view>
             <view class="aa-desc">{{item.summary}}</view>

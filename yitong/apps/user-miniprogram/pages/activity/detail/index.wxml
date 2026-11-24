@@ -1,6 +1,9 @@
 <wxs src="../../../utils/format.wxs" module="fmt" />
 <view wx:if="{{detail}}" class="page">
-  <image class="cover" src="{{detail.coverImage}}" mode="aspectFill" bindtap="onPreviewCover" />
+  <view class="cover-wrap" bindtap="onPreviewCover">
+    <image class="cover" src="{{detail.coverImage}}" mode="aspectFill" />
+    <view class="cover-hint">点击查看大图</view>
+  </view>
   <view class="yt-card head">
     <view class="head-row">
       <text class="head-title">{{detail.title}}</text>
