@@ -306,7 +306,9 @@ async function handleApply(req, res) {
   const ageDate = new Date(recruitment.openDate || Date.now());
   const ageMonths = ageDate.getFullYear() * 12 + ageDate.getMonth() - (+birthMatch[1] * 12 + (+birthMatch[2] - 1));
   if (ageMonths < minAge * 12) return sendJSON(res, 400, { ok: false, msg: `报名者需在上岗时年满${minAge}周岁` });
-  if (!hotels.some(h => h.name === hotel)) return sendJSON(res, 400, { ok: false, msg: '报名酒店无效，请返回重新报名' });
+  const cur = hotels.find(h => h.name === hotel);
+  if (!cur) return sendJSON(res, 400, { ok: false, msg: '报名酒店无效，请返回重新报名' });
+  if (cur.paused) return sendJSON(res, 400, { ok: false, msg: '该酒店已暂停报名，请选择其他酒店' });
 
   // 短信服务已配置时强制校验验证码；校验放在读写飞书之前，失败不触达 Base
   if (smsReady) {

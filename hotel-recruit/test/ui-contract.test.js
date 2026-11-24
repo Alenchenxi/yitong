@@ -59,3 +59,15 @@ test('报名成功后按酒店名加载群码，jpg 缺图回退 png 再隐藏',
   assert.match(html, /qrImg\.src\.replace\(\/\\\.jpg\$\/, '\.png'\)/);
   assert.match(html, /qrWrap\.hidden = true;\s*\n\s*\};/);
 });
+
+test('暂停酒店的报名按钮置灰并显示暂停报名', () => {
+  assert.match(html, /apply\.textContent = h\.paused \? '暂停报名' : '立即报名'/);
+  assert.match(html, /apply\.disabled = !!h\.paused/);
+  assert.match(html, /detailApply\.disabled = !!h\.paused/);
+  assert.match(html, /detailApply\.textContent = h\.paused \? '暂停报名' : '报名这家酒店'/);
+});
+
+test('在招计数剔除暂停酒店', () => {
+  assert.match(html, /shown\.filter\(function \(h\) \{ return !h\.paused; \}\)\.length/);
+  assert.match(html, /HOTELS\.filter\(function \(h\) \{ return !h\.paused; \}\)\.length/);
+});

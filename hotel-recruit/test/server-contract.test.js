@@ -11,3 +11,10 @@ test('报名处理不能用局部变量遮蔽 promoterName 查询函数', () => 
   assert.doesNotMatch(match[0], /const promoterName\s*=/);
   assert.match(match[0], /promoterName\(rawInviter\)/);
 });
+
+test('已暂停报名的酒店提交被拒绝并返回明确提示', () => {
+  const match = source.match(/async function handleApply[\s\S]*?\n}\n/);
+  assert.ok(match, '未找到 handleApply');
+  assert.match(match[0], /if \(cur\.paused\)/);
+  assert.match(match[0], /该酒店已暂停报名/);
+});

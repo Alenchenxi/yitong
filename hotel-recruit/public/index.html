@@ -582,7 +582,8 @@
     detail.className = 'btn secondary'; detail.textContent = '查看详情';
     detail.onclick = function () { openDetails(h); };
     var apply = document.createElement('button');
-    apply.className = 'btn'; apply.textContent = '立即报名';
+    apply.className = 'btn'; apply.textContent = h.paused ? '暂停报名' : '立即报名';
+    apply.disabled = !!h.paused; // 置灰复用 .btn[disabled] 样式；绕过页面的直接提交由后端拦截兜底
     apply.onclick = function () { openForm(h); };
     actions.appendChild(detail); actions.appendChild(apply); content.appendChild(actions); card.appendChild(content);
     return card;
@@ -591,7 +592,7 @@
   function renderCards() {
     list.innerHTML = '';
     var shown = HOTELS.filter(function (h) { return ACTIVE_FILTER === '全部' || filterKey(h) === ACTIVE_FILTER; });
-    document.getElementById('resultCount').textContent = '共 ' + shown.length + ' 家在招';
+    document.getElementById('resultCount').textContent = '共 ' + shown.filter(function (h) { return !h.paused; }).length + ' 家在招';
     shown.forEach(function (h) { list.appendChild(makeCard(h)); });
     applyCountBadges();
   }
@@ -636,7 +637,7 @@
     if (!HOTELS.length) { tip.textContent = '暂无招聘岗位'; return; }
     tip.style.display = 'none';
     renderFilters(); renderCards(); renderTrust(cfg);
-    document.getElementById('heroBtn').textContent = '查看 ' + HOTELS.length + ' 家在招酒店';
+    document.getElementById('heroBtn').textContent = '查看 ' + HOTELS.filter(function (h) { return !h.paused; }).length + ' 家在招酒店';
   }
 
   fetch('api/config').then(function (r) { return r.json(); }).then(function (cfg) {
@@ -653,6 +654,8 @@
   function openDetails(h) {
     detailHotel = h;
     document.getElementById('detailTitle').textContent = h.name;
+    var detailApply = document.getElementById('detailApply');
+    detailApply.disabled = !!h.paused; detailApply.textContent = h.paused ? '暂停报名' : '报名这家酒店';
     document.getElementById('detailSub').textContent = h.region + ' · ' + h.address;
     document.getElementById('detailPay').textContent = h.pay;
     document.getElementById('detailHours').textContent = h.hours + ' · ' + h.rest;
