@@ -81,16 +81,7 @@ export class WxSubscribeMessageService {
         touser: payload.openid,
         template_id: templateId,
         page: this.pageFor(payload),
-        // 卡片版本态：默认随 NODE_ENV（production=formal，正式版可见）；体验版联调收不到 formal 态，
-        // 可用 WX_SUBSCRIBE_MINIPROGRAM_STATE=trial 临时覆盖（2026-11-24 用户测试口径）
-        miniprogram_state:
-          process.env.WX_SUBSCRIBE_MINIPROGRAM_STATE === 'trial'
-          || process.env.WX_SUBSCRIBE_MINIPROGRAM_STATE === 'developer'
-          || process.env.WX_SUBSCRIBE_MINIPROGRAM_STATE === 'formal'
-            ? process.env.WX_SUBSCRIBE_MINIPROGRAM_STATE
-            : process.env.NODE_ENV === 'production'
-              ? 'formal'
-              : 'developer',
+        miniprogram_state: process.env.NODE_ENV === 'production' ? 'formal' : 'developer',
         lang: 'zh_CN',
         data: this.dataFor(payload),
       }),
