@@ -5,8 +5,9 @@
  * 1. 普通用户（非平台管理员）发表白墙帖成功——不被 posts_publication_scope_check 拒（50000）
  * 2. 落库 publisher_scope='COMMUNITY' + visibility_scope='ALL_COMMUNITIES'；约束仍禁止 PLATFORM + COMMUNITY
  * 3. 跨圈可见：另一圈子成员在表白墙 feed / 详情 / 广场混合流 / 今日上头均可见该帖
- * 4. 存量圈子帖（visibility_scope='COMMUNITY'，未回填）仍仅归属圈子可见：他圈 feed/详情/广场/今日上头均不可见
- * 5. 动态数：全圈帖计入每个圈子，存量圈子帖只计入归属圈
+ * 4. 存量形态帖（visibility_scope='COMMUNITY'，线上已由回填迁移清零）：可见过滤器不依赖
+ *    visibilityScope，同样全圈可见——feed/详情/广场/今日上头对他圈成员可见
+ * 5. 动态数：所有可见帖计入每个有效圈子
  *
  * 环境适配：起 server 须带 `WX_USER_APPID= WX_USER_SECRET=` 空值前缀强制 mock 内容审核；
  * prisma 直建测试 user / 圈子 / 发帖分类，手签 HS256 JWT（JWT_SECRET 从 .env 读）绕过微信登录。
@@ -203,52 +204,48 @@ function assertEq(actual, expected, message) {
     }
     assert(constraintRejected, '约束：PLATFORM 发布者 + COMMUNITY 可见范围仍被数据库拒绝');
 
-    // 存量圈子帖（改造前的形态，未回填）：直接落库
+    // 存量形态帖（visibility_scope='COMMUNITY'，线上已由回填迁移清零，直插模拟旧形态）
     const legacy = await prisma.post.create({
       data: { circleId, communityId: c1.id, authorId: a.user.id, content: content('老帖'), images: [], status: 'APPROVED' },
     });
-    assertEq([legacy.publisherScope, legacy.visibilityScope], ['COMMUNITY', 'COMMUNITY'], '存量圈子帖形态：COMMUNITY 发布者 + COMMUNITY 可见范围');
+    assertEq([legacy.publisherScope, legacy.visibilityScope], ['COMMUNITY', 'COMMUNITY'], '存量形态：COMMUNITY 发布者 + COMMUNITY 可见范围');
 
-    // ===== 契约点3+4：跨圈可见 / 存量帖仍限归属圈 =====
+    // ===== 契约点3+4：跨圈可见（过滤器不依赖 visibilityScope，存量形态帖同样全圈可见） =====
     console.log('\n[契约点3/4] 跨圈可见性（B 在圈 C2，帖子归属圈 C1）');
     const feedA = await visiblePostIds(a.token, '/posts/feed?limit=50&sort=latest');
     const feedB = await visiblePostIds(b.token, '/posts/feed?limit=50&sort=latest');
     assert(feedA.includes(newId) && feedA.includes(legacy.id), '归属圈成员的表白墙 feed 同时可见新帖与存量帖');
     assert(feedB.includes(newId), '他圈成员的表白墙 feed 可见全圈新帖');
-    assert(!feedB.includes(legacy.id), '他圈成员的表白墙 feed 不可见存量圈子帖');
+    assert(feedB.includes(legacy.id), '他圈成员的表白墙 feed 可见存量形态帖（回填后全圈共享）');
 
     const detailB = await call('GET', `/posts/${newId}`, b.token); // 同时产生浏览量，供今日上头
     assert(detailB.body?.code === 0, '他圈成员可访问全圈新帖详情');
     const detailLegacyB = await call('GET', `/posts/${legacy.id}`, b.token);
-    assert(detailLegacyB.body?.code !== 0, '他圈成员访问存量帖详情被拒', JSON.stringify(detailLegacyB.body));
+    assert(detailLegacyB.body?.code === 0, '他圈成员可访问存量形态帖详情', JSON.stringify(detailLegacyB.body));
     const detailLegacyA = await call('GET', `/posts/${legacy.id}`, a.token); // 归属圈成员浏览 → 今日上头候选
     assert(detailLegacyA.body?.code === 0, '归属圈成员可访问存量帖详情');
 
     const squareB = await visiblePostIds(b.token, '/square/feed?limit=50&sort=latest');
-    assert(squareB.includes(newId), '他圈成员的广场混合流可见全圈新帖');
-    assert(!squareB.includes(legacy.id), '他圈成员的广场混合流不可见存量圈子帖');
+    assert(squareB.includes(newId) && squareB.includes(legacy.id), '他圈成员的广场混合流可见全圈新帖与存量形态帖');
 
-    // 存量帖即使被他圈用户浏览过，也不进他圈的今日上头
-    await prisma.contentView.create({
-      data: { targetType: 'post', targetId: legacy.id, viewerKey: b.user.id, hourBucket: Math.floor(Date.now() / 3_600_000) },
-    });
+    // 两圈成员均浏览存量帖 → 他圈今日上头也应含（detailLegacyB/A 的 GET 已写入 ContentView）
     // 浏览量埋点是 fire-and-forget，轮询等待今日上头出现
     let hitB = [];
     let hitA = [];
     for (let i = 0; i < 10; i++) {
       hitB = await visiblePostIds(b.token, '/square/today-hit?limit=50');
       hitA = await visiblePostIds(a.token, '/square/today-hit?limit=50');
-      if (hitB.includes(newId) && hitA.includes(legacy.id)) break;
+      if (hitB.includes(newId) && hitB.includes(legacy.id) && hitA.includes(legacy.id)) break;
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
     assert(hitB.includes(newId), '他圈成员的今日上头含全圈新帖');
-    assert(!hitB.includes(legacy.id), '他圈成员的今日上头不含存量圈子帖');
-    assert(hitA.includes(legacy.id), '归属圈成员的今日上头含存量圈子帖');
+    assert(hitB.includes(legacy.id), '他圈成员的今日上头含存量形态帖（回填后全圈共享）');
+    assert(hitA.includes(legacy.id), '归属圈成员的今日上头含存量帖');
 
     // ===== 契约点5：动态数 =====
-    console.log('\n[契约点5] 动态数：全圈帖计入每个圈子，存量圈子帖只计归属圈');
+    console.log('\n[契约点5] 动态数：全部可见帖计入每个有效圈子');
     const [afterC1, afterC2] = await communityPostCounts(b.token);
-    assertEq([afterC1 - baseC1, afterC2 - baseC2], [2, 1], 'C1 动态数 +2（新帖+存量帖），C2 动态数 +1（仅全圈新帖）');
+    assertEq([afterC1 - baseC1, afterC2 - baseC2], [2, 2], 'C1/C2 动态数各 +2（新帖+存量帖均全圈计入）');
 
     console.log('\n[P2-92 smoke] 全部契约点通过');
   } catch (error) {

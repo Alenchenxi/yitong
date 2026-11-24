@@ -53,7 +53,7 @@ describe('PublicationPolicyService 圈子封禁', () => {
       ],
     });
   });
-  it('表白墙可见范围应同步所有有效圈子的全圈帖，存量圈子帖仍限归属圈', () => {
+  it('表白墙可见范围应与树洞同构：所有有效圈子的帖子全圈可见（存量已回填）', () => {
     const { service } = buildService();
 
     expect(service.postVisibilityFilter('community_current')).toEqual({
@@ -65,10 +65,6 @@ describe('PublicationPolicyService 圈子封禁', () => {
         {
           publisherScope: PublicationScope.COMMUNITY,
           community: { is: { status: CommunityStatus.ACTIVE } },
-          OR: [
-            { visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES },
-            { visibilityScope: ContentVisibilityScope.COMMUNITY, communityId: 'community_current' },
-          ],
         },
       ],
     });

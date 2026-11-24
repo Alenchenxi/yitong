@@ -161,7 +161,9 @@ export class PublicationPolicyService {
     await this.assertCommunityInteractionAllowed(profile.userId, communityId);
   }
 
-  postVisibilityFilter(communityId: string): Prisma.PostWhereInput {
+  // P2-92 表白墙全圈共享（含存量回填，同树洞）：可见范围不依赖 visibilityScope，
+  // 归属圈子仅供审核/封禁追溯。参数保留以对齐 anonymousPostVisibilityFilter 签名（18 处调用点）。
+  postVisibilityFilter(_communityId: string): Prisma.PostWhereInput {
     return {
       OR: [
         {
@@ -171,11 +173,6 @@ export class PublicationPolicyService {
         {
           publisherScope: PublicationScope.COMMUNITY,
           community: { is: { status: CommunityStatus.ACTIVE } },
-          // P2-92 表白墙新帖全圈可见（同树洞）；改造前未回填的存量圈子帖仍仅归属圈子可见
-          OR: [
-            { visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES },
-            { visibilityScope: ContentVisibilityScope.COMMUNITY, communityId },
-          ],
         },
       ],
     };

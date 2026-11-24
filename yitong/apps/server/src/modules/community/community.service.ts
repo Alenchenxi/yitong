@@ -509,8 +509,7 @@ export class CommunityService {
               AND p.status = 'APPROVED' AND p.visibility = 'PUBLIC' AND p.deleted_at IS NULL
               AND (
                 (p.publisher_scope = 'PLATFORM' AND p.visibility_scope = 'ALL_COMMUNITIES')
-                OR (p.publisher_scope = 'COMMUNITY' AND c.status = 'ACTIVE'
-                  AND (p.visibility_scope = 'ALL_COMMUNITIES' OR p.community_id = ${communityId}))
+                OR (p.publisher_scope = 'COMMUNITY' AND c.status = 'ACTIVE')
               )
           ))
           OR
@@ -629,11 +628,13 @@ export class CommunityService {
       }),
     ]);
 
-    // 表白墙与树洞均为全圈共享频道：全圈可见的平台帖和有效圈子帖计入每个有效圈子的动态数。
-    // 表白墙改造前未回填的存量圈子帖（COMMUNITY 可见）仍只计入归属圈子；树洞存量帖已迁移为全圈。
+    // 表白墙与树洞均为全圈共享频道（存量均已回填）：平台帖和有效圈子帖计入每个有效圈子的动态数，
+    // 不按 visibilityScope 过滤，与两个频道的可见过滤器同构。
     const globalPostCount = postRows
-      .filter((row) => row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES
-        && (row.publisherScope === PublicationScope.PLATFORM || activeCommunityIds.includes(row.communityId)))
+      .filter((row) => (
+        row.publisherScope === PublicationScope.PLATFORM
+        || activeCommunityIds.includes(row.communityId)
+      ))
       .reduce((sum, row) => sum + row._count._all, 0);
     const globalAnonymousPostCount = anonymousPostRows
       .filter((row) => (
@@ -656,12 +657,6 @@ export class CommunityService {
     for (const row of memberRows) {
       const current = stats.get(row.communityId);
       if (current) current.memberCount = row._count._all;
-    }
-    for (const row of postRows) {
-      // 全圈帖已计入每个有效圈子，这里只给归属圈子补存量圈子帖
-      if (row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES) continue;
-      const current = stats.get(row.communityId);
-      if (current) current.postCount += row._count._all;
     }
 
     return stats;

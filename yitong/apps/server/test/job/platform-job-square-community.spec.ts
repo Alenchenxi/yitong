@@ -374,10 +374,6 @@ describe('广场平台内容可见性', () => {
         {
           publisherScope: PublicationScope.COMMUNITY,
           community: { is: { status: CommunityStatus.ACTIVE } },
-          OR: [
-            { visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES },
-            { visibilityScope: ContentVisibilityScope.COMMUNITY, communityId: 'community_current' },
-          ],
         },
       ],
     };
@@ -423,7 +419,7 @@ describe('广场平台内容可见性', () => {
 });
 
 describe('圈子批量动态统计', () => {
-  it('应把平台内容和有效圈子的全圈内容计入每个活跃圈子，存量圈子帖只计归属圈', async () => {
+  it('平台帖与有效圈子帖计入每个活跃圈子（表白墙存量已回填，口径同树洞）', async () => {
     const communities = [
       {
         id: 'community_a',
@@ -526,7 +522,7 @@ describe('圈子批量动态统计', () => {
     const result = await service.listPublic('viewer');
 
     expect(result).toEqual([
-      expect.objectContaining({ id: 'community_b', memberCount: 2, postCount: 19 }),
+      expect.objectContaining({ id: 'community_b', memberCount: 2, postCount: 21 }),
       expect.objectContaining({ id: 'community_a', memberCount: 1, postCount: 21 }),
     ]);
     expect(prisma.communityMember.groupBy).toHaveBeenCalledTimes(1);

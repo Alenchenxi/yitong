@@ -49,13 +49,13 @@ describe('CommunityService 圈子列表实时统计', () => {
       },
       post: {
         groupBy: jest.fn().mockResolvedValue([
-          { communityId: community.id, _count: { _all: 2 } },
+          { communityId: community.id, publisherScope: 'COMMUNITY', visibilityScope: 'ALL_COMMUNITIES', _count: { _all: 2 } },
         ]),
         count: jest.fn().mockResolvedValue(2),
       },
       anonymousPost: {
         groupBy: jest.fn().mockResolvedValue([
-          { communityId: community.id, _count: { _all: 3 } },
+          { communityId: community.id, publisherScope: 'COMMUNITY', visibilityScope: 'ALL_COMMUNITIES', _count: { _all: 3 } },
         ]),
         count: jest.fn().mockResolvedValue(3),
       },
