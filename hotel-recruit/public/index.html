@@ -275,6 +275,7 @@
   <div id="formView">
     <div class="form-notice" id="formNotice"><strong>报名免费，不收取任何费用。</strong><br>报名信息仅用于本次招聘联系与岗位匹配。</div>
     <div class="field"><label>报名酒店</label><div class="fixed-hotel" id="fHotel">—</div></div>
+    <div class="field"><label>备选酒店（选填）</label><select id="fBackup"></select></div>
     <div class="field"><label>姓名</label><input id="fName" maxlength="20" placeholder="请输入真实姓名"></div>
     <div class="field"><label>性别</label>
       <div class="radio">
@@ -687,6 +688,10 @@
   function openForm(h) {
     currentHotel = h.name;
     document.getElementById('fHotel').textContent = h.name + '（' + h.region + '）';
+    // 备选酒店：选填，排除当前报名酒店和已暂停的酒店；每次打开都重建
+    document.getElementById('fBackup').innerHTML = '<option value="">不填</option>' + HOTELS.filter(function (x) { return x.name !== h.name && !x.paused; }).map(function (x) {
+      return '<option value="' + esc(x.name) + '">' + esc(x.region) + ' · ' + esc(x.name) + '</option>';
+    }).join('');
     err.textContent = ''; submitted = false; submitBtn.disabled = false; submitBtn.textContent = '确认并提交报名';
     document.getElementById('formView').style.display = '';
     document.getElementById('okView').style.display = 'none';
@@ -759,7 +764,7 @@
     submitted = true; submitBtn.disabled = true; submitBtn.textContent = '提交中…';
     fetch('api/apply', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, gender: gender, phone: phone, school: school, birth: birth, hotel: currentHotel, inviter: inviter, experience: experience, smsCode: smsCode })
+      body: JSON.stringify({ name: name, gender: gender, phone: phone, school: school, birth: birth, hotel: currentHotel, inviter: inviter, experience: experience, smsCode: smsCode, backupHotel: document.getElementById('fBackup').value })
     }).then(function (r) { return r.json().then(function (j) { return { code: r.status, j: j }; }); }).then(function (r) {
       if (r.code === 200 && r.j.ok) {
         document.getElementById('okTitle').textContent = r.j.updated ? '已将报名信息更新' : '报名成功';

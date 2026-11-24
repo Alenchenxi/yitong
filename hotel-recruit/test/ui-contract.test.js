@@ -71,3 +71,10 @@ test('在招计数剔除暂停酒店', () => {
   assert.match(html, /shown\.filter\(function \(h\) \{ return !h\.paused; \}\)\.length/);
   assert.match(html, /HOTELS\.filter\(function \(h\) \{ return !h\.paused; \}\)\.length/);
 });
+
+test('备选酒店为选填下拉，选项排除当前报名酒店和已暂停酒店', () => {
+  assert.match(html, /<select id="fBackup"><\/select>/);
+  assert.match(html, /<option value="">不填<\/option>/);
+  assert.match(html, /HOTELS\.filter\(function \(x\) \{ return x\.name !== h\.name && !x\.paused; \}\)/);
+  assert.match(html, /backupHotel: document\.getElementById\('fBackup'\)\.value/);
+});

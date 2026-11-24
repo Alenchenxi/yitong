@@ -193,6 +193,20 @@ async function createRecord(fields) {
   return d.record;
 }
 
+// 「备选酒店」文本列：进程内只确认一次；没有且要写备选时就建（接口不能指定位置，新列排在最右）
+let backupFieldOk = false;
+async function backupField(create) {
+  if (!backupFieldOk) {
+    const d = await feishuAPI('/fields?page_size=100', undefined, 'GET');
+    backupFieldOk = (d.items || []).some(f => f.field_name === '备选酒店');
+    if (!backupFieldOk && create) {
+      await feishuAPI('/fields', { field_name: '备选酒店', type: 1 });
+      backupFieldOk = true;
+    }
+  }
+  return backupFieldOk;
+}
+
 // 手机号查重：已报名返回 record_id，否则 null
 async function findByPhone(phone) {
   const d = await feishuAPI('/records/search', {
@@ -291,6 +305,7 @@ async function handleApply(req, res) {
   const school = String(b.school || '').trim().slice(0, 40);
   const birth = String(b.birth || '').trim().slice(0, 10);
   const hotel = String(b.hotel || '').trim().slice(0, 40);
+  const backupHotel = String(b.backupHotel || '').trim().slice(0, 40); // 选填的备选酒店
   const rawInviter = String(b.inviter || '').trim().slice(0, 16);
   // 未勾选工作经验=无经验；勾选则必须给出合法时长（下拉二选一）
   const experience = b.experience && ['15天以上', '15天以下'].includes(b.experience) ? b.experience : '无经验';
@@ -309,6 +324,11 @@ async function handleApply(req, res) {
   const cur = hotels.find(h => h.name === hotel);
   if (!cur) return sendJSON(res, 400, { ok: false, msg: '报名酒店无效，请返回重新报名' });
   if (cur.paused) return sendJSON(res, 400, { ok: false, msg: '该酒店已暂停报名，请选择其他酒店' });
+  if (backupHotel) {
+    const bk = hotels.find(h => h.name === backupHotel);
+    if (!bk || bk === cur) return sendJSON(res, 400, { ok: false, msg: '备选酒店无效，请重新选择' });
+    if (bk.paused) return sendJSON(res, 400, { ok: false, msg: '备选酒店已暂停报名，请重新选择' });
+  }
 
   // 短信服务已配置时强制校验验证码；校验放在读写飞书之前，失败不触达 Base
   if (smsReady) {
@@ -322,17 +342,22 @@ async function handleApply(req, res) {
   const inviterCode = name0 ? rawInviter : '';
   const promoterDisplayName = name0 || NATURAL;
 
-  let existId = null;
+  let existId = null, backupWritten = false;
   try {
     // 同手机号=更新填写内容（酒店可换）；推广员归属保持首次提交，防止重复提交改归属；报名类型只在首次创建时标记
     existId = await findByPhone(phone);
     const fillFields = { 姓名: name, 性别: gender, 学校: school, 出生年月: birth, 报名酒店: hotel, 是否有酒店工作经验: experience };
+    if (backupHotel || existId) { // 填了备选：与报名信息同一次写入；重复提交没填：清空
+      try { if (await backupField(!!backupHotel)) { fillFields['备选酒店'] = backupHotel; backupWritten = true; } }
+      catch (e) { console.error('[backup]', e.message, phone, backupHotel); } // 备选列出问题不拖垮报名：降级为不带备选
+    }
     if (existId) {
       await feishuAPI(`/records/${existId}`, { fields: fillFields }, 'PUT');
     } else {
       await createRecord({ ...fillFields, 电话: phone, 推广员: promoterDisplayName, inviter编码: inviterCode, 报名类型: '新报名' });
     }
   } catch (e) {
+    if (backupWritten) backupFieldOk = false; // 写入失败可能因备选列被改名或删除：下次提交重新确认并补建
     console.error('[apply]', e.message);
     return sendJSON(res, 502, { ok: false, msg: '提交失败，请稍后再试' });
   }
