@@ -8,7 +8,9 @@ import type { CreateLarkConnectionDto, UpdateLarkConnectionDto } from './dto';
 // 飞书多维表格单向同步（specs/features/活动模块.md §4.8 + 逐列扩展）
 // - 连接 = 发起人自建飞书应用（app_id/app_secret），密钥仅服务端与库内保存、接口脱敏
 // - 逐列写入：固定列（报名编号/用户/状态/报名时间/更新时间）+ 报名表单字段逐列（列名=字段名，文本类型，缺失自动创建）
-// - 行定位：优先 remoteRecordId；缺失时按「报名编号」列精确搜索远端行（更新/删除都用它定位，报名编号天然不变）
+// - 行定位：优先 remoteRecordId；缺失时按「报名编号」列精确搜索远端行（更新/删除都用它定位，报名编号天然不变）；
+//   全部未命中时复用「报名编号」为空的默认空行写入，仍无才追加建行
+// - 主键列：新表默认主键「文本」首次同步时自动改名为「报名编号」并复用，消除空置主键列（旧表已有编号列则不动）
 // - 取消报名/取消资格 → op=REMOVE 删除远端行并清除同步记录
 // - 同步失败只记状态与原因，绝不阻塞小程序内报名（BR-013）
 const LARK_BASE = 'https://open.feishu.cn';
@@ -65,13 +67,19 @@ interface BitableRecordResp {
 interface BitableFieldsResp {
   code?: number;
   msg?: string;
-  data?: { items?: Array<{ field_name?: string; type?: number }> };
+  data?: { items?: Array<{ field_id?: string; field_name?: string; type?: number; is_primary?: boolean }> };
 }
 
 interface BitableSearchResp {
   code?: number;
   msg?: string;
   data?: { items?: Array<{ record_id?: string }> };
+}
+
+interface BitableRecordsListResp {
+  code?: number;
+  msg?: string;
+  data?: { items?: Array<{ record_id?: string; fields?: Record<string, unknown> }> };
 }
 
 @Injectable()
@@ -424,6 +432,18 @@ export class LarkSyncService {
     return data.data.items?.[0]?.record_id;
   }
 
+  /** 找一条「报名编号」为空的空行（新表默认空行），供直接写入复用；找不到返回 undefined */
+  private async findEmptyRow(token: string, activity: Activity): Promise<string | undefined> {
+    // 用 list 而非 search：search 的 isEmpty 需带 value 且对全空行不可靠，list 对空行返回 fields:{}，判断有无「报名编号」键即可
+    const res = await fetch(
+      `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/records?page_size=500`,
+      { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) },
+    );
+    const data = (await res.json()) as BitableRecordsListResp;
+    if (data.code !== 0 || !data.data) return undefined; // 空行复用是优化不是硬依赖：失败就走追加建行
+    return (data.data.items ?? []).find((i) => i.record_id && !i.fields?.['报名编号'])?.record_id;
+  }
+
   /** 确保目标表字段齐全（固定列 + 表单字段列；缺失自动创建为多行文本；已有但类型非文本则提前报错指明列名） */
   private async ensureColumns(token: string, activity: Activity, names: string[]): Promise<void> {
     const need = [...new Set([...FIXED_COLUMNS, ...names])];
@@ -436,7 +456,29 @@ export class LarkSyncService {
       throw this.larkBizError('读取表格字段失败', data.code, data.msg);
     }
     // 同步一律写纯字符串：已有列类型非文本会在建行时报 1254060，这里提前拦截并指出具体列
-    const existing = new Map<string, number>((data.data.items ?? []).map((i) => [i.field_name ?? '', i.type ?? 1]));
+    const items = data.data.items ?? [];
+    const existing = new Map<string, number>(items.map((i) => [i.field_name ?? '', i.type ?? 1]));
+    // 主键列复用：新表默认主键「文本」不可删除且同步不写值会一直空着——改名为「报名编号」直接当编号列用；
+    // 表中已有「报名编号」列（旧表）或主键非文本类型时不动，维持现状
+    if (need.includes('报名编号') && !existing.has('报名编号')) {
+      const primary = items.find((i) => i.is_primary && i.field_id && i.field_name && i.type === 1);
+      if (primary) {
+        const renamed = await fetch(
+          `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/fields/${primary.field_id}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ field_name: '报名编号', type: 1 }),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        const rd = (await renamed.json()) as BitableFieldsResp;
+        if (rd.code === 0) {
+          existing.set('报名编号', 1);
+        }
+        // 改名失败（并发/权限等）静默跳过：走原有「缺失自动创建」路径，不影响同步
+      }
+    }
     for (const name of need) {
       const type = existing.get(name);
       if (type === 1) continue;
@@ -514,11 +556,12 @@ export class LarkSyncService {
         continue;
       }
 
-      // 建行/更新行：优先 remoteRecordId，缺失时按报名编号搜索定位
+      // 建行/更新行：优先 remoteRecordId → 按报名编号搜索定位 → 复用报名编号为空的默认空行 → 追加建行
       try {
         const columns = this.buildColumns(activity, enrollment, nickname);
         await this.ensureColumns(token, activity, Object.keys(columns).filter((n) => !FIXED_COLUMNS.includes(n as (typeof FIXED_COLUMNS)[number])));
-        let recordId = record.remoteRecordId ?? await this.findByEnrollmentNo(token, activity, enrollment.id);
+        let recordId =
+          record.remoteRecordId ?? (await this.findByEnrollmentNo(token, activity, enrollment.id)) ?? (await this.findEmptyRow(token, activity));
         if (recordId) {
           const res = await fetch(
             `${LARK_BASE}/open-apis/bitable/v1/apps/${activity.larkBitableApp}/tables/${activity.larkBitableTable}/records/${recordId}`,
