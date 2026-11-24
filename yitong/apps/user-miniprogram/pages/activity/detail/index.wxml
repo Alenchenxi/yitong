@@ -49,6 +49,10 @@
     <view class="section-title">我的报名</view>
     <view class="kv"><text class="kv-k">状态</text><text class="kv-v">{{enrollStatusText}}{{detail.myEnrollment.pendingReview ? '（资料待复审）' : ''}}</text></view>
     <view wx:if="{{detail.myEnrollment.revokedReason}}" class="kv"><text class="kv-k">取消原因</text><text class="kv-v">{{detail.myEnrollment.revokedReason}}</text></view>
+    <!-- 一次性订阅额度按条消耗：已报名用户可随时续订开始提醒（每点一次 +1 条额度） -->
+    <view wx:if="{{detail.myEnrollment.status === 'PENDING_REVIEW' || detail.myEnrollment.status === 'APPROVED' || detail.myEnrollment.status === 'WAITLIST'}}" class="kv" bindtap="onSubscribeRemind">
+      <text class="kv-k">开始提醒</text><text class="kv-v kv-link">点击接收活动开始提醒 ›</text>
+    </view>
   </view>
 
   <view wx:if="{{detail.canManage}}" class="yt-card section">

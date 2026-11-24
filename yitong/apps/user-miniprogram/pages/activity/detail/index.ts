@@ -7,6 +7,7 @@ import {
   setInterest,
   type ActivityDetailVo,
 } from '../../../services/activity';
+import { requestActivityRemindSubscribe } from '../../../services/subscribe-message';
 
 const STATUS_TEXT: Record<string, string> = {
   PUBLISHED: '报名中',
@@ -127,6 +128,12 @@ Page({
       return;
     }
     wx.navigateTo({ url: `/pages/activity/enroll/index?id=${d.id}` });
+  },
+
+  // 报名用户随时续订活动开始提醒（一次性模板每条授权只能发一条，管理员 24h 内可发 3 次，需在此补额度）
+  async onSubscribeRemind() {
+    const accepted = await requestActivityRemindSubscribe();
+    wx.showToast({ title: accepted ? '已开启，开始前将提醒你' : '未完成订阅，可稍后再试', icon: 'none' });
   },
 
   async onCancelEnroll() {
