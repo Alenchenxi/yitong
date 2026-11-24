@@ -14,6 +14,12 @@ interface SubscribeSendResp {
   errmsg?: string;
 }
 
+export interface SubscribeSendOutcome {
+  sent: boolean;
+  errcode: number | null;
+  errmsg: string | null; // mock_skip / no_template / no_openid / http_<status> / 微信原文 errmsg
+}
+
 export interface SubscribeNotificationPayload {
   openid: string;
   type: string;
@@ -53,16 +59,17 @@ export class WxSubscribeMessageService {
     };
   }
 
-  async sendForNotification(payload: SubscribeNotificationPayload) {
+  /** 真实发送结果外露（活动提醒落 activity_reminders.result 用，2026-11-24 用户口径：发送记录要说真话） */
+  async sendForNotification(payload: SubscribeNotificationPayload): Promise<SubscribeSendOutcome> {
     if (this.wxToken.isMock()) {
       this.logger.warn('WX credentials not set; skip subscribe message in dev');
-      return;
+      return { sent: false, errcode: null, errmsg: 'mock_skip' };
     }
 
     const templateId = this.templateIdFor(payload.type);
     if (!templateId) {
       this.logger.warn(`subscribe template not configured for notification type ${payload.type}`);
-      return;
+      return { sent: false, errcode: null, errmsg: 'no_template' };
     }
 
     const accessToken = await this.wxToken.getAccessToken();
@@ -83,13 +90,15 @@ export class WxSubscribeMessageService {
 
     if (!res.ok) {
       this.logger.warn(`subscribe message send failed: HTTP ${res.status}`);
-      return;
+      return { sent: false, errcode: null, errmsg: `http_${res.status}` };
     }
 
     const data = (await res.json()) as SubscribeSendResp;
     if (data.errcode && data.errcode !== 0) {
       this.logger.warn(`subscribe message send failed: ${data.errcode} ${data.errmsg ?? ''}`);
+      return { sent: false, errcode: data.errcode, errmsg: data.errmsg ?? null };
     }
+    return { sent: true, errcode: 0, errmsg: null };
   }
 
   private templateIdFor(type: string) {

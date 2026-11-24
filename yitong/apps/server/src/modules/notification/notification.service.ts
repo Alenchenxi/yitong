@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { WxSubscribeMessageService } from '../../common/wx/wx-subscribe-message.service';
-import type { SubscribeNotificationPayload } from '../../common/wx/wx-subscribe-message.service';
+import type { SubscribeNotificationPayload, SubscribeSendOutcome } from '../../common/wx/wx-subscribe-message.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface NotificationVo {
@@ -97,6 +97,30 @@ export class NotificationService {
       this.logger.warn(`subscribe message skipped: ${e instanceof Error ? e.message : String(e)}`);
     });
     return notification;
+  }
+
+  /** 创建通知并**等待**订阅消息发送结果：活动提醒需要真实结果落 activity_reminders.result（2026-11-24 用户口径） */
+  async createAndAwaitSubscribe(params: Parameters<NotificationService['create']>[0]): Promise<{
+    notification: Awaited<ReturnType<NotificationService['create']>>;
+    subscribe: SubscribeSendOutcome;
+  }> {
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId: params.userId,
+        type: params.type,
+        title: params.title,
+        content: params.content,
+        targetType: params.targetType ?? null,
+        targetId: params.targetId ?? null,
+        extraId: params.extraId ?? null,
+      },
+    });
+    const subscribe = await this.trySendSubscribeMessage(notification, params.activity).catch((e: unknown) => ({
+      sent: false,
+      errcode: null,
+      errmsg: e instanceof Error ? e.message : String(e),
+    }));
+    return { notification, subscribe };
   }
 
   // P0-11 表白墙来源化消息：带 actor 的通知（自动取 actor 昵称、跳过自通知）。
@@ -285,13 +309,13 @@ export class NotificationService {
       createdAt: Date;
     },
     activity?: SubscribeNotificationPayload['activity'],
-  ) {
+  ): Promise<SubscribeSendOutcome> {
     const user = await this.prisma.user.findUnique({
       where: { id: n.userId },
       select: { openid: true },
     });
-    if (!user?.openid) return;
-    await this.wxSubscribe.sendForNotification({
+    if (!user?.openid) return { sent: false, errcode: null, errmsg: 'no_openid' };
+    return this.wxSubscribe.sendForNotification({
       openid: user.openid,
       type: n.type,
       title: n.title,

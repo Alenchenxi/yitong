@@ -11,6 +11,9 @@ const RESULT_TEXT: Record<string, string> = {
   skipped_no_template: '未配置模板',
   skipped_rate_limited: '24h 限频跳过',
   skipped_already_sent: '已发过',
+  skipped_mock: '开发环境未接微信',
+  failed_unsubscribed: '未订阅或次数用尽',
+  failed_no_openid: '用户无 openid',
   failed: '失败',
 };
 

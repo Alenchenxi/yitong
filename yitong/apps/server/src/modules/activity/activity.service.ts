@@ -1347,8 +1347,8 @@ export class ActivityService {
     const when = activity.startTime
       ? `将于 ${formatDateTime(activity.startTime)} 开始`
       : '正在进行中';
-    const noTemplate = !this.wxHasActivityTemplate();
-    await this.notification.create({
+    // 等待微信订阅消息真实发送结果并落库：发送记录要说真话（mock/无模板/未订阅/失败分开展示，2026-11-24 用户口径）
+    const { subscribe } = await this.notification.createAndAwaitSubscribe({
       userId,
       type: NotificationType.ACTIVITY_REMINDER,
       title: '活动提醒',
@@ -1363,18 +1363,19 @@ export class ActivityService {
         tip: '活动即将开始，请准时参与',
       },
     });
-    if (noTemplate) {
-      await this.prisma.activityReminder.updateMany({
-        where: { activityId: activity.id, userId, kind, dedupKey },
-        data: { result: 'skipped_no_template' },
-      });
-      return 'skipped_no_template';
+    let result = 'sent';
+    if (!subscribe.sent) {
+      if (subscribe.errmsg === 'no_template') result = 'skipped_no_template';
+      else if (subscribe.errmsg === 'mock_skip') result = 'skipped_mock';
+      else if (subscribe.errmsg === 'no_openid') result = 'failed_no_openid';
+      else if (subscribe.errcode === 43101) result = 'failed_unsubscribed';
+      else result = 'failed';
     }
-    return 'sent';
-  }
-
-  private wxHasActivityTemplate(): boolean {
-    return !!process.env.WX_SUBSCRIBE_ACTIVITY_REMIND_TEMPLATE_ID;
+    await this.prisma.activityReminder.updateMany({
+      where: { activityId: activity.id, userId, kind, dedupKey },
+      data: { result },
+    });
+    return result;
   }
 
   async listReminders(uid: string, id: string, page = 1, pageSize = 20) {
