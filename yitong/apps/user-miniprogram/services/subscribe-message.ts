@@ -21,7 +21,7 @@ export async function requestActivityRemindSubscribe() {
   return requestSubscribe('activityRemind');
 }
 
-async function requestSubscribe(key: 'jobApply' | 'jobStatus' | 'activityRemind') {
+async function requestSubscribe(key: 'jobApply' | 'jobStatus' | 'activityRemind', allowRetry = true) {
   if (!wx.requestSubscribeMessage) return false;
   const templates = await getSubscribeTemplates().catch(() => null);
   const tmplId = templates?.[key];
@@ -38,20 +38,28 @@ async function requestSubscribe(key: 'jobApply' | 'jobStatus' | 'activityRemind'
   // 用户勾选过「总是保持以上选择+拒绝」或关闭订阅消息总开关后，微信不再弹窗且直接返回拒绝——
   // 检测到历史拒绝时弹确认框，引导去设置重新开启（再次报名需重新确认）
   if (!(await isPermanentlyRejected(tmplId))) return false;
+  // 重试轮仍被拒：静默失败，引导弹窗最多出现一次
+  if (!allowRetry) return false;
   // wx.openSetting 必须在用户点击回调的同步链内调用（await 之后再调手势上下文已失效，静默无反应）；
   // 与 community/invite 同模式：放进 showModal success 里同步调。withSubscriptions 直达订阅消息开关页
-  await new Promise<void>((resolve) => {
+  const wentSetting = await new Promise<boolean>((resolve) => {
     wx.showModal({
       title: '订阅提醒',
       content: '您之前选择了不接收订阅消息，将无法收到报名与审核结果提醒，是否前往设置重新开启？',
       confirmText: '去设置',
       success: (res) => {
-        if (res.confirm) wx.openSetting({ withSubscriptions: true });
-        resolve();
+        if (res.confirm) {
+          wx.openSetting({ withSubscriptions: true, complete: () => resolve(true) });
+          return;
+        }
+        resolve(false);
       },
-      fail: () => resolve(),
+      fail: () => resolve(false),
     });
   });
+  // 设置页返回后立即重试一次：总开关/模板开关恢复后此调会正常弹微信授权弹窗（弹窗里可勾「总是允许」）；
+  // 仅在用户确认去过设置时重试且只重试一次，避免循环弹引导
+  if (wentSetting && allowRetry) return requestSubscribe(key, false);
   return false;
 }
 
