@@ -2,23 +2,39 @@
 <view class="page">
   <view class="yt-card head">
     <view class="head-title">{{detail ? detail.title : ''}}</view>
-    <view class="head-sub">提醒对象为全部正式参与人；候补用户不接收参与提醒；同一用户 24 小时内最多收到一次手动提醒。</view>
+    <view class="head-sub">提醒对象为全部正式参与人；候补用户不接收参与提醒；同一用户 24 小时内最多收到 3 次手动提醒。点击用户可查看发送明细。</view>
     <view class="head-btn {{sending ? 'head-disabled' : ''}}" bindtap="onRemindAll">发送手动提醒</view>
   </view>
 
   <view class="yt-card list">
     <view class="list-title">发送记录（{{total}}）</view>
-    <view wx:if="{{!records.length}}" class="yt-empty">暂无记录</view>
-    <view wx:for="{{records}}" wx:key="id" class="record">
-      <view class="record-main">
-        <text class="record-user">{{item.userNickname}}</text>
-        <text class="record-kind">{{item.kindText}}</text>
-        <text class="record-result">{{item.resultText}}</text>
+    <view wx:if="{{!groups.length}}" class="yt-empty">暂无记录</view>
+    <scroll-view scroll-y class="group-scroll">
+      <view wx:for="{{groups}}" wx:key="userId" class="group-row" data-id="{{item.userId}}" bindtap="onOpenGroup">
+        <text class="group-user">{{item.userNickname}}</text>
+        <text class="group-count">{{item.count}} 次</text>
+        <text class="group-arrow">›</text>
       </view>
-      <view class="record-sub">
-        <text>{{fmt.dateTime(item.createdAt)}}</text>
-        <text wx:if="{{item.sentByNickname}}"> · {{item.sentByNickname}} 发送</text>
+    </scroll-view>
+  </view>
+</view>
+
+<!-- 发送明细弹窗：用户维度记录，超出最大高度内部滚动 -->
+<view wx:if="{{activeGroup}}" class="modal-mask" bindtap="onCloseGroup">
+  <view class="modal-card" catchtap="noop">
+    <view class="modal-title">{{activeGroup.userNickname}} 的发送记录（{{activeGroup.count}}）</view>
+    <scroll-view scroll-y class="modal-scroll">
+      <view wx:for="{{activeGroup.records}}" wx:key="id" class="record">
+        <view class="record-main">
+          <text class="record-kind">{{item.kindText}}</text>
+          <text class="record-result">{{item.resultText}}</text>
+        </view>
+        <view class="record-sub">
+          <text>{{fmt.dateTime(item.createdAt)}}</text>
+          <text wx:if="{{item.sentByNickname}}"> · {{item.sentByNickname}} 发送</text>
+        </view>
       </view>
-    </view>
+    </scroll-view>
+    <view class="modal-close" bindtap="onCloseGroup">关闭</view>
   </view>
 </view>

@@ -189,9 +189,12 @@ export class ActivityController {
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     const p = Number.parseInt(page ?? '1', 10) || 1;
-    return ok(await this.activity.listReminders(req.user!.uid, id, p));
+    // 提醒记录按用户分组展示需一次拉全量，pageSize 上限 500（2026-11-24 用户口径）
+    const ps = Math.min(Math.max(Number.parseInt(pageSize ?? '20', 10) || 20, 1), 500);
+    return ok(await this.activity.listReminders(req.user!.uid, id, p, ps));
   }
 
   // ===== 群聊 =====

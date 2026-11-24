@@ -220,8 +220,8 @@ export function remindActivity(id: string, targetUserIds?: string[]): Promise<{ 
   });
 }
 
-export function listReminders(id: string, page = 1): Promise<{ list: Array<{ id: string; kind: string; userNickname: string; sentByNickname: string | null; result: string; createdAt: string }>; total: number }> {
-  return request({ url: `/activities/${id}/reminders?page=${page}` });
+export function listReminders(id: string, page = 1, pageSize = 20): Promise<{ list: Array<{ id: string; kind: string; userId: string; userNickname: string; sentByNickname: string | null; result: string; createdAt: string }>; total: number }> {
+  return request({ url: `/activities/${id}/reminders?page=${page}&pageSize=${pageSize}` });
 }
 
 export function sendChatMessage(id: string, content: string): Promise<{ id: string; createdAt: string }> {

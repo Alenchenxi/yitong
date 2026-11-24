@@ -1,4 +1,4 @@
-/* 活动提醒：手动提醒入口 + 发送记录 */
+/* 活动提醒：手动提醒入口 + 发送记录（按用户分组，点击弹窗看明细） */
 .head {
   margin: 20rpx 24rpx 0;
 }
@@ -43,6 +43,83 @@
   margin-bottom: 16rpx;
 }
 
+/* 用户分组列表：超出最大高度内部滚动 */
+.group-scroll {
+  max-height: 640rpx;
+}
+
+.group-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f6f8;
+}
+
+.group-row:last-child {
+  border-bottom: none;
+}
+
+.group-user {
+  font-size: 28rpx;
+  color: #1d2129;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-count {
+  font-size: 24rpx;
+  color: #c59a00;
+  background: #fff7d1;
+  border-radius: 999rpx;
+  padding: 4rpx 16rpx;
+}
+
+.group-arrow {
+  font-size: 28rpx;
+  color: #c9cdde;
+}
+
+/* 明细弹窗 */
+.modal-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  width: 86vw;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx 28rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 16rpx;
+}
+
+/* 明细列表：超出最大高度内部滚动 */
+.modal-scroll {
+  max-height: 50vh;
+}
+
 .record {
   padding: 16rpx 0;
   border-bottom: 1rpx solid #f5f6f8;
@@ -56,17 +133,6 @@
   display: flex;
   align-items: center;
   gap: 16rpx;
-}
-
-.record-user {
-  font-size: 28rpx;
-  color: #1d2129;
-  font-weight: 500;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .record-kind {
@@ -86,4 +152,15 @@
   font-size: 22rpx;
   color: #86909c;
   margin-top: 8rpx;
+}
+
+.modal-close {
+  margin-top: 24rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  text-align: center;
+  background: #f5f6f8;
+  color: #4e5969;
+  font-size: 28rpx;
+  border-radius: 12rpx;
 }
