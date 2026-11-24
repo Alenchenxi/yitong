@@ -5,12 +5,9 @@ import {
   remindActivity,
   rejectEnrollment,
   revokeEnrollment,
-  setActivityAdmins,
-  transferInitiator,
   type ActivityDetailVo,
   type ActivityEnrollmentVo,
 } from '../../../services/activity';
-import { searchUsers, type UserSearchItem } from '../../../services/confession';
 
 const QUEUE_TABS: Array<{ key: string; label: string }> = [
   { key: 'PENDING_REVIEW', label: '待审核' },
@@ -43,13 +40,6 @@ Page({
     revokeId: '',
     revokeReason: '',
     submitting: false,
-    // 活动设置（仅发起人）：管理员/转让人昵称搜索点选
-    adminList: [] as UserSearchItem[],
-    adminKw: '',
-    adminResults: [] as UserSearchItem[],
-    transferKw: '',
-    transferResults: [] as UserSearchItem[],
-    transferTarget: null as UserSearchItem | null,
   },
 
   onLoad(query: Record<string, string>) {
@@ -67,20 +57,26 @@ Page({
   switchTab(e: WechatMiniprogram.TouchEvent) {
     const key = e.currentTarget.dataset.key as string;
     if (key === this.data.activeTab) return;
-    this.setData({ activeTab: key, page: 1 });
+    // 立即清空列表：加载/失败期间不残留上一 tab 的记录，空 tab 正确显示「暂无记录」
+    this.setData({ activeTab: key, page: 1, list: [], total: 0, hasMore: false });
     void this.reload();
   },
 
   async reload() {
     this.setData({ page: 1 });
+    // 列表与详情解耦：详情失败不影响列表与空态展示
     try {
-      const [detail, res] = await Promise.all([
-        this.data.detail ? Promise.resolve(this.data.detail) : activityDetail(this.data.id),
-        listEnrollments(this.data.id, this.data.activeTab, 1),
-      ]);
-      this.setData({ detail, list: res.list, total: res.total, hasMore: res.list.length >= 20, adminList: detail.admins });
+      const res = await listEnrollments(this.data.id, this.data.activeTab, 1);
+      this.setData({ list: res.list, total: res.total, hasMore: res.list.length >= 20 });
     } catch {
       /* toast 已在 request 内 */
+    }
+    if (!this.data.detail) {
+      try {
+        this.setData({ detail: await activityDetail(this.data.id) });
+      } catch {
+        /* toast 已在 request 内 */
+      }
     }
   },
 
@@ -198,127 +194,6 @@ Page({
     try {
       const res = await remindActivity(this.data.id, [uid]);
       wx.showToast({ title: res.skipped > 0 ? '该用户 24h 内已提醒过' : '已发送', icon: 'none' });
-    } catch {
-      /* toast 已在 request 内 */
-    }
-  },
-
-  // ===== 活动设置（仅发起人）：管理员 / 转让人搜索点选，自发布表单迁入 =====
-
-  tip(message: string): false {
-    wx.showToast({ title: message, icon: 'none' });
-    return false;
-  },
-
-  /** 强刷 detail 并回显管理员（reload 的 detail 缓存不适用设置保存后刷新） */
-  async refreshDetail() {
-    const d = await activityDetail(this.data.id);
-    this.setData({ detail: d, adminList: d.admins });
-  },
-
-  onAdminKwInput(e: WechatMiniprogram.Input) {
-    const kw = e.detail.value;
-    // 清空搜索条件时同步清空结果列表
-    if (!kw.trim()) {
-      this.setData({ adminKw: kw, adminResults: [] });
-      return;
-    }
-    this.setData({ adminKw: kw });
-  },
-
-  async searchAdmins() {
-    const q = this.data.adminKw.trim();
-    if (!q) {
-      this.setData({ adminResults: [] });
-      return;
-    }
-    try {
-      const r = await searchUsers(q, 20);
-      this.setData({ adminResults: r.list });
-    } catch {
-      /* toast 已在 request 内 */
-    }
-  },
-
-  pickAdmin(e: WechatMiniprogram.TouchEvent) {
-    const u = this.data.adminResults[Number(e.currentTarget.dataset.index)];
-    if (!u) return;
-    if (this.data.adminList.some((a) => a.id === u.id)) return this.tip('该用户已是管理员');
-    // 与后端 SetActivityAdminsDto ArrayMaxSize(20) 对齐
-    if (this.data.adminList.length >= 20) return this.tip('管理员最多 20 个');
-    this.setData({ adminList: [...this.data.adminList, u] });
-  },
-
-  removeAdminChip(e: WechatMiniprogram.TouchEvent) {
-    const id = e.currentTarget.dataset.id as string;
-    this.setData({ adminList: this.data.adminList.filter((a) => a.id !== id) });
-  },
-
-  async saveAdmins() {
-    const d = this.data.detail;
-    if (!d) return;
-    const ids = this.data.adminList.map((u) => u.id);
-    const add = ids.filter((id) => !d.adminIds.includes(id));
-    const remove = d.adminIds.filter((id) => !ids.includes(id));
-    if (!add.length && !remove.length) {
-      wx.showToast({ title: '无变更', icon: 'none' });
-      return;
-    }
-    try {
-      await setActivityAdmins(d.id, add, remove);
-      wx.showToast({ title: '已保存', icon: 'success' });
-      await this.refreshDetail();
-    } catch {
-      /* toast 已在 request 内 */
-    }
-  },
-
-  onTransferKwInput(e: WechatMiniprogram.Input) {
-    const kw = e.detail.value;
-    // 清空搜索条件时同步清空结果列表
-    if (!kw.trim()) {
-      this.setData({ transferKw: kw, transferResults: [] });
-      return;
-    }
-    this.setData({ transferKw: kw });
-  },
-
-  async searchTransfer() {
-    const q = this.data.transferKw.trim();
-    if (!q) {
-      this.setData({ transferResults: [] });
-      return;
-    }
-    try {
-      const r = await searchUsers(q, 20);
-      this.setData({ transferResults: r.list });
-    } catch {
-      /* toast 已在 request 内 */
-    }
-  },
-
-  pickTransferTarget(e: WechatMiniprogram.TouchEvent) {
-    const u = this.data.transferResults[Number(e.currentTarget.dataset.index)];
-    if (!u) return;
-    this.setData({ transferTarget: u });
-  },
-
-  clearTransferTarget() {
-    this.setData({ transferTarget: null });
-  },
-
-  async doTransfer() {
-    const d = this.data.detail;
-    const t = this.data.transferTarget;
-    if (!d || !t) return this.tip('请先搜索并选择目标用户');
-    const { confirm } = await wx.showModal({ title: '转让发起人', content: `确定将发起人转让给「${t.nickname}」吗？` });
-    if (!confirm) return;
-    try {
-      await transferInitiator(d.id, t.id);
-      wx.showToast({ title: '已转让', icon: 'success' });
-      this.setData({ transferTarget: null, transferKw: '', transferResults: [] });
-      // 转让后当前用户可能不再具备发起人权限，强刷 detail 驱动设置卡片显隐
-      await this.refreshDetail();
     } catch {
       /* toast 已在 request 内 */
     }

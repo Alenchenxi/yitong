@@ -171,6 +171,10 @@ Page({
     wx.navigateTo({ url: `/pages/activity/publish/index?id=${this.data.id}` });
   },
 
+  goSettings() {
+    wx.navigateTo({ url: `/pages/activity/settings/index?id=${this.data.id}` });
+  },
+
   goSync() {
     wx.navigateTo({ url: `/pages/activity/connections/index?activityId=${this.data.id}` });
   },

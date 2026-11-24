@@ -1,0 +1,45 @@
+<view class="page">
+  <view wx:if="{{detail}}" class="yt-card settings">
+    <view class="section-title">活动设置</view>
+    <view class="field">
+      <view class="field-label">活动管理员</view>
+      <view class="admin-chips">
+        <view wx:for="{{adminList}}" wx:key="id" class="admin-chip">
+          <text class="admin-chip-name">{{item.nickname}}</text>
+          <text class="admin-chip-x" catchtap="removeAdminChip" data-id="{{item.id}}">✕</text>
+        </view>
+      </view>
+      <view class="user-search-row">
+        <input class="field-input user-search-input" value="{{adminKw}}" bindinput="onAdminKwInput" confirm-type="search" bindconfirm="searchAdmins" placeholder="搜索用户昵称添加" />
+        <view class="user-search-btn" bindtap="searchAdmins">搜索</view>
+      </view>
+      <view class="user-result-list">
+        <view wx:for="{{adminResults}}" wx:key="id" class="user-result" bindtap="pickAdmin" data-index="{{index}}">
+          <image wx:if="{{item.avatarUrl}}" class="user-result-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="user-result-avatar user-result-avatar-ph"></view>
+          <text class="user-result-name">{{item.nickname}}</text>
+          <text class="user-result-add">添加</text>
+        </view>
+      </view>
+      <view class="ff-add-btn" bindtap="saveAdmins">保存管理员</view>
+    </view>
+    <view class="field">
+      <view class="field-label">转让发起人</view>
+      <view class="field-hint">仅可转让给活动管理员或平台/圈子管理员；普通用户请先添加为活动管理员</view>
+      <view wx:if="{{transferTarget}}" class="transfer-target">已选择：{{transferTarget.nickname}}<text class="admin-chip-x" catchtap="clearTransferTarget">✕</text></view>
+      <view class="user-search-row">
+        <input class="field-input user-search-input" value="{{transferKw}}" bindinput="onTransferKwInput" confirm-type="search" bindconfirm="searchTransfer" placeholder="搜索用户昵称选择" />
+        <view class="user-search-btn" bindtap="searchTransfer">搜索</view>
+      </view>
+      <view class="user-result-list">
+        <view wx:for="{{transferResults}}" wx:key="id" class="user-result" bindtap="pickTransferTarget" data-index="{{index}}">
+          <image wx:if="{{item.avatarUrl}}" class="user-result-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="user-result-avatar user-result-avatar-ph"></view>
+          <text class="user-result-name">{{item.nickname}}</text>
+          <text class="user-result-add">选择</text>
+        </view>
+      </view>
+      <view class="ff-add-btn ff-danger" bindtap="doTransfer">转让</view>
+    </view>
+  </view>
+</view>

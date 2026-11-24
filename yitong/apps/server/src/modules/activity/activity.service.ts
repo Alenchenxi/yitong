@@ -501,16 +501,15 @@ export class ActivityService {
     return this.detail(uid, id);
   }
 
-  /** 转让发起人（仅发起人，BR-009）：目标须是活动管理员或平台/圈子管理员；原发起人转为活动管理员 */
+  /** 转让发起人（仅发起人，BR-009）：目标须是活动管理员或平台/圈子管理员（任意圈子）；原发起人转为活动管理员 */
   async transferInitiator(uid: string, id: string, dto: TransferInitiatorDto): Promise<ActivityDetailVo> {
     const activity = await this.getOrThrow(id);
     await this.assertInitiator(activity, uid);
     if (dto.targetUserId === uid) throw new BizException(...ERR.STATUS_INVALID('不能转让给自己'));
     const isManager = await this.isActivityManager(id, activity.initiatorId, dto.targetUserId);
     const scopeInfo = await this.publishScope(dto.targetUserId);
-    const inScope = activity.scope === ActivityScope.PLATFORM
-      ? scopeInfo.platform
-      : scopeInfo.managed.has(activity.communityId ?? '');
+    // 2026-11-24 用户口径修正：不限活动范围，平台管理员或任意圈子管理员（圈主/圈管/管理端授权）均可被转让
+    const inScope = scopeInfo.platform || scopeInfo.managed.size > 0;
     if (!isManager && !inScope) throw new BizException(...ERR.TRANSFER_INVALID);
     await this.prisma.$transaction([
       this.prisma.activity.update({ where: { id }, data: { initiatorId: dto.targetUserId } }),

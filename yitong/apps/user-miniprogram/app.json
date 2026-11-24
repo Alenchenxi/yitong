@@ -52,6 +52,7 @@
     "pages/activity/my/index",
     "pages/activity/publish/index",
     "pages/activity/manage/index",
+    "pages/activity/settings/index",
     "pages/activity/chat/index",
     "pages/activity/remind/index",
     "pages/activity/connections/index",
