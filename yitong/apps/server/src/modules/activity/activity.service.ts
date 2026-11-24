@@ -62,7 +62,7 @@ const ERR = {
   FORMAT_FIELD_MISSING: (msg: string) => [70011, msg] as const,
   CONNECTION_NOT_FOUND: [70012, '飞书连接不存在', HttpStatus.NOT_FOUND] as const,
   CONNECTION_IN_USE: [70013, '该飞书连接已被活动使用，不能删除'] as const,
-  REMIND_RATE_LIMITED: [70014, '部分用户 24 小时内已收到过提醒，本次已跳过'] as const,
+  REMIND_RATE_LIMITED: [70014, '部分用户 24 小时内已收到 3 次提醒，本次已跳过'] as const,
   NOT_APPROVED_MEMBER: [70015, '仅正式参与人可使用活动群聊', HttpStatus.FORBIDDEN] as const,
   CHAT_READONLY: [70016, '活动群聊已转为只读', HttpStatus.FORBIDDEN] as const,
   TRANSFER_INVALID: [70017, '转让目标必须是活动管理员或平台/圈子管理员（圈子发布的活动仅可转给所属圈子管理员）', HttpStatus.FORBIDDEN] as const,
@@ -1291,11 +1291,16 @@ export class ActivityService {
     const now = Date.now();
     const results: { userId: string; result: string }[] = [];
     for (const target of targets) {
-      const last = await this.prisma.activityReminder.findFirst({
-        where: { activityId: id, userId: target.userId, kind: ActivityReminderKind.MANUAL },
-        orderBy: { createdAt: 'desc' },
+      // 手动提醒限流：每用户每活动 24h 内最多 3 次（2026-11-24 用户口径，原为 1 次）；自动提醒不受此限
+      const recent = await this.prisma.activityReminder.count({
+        where: {
+          activityId: id,
+          userId: target.userId,
+          kind: ActivityReminderKind.MANUAL,
+          createdAt: { gte: new Date(now - 24 * 3600 * 1000) },
+        },
       });
-      if (last && now - last.createdAt.getTime() < 24 * 3600 * 1000) {
+      if (recent >= 3) {
         results.push({ userId: target.userId, result: 'skipped_rate_limited' });
         continue;
       }
