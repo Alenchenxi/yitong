@@ -60,6 +60,29 @@ test('报名成功后按酒店名加载群码，jpg 缺图回退 png 再隐藏',
   assert.match(html, /qrWrap\.hidden = true;\s*\n\s*\};/);
 });
 
+test('报名成功弹窗并排展示酒店群码与校园云小程序码，文案在前、长按提示在后', () => {
+  assert.match(html, /<div class="ok-qr-row">\s*<div class="ok-qr" id="okQrWrap" hidden>/); // 群码在左，缺失时不占位
+  const campus = html.match(/<div class="ok-qr" id="okCampus">[\s\S]*?<\/div>/);
+  assert.ok(campus, '未找到校园云区块');
+  assert.match(campus[0], /<img src="campus-qr\.jpg" alt="燚桐校园云小程序码">/);
+  assert.match(campus[0], /找兼职、逛树洞、<br>上表白墙，<br>尽在燚桐校园云/);
+  assert.ok(campus[0].indexOf('尽在燚桐校园云') < campus[0].indexOf('长按识别小程序码'), '文案应排在长按提示之前');
+  assert.match(html, /\.ok-qr-row\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*center/);
+});
+
+test('推广海报底部绘制校园云专区，小程序码未加载时整条不画', () => {
+  assert.match(html, /c\.height = bg\.naturalHeight \+ \(campusImg \? POSTER_CAMPUS\.h \* u : 0\)/); // 没加载就不加高，不出现空白卡片
+  assert.match(html, /if \(campusImg\) drawCampus\(x, bg\.naturalHeight, u\)/);
+  assert.match(html, /lines: \['兼职·树洞·表白墙', '尽在燚桐校园云', '长按识别小程序码'\]/); // 文案在前、长按提示在后
+  assert.match(html, /x\.drawImage\(campusImg, /);
+  assert.match(html, /cq\.src = '\.\/campus-qr\.jpg'/);
+});
+
+test('海报报名码与邀请码坐标不因校园云专区改变', () => {
+  assert.match(html, /var POSTER_QR = \{ x: 148, y: 1264, s: 168 \};/);
+  assert.match(html, /var POSTER_CODE = \{ x: 350, y: 1440, w: 310, h: 42, cx: 505, by: 1472 \};/);
+});
+
 test('暂停酒店的报名按钮置灰并显示暂停报名', () => {
   assert.match(html, /apply\.textContent = h\.paused \? '暂停报名' : '立即报名'/);
   assert.match(html, /apply\.disabled = !!h\.paused/);

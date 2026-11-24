@@ -8,6 +8,7 @@
 - `config/hotels.json` 招聘配置与 20 家酒店数据。酒店展示字段：region/name/hours/pay/newYearPay/rest/accommodation/overtime/transport/bonus/highlight/address；可选 `paused: true` 暂停该酒店报名（页面两个报名按钮置灰显示「暂停报名」、在招计数剔除、后端拒绝提交），移除或改 false 恢复；顶层同时配置上岗日期、最低年龄和公开联系电话（改完 `docker compose restart` 生效）
 - `public/img/` 酒店照片目录：文件名 = 酒店名.jpg（与 name 完全一致），缺图自动显示区域色占位块
 - `public/qr/` 酒店微信群二维码目录：文件名 = 酒店名.jpg 或 .png（与 name 完全一致，优先 .jpg 回退 .png），报名成功弹窗展示对应群码；缺图的酒店自动隐藏二维码行，放图即生效无需改代码
+- `public/campus-qr.jpg` 燚桐校园云小程序码，报名成功弹窗（与酒店群码并排）和推广海报共用。推广海报底部有一条校园云专区，是生成海报时用代码画在底图下方的（文案与位置在 `index.html` 的 `POSTER_CAMPUS` 常量），`poster.png` 里不含这块；小程序码加载失败时整条不画
 - `config/inviters.json` 推广员字典 `{编码: 姓名}`，推广员链接 = `https://<域名>/zhaopin/?inviter=<编码>`
 - `data/` 访问日志 jsonl（按月分文件），已 gitignore
 

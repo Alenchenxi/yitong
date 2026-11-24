@@ -86,6 +86,12 @@
   .ok-qr { margin-top: 14px; }
   .ok-qr img { width: 180px; height: 180px; object-fit: cover; border-radius: 10px; background: #fff; border: 1px solid var(--line); }
   .ok-qr-tip { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  /* 群码与校园云小程序码并排；群码缺失时 hidden 不占位，校园云码自然居中 */
+  .ok-qr-row { display: flex; justify-content: center; align-items: flex-start; gap: 12px; margin-top: 14px; }
+  .ok-qr-row .ok-qr { margin-top: 0; flex: 0 1 148px; min-width: 0; }
+  .ok-qr-row .ok-qr img { width: 100%; height: auto; aspect-ratio: 1 / 1; }
+  .ok-qr-row .ok-qr-tip { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+  .ok-qr-row .ok-qr-tip b { color: var(--ink); font-weight: 600; }
   /* 图片查看器 */
   .viewer { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 99; align-items: center; justify-content: center; cursor: zoom-out; touch-action: none; }
   .viewer.show { display: flex; }
@@ -307,9 +313,15 @@
     <div class="big">✅</div>
     <h3 id="okTitle">报名成功</h3>
     <p id="okText"></p>
-    <div class="ok-qr" id="okQrWrap" hidden>
-      <img id="okQr" alt="该酒店微信群二维码">
-      <p class="ok-qr-tip">长按识别二维码，加入该酒店对接群</p>
+    <div class="ok-qr-row">
+      <div class="ok-qr" id="okQrWrap" hidden>
+        <img id="okQr" alt="该酒店微信群二维码">
+        <p class="ok-qr-tip">长按识别二维码<br>加入该酒店对接群</p>
+      </div>
+      <div class="ok-qr" id="okCampus">
+        <img src="campus-qr.jpg" alt="燚桐校园云小程序码">
+        <p class="ok-qr-tip"><b>找兼职、逛树洞、<br>上表白墙，<br>尽在燚桐校园云</b><br>长按识别小程序码</p>
+      </div>
     </div>
   </div>
 </div>
@@ -796,16 +808,39 @@
   // ---------- 推广海报：底图 public/poster.png（1024x1536），生成时只替换二维码与邀请码 ----------
   var POSTER_QR = { x: 148, y: 1264, s: 168 };            // 底图白卡内的二维码绘制区
   var POSTER_CODE = { x: 350, y: 1440, w: 310, h: 42, cx: 505, by: 1472 }; // 邀请码覆盖区与文字中心/基线
-  var posterBg = null;
+  // 底图下方追加的校园云专区（坐标按 1024 宽记录，随画布宽度等比缩放）：满宽白卡，文案在左、小程序码在右
+  var POSTER_CAMPUS = { h: 300, card: [92, 32, 840, 236], qr: 176, tx: 412, rows: [60, 112, 179], lines: ['兼职·树洞·表白墙', '尽在燚桐校园云', '长按识别小程序码'] };
+  var posterBg = null, campusImg = null;
+  function drawCampus(x, y0, u) { // 在底图下方（y0 起）画校园云专区：深青渐变、浅青分隔线、满宽白卡
+    var p = POSTER_CAMPUS, k = p.card, W = x.canvas.width, a = k[0] * u, b = y0 + k[1] * u, w = k[2] * u, h = k[3] * u, r = 24 * u, q = p.qr * u;
+    x.save();
+    x.fillStyle = x.createLinearGradient(0, y0, 0, y0 + p.h * u);
+    x.fillStyle.addColorStop(0, '#04625d'); x.fillStyle.addColorStop(1, '#014846');
+    x.fillRect(0, y0, W, p.h * u);
+    x.fillStyle = '#5cc8ac'; x.fillRect(0, y0 + u, W, 3 * u);
+    x.shadowColor = 'rgba(0,22,20,.45)'; x.shadowBlur = 10 * u; x.shadowOffsetY = 4 * u;
+    x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); // 圆角矩形路径（不用 roundRect，旧版微信内核不支持）
+    x.fillStyle = '#fff'; x.fill();
+    x.shadowColor = 'transparent'; x.lineWidth = 3 * u; x.strokeStyle = '#f2c468'; x.stroke();
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    var font = 'px "PingFang SC","Microsoft YaHei",sans-serif';
+    x.fillStyle = '#18302d'; x.font = 'bold ' + 42 * u + font; x.fillText(p.lines[0], p.tx * u, b + p.rows[0] * u);
+    x.fillStyle = '#e2531f'; x.fillText(p.lines[1], p.tx * u, b + p.rows[1] * u);
+    x.fillStyle = '#687a76'; x.font = 25 * u + font; x.fillText(p.lines[2], p.tx * u, b + p.rows[2] * u);
+    x.drawImage(campusImg, a + w - 24 * u - q, b + (h - q) / 2, q, q);
+    x.restore();
+  }
   function drawPoster() {
     var qr = qrcode(0, 'M');
     qr.addData(location.origin + location.pathname + '?inviter=' + promoterCode);
     qr.make();
     return new Promise(function (resolve, reject) {
       function stamp(bg) {
-        var c = document.createElement('canvas'); c.width = bg.naturalWidth; c.height = bg.naturalHeight;
+        var u = bg.naturalWidth / 1024;
+        var c = document.createElement('canvas'); c.width = bg.naturalWidth; c.height = bg.naturalHeight + (campusImg ? POSTER_CAMPUS.h * u : 0);
         var x = c.getContext('2d');
         x.drawImage(bg, 0, 0);
+        if (campusImg) drawCampus(x, bg.naturalHeight, u);
         var qi = new Image();
         qi.onload = function () {
           x.drawImage(qi, POSTER_QR.x, POSTER_QR.y, POSTER_QR.s, POSTER_QR.s);
@@ -836,11 +871,17 @@
     });
   }
 
-  function preloadPoster() { // 1.9MB 底图进页面就后台加载，首次点生成不用干等
-    if (posterBg) return;
-    var img = new Image();
-    img.onload = function () { posterBg = img; };
-    img.src = './poster.png';
+  function preloadPoster() { // 1.9MB 底图与小程序码进页面就后台加载，首次点生成不用干等
+    if (!posterBg) {
+      var img = new Image();
+      img.onload = function () { posterBg = img; };
+      img.src = './poster.png';
+    }
+    if (!campusImg) { // 加载失败就保持 null：海报不画校园云专区，也不会出现空白卡片
+      var cq = new Image();
+      cq.onload = function () { campusImg = cq; };
+      cq.src = './campus-qr.jpg';
+    }
   }
 
   var fabDone = false;
