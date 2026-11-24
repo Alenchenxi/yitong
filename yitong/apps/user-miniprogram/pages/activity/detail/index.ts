@@ -113,12 +113,13 @@ Page({
   goEnroll() {
     const d = this.data.detail;
     if (!d) return;
-    if (d.myEnrollment) {
-      wx.navigateTo({ url: `/pages/activity/enroll/index?id=${d.id}` });
-      return;
-    }
+    // 管理者优先拦截：发起人/管理员不参与报名，不能进报名表单页（含旧报名记录残留场景）
     if (d.canManage) {
       wx.showToast({ title: '发起人和活动管理员无需报名', icon: 'none' });
+      return;
+    }
+    if (d.myEnrollment) {
+      wx.navigateTo({ url: `/pages/activity/enroll/index?id=${d.id}` });
       return;
     }
     if (!this.data.canEnroll) {

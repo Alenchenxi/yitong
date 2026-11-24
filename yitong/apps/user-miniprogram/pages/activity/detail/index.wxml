@@ -44,7 +44,8 @@
     <view class="kv"><text class="kv-k">报名方式</text><text class="kv-v">{{detail.joinMode === 'DIRECT' ? '直接报名' : '管理员审核'}}</text></view>
   </view>
 
-  <view wx:if="{{detail.myEnrollment}}" class="yt-card section">
+  <!-- 发起人非参与人：报名信息卡对发起人隐藏（转让受让人原报名已在服务端取消，转出后恢复展示为已取消） -->
+  <view wx:if="{{detail.myEnrollment && !detail.isInitiator}}" class="yt-card section">
     <view class="section-title">我的报名</view>
     <view class="kv"><text class="kv-k">状态</text><text class="kv-v">{{enrollStatusText}}{{detail.myEnrollment.pendingReview ? '（资料待复审）' : ''}}</text></view>
     <view wx:if="{{detail.myEnrollment.revokedReason}}" class="kv"><text class="kv-k">取消原因</text><text class="kv-v">{{detail.myEnrollment.revokedReason}}</text></view>
@@ -79,7 +80,9 @@
       <view wx:if="{{detail.status === 'PUBLISHED'}}" class="footer-ghost" bindtap="onCancelEnroll">退出报名</view>
     </block>
     <block wx:elif="{{detail.myEnrollment}}">
-      <view wx:if="{{detail.status === 'PUBLISHED'}}" class="footer-main" bindtap="goEnroll">重新报名</view>
+      <!-- 管理者无报名入口：报名取消/被拒等终态记录不再给「重新报名」（服务端会拒绝，按钮态必须一致） -->
+      <view wx:if="{{detail.status === 'PUBLISHED' && detail.canManage}}" class="footer-main footer-disabled">发起人/管理员无需报名</view>
+      <view wx:elif="{{detail.status === 'PUBLISHED'}}" class="footer-main" bindtap="goEnroll">重新报名</view>
       <view wx:elif="{{detail.status === 'ENDED'}}" class="footer-main footer-disabled">活动已结束</view>
       <view wx:elif="{{detail.status === 'CANCELLED'}}" class="footer-main footer-disabled">活动已取消</view>
       <view wx:elif="{{detail.status === 'DELISTED'}}" class="footer-main footer-disabled">活动已下架</view>

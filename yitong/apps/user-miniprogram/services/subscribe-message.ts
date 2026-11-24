@@ -38,12 +38,20 @@ async function requestSubscribe(key: 'jobApply' | 'jobStatus' | 'activityRemind'
   // 用户勾选过「总是保持以上选择+拒绝」或关闭订阅消息总开关后，微信不再弹窗且直接返回拒绝——
   // 检测到历史拒绝时弹确认框，引导去设置重新开启（再次报名需重新确认）
   if (!(await isPermanentlyRejected(tmplId))) return false;
-  const { confirm } = await wx.showModal({
-    title: '订阅提醒',
-    content: '您之前选择了不接收订阅消息，将无法收到报名与审核结果提醒，是否前往设置重新开启？',
-    confirmText: '去设置',
+  // wx.openSetting 必须在用户点击回调的同步链内调用（await 之后再调手势上下文已失效，静默无反应）；
+  // 与 community/invite 同模式：放进 showModal success 里同步调。withSubscriptions 直达订阅消息开关页
+  await new Promise<void>((resolve) => {
+    wx.showModal({
+      title: '订阅提醒',
+      content: '您之前选择了不接收订阅消息，将无法收到报名与审核结果提醒，是否前往设置重新开启？',
+      confirmText: '去设置',
+      success: (res) => {
+        if (res.confirm) wx.openSetting({ withSubscriptions: true });
+        resolve();
+      },
+      fail: () => resolve(),
+    });
   });
-  if (confirm) await wx.openSetting({});
   return false;
 }
 

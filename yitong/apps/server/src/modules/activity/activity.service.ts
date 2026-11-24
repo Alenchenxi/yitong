@@ -501,11 +501,35 @@ export class ActivityService {
     return this.detail(uid, id);
   }
 
+  /** 管理口径（BR-009/010，2026-11-24 用户补充）：成为发起人/活动管理员后不再是参与人，活跃报名统一取消（终态记录不动） */
+  private async cancelManagerEnrollment(
+    tx: Prisma.TransactionClient,
+    activityId: string,
+    userId: string,
+  ): Promise<{ enrollmentId: string; wasApproved: boolean } | null> {
+    const enrollment = await tx.activityEnrollment.findUnique({
+      where: { activityId_userId: { activityId, userId } },
+    });
+    if (!enrollment || !SUBMITTABLE_STATUSES.includes(enrollment.status)) return null;
+    await tx.activityEnrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        status: ActivityEnrollmentStatus.CANCELLED,
+        waitlistedAt: null,
+        pendingData: Prisma.DbNull,
+        revokedReason: '成为活动发起人/管理员，原报名已取消',
+      },
+    });
+    return { enrollmentId: enrollment.id, wasApproved: enrollment.status === ActivityEnrollmentStatus.APPROVED };
+  }
+
   /** 转让发起人（仅发起人，BR-009）：平台活动可转任意平台/圈子管理员；圈子活动仅可转所属圈子管理员；原发起人转为活动管理员 */
   async transferInitiator(uid: string, id: string, dto: TransferInitiatorDto): Promise<ActivityDetailVo> {
     const activity = await this.getOrThrow(id);
     await this.assertInitiator(activity, uid);
     if (dto.targetUserId === uid) throw new BizException(...ERR.STATUS_INVALID('不能转让给自己'));
+    // 草稿仅发起人可见且 my-draft 按 initiatorId 归属，不随转让走（2026-11-24 用户口径）
+    if (activity.status === ActivityStatus.DRAFT) throw new BizException(...ERR.STATUS_INVALID('草稿活动不能转让'));
     const isManager = await this.isActivityManager(id, activity.initiatorId, dto.targetUserId);
     const scopeInfo = await this.publishScope(dto.targetUserId);
     // 2026-11-24 用户口径二次修正：随活动范围收紧——平台活动不限圈子，圈子活动限所属圈
@@ -513,14 +537,36 @@ export class ActivityService {
       ? (scopeInfo.platform || scopeInfo.managed.size > 0)
       : scopeInfo.managed.has(activity.communityId ?? '');
     if (!isManager && !inScope) throw new BizException(...ERR.TRANSFER_INVALID);
-    await this.prisma.$transaction([
-      this.prisma.activity.update({ where: { id }, data: { initiatorId: dto.targetUserId } }),
-      this.prisma.activityAdmin.upsert({
+    const cancelled = await this.prisma.$transaction(async (tx) => {
+      await tx.activity.update({ where: { id }, data: { initiatorId: dto.targetUserId } });
+      // 受让人若因先前转出留有管理员行（转让后又转入），转入即清除——管理员列表不含当前发起人（2026-11-24 用户口径）
+      await tx.activityAdmin.deleteMany({ where: { activityId: id, userId: dto.targetUserId } });
+      await tx.activityAdmin.upsert({
         where: { activityId_userId: { activityId: id, userId: uid } },
         update: {},
         create: { activityId: id, userId: uid },
-      }),
-    ]);
+      });
+      // 受让人已有报名（如圈子管理员曾报名）：成为发起人后取消报名，详情页/底栏按「无需报名」口径展示
+      const c = await this.cancelManagerEnrollment(tx, id, dto.targetUserId);
+      // 飞书连接随活动走：未被其他活动共用时归属转给新发起人，受让人可在飞书同步页查看并继续配置
+      if (activity.larkConnectionId) {
+        const shared = await tx.activity.count({
+          where: { larkConnectionId: activity.larkConnectionId, id: { not: id } },
+        });
+        if (shared === 0) {
+          await tx.larkConnection.update({
+            where: { id: activity.larkConnectionId },
+            data: { ownerId: dto.targetUserId },
+          });
+        }
+      }
+      return c;
+    });
+    if (cancelled) {
+      // 取消报名：同步语义为删除远端表格行（与退出报名一致）
+      void this.larkSync.markPending(id, cancelled.enrollmentId, 'REMOVE').catch(() => undefined);
+      if (cancelled.wasApproved) await this.promoteWaitlistHead(activity);
+    }
     return this.detail(uid, id);
   }
 
@@ -534,6 +580,7 @@ export class ActivityService {
         select: { id: true },
       })
       : [];
+    const cancelledList: Array<{ enrollmentId: string; wasApproved: boolean }> = [];
     await this.prisma.$transaction(async (tx) => {
       if (dto.remove?.length) {
         await tx.activityAdmin.deleteMany({
@@ -547,7 +594,16 @@ export class ActivityService {
           create: { activityId: id, userId: u.id },
         });
       }
+      // 已报名用户被设为管理员：与发起人同口径取消其活跃报名（未报名用户无记录，天然无需处理）
+      for (const u of users) {
+        const c = await this.cancelManagerEnrollment(tx, id, u.id);
+        if (c) cancelledList.push(c);
+      }
     });
+    for (const c of cancelledList) {
+      void this.larkSync.markPending(id, c.enrollmentId, 'REMOVE').catch(() => undefined);
+    }
+    if (cancelledList.some((c) => c.wasApproved)) await this.promoteWaitlistHead(activity);
     return this.detail(uid, id);
   }
 
