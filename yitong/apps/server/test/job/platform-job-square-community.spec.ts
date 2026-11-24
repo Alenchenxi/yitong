@@ -341,7 +341,7 @@ describe('广场平台内容可见性', () => {
     _count: { comments: 2 },
   };
 
-  it('双源混合流应允许平台全圈内容、限制圈子内容到当前圈，并映射平台标识', async () => {
+  it('双源混合流应按全圈共享口径过滤表白墙与树洞内容，并映射平台标识', async () => {
     const prisma = {
       post: {
         findMany: jest.fn()
@@ -373,9 +373,11 @@ describe('广场平台内容可见性', () => {
         },
         {
           publisherScope: PublicationScope.COMMUNITY,
-          visibilityScope: ContentVisibilityScope.COMMUNITY,
-          communityId: 'community_current',
           community: { is: { status: CommunityStatus.ACTIVE } },
+          OR: [
+            { visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES },
+            { visibilityScope: ContentVisibilityScope.COMMUNITY, communityId: 'community_current' },
+          ],
         },
       ],
     };
@@ -421,7 +423,7 @@ describe('广场平台内容可见性', () => {
 });
 
 describe('圈子批量动态统计', () => {
-  it('应把平台内容计入每个活跃圈子且保持固定聚合查询数', async () => {
+  it('应把平台内容和有效圈子的全圈内容计入每个活跃圈子，存量圈子帖只计归属圈', async () => {
     const communities = [
       {
         id: 'community_a',
@@ -483,6 +485,13 @@ describe('圈子批量动态统计', () => {
             visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
             _count: { _all: 5 },
           },
+          {
+            // P2-92 普通用户全圈帖：计入每个活跃圈子
+            communityId: 'community_b',
+            publisherScope: PublicationScope.COMMUNITY,
+            visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
+            _count: { _all: 4 },
+          },
         ]),
       },
       anonymousPost: {
@@ -517,8 +526,8 @@ describe('圈子批量动态统计', () => {
     const result = await service.listPublic('viewer');
 
     expect(result).toEqual([
-      expect.objectContaining({ id: 'community_b', memberCount: 2, postCount: 15 }),
-      expect.objectContaining({ id: 'community_a', memberCount: 1, postCount: 17 }),
+      expect.objectContaining({ id: 'community_b', memberCount: 2, postCount: 19 }),
+      expect.objectContaining({ id: 'community_a', memberCount: 1, postCount: 21 }),
     ]);
     expect(prisma.communityMember.groupBy).toHaveBeenCalledTimes(1);
     expect(prisma.post.groupBy).toHaveBeenCalledTimes(1);

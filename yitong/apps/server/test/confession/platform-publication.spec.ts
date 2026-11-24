@@ -44,6 +44,7 @@ function postRow(overrides: Record<string, unknown> = {}) {
 }
 
 function buildService(options: {
+  publisherScope?: PublicationScope;
   manageError?: Error;
   interactionError?: Error;
   transactionManageError?: Error;
@@ -101,7 +102,7 @@ function buildService(options: {
   const transactionManageError = options.transactionManageError ?? options.manageError;
   const transactionInteractionError = options.transactionInteractionError ?? options.interactionError;
   const publicationPolicy = {
-    resolveForUser: jest.fn().mockResolvedValue(PublicationScope.PLATFORM),
+    resolveForUser: jest.fn().mockResolvedValue(options.publisherScope ?? PublicationScope.PLATFORM),
     assertCommunityInteractionAllowed: options.interactionError
       ? jest.fn().mockRejectedValue(options.interactionError)
       : jest.fn().mockResolvedValue(undefined),
@@ -162,7 +163,23 @@ describe('ConfessionService 平台发布治理', () => {
     expect(result.platformPublished).toBe(true);
   });
 
-  it('圈子帖子列表应同时使用当前圈和全圈平台内容过滤条件', async () => {
+  it('普通用户发帖也应写入全圈可见且不标记平台发布', async () => {
+    const { service, create } = buildService({ publisherScope: PublicationScope.COMMUNITY });
+
+    const result = await service.createPost('user_1', 'openid_1', 'circle_1', { content: '全圈表白' });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          publisherScope: PublicationScope.COMMUNITY,
+          visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
+        }),
+      }),
+    );
+    expect(result.platformPublished).toBe(false);
+  });
+
+  it('圈子帖子列表应带可见性过滤条件', async () => {
     const { service, findMany, visibilityFilter } = buildService();
 
     await service.listCirclePosts('user_1', 'circle_1', {});

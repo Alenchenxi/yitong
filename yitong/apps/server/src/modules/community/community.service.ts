@@ -491,7 +491,7 @@ export class CommunityService {
     }
   }
 
-  /** 今日上头：近24h 表白墙/树洞浏览量 TopN（当前圈内容 + 全圈平台内容）。 */
+  /** 今日上头：近24h 表白墙/树洞浏览量 TopN（可见口径须与 postVisibilityFilter / anonymousPostVisibilityFilter 保持一致）。 */
   async getTodayHot(communityId: string, limit: number): Promise<TodayHotItem[]> {
     const since = new Date(Date.now() - 24 * 3600 * 1000);
     const rows = await this.prisma.$queryRaw<{ target_type: string; target_id: string; cnt: number }[]>`
@@ -509,8 +509,8 @@ export class CommunityService {
               AND p.status = 'APPROVED' AND p.visibility = 'PUBLIC' AND p.deleted_at IS NULL
               AND (
                 (p.publisher_scope = 'PLATFORM' AND p.visibility_scope = 'ALL_COMMUNITIES')
-                OR (p.publisher_scope = 'COMMUNITY' AND p.visibility_scope = 'COMMUNITY'
-                  AND p.community_id = ${communityId} AND c.status = 'ACTIVE')
+                OR (p.publisher_scope = 'COMMUNITY' AND c.status = 'ACTIVE'
+                  AND (p.visibility_scope = 'ALL_COMMUNITIES' OR p.community_id = ${communityId}))
               )
           ))
           OR
@@ -519,8 +519,7 @@ export class CommunityService {
             WHERE a.id = rv.target_id AND a.status = 'APPROVED'
               AND (
                 (a.publisher_scope = 'PLATFORM' AND a.visibility_scope = 'ALL_COMMUNITIES')
-                OR (a.publisher_scope = 'COMMUNITY' AND a.visibility_scope = 'COMMUNITY'
-                  AND a.community_id = ${communityId} AND c.status = 'ACTIVE')
+                OR (a.publisher_scope = 'COMMUNITY' AND c.status = 'ACTIVE')
               )
           ))
         )
@@ -597,7 +596,6 @@ export class CommunityService {
           OR: [
             {
               publisherScope: PublicationScope.COMMUNITY,
-              visibilityScope: ContentVisibilityScope.COMMUNITY,
               communityId: { in: activeCommunityIds },
               community: { is: { status: CommunityStatus.ACTIVE } },
             },
@@ -631,12 +629,12 @@ export class CommunityService {
       }),
     ]);
 
+    // 表白墙与树洞均为全圈共享频道：全圈可见的平台帖和有效圈子帖计入每个有效圈子的动态数。
+    // 表白墙改造前未回填的存量圈子帖（COMMUNITY 可见）仍只计入归属圈子；树洞存量帖已迁移为全圈。
     const globalPostCount = postRows
-      .filter((row) => row.publisherScope === PublicationScope.PLATFORM
-        && row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES)
+      .filter((row) => row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES
+        && (row.publisherScope === PublicationScope.PLATFORM || activeCommunityIds.includes(row.communityId)))
       .reduce((sum, row) => sum + row._count._all, 0);
-    // 树洞是全圈共享频道：平台帖和有效圈子帖都应计入每个有效圈子的动态数。
-    // 不按 visibilityScope 过滤以兼容本次改造前的存量圈子树洞帖。
     const globalAnonymousPostCount = anonymousPostRows
       .filter((row) => (
         row.publisherScope === PublicationScope.PLATFORM
@@ -660,7 +658,8 @@ export class CommunityService {
       if (current) current.memberCount = row._count._all;
     }
     for (const row of postRows) {
-      if (row.publisherScope === PublicationScope.PLATFORM) continue;
+      // 全圈帖已计入每个有效圈子，这里只给归属圈子补存量圈子帖
+      if (row.visibilityScope === ContentVisibilityScope.ALL_COMMUNITIES) continue;
       const current = stats.get(row.communityId);
       if (current) current.postCount += row._count._all;
     }

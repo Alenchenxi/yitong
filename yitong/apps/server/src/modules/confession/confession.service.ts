@@ -169,7 +169,6 @@ export class ConfessionService {
     const communityId = await this.community.getActiveCommunityId(uid);
     await this.publicationPolicy.assertCommunityInteractionAllowed(uid, communityId);
     const publisherScope = await this.publicationPolicy.resolveForUser(uid);
-    const platformPublished = publisherScope === PublicationScope.PLATFORM;
 
     if (!isDraftOrPrivate) {
       await this.moderation.checkText(dto.content, openid);
@@ -209,9 +208,8 @@ export class ConfessionService {
           videoCover: dto.videoCover ?? null,
           status: PostStatus.APPROVED,
           publisherScope,
-          visibilityScope: platformPublished
-            ? ContentVisibilityScope.ALL_COMMUNITIES
-            : ContentVisibilityScope.COMMUNITY,
+          // P2-92 表白墙帖全圈可见：归属圈子仅供审核/封禁追溯，可见范围不再区分发布者身份（同树洞）
+          visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
           visibility,
           publishAt,
         },

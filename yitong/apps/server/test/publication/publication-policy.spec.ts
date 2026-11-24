@@ -53,6 +53,26 @@ describe('PublicationPolicyService 圈子封禁', () => {
       ],
     });
   });
+  it('表白墙可见范围应同步所有有效圈子的全圈帖，存量圈子帖仍限归属圈', () => {
+    const { service } = buildService();
+
+    expect(service.postVisibilityFilter('community_current')).toEqual({
+      OR: [
+        {
+          publisherScope: PublicationScope.PLATFORM,
+          visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES,
+        },
+        {
+          publisherScope: PublicationScope.COMMUNITY,
+          community: { is: { status: CommunityStatus.ACTIVE } },
+          OR: [
+            { visibilityScope: ContentVisibilityScope.ALL_COMMUNITIES },
+            { visibilityScope: ContentVisibilityScope.COMMUNITY, communityId: 'community_current' },
+          ],
+        },
+      ],
+    });
+  });
   it('有效圈子封禁应拒绝实名内容互动', async () => {
     const { service, prisma } = buildService({ banned: true });
 
