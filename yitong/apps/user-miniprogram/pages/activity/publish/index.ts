@@ -191,8 +191,10 @@ Page({
         connectionName: this.data.connections.find((c) => c.id === d.larkConnectionId)?.name ?? '',
         bitableApp: d.larkBitableApp ?? '',
         bitableTable: d.larkBitableTable ?? '',
-        // 识别结果重置，随后异步拉表列表回显表名
-        larkUrl: '',
+        // 识别结果重置，随后异步拉表列表回显表名；链接回显用存储 app/table 合成等价链接
+        larkUrl: d.larkBitableApp
+          ? `https://feishu.cn/base/${d.larkBitableApp}${d.larkBitableTable ? `?table=${d.larkBitableTable}` : ''}`
+          : '',
         larkTables: [],
         bitableTableName: '',
         bitableBaseName: '',

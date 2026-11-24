@@ -106,6 +106,7 @@ export interface LarkConnectionVo {
   id: string;
   name: string;
   appId: string;
+  appSecret: string;
   appSecretMasked: string;
   createdAt: string;
 }

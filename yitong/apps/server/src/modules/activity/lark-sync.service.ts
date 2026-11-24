@@ -97,11 +97,12 @@ export class LarkSyncService {
       where: { ownerId: uid },
       orderBy: { createdAt: 'desc' },
     });
-    // 密钥脱敏：任何页面不展示完整密钥
+    // appSecret 仅按 ownerId 下发给连接归属人（编辑表单回显），列表行仍展示脱敏
     return conns.map((c) => ({
       id: c.id,
       name: c.name,
       appId: c.appId,
+      appSecret: c.appSecret,
       appSecretMasked: `${c.appSecret.slice(0, 3)}****${c.appSecret.slice(-2)}`,
       createdAt: c.createdAt.toISOString(),
     }));

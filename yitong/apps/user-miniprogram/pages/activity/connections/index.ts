@@ -69,7 +69,10 @@ Page({
             cfgConnectionName: detail.larkConnectionId ? connections.find((c) => c.id === detail.larkConnectionId)?.name ?? '已选择连接' : '',
             cfgApp: detail.larkBitableApp ?? '',
             cfgTable: detail.larkBitableTable ?? '',
-            cfgUrl: '',
+            // 链接回显：原始粘贴链接不落库，用存储的 app/table 合成等价链接
+            cfgUrl: detail.larkBitableApp
+              ? `https://feishu.cn/base/${detail.larkBitableApp}${detail.larkBitableTable ? `?table=${detail.larkBitableTable}` : ''}`
+              : '',
             cfgTables: [],
             cfgTableName: '',
             cfgBaseName: '',
@@ -198,7 +201,7 @@ Page({
     const id = e.currentTarget.dataset.id as string;
     const conn = this.data.connections.find((c) => c.id === id);
     if (!conn) return;
-    this.setData({ formVisible: true, editingId: id, formName: conn.name, formAppId: conn.appId, formAppSecret: '' });
+    this.setData({ formVisible: true, editingId: id, formName: conn.name, formAppId: conn.appId, formAppSecret: conn.appSecret ?? '' });
   },
 
   onFormInput(e: WechatMiniprogram.Input) {
