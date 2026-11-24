@@ -65,7 +65,7 @@ const ERR = {
   REMIND_RATE_LIMITED: [70014, '部分用户 24 小时内已收到过提醒，本次已跳过'] as const,
   NOT_APPROVED_MEMBER: [70015, '仅正式参与人可使用活动群聊', HttpStatus.FORBIDDEN] as const,
   CHAT_READONLY: [70016, '活动群聊已转为只读', HttpStatus.FORBIDDEN] as const,
-  TRANSFER_INVALID: [70017, '转让目标必须是活动管理员或平台/圈子管理员', HttpStatus.FORBIDDEN] as const,
+  TRANSFER_INVALID: [70017, '转让目标必须是活动管理员或平台/圈子管理员（圈子发布的活动仅可转给所属圈子管理员）', HttpStatus.FORBIDDEN] as const,
   MANAGER_NO_ENROLL: [70021, '发起人和活动管理员无需报名，可直接管理活动', HttpStatus.FORBIDDEN] as const,
 };
 
@@ -501,15 +501,17 @@ export class ActivityService {
     return this.detail(uid, id);
   }
 
-  /** 转让发起人（仅发起人，BR-009）：目标须是活动管理员或平台/圈子管理员（任意圈子）；原发起人转为活动管理员 */
+  /** 转让发起人（仅发起人，BR-009）：平台活动可转任意平台/圈子管理员；圈子活动仅可转所属圈子管理员；原发起人转为活动管理员 */
   async transferInitiator(uid: string, id: string, dto: TransferInitiatorDto): Promise<ActivityDetailVo> {
     const activity = await this.getOrThrow(id);
     await this.assertInitiator(activity, uid);
     if (dto.targetUserId === uid) throw new BizException(...ERR.STATUS_INVALID('不能转让给自己'));
     const isManager = await this.isActivityManager(id, activity.initiatorId, dto.targetUserId);
     const scopeInfo = await this.publishScope(dto.targetUserId);
-    // 2026-11-24 用户口径修正：不限活动范围，平台管理员或任意圈子管理员（圈主/圈管/管理端授权）均可被转让
-    const inScope = scopeInfo.platform || scopeInfo.managed.size > 0;
+    // 2026-11-24 用户口径二次修正：随活动范围收紧——平台活动不限圈子，圈子活动限所属圈
+    const inScope = activity.scope === ActivityScope.PLATFORM
+      ? (scopeInfo.platform || scopeInfo.managed.size > 0)
+      : scopeInfo.managed.has(activity.communityId ?? '');
     if (!isManager && !inScope) throw new BizException(...ERR.TRANSFER_INVALID);
     await this.prisma.$transaction([
       this.prisma.activity.update({ where: { id }, data: { initiatorId: dto.targetUserId } }),

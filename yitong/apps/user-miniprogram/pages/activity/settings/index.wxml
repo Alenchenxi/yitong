@@ -25,7 +25,7 @@
     </view>
     <view class="field">
       <view class="field-label">转让发起人</view>
-      <view class="field-hint">仅可转让给活动管理员或平台/圈子管理员；普通用户请先添加为活动管理员</view>
+      <view class="field-hint">{{detail.scope === 'PLATFORM' ? '可转让给任意平台/圈子管理员' : '仅可转让给本活动所属圈子的管理员'}}；普通用户请先添加为活动管理员</view>
       <view wx:if="{{transferTarget}}" class="transfer-target">已选择：{{transferTarget.nickname}}<text class="admin-chip-x" catchtap="clearTransferTarget">✕</text></view>
       <view class="user-search-row">
         <input class="field-input user-search-input" value="{{transferKw}}" bindinput="onTransferKwInput" confirm-type="search" bindconfirm="searchTransfer" placeholder="搜索用户昵称选择" />
