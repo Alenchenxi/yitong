@@ -22,6 +22,7 @@ const DRY_RUN = args.includes('--dry-run');
 const daysBackArg = args.includes('--days-back') ? Number(args[args.indexOf('--days-back') + 1]) : 0;
 
 function readEnv(key) {
+  if (process.env[key]) return process.env[key]; // 容器/compose 注入优先（生产 .env 文件无 MINIO 键）
   const envPath = path.join(ROOT, '.env');
   if (!fs.existsSync(envPath)) return null;
   const m = fs.readFileSync(envPath, 'utf8').match(new RegExp(`^${key}=(.*)$`, 'm'));
@@ -200,7 +201,20 @@ async function main() {
       const id = `c${String(seq).padStart(2, '0')}`;
       confEntryIds.push(id);
       const exists = await prisma.post.findFirst({ where: { content: e.content }, select: { id: true } });
-      if (exists) { skippedC += 1; continue; }
+      if (exists) {
+        skippedC += 1;
+        // 幂等补媒体：纯文字入库的历史行，重跑时补挂图片
+        if (!DRY_RUN) {
+          const images = await mediaUrls(id);
+          if (images.length > 0) {
+            const cur = await prisma.post.findUnique({ where: { id: exists.id }, select: { images: true } });
+            if (cur && cur.images.length === 0) {
+              await prisma.post.update({ where: { id: exists.id }, data: { images } });
+            }
+          }
+        }
+        continue;
+      }
       const author = CONFESSION_USERS[seq % CONFESSION_USERS.length];
       const circleId = circleByName.get(pickCircle(e.tags)) ?? defaultCircleId;
       const images = await mediaUrls(id);
@@ -240,7 +254,19 @@ async function main() {
       const id = `t${String(seq).padStart(2, '0')}`;
       treeEntryIds.push(id);
       const exists = await prisma.anonymousPost.findFirst({ where: { content: e.content }, select: { id: true } });
-      if (exists) { skippedT += 1; continue; }
+      if (exists) {
+        skippedT += 1;
+        if (!DRY_RUN) {
+          const images = await mediaUrls(id);
+          if (images.length > 0) {
+            const cur = await prisma.anonymousPost.findUnique({ where: { id: exists.id }, select: { images: true } });
+            if (cur && cur.images.length === 0) {
+              await prisma.anonymousPost.update({ where: { id: exists.id }, data: { images } });
+            }
+          }
+        }
+        continue;
+      }
       const author = TREEHOLE_USERS[seq % TREEHOLE_USERS.length];
       const images = await mediaUrls(id);
       if (DRY_RUN) { createdT += 1; continue; }
