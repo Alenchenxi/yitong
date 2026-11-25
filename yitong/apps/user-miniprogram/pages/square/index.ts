@@ -128,11 +128,6 @@ Page({
     }
 
     this.setData(getNavigationLayout());
-
-    // 活动发布入口按角色显示：仅圈管理员/平台管理员可见（服务端 publish-scope 同源口径）
-    getActivityPublishScope()
-      .then((scope) => this.setData({ canPublish: scope.platform || scope.communities.length > 0 }))
-      .catch(() => {});
   },
 
   onUnload() {
@@ -177,6 +172,10 @@ Page({
     syncCustomTabBar(this, '/pages/square/index');
     const app = getApp<AppInstance>();
     if (!app.requireAuth()) return;
+    // 活动发布入口按角色显示：仅圈管理员/平台管理员可见（服务端 publish-scope 同源口径）；每次显示刷新，角色变更切回即生效
+    getActivityPublishScope()
+      .then((scope) => this.setData({ canPublish: scope.platform || scope.communities.length > 0 }))
+      .catch(() => {});
     // 活动上新弹窗：冷启动首次 onShow 触发（组件内含冷启动门闩与空列表守卫）
     const arrivals = this.selectComponent('#activityArrivals') as unknown as { maybeShow: () => void } | null;
     arrivals?.maybeShow?.();

@@ -34,13 +34,6 @@ Page({
 
   rawList: [] as Array<ActivityListVo & { statusText: string; formatText: string; timeText: string }>,
 
-  onLoad() {
-    // 发布入口按角色显示：仅圈管理员/平台管理员可见（服务端 publish-scope 同源口径）
-    getActivityPublishScope()
-      .then((scope) => this.setData({ canPublish: scope.platform || scope.communities.length > 0 }))
-      .catch(() => {});
-  },
-
   onSearchInput(e: WechatMiniprogram.Input) {
     this.setData({ searchKey: e.detail.value });
     this.applyFilter();
@@ -59,6 +52,10 @@ Page({
   },
 
   async onShow() {
+    // 发布入口按角色显示：仅圈管理员/平台管理员可见（服务端 publish-scope 同源口径）；每次显示刷新，角色变更切回即生效
+    getActivityPublishScope()
+      .then((scope) => this.setData({ canPublish: scope.platform || scope.communities.length > 0 }))
+      .catch(() => {});
     await this.reload();
     // 冷启动上新弹窗（组件自带冷启动门闩，前后台切换不重复）
     const arrivals = this.selectComponent('#activityArrivals') as unknown as { maybeShow: () => void } | null;
