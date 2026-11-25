@@ -496,15 +496,17 @@ Page({
   onReport() {
     wx.showModal({
       title: '举报',
-      content: '确定举报此帖子？',
+      editable: true,
+      placeholderText: '选填：举报原因（如虚假信息/违规）',
+      confirmText: '举报',
+      confirmColor: '#E63946',
       success: async (r) => {
-        if (r.confirm) {
-          try {
-            await reportPost(this.postId);
-            wx.showToast({ title: '已举报', icon: 'success' });
-          } catch {
-            /* toast */
-          }
+        if (!r.confirm) return;
+        try {
+          await reportPost(this.postId, r.content || undefined);
+          wx.showToast({ title: '已举报，平台将核实', icon: 'success' });
+        } catch {
+          /* toast */
         }
       },
     });
