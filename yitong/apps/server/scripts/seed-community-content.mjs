@@ -81,15 +81,19 @@ function assertGap(times, label) {
   }
 }
 
-function buildTimes(entries, baseDate) {
+function buildTimes(entries, offset) {
+  // 北京时区锚定（容器可能是 UTC，setHours 按容器时区会漂 8 小时）：
+  // 北京"今天" = Date.now()+8h 的 UTC 日期；北京 HH:MM:ss = Date.UTC(y, m, d, HH-8, MM, SS)（HH<8 自动回退前一天）
+  const bj = new Date(Date.now() + 8 * 3600 * 1000 - offset * 86400000);
+  const y = bj.getUTCFullYear();
+  const m = bj.getUTCMonth();
+  const d = bj.getUTCDate();
   const times = entries.map((e) => {
-    const [h, m] = e.t.split(':').map(Number);
+    const [h, mm] = e.t.split(':').map(Number);
     const sec = Math.floor(rand() * 60); // 有零有整：随机秒
-    const d = new Date(baseDate);
-    d.setHours(h, m, sec, 0);
-    return d;
+    return new Date(Date.UTC(y, m, d, h - 8, mm, sec));
   });
-  assertGap(times, `${baseDate.toDateString()}`);
+  assertGap(times, `${y}-${m + 1}-${d}`);
   return times;
 }
 
@@ -115,15 +119,8 @@ async function main() {
     console.log('[seed] MinIO 未配置完整：帖子一律纯文字入库');
   }
 
-  const baseUrl = daysBackArg > 0
-    ? new Date(Date.now() - daysBackArg * 86400000)
-    : new Date();
-  const baseDate = (offset) => {
-    const d = new Date(baseUrl);
-    d.setDate(d.getDate() - offset);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
+  const baseDate = (offset) => offset; // 兼容旧引用（buildTimes 现直接收 offset）
+  const RETIMESTAMP = args.includes('--retimestamp');
 
   // ===== 夹具：8 个种子用户（清理标记 openid 前缀 seed_content_）=====
   const userIds = {};
@@ -212,6 +209,9 @@ async function main() {
               await prisma.post.update({ where: { id: exists.id }, data: { images } });
             }
           }
+          if (RETIMESTAMP) {
+            await prisma.post.update({ where: { id: exists.id }, data: { createdAt: times[i], updatedAt: times[i] } });
+          }
         }
         continue;
       }
@@ -263,6 +263,9 @@ async function main() {
             if (cur && cur.images.length === 0) {
               await prisma.anonymousPost.update({ where: { id: exists.id }, data: { images } });
             }
+          }
+          if (RETIMESTAMP) {
+            await prisma.anonymousPost.update({ where: { id: exists.id }, data: { createdAt: times[i], updatedAt: times[i] } });
           }
         }
         continue;
