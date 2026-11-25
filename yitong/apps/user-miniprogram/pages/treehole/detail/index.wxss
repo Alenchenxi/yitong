@@ -21,6 +21,7 @@
 .actions { display: flex; align-items: center; }
 .boost { font-size: 26rpx; color: #C59A00; font-weight: 600; padding: 10rpx 24rpx 10rpx 0; }
 .block { font-size: 26rpx; color: #E63946; padding: 10rpx 24rpx 10rpx 0; }
+.report { font-size: 26rpx; color: #4E5969; padding: 10rpx 24rpx 10rpx 0; }
 /* CR-007 发布者操作：编辑 / 删除（仅 isAuthor 可见） */
 .edit { font-size: 26rpx; color: #4E5969; padding: 10rpx 24rpx 10rpx 0; }
 .delete { font-size: 26rpx; color: #E63946; padding: 10rpx 24rpx 10rpx 0; }

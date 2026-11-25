@@ -370,6 +370,11 @@ export class AdminService {
       const posts = await this.prisma.post.findMany({ where: { id: { in: confessionIds } }, select: { id: true, content: true } });
       for (const p of posts) map.set(`post:${p.id}`, `表白墙帖「${p.content.slice(0, 20)}」`);
     }
+    const anonPostIds = byType('anon-post');
+    if (anonPostIds.length) {
+      const posts = await this.prisma.anonymousPost.findMany({ where: { id: { in: anonPostIds } }, select: { id: true, content: true } });
+      for (const p of posts) map.set(`anon-post:${p.id}`, `树洞帖「${p.content.slice(0, 20)}」`);
+    }
     return map;
   }
 

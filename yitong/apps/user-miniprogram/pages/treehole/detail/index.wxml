@@ -30,6 +30,7 @@
           <view class="edit" wx:if="{{isAuthor}}" catchtap="onEdit">编辑</view>
           <view class="delete" wx:if="{{isAuthor}}" catchtap="onDelete">删除</view>
           <view class="boost" wx:if="{{isAuthor}}" catchtap="onBoost">提升曝光</view>
+          <view class="report" wx:if="{{!isAuthor}}" catchtap="onReport">举报</view>
           <view class="block" catchtap="blockAuthor">屏蔽</view>
           <view class="like {{post.liked ? 'liked' : ''}}" catchtap="onLike">
             {{post.liked ? '已赞' : '点赞'}} {{post.likeCount || ''}}

@@ -510,6 +510,19 @@ export class TreeholeController {
     return ok(await this.treehole.reportGroup(anonId, id, body.reason));
   }
 
+  // ===== P2-94 帖子举报（anonToken 鉴权；理由选填，经内容安全审核） =====
+  @Public()
+  @UseGuards(AnonGuard)
+  @Post('posts/:id/report')
+  async reportPost(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @Req() req: Request,
+  ) {
+    const anonId = (req as AuthenticatedRequest).user!.uid;
+    return ok(await this.treehole.reportPost(anonId, id, body.reason));
+  }
+
   @Public()
   @UseGuards(AnonGuard)
   @Get('messages')

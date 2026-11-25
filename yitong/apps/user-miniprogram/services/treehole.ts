@@ -328,6 +328,11 @@ export function toggleAnonPostLike(postId: string): Promise<{ liked: boolean; li
   return anonRequest({ url: `/treehole/posts/${postId}/like`, method: 'POST' });
 }
 
+// P2-94 举报树洞帖（举报人 anonId；理由选填，后端内容安全审核）
+export function reportAnonPost(postId: string, reason?: string): Promise<{ reported: boolean }> {
+  return anonRequest({ url: `/treehole/posts/${postId}/report`, method: 'POST', data: { reason } });
+}
+
 // ===== 树洞评论（anonToken 鉴权，与帖点赞同一匿名态）=====
 export function listAnonComments(
   postId: string,

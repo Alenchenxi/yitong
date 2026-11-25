@@ -1212,6 +1212,27 @@ export class TreeholeService {
     return { reported: true };
   }
 
+  // ===== P2-94 帖子举报（举报人=anonId，匿名红线：记录不含真实 uid） =====
+  async reportPost(anonId: string, postId: string, reason?: string) {
+    const post = await this.prisma.anonymousPost.findFirst({
+      where: { id: postId, status: PostStatus.APPROVED, deletedAt: null },
+      select: { id: true, publisherScope: true, communityId: true },
+    });
+    if (!post) throw new BizException(40001, '帖子不存在', HttpStatus.NOT_FOUND);
+    if (reason) await this.moderation.checkText(reason, await this.resolveAnonOpenid(anonId));
+    await this.prisma.moderationRecord.create({
+      data: {
+        targetType: 'anon-post',
+        targetId: post.id,
+        reason: reason ?? '用户举报树洞帖',
+        reporterId: anonId,
+        targetPublisherScope: post.publisherScope,
+        targetCommunityId: post.communityId,
+      },
+    });
+    return { reported: true };
+  }
+
   // P0-16 屏蔽：A 屏蔽 B（按 anonId，幂等），并关闭两人活跃匹配（互相隔离·三处全隔离）
   async block(anonId: string, blockedAnonId: string) {
     if (!blockedAnonId || blockedAnonId === anonId) {

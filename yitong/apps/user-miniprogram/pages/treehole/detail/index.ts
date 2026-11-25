@@ -5,6 +5,7 @@ import {
   hasAnonToken,
   getAnonId,
   toggleAnonPostLike,
+  reportAnonPost,
   blockAnon,
   deleteAnonPost,
   listAnonComments,
@@ -283,6 +284,28 @@ Page({
           await blockAnon(post.anonId);
           wx.showToast({ title: '已屏蔽', icon: 'success' });
           setTimeout(() => wx.navigateBack(), 600);
+        } catch {
+          /* toast */
+        }
+      },
+    });
+  },
+
+  // P2-94 举报树洞帖（作者本人不显示入口；理由选填，经内容安全审核）
+  onReport() {
+    const post = this.data.post;
+    if (!post) return;
+    wx.showModal({
+      title: '举报',
+      editable: true,
+      placeholderText: '选填：举报原因（如违法违规/人身攻击）',
+      confirmText: '举报',
+      confirmColor: '#E63946',
+      success: async (r) => {
+        if (!r.confirm) return;
+        try {
+          await reportAnonPost(post.id, r.content || undefined);
+          wx.showToast({ title: '已举报，平台将核实', icon: 'success' });
         } catch {
           /* toast */
         }
