@@ -344,6 +344,72 @@ export class AdminService {
     };
   }
 
+  // P2-95 举报详情：目标全文 + 完整举报信息（点击队列条目查看用）
+  async getReportDetail(id: string, access?: AdminAccessContext) {
+    const record = await this.prisma.moderationRecord.findUnique({ where: { id } });
+    if (!record) throw new BizException(40001, '举报记录不存在', HttpStatus.NOT_FOUND);
+    if (access) await this.assertReportTargetAccess(record.targetType, record.targetId, access);
+    const { summary, content } = await this.buildReportTargetDetail(record.targetType, record.targetId);
+    const reporter = record.reporterId
+      ? await this.prisma.user.findUnique({ where: { id: record.reporterId }, select: { nickname: true } })
+      : null;
+    return {
+      id: record.id,
+      targetType: record.targetType,
+      targetId: record.targetId,
+      targetSummary: summary,
+      targetContent: content,
+      reason: record.reason,
+      status: record.status,
+      result: record.result,
+      reporterId: record.reporterId,
+      reporterNickname: reporter?.nickname ?? '',
+      reviewerId: record.reviewerId,
+      resolvedAt: record.resolvedAt?.toISOString() ?? null,
+      createdAt: record.createdAt.toISOString(),
+    };
+  }
+
+  // 单个举报目标的摘要 + 全文（与列表摘要同口径）
+  private async buildReportTargetDetail(
+    targetType: string,
+    targetId: string,
+  ): Promise<{ summary: string; content: string }> {
+    switch (targetType) {
+      case 'job_post': {
+        const p = await this.prisma.jobPost.findUnique({ where: { id: targetId }, select: { title: true, description: true } });
+        return p ? { summary: `岗位「${p.title}」`, content: p.description } : { summary: '', content: '' };
+      }
+      case 'merchant': {
+        const m = await this.prisma.merchant.findUnique({ where: { id: targetId }, select: { shopName: true } });
+        return m ? { summary: `商家「${m.shopName}」`, content: m.shopName } : { summary: '', content: '' };
+      }
+      case 'application': {
+        const a = await this.prisma.jobApplication.findUnique({
+          where: { id: targetId },
+          select: { jobPost: { select: { title: true } }, user: { select: { nickname: true } } },
+        });
+        return a
+          ? { summary: `报名「${a.jobPost.title} · ${a.user.nickname}」`, content: `岗位「${a.jobPost.title}」 · 报名人：${a.user.nickname}` }
+          : { summary: '', content: '' };
+      }
+      case 'post': {
+        const p = await this.prisma.post.findUnique({ where: { id: targetId }, select: { content: true } });
+        return p ? { summary: `表白墙帖「${p.content.slice(0, 20)}」`, content: p.content } : { summary: '', content: '' };
+      }
+      case 'anon-post': {
+        const p = await this.prisma.anonymousPost.findUnique({ where: { id: targetId }, select: { content: true } });
+        return p ? { summary: `树洞帖「${p.content.slice(0, 20)}」`, content: p.content } : { summary: '', content: '' };
+      }
+      case 'anon-group': {
+        const g = await this.prisma.anonGroup.findUnique({ where: { id: targetId }, select: { name: true, description: true } });
+        return g ? { summary: `群聊「${g.name}」`, content: g.description || g.name } : { summary: '', content: '' };
+      }
+      default:
+        return { summary: '', content: '' };
+    }
+  }
+
   private async buildTargetSummaries(records: Array<{ targetType: string; targetId: string }>) {
     const map = new Map<string, string>();
     const byType = (t: string) => records.filter((r) => r.targetType === t).map((r) => r.targetId);
@@ -374,6 +440,11 @@ export class AdminService {
     if (anonPostIds.length) {
       const posts = await this.prisma.anonymousPost.findMany({ where: { id: { in: anonPostIds } }, select: { id: true, content: true } });
       for (const p of posts) map.set(`anon-post:${p.id}`, `树洞帖「${p.content.slice(0, 20)}」`);
+    }
+    const anonGroupIds = byType('anon-group');
+    if (anonGroupIds.length) {
+      const groups = await this.prisma.anonGroup.findMany({ where: { id: { in: anonGroupIds } }, select: { id: true, name: true } });
+      for (const g of groups) map.set(`anon-group:${g.id}`, `群聊「${g.name}」`);
     }
     return map;
   }

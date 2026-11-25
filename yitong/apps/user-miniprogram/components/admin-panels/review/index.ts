@@ -17,6 +17,7 @@ import {
   pinComment,
   listReports,
   resolveReport,
+  getReportDetail,
   listJobPostsAdmin,
   takedownJobPost,
   restorePost,
@@ -27,6 +28,7 @@ import {
   type AdminAnonPostVo,
   type AdminCommentVo,
   type AdminReportVo,
+  type AdminReportDetailVo,
   type AdminJobPostVo,
   type AdminModerationScope,
   type ModerationContextsVo,
@@ -34,6 +36,15 @@ import {
 
 type Sub = 'merchant' | 'posts' | 'anon' | 'comments' | 'reports' | 'jobs';
 const SUBS: Sub[] = ['merchant', 'posts', 'anon', 'comments', 'reports', 'jobs'];
+// P2-95 举报目标类型中文映射（详情弹层展示用）
+const REPORT_TYPE_TEXT: Record<string, string> = {
+  post: '表白墙帖',
+  'anon-post': '树洞帖',
+  'anon-group': '树洞群聊',
+  job_post: '兼职岗位',
+  merchant: '商家',
+  application: '兼职报名',
+};
 const SUB_LABELS: Record<Sub, string> = {
   merchant: '商家入驻',
   posts: '表白墙帖',
@@ -95,6 +106,7 @@ Component({
     reportStatus: 'PENDING',
     reportPage: 0,
     reportHasMore: false,
+    reportDetail: null as (AdminReportDetailVo & { typeText: string }) | null,
     // 岗位（R4）
     jobs: [] as AdminJobPostVo[],
     jobPage: 0,
@@ -536,10 +548,29 @@ Component({
             const takedown = isApprove && /下架/.test(r.content || '');
             await resolveReport(id, action, r.content || undefined, takedown);
             wx.showToast({ title: '已处理', icon: 'success' });
+            this.setData({ reportDetail: null }); // 详情弹层打开时同步关闭（弹层内也可处理）
             this.load();
           }
         },
       });
     },
+
+    // P2-95 点击队列条目查看举报详情（目标全文 + 完整举报信息）
+    async openReportDetail(e: WechatMiniprogram.TouchEvent) {
+      const id = e.currentTarget.dataset.id as string;
+      if (!id || this.data.reportDetail) return;
+      try {
+        const d = await getReportDetail(id);
+        this.setData({ reportDetail: { ...d, typeText: REPORT_TYPE_TEXT[d.targetType] ?? d.targetType } });
+      } catch {
+        /* toast 已在 request 内 */
+      }
+    },
+
+    closeReportDetail() {
+      this.setData({ reportDetail: null });
+    },
+
+    noop() {},
   },
 });

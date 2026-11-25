@@ -79,6 +79,13 @@ export class AdminController {
     );
   }
 
+  // P2-95 举报详情（点击队列条目查看完整举报信息与目标全文）
+  @Get('reports/:id')
+  @RequireAdminPermission(ADMIN_PERMISSIONS.REPORT_MANAGE)
+  async getReport(@Param('id') id: string, @Req() req: Request) {
+    return ok(await this.admin.getReportDetail(id, (req as AuthenticatedRequest).adminAccess!));
+  }
+
   @Post('reports/:id/resolve')
   @RequireAdminPermission(ADMIN_PERMISSIONS.REPORT_MANAGE)
   async resolveReport(@Param('id') id: string, @Body() dto: ResolveReportDto, @Req() req: Request) {

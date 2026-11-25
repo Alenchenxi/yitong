@@ -121,6 +121,13 @@ export function listReports(status?: string, page = 1, pageSize = 20, query: Mod
 export function resolveReport(id: string, action: 'approve' | 'reject', result?: string, takedown?: boolean) {
   return request({ url: `/admin/reports/${id}/resolve`, method: 'POST', data: { action, result, takedown } });
 }
+// P2-95 举报详情（队列条目点击查看完整举报信息 + 目标全文）
+export interface AdminReportDetailVo extends AdminReportVo {
+  targetContent: string;
+}
+export function getReportDetail(id: string): Promise<AdminReportDetailVo> {
+  return request({ url: `/admin/reports/${id}` });
+}
 
 // ===== P2-05 置顶/加精 + P2-15 兼职精品 =====
 export function pinPost(id: string, pinned: boolean) {

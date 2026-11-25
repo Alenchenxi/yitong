@@ -44,3 +44,68 @@
   font-weight: 500;
   vertical-align: middle;
 }
+
+/* P2-95 列表理由超两行折叠，点击条目进详情看全文 */
+.adm-item-reason {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* P2-95 举报详情弹层（复用 users 面板 adm-dialog 体系） */
+.adm-dialog {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+}
+.adm-dialog-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+.adm-dialog-panel {
+  position: absolute;
+  top: 8%;
+  bottom: 8%;
+  left: 5%;
+  right: 5%;
+  background-color: var(--yt-card);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.adm-dialog-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--yt-text-main);
+  margin-bottom: 16rpx;
+  flex-shrink: 0;
+}
+.adm-dialog-list { flex: 1; min-height: 0; }
+.adm-dialog-footer {
+  display: flex;
+  gap: 16rpx;
+  justify-content: flex-end;
+  padding-top: 16rpx;
+  flex-shrink: 0;
+}
+.adm-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid var(--yt-border);
+}
+.adm-detail-label { font-size: 22rpx; color: var(--yt-text-sub); }
+.adm-detail-content { font-size: 28rpx; color: var(--yt-text-main); line-height: 1.6; word-break: break-all; white-space: pre-wrap; }
