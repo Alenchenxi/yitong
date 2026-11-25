@@ -1,0 +1,3 @@
+
+# seed 媒体资产（生成后上传 COS，本地不入库）
+.seed-media/
