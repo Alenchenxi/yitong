@@ -1,4 +1,4 @@
-import { listActivities, type ActivityListVo } from '../../services/activity';
+import { getActivityPublishScope, listActivities, type ActivityListVo } from '../../services/activity';
 
 const STATUS_TABS: Array<{ key: string; label: string; value?: string }> = [
   { key: 'open', label: '可报名' },
@@ -29,9 +29,17 @@ Page({
     list: [] as Array<ActivityListVo & { statusText: string; formatText: string; timeText: string }>,
     loading: false,
     searchKey: '',
+    canPublish: false,
   },
 
   rawList: [] as Array<ActivityListVo & { statusText: string; formatText: string; timeText: string }>,
+
+  onLoad() {
+    // 发布入口按角色显示：仅圈管理员/平台管理员可见（服务端 publish-scope 同源口径）
+    getActivityPublishScope()
+      .then((scope) => this.setData({ canPublish: scope.platform || scope.communities.length > 0 }))
+      .catch(() => {});
+  },
 
   onSearchInput(e: WechatMiniprogram.Input) {
     this.setData({ searchKey: e.detail.value });

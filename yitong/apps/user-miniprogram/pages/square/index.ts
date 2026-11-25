@@ -8,7 +8,7 @@ import {
   getAnonymousToken,
 } from '../../services/treehole';
 import { isJobListCursorExpired, listJobPosts, type JobPostVo } from '../../services/job';
-import { listActivities } from '../../services/activity';
+import { getActivityPublishScope, listActivities } from '../../services/activity';
 import {
   acceptCommunityInvite,
   getActiveCommunity,
@@ -75,6 +75,7 @@ interface PageData {
   navHeight: number;
   navRight: number;
   sharePosterPath: string;
+  canPublish: boolean;
 }
 
 Page({
@@ -97,6 +98,7 @@ Page({
     navHeight: 44,
     navRight: 12,
     sharePosterPath: '',
+    canPublish: false,
   } as PageData,
 
   onLoad(options: Record<string, string | undefined>) {
@@ -126,6 +128,11 @@ Page({
     }
 
     this.setData(getNavigationLayout());
+
+    // 活动发布入口按角色显示：仅圈管理员/平台管理员可见（服务端 publish-scope 同源口径）
+    getActivityPublishScope()
+      .then((scope) => this.setData({ canPublish: scope.platform || scope.communities.length > 0 }))
+      .catch(() => {});
   },
 
   onUnload() {
@@ -598,12 +605,15 @@ Page({
       imageUrl: this.data.sharePosterPath || community.backgroundImage || community.logo || undefined,
     };
   },
-  // FAB：匿名内容开启时菜单含树洞；活动固定为末项，与活动页 FAB 同为无门槛直达。
+  // FAB：匿名内容开启时菜单含树洞；活动项仅圈管理员/平台管理员可见（与活动页 FAB 同口径）。
   goCreate() {
-    const items = this.data.anonymousContentEnabled ? ['表白墙', '树洞', '活动'] : ['表白墙', '活动'];
-    const urls = this.data.anonymousContentEnabled
-      ? ['/pages/post-create/index', '/pages/treehole/post/index', '/pages/activity/publish/index']
-      : ['/pages/post-create/index', '/pages/activity/publish/index'];
+    const anon = this.data.anonymousContentEnabled;
+    const items = anon ? ['表白墙', '树洞'] : ['表白墙'];
+    const urls = anon ? ['/pages/post-create/index', '/pages/treehole/post/index'] : ['/pages/post-create/index'];
+    if (this.data.canPublish) {
+      items.push('活动');
+      urls.push('/pages/activity/publish/index');
+    }
     wx.showActionSheet({
       itemList: items,
       success: (result) => {
