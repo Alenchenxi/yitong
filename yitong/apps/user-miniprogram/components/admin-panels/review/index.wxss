@@ -107,5 +107,6 @@
   padding: 14rpx 0;
   border-bottom: 1rpx solid var(--yt-border);
 }
+.adm-detail-row .adm-status { align-self: flex-start; } /* 弹层行是 column flex，否则胶囊背景被 stretch 拉满整行 */
 .adm-detail-label { font-size: 22rpx; color: var(--yt-text-sub); }
 .adm-detail-content { font-size: 28rpx; color: var(--yt-text-main); line-height: 1.6; word-break: break-all; white-space: pre-wrap; }
