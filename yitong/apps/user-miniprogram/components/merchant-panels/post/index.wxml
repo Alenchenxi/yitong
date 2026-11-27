@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="row"><text class="label">标题</text><input class="input {{isEdit ? 'input-readonly' : ''}}" placeholder="如：周末奶茶店兼职" value="{{title}}" data-field="title" bindinput="onInput" disabled="{{isEdit}}" /></view>
+  <view class="row"><text class="label">标题</text><input class="input" placeholder="如：周末奶茶店兼职" value="{{title}}" data-field="title" bindinput="onInput" maxlength="50" /></view>
   <view class="row"><text class="label">薪资</text><input class="input" placeholder="如：150元/天" value="{{salary}}" data-field="salary" bindinput="onInput" /></view>
   <view class="row">
     <text class="label">工作地点</text>
@@ -69,7 +69,7 @@
       <view class="dur-opt {{duration === 'D90' ? 'active' : ''}} {{isEdit ? 'dur-readonly' : ''}}" data-d="D90" bindtap="pickDuration">90 天</view>
     </view>
   </view>
-  <view class="hint" wx:if="{{isEdit}}">标题、分类与发布时长创建后不可修改</view>
+  <view class="hint" wx:if="{{isEdit}}">分类与发布时长创建后不可修改</view>
   <button class="submit {{submitting ? 'submit-disabled' : ''}}" bindtap="submit" disabled="{{submitting}}">{{submitting ? '保存中…' : (isEdit ? '保存修改' : '发布岗位')}}</button>
   <view class="hint" wx:if="{{!isEdit}}">创建为草稿，提交后需付费发布（30/90 天单价由后台配置）</view>
   <view class="hint" wx:if="{{isEdit}}">已发布岗位编辑后将回退为待发布，有效期内重新发布免费（有效期保持原岗位时限，不顺延）</view>

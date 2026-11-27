@@ -302,8 +302,9 @@ Component({
       this.setData({ submitting: true });
       try {
         if (isEdit && editId) {
-          // M3-04 编辑岗位（P2-77：title/分类创建后不可改，不随编辑提交）
+          // M3-04 编辑岗位（title 2026-11-27 放开可改；分类仍创建后不可改，不随编辑提交）
           await updateJobPost(editId, {
+            title: title.trim(),
             description: description.trim(),
             requirements: requirements.trim() || undefined,
             salary: salary.trim(),

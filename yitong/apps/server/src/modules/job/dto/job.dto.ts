@@ -130,7 +130,8 @@ export class CreateJobPostDto {
 }
 
 // M3-04 编辑岗位：所有字段 optional；duration 不在字段内（创建后不可改）；
-// P2-77 title / category / customCategory / isCustomCategory 传同值放行、传不同值由 service 拒绝（创建后不可改）
+// P2-77 category / customCategory / isCustomCategory 传同值放行、传不同值由 service 拒绝（创建后不可改）；
+// title 2026-11-27 放开可改（随编辑提交，服务端内容安全审核照走）
 export class UpdateJobPostDto {
   @IsOptional()
   @IsString()

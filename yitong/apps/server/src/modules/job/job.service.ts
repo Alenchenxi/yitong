@@ -627,7 +627,7 @@ export class JobService {
 
   // M3-04 编辑岗位：商家可编辑未下架且属于自己的岗位（PENDING / PUBLISHED 可编辑，TAKEN_DOWN / EXPIRED 不可编辑）；
   // PUBLISHED 编辑后回退为 PENDING（原有效期内可免付费重发，见 publishPost）；duration 不可改（影响支付与 expireAt）；
-  // P2-77 title / category（含自定义岗位类型）创建后不可改（防编辑+免付费重发变相换岗推广）。
+  // category（含自定义岗位类型）创建后不可改（防编辑+免付费重发变相换岗推广）；title 2026-11-27 用户决策放开可改（内容安全审核照走）。
   async updatePost(merchantUid: string, postId: string, dto: UpdateJobPostDto, openid?: string) {
     const post = await this.prisma.jobPost.findUnique({
       where: { id: postId },
@@ -644,10 +644,7 @@ export class JobService {
       throw new BizException(40003, '已下架或已过期岗位不可编辑', HttpStatus.CONFLICT);
     }
 
-    // P2-77 标题/分类创建后不可改：传同值放行（旧版前端回填后原样提交不受影响），传不同值明确拒绝
-    if (dto.title !== undefined && dto.title !== post.title) {
-      throw new BizException(40003, '岗位标题创建后不可修改', HttpStatus.BAD_REQUEST);
-    }
+    // 分类创建后不可改（P2-77 残留规则）：传同值放行（旧版前端回填后原样提交不受影响），传不同值明确拒绝
     const currentCustom = post.customCategory?.trim() || null;
     const dtoCustom = dto.customCategory?.trim() || null;
     if (

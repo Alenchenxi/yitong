@@ -73,13 +73,14 @@ function buildService(fixture: Record<string, unknown>) {
   return { service, update };
 }
 
-// P2-77 编辑岗位：title / category（含自定义岗位类型）创建后不可改
-describe('岗位编辑标题与分类不可变（P2-77）', () => {
-  it('改标题被拒绝（40003），不落库', async () => {
+// P2-77 分类创建后不可改；title 2026-11-27 放开可改
+describe('岗位编辑分类不可变、标题可改', () => {
+  it('改标题成功落库（2026-11-27 放开）', async () => {
     const { service, update } = buildService(jobFixture());
-    await expect(service.updatePost('merchant_user', 'job_edit_1', { title: '改成新标题' } as never))
-      .rejects.toMatchObject({ bizCode: 40003 });
-    expect(update).not.toHaveBeenCalled();
+    const vo = await service.updatePost('merchant_user', 'job_edit_1', { title: '改成新标题' } as never);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect((update.mock.calls[0] as unknown[])[0]).toMatchObject({ data: { title: '改成新标题' } });
+    expect(vo.title).toBe('改成新标题');
   });
 
   it('改预设分类被拒绝（40003），不落库', async () => {

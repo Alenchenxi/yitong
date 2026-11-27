@@ -198,22 +198,22 @@ async function cleanup(prisma) {
     console.log('\n--- M3-04 编辑岗位 ---');
 
     // 验证点 1：A 编辑自己 PENDING 岗位 -> 成功，字段更新，duration 不变
-    // P2-77：title/分类创建后不可改，编辑只提交允许字段
+    // 编辑不携带 title 时保持原值；分类创建后不可改（P2-77）
     const edit1 = await call('PUT', `/job-posts/${pPending.id}`, A.accessToken, {
       salary: '200/天', headcount: 5,
     });
     assert(edit1.body.code === 0, `编辑 PENDING 成功 ${JSON.stringify(edit1.body).slice(0, 100)}`);
-    assertEq(edit1.body.data.title, `PENDING岗_${sfx}`, '编辑后 title 保持不变（P2-77 不可改）');
+    assertEq(edit1.body.data.title, `PENDING岗_${sfx}`, '编辑不传 title 时保持原值');
     assertEq(edit1.body.data.category, 'CATERING', '编辑后 category 保持不变（P2-77 不可改）');
     assertEq(edit1.body.data.salary, '200/天', '编辑后 salary 更新');
     assertEq(edit1.body.data.headcount, 5, '编辑后 headcount 更新');
     assertEq(edit1.body.data.status, 'PENDING', '编辑 PENDING 后状态不变 PENDING');
     assertEq(edit1.body.data.duration, 'D30', '编辑后 duration 不可改（仍 D30）');
 
-    // 验证点 1b：改标题 / 改分类 -> 40003 拒绝（P2-77）
+    // 验证点 1b：改标题（2026-11-27 放开）-> 成功更新；改分类 -> 40003 拒绝（P2-77）
     const editTitle = await call('PUT', `/job-posts/${pPending.id}`, A.accessToken, { title: `尝试改标题_${sfx}` });
-    assertEq(editTitle.status, 400, `改标题 HTTP 400 got=${editTitle.status}`);
-    assertEq(editTitle.body.code, 40003, `改标题 code 40003`);
+    assert(editTitle.body.code === 0, `改标题成功 ${JSON.stringify(editTitle.body).slice(0, 100)}`);
+    assertEq(editTitle.body.data.title, `尝试改标题_${sfx}`, '改标题已生效');
     const editCat = await call('PUT', `/job-posts/${pPending.id}`, A.accessToken, { category: 'RETAIL' });
     assertEq(editCat.status, 400, `改分类 HTTP 400 got=${editCat.status}`);
     assertEq(editCat.body.code, 40003, `改分类 code 40003`);
