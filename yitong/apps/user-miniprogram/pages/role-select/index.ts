@@ -75,7 +75,19 @@ Page({
         // 按角色分流落地页（与 onLaunch 恢复登录态共用 routeToRoleHome，避免逻辑漂移）
         app.routeToRoleHome(role);
       }
-    } catch {
+    } catch (err) {
+      // 商家资质未过审（60003）：与「我的」页「去入驻」引导同口径——改以用户身份登录后
+      // 进商家端，由 shell「我的」tab 认证状态卡展示审核进度/驳回原因
+      //（商家接口只校验 merchants 行存在、不校验 JWT role，用户 token 可正常用 shell）。
+      if (role === 'merchant' && (err as { code?: number })?.code === 60003) {
+        try {
+          await app.loginWithRole('user', this.data.referralCode || undefined);
+          wx.reLaunch({ url: '/pages/merchant/index?tab=profile' });
+          return;
+        } catch {
+          // 兜底登录也失败：toast 已在 loginWithRole 内，停留本页
+        }
+      }
       // toast 已在 loginWithRole 内
     } finally {
       this.setData({ loading: false, pendingRole: '' });
